@@ -45,7 +45,8 @@ export function LineChart({ data, xKey, lines, height = 300 }: LineChartProps) {
             borderRadius: "8px",
             color: "#f1f5f9",
           }}
-          labelStyle={{ color: "#94a3b8" }}
+          labelStyle={{ color: "#e2e8f0" }}
+          itemStyle={{ color: "#ffffff" }}
         />
         <Legend
           wrapperStyle={{ paddingTop: "20px" }}

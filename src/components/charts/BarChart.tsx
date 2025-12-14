@@ -71,7 +71,8 @@ export function BarChart({
               borderRadius: "8px",
               color: "#f1f5f9",
             }}
-            labelStyle={{ color: "#94a3b8" }}
+            labelStyle={{ color: "#e2e8f0" }}
+            itemStyle={{ color: "#ffffff" }}
           />
           <Bar dataKey={yKey} radius={[0, 4, 4, 0]}>
             {data.map((_, index) => (

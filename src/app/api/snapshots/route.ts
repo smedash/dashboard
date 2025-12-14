@@ -71,26 +71,26 @@ export async function POST(request: NextRequest) {
 
     const { startDate, endDate } = getDateRange(period || "28d");
 
-    // Hole Daten von GSC für alle Dimensionen
+    // Hole Daten von GSC für alle Dimensionen (max 25000 pro Anfrage)
     const [queriesData, pagesData, countriesData, devicesData, dateData, queryPageData] =
       await Promise.all([
         getGSCSearchAnalytics(session.user.id, siteUrl, {
           startDate,
           endDate,
           dimensions: ["query"],
-          rowLimit: 500,
+          rowLimit: 25000,
         }),
         getGSCSearchAnalytics(session.user.id, siteUrl, {
           startDate,
           endDate,
           dimensions: ["page"],
-          rowLimit: 500,
+          rowLimit: 25000,
         }),
         getGSCSearchAnalytics(session.user.id, siteUrl, {
           startDate,
           endDate,
           dimensions: ["country"],
-          rowLimit: 100,
+          rowLimit: 250,
         }),
         getGSCSearchAnalytics(session.user.id, siteUrl, {
           startDate,
@@ -102,14 +102,14 @@ export async function POST(request: NextRequest) {
           startDate,
           endDate,
           dimensions: ["date"],
-          rowLimit: 100,
+          rowLimit: 500,
         }),
         // Keywords pro URL - wichtig für Verzeichnis-Auswertung!
         getGSCSearchAnalytics(session.user.id, siteUrl, {
           startDate,
           endDate,
           dimensions: ["query", "page"],
-          rowLimit: 5000, // Mehr Daten für detaillierte Auswertung
+          rowLimit: 25000,
         }),
       ]);
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { DataTable } from "@/components/ui/DataTable";
 import { PeriodSelector } from "@/components/ui/PeriodSelector";
 import { PropertySelector } from "@/components/ui/PropertySelector";
@@ -18,6 +18,7 @@ export default function PagesPage() {
   const [period, setPeriod] = useState("28d");
   const [data, setData] = useState<PageRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     async function fetchData() {
@@ -26,7 +27,7 @@ export default function PagesPage() {
       setIsLoading(true);
       try {
         const response = await fetch(
-          `/api/gsc/pages?siteUrl=${encodeURIComponent(selectedProperty)}&period=${period}&limit=500`
+          `/api/gsc/pages?siteUrl=${encodeURIComponent(selectedProperty)}&period=${period}&limit=25000`
         );
         const result = await response.json();
         setData(result.data || []);
@@ -40,14 +41,23 @@ export default function PagesPage() {
     fetchData();
   }, [selectedProperty, period]);
 
-  const tableData = data.map((row, index) => ({
-    id: index,
-    page: row.keys[0],
-    clicks: row.clicks,
-    impressions: row.impressions,
-    ctr: row.ctr,
-    position: row.position,
-  }));
+  const tableData = useMemo(() => {
+    const searchLower = searchQuery.toLowerCase().trim();
+
+    return data
+      .filter((row) => {
+        if (!searchLower) return true;
+        return row.keys[0].toLowerCase().includes(searchLower);
+      })
+      .map((row, index) => ({
+        id: index,
+        page: row.keys[0],
+        clicks: row.clicks,
+        impressions: row.impressions,
+        ctr: row.ctr,
+        position: row.position,
+      }));
+  }, [data, searchQuery]);
 
   const formatUrl = (url: string) => {
     try {
@@ -65,6 +75,39 @@ export default function PagesPage() {
         <div className="flex flex-wrap items-center gap-4">
           <PropertySelector value={selectedProperty} onChange={setSelectedProperty} />
           <PeriodSelector value={period} onChange={setPeriod} />
+        </div>
+      </div>
+
+      {/* Search */}
+      <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="relative flex-1 min-w-[300px]">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="URLs durchsuchen..."
+              className="w-full pl-10 pr-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+          <span className="text-sm text-slate-400">
+            {tableData.length} von {data.length} Seiten
+          </span>
         </div>
       </div>
 

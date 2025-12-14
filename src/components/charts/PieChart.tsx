@@ -41,6 +41,8 @@ export function PieChart({ data, height = 300 }: PieChartProps) {
             borderRadius: "8px",
             color: "#f1f5f9",
           }}
+          labelStyle={{ color: "#e2e8f0" }}
+          itemStyle={{ color: "#ffffff" }}
           formatter={(value: number) => [value.toLocaleString("de-DE"), ""]}
         />
         <Legend
