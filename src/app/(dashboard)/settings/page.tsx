@@ -94,7 +94,7 @@ export default function SettingsPage() {
             </div>
 
             <button
-              onClick={() => signIn("google")}
+              onClick={() => signIn("google", { callbackUrl: "/settings" })}
               className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
             >
               Mit anderem Google-Konto verbinden
@@ -106,7 +106,7 @@ export default function SettingsPage() {
               Verbinde Dein Google-Konto, um auf die Search Console Daten zuzugreifen.
             </p>
             <button
-              onClick={() => signIn("google")}
+              onClick={() => signIn("google", { callbackUrl: "/settings" })}
               className="inline-flex items-center gap-3 px-6 py-3 bg-white hover:bg-gray-100 text-gray-800 font-semibold rounded-lg transition-all"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
