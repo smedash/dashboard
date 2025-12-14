@@ -1,7 +1,8 @@
 "use client";
 
-import { signIn, signOut, useSession } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 interface Property {
   siteUrl: string;
@@ -10,9 +11,31 @@ interface Property {
 
 export default function SettingsPage() {
   const { data: session } = useSession();
+  const searchParams = useSearchParams();
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasGoogleConnection, setHasGoogleConnection] = useState(false);
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  // Check for success/error messages from OAuth callback
+  useEffect(() => {
+    const success = searchParams.get("success");
+    const error = searchParams.get("error");
+
+    if (success === "google_linked") {
+      setMessage({ type: "success", text: "Google-Konto erfolgreich verbunden!" });
+      // Reload to show updated connection status
+      window.history.replaceState({}, "", "/settings");
+    } else if (error) {
+      const errorMessages: Record<string, string> = {
+        oauth_error: "Fehler bei der Google-Authentifizierung.",
+        google_already_linked: "Dieses Google-Konto ist bereits mit einem anderen Benutzer verknüpft.",
+        link_failed: "Fehler beim Verknüpfen des Google-Kontos.",
+      };
+      setMessage({ type: "error", text: errorMessages[error] || "Ein Fehler ist aufgetreten." });
+      window.history.replaceState({}, "", "/settings");
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     async function checkConnection() {
@@ -34,11 +57,28 @@ export default function SettingsPage() {
     }
 
     checkConnection();
-  }, []);
+  }, [message]); // Reload when message changes (after linking)
+
+  const handleLinkGoogle = () => {
+    window.location.href = "/api/auth/link-google";
+  };
 
   return (
     <div className="space-y-8 max-w-4xl">
       <h1 className="text-2xl font-bold text-white">Einstellungen</h1>
+
+      {/* Message */}
+      {message && (
+        <div
+          className={`p-4 rounded-lg ${
+            message.type === "success"
+              ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-400"
+              : "bg-red-500/10 border border-red-500/30 text-red-400"
+          }`}
+        >
+          {message.text}
+        </div>
+      )}
 
       {/* Account Section */}
       <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
@@ -94,7 +134,7 @@ export default function SettingsPage() {
             </div>
 
             <button
-              onClick={() => signIn("google", { callbackUrl: "/settings" })}
+              onClick={handleLinkGoogle}
               className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
             >
               Mit anderem Google-Konto verbinden
@@ -106,7 +146,7 @@ export default function SettingsPage() {
               Verbinde Dein Google-Konto, um auf die Search Console Daten zuzugreifen.
             </p>
             <button
-              onClick={() => signIn("google", { callbackUrl: "/settings" })}
+              onClick={handleLinkGoogle}
               className="inline-flex items-center gap-3 px-6 py-3 bg-white hover:bg-gray-100 text-gray-800 font-semibold rounded-lg transition-all"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
