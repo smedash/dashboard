@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
     const { startDate, endDate } = getDateRange(period || "28d");
 
     // Hole Daten von GSC für alle Dimensionen
-    const [queriesData, pagesData, countriesData, devicesData, dateData] =
+    const [queriesData, pagesData, countriesData, devicesData, dateData, queryPageData] =
       await Promise.all([
         getGSCSearchAnalytics(session.user.id, siteUrl, {
           startDate,
@@ -103,6 +103,13 @@ export async function POST(request: NextRequest) {
           endDate,
           dimensions: ["date"],
           rowLimit: 100,
+        }),
+        // Keywords pro URL - wichtig für Verzeichnis-Auswertung!
+        getGSCSearchAnalytics(session.user.id, siteUrl, {
+          startDate,
+          endDate,
+          dimensions: ["query", "page"],
+          rowLimit: 5000, // Mehr Daten für detaillierte Auswertung
         }),
       ]);
 
@@ -175,6 +182,16 @@ export async function POST(request: NextRequest) {
             ...dateData.rows.map((row) => ({
               dimension: "date",
               key: row.keys[0],
+              clicks: row.clicks,
+              impressions: row.impressions,
+              ctr: row.ctr,
+              position: row.position,
+            })),
+            // Keywords pro URL - für Verzeichnis-Auswertung
+            ...queryPageData.rows.map((row) => ({
+              dimension: "query_page",
+              key: row.keys[0], // Query
+              pageUrl: row.keys[1], // Page URL
               clicks: row.clicks,
               impressions: row.impressions,
               ctr: row.ctr,

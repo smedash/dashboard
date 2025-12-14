@@ -98,12 +98,14 @@ model SnapshotData {
   id          String   @id @default(cuid())
   snapshotId  String
   snapshot    Snapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
-  dimension   String   // "query", "page", "country", "device", "date"
+  dimension   String   // "query", "page", "country", "device", "date", "query_page"
   key         String   // Der Wert der Dimension (z.B. das Keyword, die URL, etc.)
+  pageUrl     String?  // Für query_page Dimension: die zugehörige URL
   clicks      Int
   impressions Int
   ctr         Float
   position    Float
 
   @@index([snapshotId, dimension])
+  @@index([snapshotId, pageUrl])
 }

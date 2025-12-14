@@ -24,6 +24,7 @@ interface Snapshot {
 interface SnapshotData {
   dimension: string;
   key: string;
+  pageUrl?: string | null;
   clicks: number;
   impressions: number;
   ctr: number;
@@ -60,7 +61,7 @@ export default function AuswertungPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [selectedDirectory, setSelectedDirectory] = useState<string | null>(null);
-  const [directoryDepth, setDirectoryDepth] = useState(2);
+  const [directoryDepth, setDirectoryDepth] = useState(4);
   const [viewMode, setViewMode] = useState<"directories" | "keywords">("directories");
   const [brandFilter, setBrandFilter] = useState("raiffeisen");
   const [excludeBrand, setExcludeBrand] = useState(true);
@@ -119,7 +120,7 @@ export default function AuswertungPage() {
   // Calculate directory statistics
   const directoryStats = useMemo(() => {
     const pageData = snapshotData.filter((d) => d.dimension === "page");
-    const queryData = snapshotData.filter((d) => d.dimension === "query");
+    const queryPageData = snapshotData.filter((d) => d.dimension === "query_page");
 
     const dirMap = new Map<string, DirectoryStats>();
 
@@ -161,15 +162,20 @@ export default function AuswertungPage() {
       dir.pages.sort((a, b) => b.clicks - a.clicks);
     });
 
-    // Add keywords (for the entire snapshot, will filter by selected directory)
     const stats = Array.from(dirMap.values()).sort((a, b) => b.clicks - a.clicks);
 
-    return { directories: stats, allKeywords: queryData };
+    return { directories: stats, queryPageData };
   }, [snapshotData, directoryDepth]);
 
-  // Get keywords for selected directory (based on URL patterns)
+  // Get keywords for selected directory based on actual URL data
   const directoryKeywords = useMemo(() => {
     if (!selectedDirectory) return [];
+
+    // Get all page URLs in this directory
+    const selectedDir = directoryStats.directories.find((d) => d.path === selectedDirectory);
+    if (!selectedDir) return [];
+
+    const pageUrlsInDirectory = new Set(selectedDir.pages.map((p) => p.url));
 
     // Filter keywords based on brand filter
     const brandTerms = brandFilter
@@ -178,21 +184,63 @@ export default function AuswertungPage() {
       .map((t) => t.trim())
       .filter(Boolean);
 
-    return directoryStats.allKeywords
+    // Get keywords that belong to pages in this directory
+    const keywordMap = new Map<string, {
+      keyword: string;
+      clicks: number;
+      impressions: number;
+      ctr: number;
+      position: number;
+      pageCount: number;
+    }>();
+
+    // Use query_page data to get keywords per URL
+    directoryStats.queryPageData.forEach((qp) => {
+      // Check if this keyword's page is in our directory
+      if (qp.pageUrl && pageUrlsInDirectory.has(qp.pageUrl)) {
+        const existing = keywordMap.get(qp.key);
+        if (existing) {
+          existing.clicks += qp.clicks;
+          existing.impressions += qp.impressions;
+          existing.position += qp.position;
+          existing.pageCount += 1;
+        } else {
+          keywordMap.set(qp.key, {
+            keyword: qp.key,
+            clicks: qp.clicks,
+            impressions: qp.impressions,
+            ctr: qp.ctr,
+            position: qp.position,
+            pageCount: 1,
+          });
+        }
+      }
+    });
+
+    // Convert to array and calculate averages
+    const keywords = Array.from(keywordMap.values())
       .map((kw) => ({
-        keyword: kw.key,
+        keyword: kw.keyword,
         clicks: kw.clicks,
         impressions: kw.impressions,
-        ctr: kw.ctr,
-        position: kw.position,
+        ctr: kw.impressions > 0 ? kw.clicks / kw.impressions : 0,
+        position: kw.pageCount > 0 ? kw.position / kw.pageCount : 0,
+        relevanceScore: 1, // All are relevant since they come from actual page data
       }))
       .filter((kw) => {
-        if (!excludeBrand || brandTerms.length === 0) return true;
-        const kwLower = kw.keyword.toLowerCase();
-        return !brandTerms.some((term) => kwLower.includes(term));
+        // Brand filter
+        if (excludeBrand && brandTerms.length > 0) {
+          const kwLower = kw.keyword.toLowerCase();
+          if (brandTerms.some((term) => kwLower.includes(term))) {
+            return false;
+          }
+        }
+        return true;
       })
       .sort((a, b) => b.clicks - a.clicks);
-  }, [selectedDirectory, directoryStats.allKeywords, brandFilter, excludeBrand]);
+
+    return keywords;
+  }, [selectedDirectory, directoryStats.directories, directoryStats.queryPageData, brandFilter, excludeBrand]);
 
   const selectedSnapshot = snapshots.find((s) => s.id === selectedSnapshotId);
   const selectedDir = directoryStats.directories.find((d) => d.path === selectedDirectory);
@@ -396,9 +444,10 @@ export default function AuswertungPage() {
                       </button>
                     </div>
 
-                    {/* Brand Filter - only show in keywords mode */}
+                    {/* Keyword Filters - only show in keywords mode */}
                     {viewMode === "keywords" && (
                       <div className="mt-4 p-3 bg-slate-700/50 rounded-lg">
+                        {/* Brand Filter */}
                         <div className="flex items-center gap-3">
                           <label className="flex items-center gap-2 cursor-pointer">
                             <input
@@ -419,7 +468,7 @@ export default function AuswertungPage() {
                           />
                         </div>
                         <p className="text-xs text-slate-500 mt-2">
-                          Mehrere Begriffe mit Komma trennen
+                          Keywords werden basierend auf den Seiten in diesem Verzeichnis gefiltert
                         </p>
                       </div>
                     )}
@@ -461,31 +510,44 @@ export default function AuswertungPage() {
                         </tbody>
                       </table>
                     ) : (
-                      // Keywords
-                      <table className="w-full">
-                        <thead className="bg-slate-700/50 sticky top-0">
-                          <tr>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-slate-400">Keyword</th>
-                            <th className="px-4 py-2 text-right text-xs font-medium text-slate-400">Klicks</th>
-                            <th className="px-4 py-2 text-right text-xs font-medium text-slate-400">Pos.</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {directoryKeywords.slice(0, 100).map((kw, index) => (
-                            <tr key={index} className="border-b border-slate-700/50 hover:bg-slate-700/30">
-                              <td className="px-4 py-2">
-                                <span className="text-sm text-white">{kw.keyword}</span>
-                              </td>
-                              <td className="px-4 py-2 text-right text-sm text-blue-400">
-                                {kw.clicks.toLocaleString("de-DE")}
-                              </td>
-                              <td className="px-4 py-2 text-right text-sm text-slate-400">
-                                {kw.position.toFixed(1)}
-                              </td>
+                      // Keywords - jetzt korrekt pro Verzeichnis gefiltert
+                      directoryKeywords.length === 0 ? (
+                        <div className="p-6 text-center text-slate-400">
+                          <p>Keine Keywords für dieses Verzeichnis gefunden.</p>
+                          <p className="text-xs mt-2">
+                            Hinweis: Für neue Snapshots werden Keywords pro URL gespeichert.
+                          </p>
+                        </div>
+                      ) : (
+                        <table className="w-full">
+                          <thead className="bg-slate-700/50 sticky top-0">
+                            <tr>
+                              <th className="px-4 py-2 text-left text-xs font-medium text-slate-400">Keyword</th>
+                              <th className="px-4 py-2 text-right text-xs font-medium text-slate-400">Klicks</th>
+                              <th className="px-4 py-2 text-right text-xs font-medium text-slate-400">Impr.</th>
+                              <th className="px-4 py-2 text-right text-xs font-medium text-slate-400">Pos.</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody>
+                            {directoryKeywords.slice(0, 100).map((kw, index) => (
+                              <tr key={index} className="border-b border-slate-700/50 hover:bg-slate-700/30">
+                                <td className="px-4 py-2">
+                                  <span className="text-sm text-white">{kw.keyword}</span>
+                                </td>
+                                <td className="px-4 py-2 text-right text-sm text-blue-400">
+                                  {kw.clicks.toLocaleString("de-DE")}
+                                </td>
+                                <td className="px-4 py-2 text-right text-sm text-slate-400">
+                                  {kw.impressions.toLocaleString("de-DE")}
+                                </td>
+                                <td className="px-4 py-2 text-right text-sm text-slate-400">
+                                  {kw.position.toFixed(1)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )
                     )}
                   </div>
                 </>

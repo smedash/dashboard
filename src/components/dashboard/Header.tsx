@@ -2,6 +2,7 @@
 
 import { signOut } from "next-auth/react";
 import { useState } from "react";
+import Image from "next/image";
 
 interface HeaderProps {
   user: {
@@ -13,6 +14,9 @@ interface HeaderProps {
 
 export function Header({ user }: HeaderProps) {
   const [showDropdown, setShowDropdown] = useState(false);
+  const [imageError, setImageError] = useState(false);
+
+  const showFallback = !user.image || imageError;
 
   return (
     <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-slate-700 bg-slate-800/80 backdrop-blur-sm px-4 sm:gap-x-6 sm:px-6 lg:px-8">
@@ -36,11 +40,15 @@ export function Header({ user }: HeaderProps) {
               onClick={() => setShowDropdown(!showDropdown)}
               className="flex items-center gap-x-3 p-2 rounded-lg hover:bg-slate-700 transition-colors"
             >
-              {user.image ? (
-                <img
-                  src={user.image}
-                  alt=""
+              {!showFallback ? (
+                <Image
+                  src={user.image!}
+                  alt={user.name || "Profilbild"}
+                  width={32}
+                  height={32}
                   className="h-8 w-8 rounded-full bg-slate-700"
+                  onError={() => setImageError(true)}
+                  referrerPolicy="no-referrer"
                 />
               ) : (
                 <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center">
