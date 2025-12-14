@@ -2,9 +2,12 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { Header } from "@/components/dashboard/Header";
-import DashboardContent from "./(dashboard)/page";
 
-export default async function HomePage() {
+export default async function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const session = await auth();
 
   if (!session?.user) {
@@ -17,9 +20,10 @@ export default async function HomePage() {
       <div className="lg:pl-72">
         <Header user={session.user} />
         <main className="py-8 px-4 sm:px-6 lg:px-8">
-          <DashboardContent />
+          {children}
         </main>
       </div>
     </div>
   );
 }
+
