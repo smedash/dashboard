@@ -39,6 +39,26 @@ const navigation = [
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
       </svg>
     ),
+    children: [
+      {
+        name: "Keywords",
+        href: "/vergleich/keywords",
+        icon: (
+          <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        ),
+      },
+      {
+        name: "Verzeichnisse",
+        href: "/vergleich/verzeichnisse",
+        icon: (
+          <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+          </svg>
+        ),
+      },
+    ],
   },
   {
     name: "Suchanfragen",
@@ -100,13 +120,15 @@ export function Sidebar() {
         <nav className="flex flex-1 flex-col">
           <ul role="list" className="flex flex-1 flex-col gap-y-2">
             {navigation.map((item) => {
-              const isActive = pathname === item.href;
+              const isActive = pathname === item.href || (item.children && item.children.some(child => pathname === child.href));
+              const hasChildren = item.children && item.children.length > 0;
+              
               return (
                 <li key={item.name}>
                   <Link
                     href={item.href}
                     className={`group flex gap-x-3 rounded-lg p-3 text-sm font-medium transition-all duration-200 ${
-                      isActive
+                      isActive && !hasChildren
                         ? "bg-blue-600 text-white"
                         : "text-slate-300 hover:text-white hover:bg-slate-700"
                     }`}
@@ -114,6 +136,28 @@ export function Sidebar() {
                     {item.icon}
                     {item.name}
                   </Link>
+                  {hasChildren && (
+                    <ul className="ml-8 mt-1 space-y-1">
+                      {item.children.map((child) => {
+                        const isChildActive = pathname === child.href;
+                        return (
+                          <li key={child.name}>
+                            <Link
+                              href={child.href}
+                              className={`group flex gap-x-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 ${
+                                isChildActive
+                                  ? "bg-blue-600 text-white"
+                                  : "text-slate-400 hover:text-white hover:bg-slate-700/50"
+                              }`}
+                            >
+                              {child.icon}
+                              {child.name}
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
                 </li>
               );
             })}
