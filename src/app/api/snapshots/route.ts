@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const propertyId = searchParams.get("propertyId");
 
+    // Alle Snapshots anzeigen (für Admin-Zugriff)
     const snapshots = await prisma.snapshot.findMany({
       where: propertyId ? { propertyId } : {},
       include: {
@@ -46,7 +47,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, description, siteUrl, period } = body;
+    const { name, description, siteUrl, period, urlPathFilter } = body;
 
     if (!name || !siteUrl) {
       return NextResponse.json(
@@ -72,6 +73,9 @@ export async function POST(request: NextRequest) {
     const { startDate, endDate } = getDateRange(period || "28d");
 
     // Hole Daten von GSC für alle Dimensionen (max 25000 pro Anfrage)
+    // URL-Pfad-Filter wird auf alle Anfragen angewendet, die Seiten-Daten enthalten
+    const urlFilter = urlPathFilter?.trim() || undefined;
+
     const [queriesData, pagesData, countriesData, devicesData, dateData, queryPageData] =
       await Promise.all([
         getGSCSearchAnalytics(session.user.id, siteUrl, {
@@ -79,30 +83,35 @@ export async function POST(request: NextRequest) {
           endDate,
           dimensions: ["query"],
           rowLimit: 25000,
+          urlPathFilter: urlFilter,
         }),
         getGSCSearchAnalytics(session.user.id, siteUrl, {
           startDate,
           endDate,
           dimensions: ["page"],
           rowLimit: 25000,
+          urlPathFilter: urlFilter,
         }),
         getGSCSearchAnalytics(session.user.id, siteUrl, {
           startDate,
           endDate,
           dimensions: ["country"],
           rowLimit: 250,
+          urlPathFilter: urlFilter,
         }),
         getGSCSearchAnalytics(session.user.id, siteUrl, {
           startDate,
           endDate,
           dimensions: ["device"],
           rowLimit: 10,
+          urlPathFilter: urlFilter,
         }),
         getGSCSearchAnalytics(session.user.id, siteUrl, {
           startDate,
           endDate,
           dimensions: ["date"],
           rowLimit: 500,
+          urlPathFilter: urlFilter,
         }),
         // Keywords pro URL - wichtig für Verzeichnis-Auswertung!
         getGSCSearchAnalytics(session.user.id, siteUrl, {
@@ -110,6 +119,7 @@ export async function POST(request: NextRequest) {
           endDate,
           dimensions: ["query", "page"],
           rowLimit: 25000,
+          urlPathFilter: urlFilter,
         }),
       ]);
 

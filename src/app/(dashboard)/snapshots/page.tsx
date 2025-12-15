@@ -35,6 +35,10 @@ export default function SnapshotsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newSnapshotName, setNewSnapshotName] = useState("");
   const [newSnapshotDescription, setNewSnapshotDescription] = useState("");
+  const [newSnapshotUrlPath, setNewSnapshotUrlPath] = useState("");
+  const [editingSnapshotId, setEditingSnapshotId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
+  const [originalName, setOriginalName] = useState("");
 
   useEffect(() => {
     fetchSnapshots();
@@ -66,6 +70,7 @@ export default function SnapshotsPage() {
           description: newSnapshotDescription,
           siteUrl: selectedProperty,
           period,
+          urlPathFilter: newSnapshotUrlPath.trim() || undefined,
         }),
       });
 
@@ -73,6 +78,7 @@ export default function SnapshotsPage() {
         setShowCreateModal(false);
         setNewSnapshotName("");
         setNewSnapshotDescription("");
+        setNewSnapshotUrlPath("");
         fetchSnapshots();
       }
     } catch (error) {
@@ -90,6 +96,66 @@ export default function SnapshotsPage() {
       fetchSnapshots();
     } catch (error) {
       console.error("Error deleting snapshot:", error);
+    }
+  }
+
+  function startEditing(snapshot: Snapshot) {
+    setEditingSnapshotId(snapshot.id);
+    setEditingName(snapshot.name);
+    setOriginalName(snapshot.name);
+  }
+
+  function cancelEditing() {
+    setEditingSnapshotId(null);
+    setEditingName("");
+    setOriginalName("");
+  }
+
+  function handleBlur(id: string) {
+    // Nur speichern wenn sich der Name geändert hat
+    if (editingName.trim() !== originalName.trim() && editingName.trim()) {
+      saveSnapshotName(id);
+    } else {
+      cancelEditing();
+    }
+  }
+
+
+  async function saveSnapshotName(id: string) {
+    const trimmedName = editingName.trim();
+    if (!trimmedName) {
+      cancelEditing();
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/snapshots/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: trimmedName }),
+      });
+
+      if (response.ok) {
+        setEditingSnapshotId(null);
+        setEditingName("");
+        setOriginalName("");
+        fetchSnapshots();
+      } else {
+        const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
+        console.error("Error updating snapshot name:", errorData.error || `HTTP ${response.status}`);
+        alert(`Fehler beim Speichern: ${errorData.error || "Unbekannter Fehler"}`);
+      }
+    } catch (error) {
+      console.error("Error updating snapshot name:", error);
+      alert("Fehler beim Speichern. Bitte versuche es erneut.");
+    }
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent, id: string) {
+    if (e.key === "Enter") {
+      saveSnapshotName(id);
+    } else if (e.key === "Escape") {
+      cancelEditing();
     }
   }
 
@@ -139,7 +205,25 @@ export default function SnapshotsPage() {
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-lg font-medium text-white">{snapshot.name}</h3>
+                      {editingSnapshotId === snapshot.id ? (
+                        <input
+                          type="text"
+                          value={editingName}
+                          onChange={(e) => setEditingName(e.target.value)}
+                          onBlur={() => handleBlur(snapshot.id)}
+                          onKeyDown={(e) => handleKeyDown(e, snapshot.id)}
+                          autoFocus
+                          className="text-lg font-medium bg-slate-700 border border-blue-500 rounded px-2 py-1 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      ) : (
+                        <h3
+                          className="text-lg font-medium text-white cursor-pointer hover:text-blue-400 transition-colors"
+                          onClick={() => startEditing(snapshot)}
+                          title="Klicken zum Bearbeiten"
+                        >
+                          {snapshot.name}
+                        </h3>
+                      )}
                       <span className="px-2 py-0.5 text-xs bg-slate-600 text-slate-300 rounded">
                         {formatDate(snapshot.startDate)} - {formatDate(snapshot.endDate)}
                       </span>
@@ -178,25 +262,51 @@ export default function SnapshotsPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <a
-                      href={`/snapshots/${snapshot.id}`}
-                      className="p-2 text-slate-400 hover:text-white hover:bg-slate-600 rounded-lg transition-colors"
-                      title="Details anzeigen"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                    </a>
-                    <button
-                      onClick={() => deleteSnapshot(snapshot.id)}
-                      className="p-2 text-slate-400 hover:text-red-400 hover:bg-slate-600 rounded-lg transition-colors"
-                      title="Löschen"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
+                    {editingSnapshotId !== snapshot.id && (
+                      <>
+                        <a
+                          href={`/snapshots/${snapshot.id}`}
+                          className="p-2 text-slate-400 hover:text-white hover:bg-slate-600 rounded-lg transition-colors"
+                          title="Details anzeigen"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                        </a>
+                        <button
+                          onClick={() => deleteSnapshot(snapshot.id)}
+                          className="p-2 text-slate-400 hover:text-red-400 hover:bg-slate-600 rounded-lg transition-colors"
+                          title="Löschen"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </>
+                    )}
+                    {editingSnapshotId === snapshot.id && (
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => saveSnapshotName(snapshot.id)}
+                          className="p-2 text-green-400 hover:text-green-300 hover:bg-slate-600 rounded-lg transition-colors"
+                          title="Speichern"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={cancelEditing}
+                          className="p-2 text-slate-400 hover:text-white hover:bg-slate-600 rounded-lg transition-colors"
+                          title="Abbrechen"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -242,6 +352,22 @@ export default function SnapshotsPage() {
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">Zeitraum</label>
                 <PeriodSelector value={period} onChange={setPeriod} />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  URL-Pfad Filter (optional)
+                </label>
+                <input
+                  type="text"
+                  value={newSnapshotUrlPath}
+                  onChange={(e) => setNewSnapshotUrlPath(e.target.value)}
+                  placeholder="z.B. /produkte oder /blog/artikel"
+                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="mt-1 text-xs text-slate-400">
+                  Nur Daten für Seiten mit diesem URL-Pfad werden abgerufen. Leer lassen für alle Seiten.
+                </p>
               </div>
             </div>
 

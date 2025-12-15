@@ -69,18 +69,53 @@ export async function getGSCSearchAnalytics(
     endDate: string;
     dimensions?: string[];
     rowLimit?: number;
+    urlPathFilter?: string;
   }
 ): Promise<GSCData> {
   const searchconsole = await getGSCClient(userId);
 
+  const requestBody: {
+    startDate: string;
+    endDate: string;
+    dimensions?: string[];
+    rowLimit?: number;
+    dimensionFilterGroups?: Array<{
+      filters: Array<{
+        dimension: string;
+        operator: string;
+        expression: string;
+      }>;
+    }>;
+  } = {
+    startDate: options.startDate,
+    endDate: options.endDate,
+    dimensions: options.dimensions || ["query"],
+    rowLimit: options.rowLimit || 1000,
+  };
+
+  // Add URL path filter if provided
+  if (options.urlPathFilter && options.urlPathFilter.trim()) {
+    // Ensure the filter starts with a slash
+    const pathFilter = options.urlPathFilter.trim().startsWith("/")
+      ? options.urlPathFilter.trim()
+      : `/${options.urlPathFilter.trim()}`;
+    
+    requestBody.dimensionFilterGroups = [
+      {
+        filters: [
+          {
+            dimension: "page",
+            operator: "contains",
+            expression: pathFilter,
+          },
+        ],
+      },
+    ];
+  }
+
   const response = await searchconsole.searchanalytics.query({
     siteUrl,
-    requestBody: {
-      startDate: options.startDate,
-      endDate: options.endDate,
-      dimensions: options.dimensions || ["query"],
-      rowLimit: options.rowLimit || 1000,
-    },
+    requestBody,
   });
 
   return {

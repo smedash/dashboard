@@ -2,11 +2,13 @@ interface StatCardProps {
   title: string;
   value: string | number;
   change?: number;
+  subtitle?: string;
+  trend?: "up" | "down";
   format?: "number" | "percentage" | "position";
   icon?: React.ReactNode;
 }
 
-export function StatCard({ title, value, change, format = "number", icon }: StatCardProps) {
+export function StatCard({ title, value, change, subtitle, trend, format = "number", icon }: StatCardProps) {
   const formatValue = (val: string | number) => {
     if (typeof val === "string") return val;
     
@@ -31,19 +33,34 @@ export function StatCard({ title, value, change, format = "number", icon }: Stat
     return val > 0;
   };
 
+  const getTrendColor = () => {
+    if (trend === "up") {
+      return format === "position" ? "text-red-400" : "text-emerald-400";
+    }
+    if (trend === "down") {
+      return format === "position" ? "text-emerald-400" : "text-red-400";
+    }
+    return "text-slate-400";
+  };
+
   return (
     <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
       <div className="flex items-center justify-between mb-4">
         <span className="text-sm font-medium text-slate-400">{title}</span>
         {icon && <span className="text-slate-500">{icon}</span>}
       </div>
-      <div className="flex items-end justify-between">
-        <span className="text-3xl font-bold text-white">
+      <div className="flex flex-col">
+        <span className="text-3xl font-bold text-white mb-1">
           {formatValue(value)}
         </span>
-        {change !== undefined && (
+        {subtitle && (
+          <span className={`text-sm font-medium ${getTrendColor()}`}>
+            {subtitle}
+          </span>
+        )}
+        {change !== undefined && !subtitle && (
           <span
-            className={`text-sm font-medium px-2 py-1 rounded-md ${
+            className={`text-sm font-medium px-2 py-1 rounded-md mt-2 inline-block w-fit ${
               isPositiveChange(change)
                 ? "bg-emerald-500/20 text-emerald-400"
                 : change === 0

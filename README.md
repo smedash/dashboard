@@ -46,6 +46,9 @@ RESEND_API_KEY="re_..."
 # Google OAuth
 GOOGLE_CLIENT_ID="deine-client-id.apps.googleusercontent.com"
 GOOGLE_CLIENT_SECRET="dein-client-secret"
+
+# Admin Users (komma-separierte Liste von E-Mail-Adressen)
+ADMIN_EMAILS="admin@example.com,admin2@example.com"
 ```
 
 ### 2. Google Cloud Console Setup
