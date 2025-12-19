@@ -13,6 +13,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     // Google is handled separately via /api/auth/link-google for account linking
   ],
   callbacks: {
+    async signIn({ user, account }) {
+      // Prüfe nur für Resend (Magic Link) Provider
+      if (account?.provider === "resend" && user.email) {
+        // Prüfe, ob User in der Datenbank existiert
+        const existingUser = await prisma.user.findUnique({
+          where: { email: user.email },
+        });
+
+        if (!existingUser) {
+          // User existiert nicht - verweigere Anmeldung
+          return false;
+        }
+      }
+      return true;
+    },
     async session({ session, user }) {
       if (session.user) {
         session.user.id = user.id;

@@ -22,7 +22,13 @@ export default function LoginPage() {
       });
 
       if (result?.error) {
-        setError("Es gab ein Problem beim Senden des Magic Links.");
+        // Prüfe spezifische Fehlermeldungen
+        // Wenn signIn false zurückgibt, gibt NextAuth "AccessDenied" zurück
+        if (result.error === "AccessDenied" || result.error.includes("denied") || result.error.includes("authorized")) {
+          setError("Diese E-Mail-Adresse ist nicht für den Zugriff autorisiert. Bitte kontaktiere den Administrator.");
+        } else {
+          setError("Es gab ein Problem beim Senden des Magic Links.");
+        }
       } else {
         setEmailSent(true);
       }
