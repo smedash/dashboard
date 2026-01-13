@@ -1,4 +1,4 @@
-// Prisma Schema für GSC Dashboard
+// Prisma Schema für SME Dashboard
 // Neon PostgreSQL Datenbank
 
 generator client {
@@ -12,17 +12,18 @@ datasource db {
 
 // NextAuth.js Models
 model User {
-  id            String    @id @default(cuid())
+  id            String        @id @default(cuid())
   name          String?
-  email         String    @unique
+  email         String        @unique
   emailVerified DateTime?
   image         String?
   accounts      Account[]
   sessions      Session[]
   gscProperties GSCProperty[]
   snapshots     Snapshot[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  seoMaturity   SEOMaturity[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 }
 
 model Account {
@@ -77,7 +78,7 @@ model GSCProperty {
 // Snapshot Model - Speichert GSC Daten für historische Analysen
 model Snapshot {
   id          String         @id @default(cuid())
-  name        String         // z.B. "KW 50 2024" oder "Dezember Report"
+  name        String // z.B. "KW 50 2024" oder "Dezember Report"
   description String?
   propertyId  String
   property    GSCProperty    @relation(fields: [propertyId], references: [id], onDelete: Cascade)
@@ -86,7 +87,7 @@ model Snapshot {
   startDate   DateTime
   endDate     DateTime
   data        SnapshotData[]
-  totals      Json           // Aggregierte Daten: clicks, impressions, ctr, position
+  totals      Json // Aggregierte Daten: clicks, impressions, ctr, position
   createdAt   DateTime       @default(now())
 
   @@index([propertyId])
@@ -98,9 +99,9 @@ model SnapshotData {
   id          String   @id @default(cuid())
   snapshotId  String
   snapshot    Snapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
-  dimension   String   // "query", "page", "country", "device", "date", "query_page"
-  key         String   // Der Wert der Dimension (z.B. das Keyword, die URL, etc.)
-  pageUrl     String?  // Für query_page Dimension: die zugehörige URL
+  dimension   String // "query", "page", "country", "device", "date", "query_page"
+  key         String // Der Wert der Dimension (z.B. das Keyword, die URL, etc.)
+  pageUrl     String? // Für query_page Dimension: die zugehörige URL
   clicks      Int
   impressions Int
   ctr         Float
@@ -108,4 +109,34 @@ model SnapshotData {
 
   @@index([snapshotId, dimension])
   @@index([snapshotId, pageUrl])
+}
+
+// SEO Reifegrad Model
+model SEOMaturity {
+  id          String            @id @default(cuid())
+  userId      String
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String // Name der Analyse (z.B. "Q1 2024")
+  description String?
+  items       SEOMaturityItem[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([userId])
+}
+
+// SEO Reifegrad Item - Einzelne Checklistenpunkte
+model SEOMaturityItem {
+  id          String      @id @default(cuid())
+  maturityId  String
+  maturity    SEOMaturity @relation(fields: [maturityId], references: [id], onDelete: Cascade)
+  category    String // Kategorie (z.B. "Technische SEO", "Content", etc.)
+  title       String // Titel des Punktes
+  description String? // Beschreibung
+  score       Int         @default(1) // Bewertung 1-10
+  order       Int         @default(0) // Reihenfolge innerhalb der Kategorie
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([maturityId, category])
 }

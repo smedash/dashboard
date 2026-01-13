@@ -1,4 +1,4 @@
-# GSC Dashboard
+# SME Dashboard
 
 Ein modernes Dashboard zur Visualisierung und Analyse von Google Search Console Daten.
 

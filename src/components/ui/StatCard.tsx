@@ -76,3 +76,4 @@ export function StatCard({ title, value, change, subtitle, trend, format = "numb
   );
 }
 
+

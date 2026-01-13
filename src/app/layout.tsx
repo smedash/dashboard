@@ -9,7 +9,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "GSC Dashboard",
+  title: "SME Dashboard",
   description: "Google Search Console Analytics Dashboard",
   robots: {
     index: false,

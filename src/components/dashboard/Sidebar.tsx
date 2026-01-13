@@ -106,6 +106,15 @@ const navigation = [
     ),
   },
   {
+    name: "SEO Reifegrad",
+    href: "/seo-reifegrad",
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+      </svg>
+    ),
+  },
+  {
     name: "Einstellungen",
     href: "/settings",
     icon: (
@@ -124,7 +133,7 @@ export function Sidebar() {
     <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-72 lg:flex-col">
       <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-slate-800 px-6 pb-4 border-r border-slate-700">
         <div className="flex h-16 shrink-0 items-center">
-          <h1 className="text-xl font-bold text-white">GSC Dashboard</h1>
+          <h1 className="text-xl font-bold text-white">SME Dashboard</h1>
         </div>
         <nav className="flex flex-1 flex-col">
           <ul role="list" className="flex flex-1 flex-col gap-y-2">

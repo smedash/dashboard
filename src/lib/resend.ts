@@ -10,7 +10,7 @@ export async function sendMagicLinkEmail({
   url: string;
 }) {
   const { data, error } = await resend.emails.send({
-    from: "GSC Dashboard <auth@tasketeer.com>",
+    from: "SME Dashboard <auth@tasketeer.com>",
     to: to,
     subject: "Dein Magic Link zum Einloggen",
     html: `
@@ -22,7 +22,7 @@ export async function sendMagicLinkEmail({
         </head>
         <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f4f4f5; margin: 0; padding: 40px 20px;">
           <div style="max-width: 480px; margin: 0 auto; background-color: white; border-radius: 12px; padding: 40px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-            <h1 style="color: #18181b; font-size: 24px; margin: 0 0 16px 0;">GSC Dashboard</h1>
+            <h1 style="color: #18181b; font-size: 24px; margin: 0 0 16px 0;">SME Dashboard</h1>
             <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 24px 0;">
               Klicke auf den Button unten, um Dich einzuloggen. Dieser Link ist 24 Stunden gültig.
             </p>
@@ -45,4 +45,5 @@ export async function sendMagicLinkEmail({
 
   return data;
 }
+
 

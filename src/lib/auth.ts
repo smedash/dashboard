@@ -8,7 +8,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Resend({
       apiKey: process.env.RESEND_API_KEY,
-      from: "GSC Dashboard <auth@tasketeer.com>",
+      from: "SME Dashboard <auth@tasketeer.com>",
     }),
     // Google is handled separately via /api/auth/link-google for account linking
   ],
