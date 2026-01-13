@@ -22,6 +22,7 @@ model User {
   gscProperties GSCProperty[]
   snapshots     Snapshot[]
   seoMaturity   SEOMaturity[]
+  rankTrackers  RankTracker[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 }
@@ -139,4 +140,50 @@ model SEOMaturityItem {
   updatedAt   DateTime    @updatedAt
 
   @@index([maturityId, category])
+}
+
+// Rank Tracker Model
+model RankTracker {
+  id        String               @id @default(cuid())
+  userId    String
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String               @default("Standard Tracker")
+  location  String               @default("Switzerland") // Standort für Rankings
+  language  String               @default("German") // Sprache für Rankings
+  keywords  RankTrackerKeyword[]
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+
+  @@index([userId])
+}
+
+// Rank Tracker Keyword - Keywords die getrackt werden
+model RankTrackerKeyword {
+  id        String               @id @default(cuid())
+  trackerId String
+  tracker   RankTracker          @relation(fields: [trackerId], references: [id], onDelete: Cascade)
+  keyword   String
+  category  String? // Kategorie: Mortgages, Accounts&Cards, Investing, Pension, Digital Banking
+  targetUrl String? // Optional: URL für die das Keyword getrackt werden soll
+  rankings  RankTrackerRanking[]
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+
+  @@unique([trackerId, keyword])
+  @@index([trackerId])
+  @@index([category])
+}
+
+// Rank Tracker Ranking - Historische Rankings
+model RankTrackerRanking {
+  id        String             @id @default(cuid())
+  keywordId String
+  keyword   RankTrackerKeyword @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+  position  Int? // Ranking Position (null wenn nicht gefunden)
+  url       String? // URL die rankt
+  date      DateTime           @default(now())
+  createdAt DateTime           @default(now())
+
+  @@index([keywordId, date])
+  @@index([date])
 }

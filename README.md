@@ -49,6 +49,10 @@ GOOGLE_CLIENT_SECRET="dein-client-secret"
 
 # Admin Users (komma-separierte Liste von E-Mail-Adressen)
 ADMIN_EMAILS="admin@example.com,admin2@example.com"
+
+# DataForSEO API Credentials für Rank Tracker
+DATAFORSEO_USERNAME="your-email@example.com"
+DATAFORSEO_PASSWORD="your-password"
 ```
 
 ### 2. Google Cloud Console Setup
