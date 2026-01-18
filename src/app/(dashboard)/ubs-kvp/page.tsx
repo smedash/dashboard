@@ -421,7 +421,7 @@ export default function UBSKVPPage() {
   if (isLoading) {
     return (
       <div className="space-y-8">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">UBS KVP</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">SEO KVP</h1>
         <div className="h-64 bg-white dark:bg-slate-800 rounded-xl animate-pulse border border-slate-200 dark:border-slate-700"></div>
       </div>
     );
@@ -431,7 +431,7 @@ export default function UBSKVPPage() {
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">UBS KVP</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">SEO KVP</h1>
           <p className="text-slate-600 dark:text-slate-400 mt-1">
             Kontinuierlicher Verbesserungsprozess
           </p>
