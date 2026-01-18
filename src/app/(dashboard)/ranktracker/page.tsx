@@ -290,8 +290,8 @@ export default function RankTrackerPage() {
   if (isLoading) {
     return (
       <div className="space-y-8">
-        <div className="h-8 bg-slate-800 rounded animate-pulse w-48"></div>
-        <div className="h-96 bg-slate-800 rounded animate-pulse"></div>
+        <div className="h-8 bg-white dark:bg-slate-800 rounded animate-pulse w-48"></div>
+        <div className="h-96 bg-white dark:bg-slate-800 rounded animate-pulse"></div>
       </div>
     );
   }
@@ -299,13 +299,13 @@ export default function RankTrackerPage() {
   return (
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h1 className="text-2xl font-bold text-white">Ranktracker</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Ranktracker</h1>
         <div className="flex items-center gap-3">
           {/* Kategorie-Filter */}
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">Alle Kategorien</option>
             <option value="__none__">Ohne Kategorie</option>
@@ -317,7 +317,7 @@ export default function RankTrackerPage() {
           </select>
           <button
             onClick={() => setShowAddForm(!showAddForm)}
-            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
+            className="px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-900 dark:text-white rounded-lg transition-colors"
           >
             {showAddForm ? "Abbrechen" : "Keyword hinzufügen"}
           </button>
@@ -347,11 +347,11 @@ export default function RankTrackerPage() {
       </div>
 
       {showAddForm && (
-        <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-          <h2 className="text-lg font-semibold text-white mb-4">Neues Keyword hinzufügen</h2>
+        <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Neues Keyword hinzufügen</h2>
           <form onSubmit={handleAddKeyword} className="space-y-4">
             <div>
-              <label htmlFor="keyword" className="block text-sm font-medium text-slate-300 mb-2">
+              <label htmlFor="keyword" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                 Keyword *
               </label>
               <input
@@ -361,18 +361,18 @@ export default function RankTrackerPage() {
                 onChange={(e) => setNewKeyword(e.target.value)}
                 placeholder="z.B. seo tools"
                 required
-                className="w-full px-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2 bg-white dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <div>
-              <label htmlFor="category" className="block text-sm font-medium text-slate-300 mb-2">
+              <label htmlFor="category" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                 Kategorie (optional)
               </label>
               <select
                 id="category"
                 value={newCategory}
                 onChange={(e) => setNewCategory(e.target.value)}
-                className="w-full px-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2 bg-white dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Keine Kategorie</option>
                 {KEYWORD_CATEGORIES.map((cat) => (
@@ -383,7 +383,7 @@ export default function RankTrackerPage() {
               </select>
             </div>
             <div>
-              <label htmlFor="targetUrl" className="block text-sm font-medium text-slate-300 mb-2">
+              <label htmlFor="targetUrl" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                 Ziel-URL (optional)
               </label>
               <input
@@ -392,9 +392,9 @@ export default function RankTrackerPage() {
                 value={newTargetUrl}
                 onChange={(e) => setNewTargetUrl(e.target.value)}
                 placeholder="ubs.com (Standard)"
-                className="w-full px-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2 bg-white dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
-              <p className="mt-1 text-xs text-slate-400">
+              <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
                 Standardmäßig wird nach ubs.com URLs gesucht. Du kannst eine andere Domain angeben.
               </p>
             </div>
@@ -413,7 +413,7 @@ export default function RankTrackerPage() {
                   setNewCategory("");
                   setNewTargetUrl("");
                 }}
-                className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
+                className="px-4 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-900 dark:text-white rounded-lg transition-colors"
               >
                 Abbrechen
               </button>
@@ -424,8 +424,8 @@ export default function RankTrackerPage() {
 
       {tracker && tracker.keywords.length > 0 ? (
         <>
-          <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-            <h2 className="text-lg font-semibold text-white mb-4">Keywords & Rankings</h2>
+          <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Keywords & Rankings</h2>
             <DataTable
               data={tableData}
               columns={[
@@ -440,16 +440,16 @@ export default function RankTrackerPage() {
                   sortable: true,
                   render: (value) => {
                     if (!value) {
-                      return <span className="text-slate-500">-</span>;
+                      return <span className="text-slate-500 dark:text-slate-500">-</span>;
                     }
-                    return <span className="text-slate-300">{value as string}</span>;
+                    return <span className="text-slate-700 dark:text-slate-300">{value as string}</span>;
                   },
                 },
                 {
                   key: "targetUrl",
                   header: "Ziel-Domain",
                   render: (value) => {
-                    return <span className="text-slate-300">{value as string}</span>;
+                    return <span className="text-slate-700 dark:text-slate-300">{value as string}</span>;
                   },
                 },
                 {
@@ -458,12 +458,12 @@ export default function RankTrackerPage() {
                   sortable: true,
                   render: (value) => {
                     if (value === null) {
-                      return <span className="text-slate-500">-</span>;
+                      return <span className="text-slate-500 dark:text-slate-500">-</span>;
                     }
                     const pos = value as number;
-                    let color = "text-red-400";
-                    if (pos <= 3) color = "text-green-400";
-                    else if (pos <= 10) color = "text-yellow-400";
+                    let color = "text-red-600 dark:text-red-400";
+                    if (pos <= 3) color = "text-green-600 dark:text-green-400";
+                    else if (pos <= 10) color = "text-yellow-600 dark:text-yellow-400";
                     return <span className={color}>{pos}</span>;
                   },
                 },
@@ -471,13 +471,13 @@ export default function RankTrackerPage() {
                   key: "url",
                   header: "Ranking URL",
                   render: (value) => {
-                    if (!value) return <span className="text-slate-500">-</span>;
+                    if (!value) return <span className="text-slate-500 dark:text-slate-500">-</span>;
                     return (
                       <a
                         href={value as string}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-blue-400 hover:text-blue-300 truncate max-w-md block"
+                        className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 truncate max-w-md block"
                       >
                         {value as string}
                       </a>
@@ -497,7 +497,7 @@ export default function RankTrackerPage() {
                       <button
                         onClick={() => handleRefreshKeyword(row.id as string)}
                         disabled={refreshingKeywordId === row.id}
-                        className="p-1.5 rounded bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="p-1.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 hover:text-slate-900 dark:hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         title="Ranking aktualisieren"
                       >
                         <svg
@@ -519,7 +519,7 @@ export default function RankTrackerPage() {
                         className={`px-3 py-1 text-xs rounded ${
                           selectedKeyword === row.id
                             ? "bg-blue-600 text-white"
-                            : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                            : "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
                         }`}
                       >
                         {selectedKeyword === row.id ? "Ausgewählt" : "Auswählen"}
@@ -539,8 +539,8 @@ export default function RankTrackerPage() {
           </div>
 
           {chartData.length > 0 && (
-            <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-              <h2 className="text-lg font-semibold text-white mb-4">
+            <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
                 Ranking-Verlauf {selectedKeyword ? `(${tracker.keywords.find(k => k.id === selectedKeyword)?.keyword})` : "(Durchschnitt)"}
               </h2>
               <LineChart
@@ -555,14 +555,14 @@ export default function RankTrackerPage() {
           )}
         </>
       ) : (
-        <div className="bg-slate-800 rounded-xl p-12 border border-slate-700 text-center">
+        <div className="bg-white dark:bg-slate-800 rounded-xl p-12 border border-slate-200 dark:border-slate-700 text-center">
           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-blue-500/20 flex items-center justify-center">
-            <svg className="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-8 h-8 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           </div>
-          <h3 className="text-xl font-semibold text-white mb-2">Noch keine Keywords</h3>
-          <p className="text-slate-400 mb-6">
+          <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">Noch keine Keywords</h3>
+          <p className="text-slate-600 dark:text-slate-400 mb-6">
             Füge Dein erstes Keyword hinzu, um Rankings zu tracken.
           </p>
           <button

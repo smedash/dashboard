@@ -91,13 +91,13 @@ export function DataTable<T extends Record<string, unknown>>({
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-slate-700">
+            <tr className="border-b border-slate-200 dark:border-slate-700">
               {columns.map((column) => (
                 <th
                   key={String(column.key)}
                   onClick={() => column.sortable && handleSort(String(column.key))}
-                  className={`px-4 py-3 text-left text-sm font-medium text-slate-400 ${
-                    column.sortable ? "cursor-pointer hover:text-white" : ""
+                  className={`px-4 py-3 text-left text-sm font-medium text-slate-600 dark:text-slate-400 ${
+                    column.sortable ? "cursor-pointer hover:text-slate-900 dark:hover:text-white" : ""
                   }`}
                 >
                   <div className="flex items-center gap-2">
@@ -114,10 +114,10 @@ export function DataTable<T extends Record<string, unknown>>({
             {paginatedData.map((row) => (
               <tr
                 key={String(row[keyField])}
-                className="border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors"
+                className="border-b border-slate-200 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors"
               >
                 {columns.map((column) => (
-                  <td key={String(column.key)} className="px-4 py-3 text-sm text-slate-300">
+                  <td key={String(column.key)} className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">
                     {column.render
                       ? column.render(row[column.key as keyof T], row)
                       : String(row[column.key as keyof T] ?? "")}
@@ -128,7 +128,7 @@ export function DataTable<T extends Record<string, unknown>>({
           </tbody>
         </table>
         {data.length === 0 && (
-          <div className="py-12 text-center text-slate-500">
+          <div className="py-12 text-center text-slate-500 dark:text-slate-500">
             Keine Daten vorhanden
           </div>
         )}
@@ -136,15 +136,15 @@ export function DataTable<T extends Record<string, unknown>>({
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between px-4 py-3 border-t border-slate-700">
-          <div className="text-sm text-slate-400">
+        <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200 dark:border-slate-700">
+          <div className="text-sm text-slate-600 dark:text-slate-400">
             {startIndex + 1}-{Math.min(endIndex, sortedData.length)} von {sortedData.length}
           </div>
           <div className="flex items-center gap-1">
             <button
               onClick={() => goToPage(currentPage - 1)}
               disabled={currentPage === 1}
-              className="px-3 py-1 text-sm rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3 py-1 text-sm rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               ←
             </button>
@@ -156,13 +156,13 @@ export function DataTable<T extends Record<string, unknown>>({
                   className={`px-3 py-1 text-sm rounded-lg ${
                     currentPage === page
                       ? "bg-blue-600 text-white"
-                      : "text-slate-400 hover:text-white hover:bg-slate-700"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700"
                   }`}
                 >
                   {page}
                 </button>
               ) : (
-                <span key={index} className="px-2 text-slate-500">
+                <span key={index} className="px-2 text-slate-500 dark:text-slate-500">
                   {page}
                 </span>
               )
@@ -170,7 +170,7 @@ export function DataTable<T extends Record<string, unknown>>({
             <button
               onClick={() => goToPage(currentPage + 1)}
               disabled={currentPage === totalPages}
-              className="px-3 py-1 text-sm rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3 py-1 text-sm rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               →
             </button>

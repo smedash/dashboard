@@ -63,7 +63,7 @@ export default function AuswertungPage() {
   const [selectedDirectory, setSelectedDirectory] = useState<string | null>(null);
   const [directoryDepth, setDirectoryDepth] = useState(4);
   const [viewMode, setViewMode] = useState<"directories" | "keywords">("directories");
-  const [brandFilter, setBrandFilter] = useState("raiffeisen");
+  const [brandFilter, setBrandFilter] = useState("ubs");
   const [excludeBrand, setExcludeBrand] = useState(true);
 
   // Fetch all snapshots
@@ -462,7 +462,7 @@ export default function AuswertungPage() {
                             type="text"
                             value={brandFilter}
                             onChange={(e) => setBrandFilter(e.target.value)}
-                            placeholder="z.B. raiffeisen, bank"
+                            placeholder="z.B. ubs, bank"
                             disabled={!excludeBrand}
                             className="flex-1 px-3 py-1.5 text-sm bg-slate-600 border border-slate-500 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                           />

@@ -71,7 +71,7 @@ export default function PagesPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h1 className="text-2xl font-bold text-white">Seiten</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Seiten</h1>
         <div className="flex flex-wrap items-center gap-4">
           <PropertySelector value={selectedProperty} onChange={setSelectedProperty} />
           <PeriodSelector value={period} onChange={setPeriod} />
@@ -79,11 +79,11 @@ export default function PagesPage() {
       </div>
 
       {/* Search */}
-      <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
         <div className="flex flex-wrap items-center gap-4">
           <div className="relative flex-1 min-w-[300px]">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="h-5 w-5 text-slate-500 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </div>
@@ -92,12 +92,12 @@ export default function PagesPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="URLs durchsuchen..."
-              className="w-full pl-10 pr-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white"
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white"
               >
                 <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -105,13 +105,13 @@ export default function PagesPage() {
               </button>
             )}
           </div>
-          <span className="text-sm text-slate-400">
+          <span className="text-sm text-slate-600 dark:text-slate-400">
             {tableData.length} von {data.length} Seiten
           </span>
         </div>
       </div>
 
-      <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
         {isLoading ? (
           <div className="p-8 flex items-center justify-center">
             <div className="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full"></div>
@@ -130,7 +130,7 @@ export default function PagesPage() {
                     href={String(value)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="font-medium text-blue-400 hover:text-blue-300 truncate max-w-[400px] block"
+                    className="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 truncate max-w-[400px] block"
                     title={String(value)}
                   >
                     {formatUrl(String(value))}
@@ -142,7 +142,7 @@ export default function PagesPage() {
                 header: "Klicks",
                 sortable: true,
                 render: (value) => (
-                  <span className="text-blue-400">{Number(value).toLocaleString("de-DE")}</span>
+                  <span className="text-blue-600 dark:text-blue-400">{Number(value).toLocaleString("de-DE")}</span>
                 ),
               },
               {

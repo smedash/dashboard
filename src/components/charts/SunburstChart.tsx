@@ -7,6 +7,7 @@ interface SunburstData {
   value: number;
   children?: SunburstData[];
   score?: number;
+  priority?: string | null;
 }
 
 interface SunburstChartProps {
@@ -31,9 +32,27 @@ const getLightColor = (score: number): string => {
   return "#34d399"; // Hellgrün
 };
 
+// Farben für Priorität
+const getPriorityColor = (priority: string | null | undefined): string => {
+  if (!priority) return "#64748b"; // Slate für keine Priorität
+  switch (priority.toUpperCase()) {
+    case "A":
+      return "#dc2626"; // Rot
+    case "B":
+      return "#ea580c"; // Orange
+    case "C":
+      return "#ca8a04"; // Gelb
+    case "D":
+      return "#16a34a"; // Grün
+    default:
+      return "#64748b";
+  }
+};
+
 export function SunburstChart({ data, width = 1200, height = 1200 }: SunburstChartProps) {
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [hoveredScore, setHoveredScore] = useState<number | null>(null);
+  const [hoveredPriority, setHoveredPriority] = useState<string | null>(null);
   
   // Die Daten sollten bereits in der richtigen hierarchischen Struktur vorliegen
   const processedData = useMemo(() => {
@@ -71,9 +90,11 @@ export function SunburstChart({ data, width = 1200, height = 1200 }: SunburstCha
   // Ring-Radien definieren
   const centerRadius = maxRadius * 0.12; // Zentrum
   const categoryInnerRadius = maxRadius * 0.15; // Kategorien innerer Radius
-  const categoryOuterRadius = maxRadius * 0.50; // Kategorien äußerer Radius (noch breiter gemacht)
+  const categoryOuterRadius = maxRadius * 0.50; // Kategorien äußerer Radius
   const itemInnerRadius = maxRadius * 0.50; // Items innerer Radius
-  const itemOuterRadius = maxRadius * 0.98; // Items äußerer Radius
+  const itemOuterRadius = maxRadius * 0.90; // Items äußerer Radius (reduziert für Prioritäts-Ring)
+  const priorityInnerRadius = maxRadius * 0.90; // Prioritäten innerer Radius
+  const priorityOuterRadius = maxRadius * 0.98; // Prioritäten äußerer Radius
 
   // Berechne Winkel für jeden Segment
   const calculatePath = (
@@ -132,10 +153,12 @@ export function SunburstChart({ data, width = 1200, height = 1200 }: SunburstCha
             onMouseEnter={() => {
               setHoveredItem(`category-${category.name}`);
               setHoveredScore(Math.round(avgScore * 10) / 10);
+              setHoveredPriority(null);
             }}
             onMouseLeave={() => {
               setHoveredItem(null);
               setHoveredScore(null);
+              setHoveredPriority(null);
             }}
           />
           {angle > 0.05 && (
@@ -187,8 +210,10 @@ export function SunburstChart({ data, width = 1200, height = 1200 }: SunburstCha
         const itemMidAngle = itemStartAngle + itemAngle / 2;
 
         const score = item.score !== undefined ? item.score : item.value || 0;
+        const priority = item.priority || null;
         const color = getColor(score);
-        const isHovered = hoveredItem === `item-${category.name}-${item.name}` || 
+        const itemKey = `item-${category.name}-${item.name}`;
+        const isHovered = hoveredItem === itemKey || 
                          hoveredItem === `category-${category.name}`;
         
         const path = calculatePath(itemStartAngle, itemEndAngle, itemInnerRadius, itemOuterRadius);
@@ -203,12 +228,14 @@ export function SunburstChart({ data, width = 1200, height = 1200 }: SunburstCha
               opacity={isHovered ? 1 : 0.85}
             className="transition-all cursor-pointer"
             onMouseEnter={() => {
-              setHoveredItem(`item-${category.name}-${item.name}`);
+              setHoveredItem(itemKey);
               setHoveredScore(score);
+              setHoveredPriority(priority);
             }}
             onMouseLeave={() => {
               setHoveredItem(null);
               setHoveredScore(null);
+              setHoveredPriority(null);
             }}
             />
             {/* Item Text und Score */}
@@ -275,6 +302,94 @@ export function SunburstChart({ data, width = 1200, height = 1200 }: SunburstCha
     return segments;
   };
 
+  // Render Prioritäten Ring (außen)
+  const renderPriorities = (categories: SunburstData[]): ReactElement[] => {
+    const segments: ReactElement[] = [];
+    let categoryStartAngle = -Math.PI / 2;
+    const totalItems = categories.reduce((sum, cat) => sum + (cat.children?.length || 0), 0);
+
+    if (totalItems === 0) return segments;
+
+    categories.forEach((category, catIndex) => {
+      const items = category.children || [];
+      const categoryItemCount = items.length;
+      const categoryAngle = (categoryItemCount / totalItems) * (2 * Math.PI);
+      const categoryEndAngle = categoryStartAngle + categoryAngle;
+
+      // Items innerhalb dieser Kategorie
+      items.forEach((item, itemIndex) => {
+        const itemAngle = categoryAngle / categoryItemCount;
+        const itemStartAngle = categoryStartAngle + (itemIndex * itemAngle);
+        const itemEndAngle = itemStartAngle + itemAngle;
+        const itemMidAngle = itemStartAngle + itemAngle / 2;
+
+        const priority = item.priority || null;
+        const score = item.score !== undefined ? item.score : item.value || 0;
+        
+        // Nur rendern wenn Priorität vorhanden
+        if (priority && itemAngle > 0.01) {
+          const priorityPath = calculatePath(itemStartAngle, itemEndAngle, priorityInnerRadius, priorityOuterRadius);
+          const itemKey = `item-${category.name}-${item.name}`;
+          const isHovered = hoveredItem === itemKey;
+          
+          segments.push(
+            <g key={`priority-${catIndex}-${itemIndex}-${item.name}`}>
+              <path
+                d={priorityPath}
+                fill={getPriorityColor(priority)}
+                stroke="#1e293b"
+                strokeWidth={1}
+                opacity={isHovered ? 1 : 0.9}
+                className="transition-opacity cursor-pointer"
+                onMouseEnter={() => {
+                  setHoveredItem(itemKey);
+                  setHoveredScore(score);
+                  setHoveredPriority(priority);
+                }}
+                onMouseLeave={() => {
+                  setHoveredItem(null);
+                  setHoveredScore(null);
+                  setHoveredPriority(null);
+                }}
+              />
+              {/* Prioritäts-Badge */}
+              {itemAngle > 0.02 && (
+                <>
+                  <circle
+                    cx={centerX + (priorityInnerRadius + priorityOuterRadius) / 2 * Math.cos(itemMidAngle)}
+                    cy={centerY + (priorityInnerRadius + priorityOuterRadius) / 2 * Math.sin(itemMidAngle)}
+                    r={12}
+                    fill={getPriorityColor(priority)}
+                    stroke="#1e293b"
+                    strokeWidth={2}
+                    opacity={0.95}
+                    className="pointer-events-none"
+                  />
+                  <text
+                    x={centerX + (priorityInnerRadius + priorityOuterRadius) / 2 * Math.cos(itemMidAngle)}
+                    y={centerY + (priorityInnerRadius + priorityOuterRadius) / 2 * Math.sin(itemMidAngle)}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    fill="#ffffff"
+                    fontSize={12}
+                    fontWeight="bold"
+                    className="pointer-events-none"
+                  >
+                    {priority.toUpperCase()}
+                  </text>
+                </>
+              )}
+            </g>
+          );
+        }
+      });
+
+      categoryStartAngle = categoryEndAngle;
+    });
+
+    return segments;
+  };
+
   if (processedData.length === 0) {
     return (
       <div className="flex items-center justify-center h-96 text-slate-400">
@@ -286,7 +401,9 @@ export function SunburstChart({ data, width = 1200, height = 1200 }: SunburstCha
   return (
     <div className="flex flex-col items-center">
       <svg width={width} height={height} className="overflow-visible" style={{ overflow: "visible" }}>
-        {/* Items Ring (außen) */}
+        {/* Prioritäten Ring (ganz außen) */}
+        <g>{renderPriorities(processedData)}</g>
+        {/* Items Ring */}
         <g>{renderItems(processedData)}</g>
         {/* Kategorien Ring (innen) */}
         <g>{renderCategories(processedData)}</g>
@@ -313,28 +430,59 @@ export function SunburstChart({ data, width = 1200, height = 1200 }: SunburstCha
         {/* Tooltip für gehoverte Items */}
         {hoveredItem && (() => {
           const isCategory = hoveredItem.startsWith("category-");
-          const displayText = isCategory 
-            ? hoveredItem.replace("category-", "")
-            : hoveredItem.replace("item-", "").replace(/-/g, " ");
-          const textLines = displayText.length > 40 
-            ? [displayText.substring(0, 37) + "...", ""]
-            : displayText.split(" ").reduce((acc: string[], word: string) => {
-                const lastLine = acc[acc.length - 1] || "";
-                if (lastLine.length + word.length + 1 <= 35) {
-                  acc[acc.length - 1] = lastLine ? `${lastLine} ${word}` : word;
-                } else {
-                  acc.push(word);
-                }
-                return acc;
-              }, []);
+          // Item-Key Format: "item-KategorieName-ItemName" - nur den ItemName extrahieren
+          let displayText: string;
+          if (isCategory) {
+            displayText = hoveredItem.replace("category-", "");
+          } else {
+            // Entferne "item-" Prefix und dann den ersten Teil bis zum ersten "-" (Kategorienamen)
+            const withoutPrefix = hoveredItem.replace("item-", "");
+            const firstDashIndex = withoutPrefix.indexOf("-");
+            displayText = firstDashIndex >= 0 
+              ? withoutPrefix.substring(firstDashIndex + 1) 
+              : withoutPrefix;
+          }
           
-          const tooltipHeight = Math.max(80, 50 + textLines.length * 18);
+          // Text in Zeilen aufteilen (max 35 Zeichen pro Zeile)
+          const wrapText = (text: string, maxWidth: number): string[] => {
+            const words = text.split(" ");
+            const lines: string[] = [];
+            let currentLine = "";
+            
+            for (const word of words) {
+              if (currentLine.length === 0) {
+                currentLine = word;
+              } else if (currentLine.length + 1 + word.length <= maxWidth) {
+                currentLine += " " + word;
+              } else {
+                lines.push(currentLine);
+                currentLine = word;
+              }
+            }
+            if (currentLine.length > 0) {
+              lines.push(currentLine);
+            }
+            return lines;
+          };
+          
+          const textLines = wrapText(displayText, 35);
+          
+          // Positionen sequentiell von oben nach unten berechnen
+          const tooltipY = 20;
+          const paddingTop = 25;
+          const textStartY = tooltipY + paddingTop;
+          const textLineHeight = 18;
+          const textEndY = textStartY + (textLines.length - 1) * textLineHeight;
+          const separatorY = textEndY + 20;
+          const scoreY = separatorY + 18;
+          const priorityY = scoreY + 22;
+          const tooltipHeight = (hoveredPriority ? priorityY : scoreY) - tooltipY + 15;
           
           return (
             <g>
               <rect
                 x={width - 280}
-                y={20}
+                y={tooltipY}
                 width={260}
                 height={tooltipHeight}
                 fill="#1e293b"
@@ -347,7 +495,7 @@ export function SunburstChart({ data, width = 1200, height = 1200 }: SunburstCha
                 <text
                   key={idx}
                   x={width - 150}
-                  y={45 + idx * 18}
+                  y={textStartY + idx * textLineHeight}
                   textAnchor="middle"
                   fill="#ffffff"
                   fontSize={isCategory ? 13 : 11}
@@ -356,20 +504,27 @@ export function SunburstChart({ data, width = 1200, height = 1200 }: SunburstCha
                   {line}
                 </text>
               ))}
-              {/* Bewertungszahl */}
+              {/* Bewertungszahl und Priorität */}
               {hoveredScore !== null && (
                 <>
                   <line
-                    x1={width - 280 + 20}
-                    y1={tooltipHeight - 30}
-                    x2={width - 20}
-                    y2={tooltipHeight - 30}
+                    x1={width - 260}
+                    y1={separatorY}
+                    x2={width - 40}
+                    y2={separatorY}
                     stroke="#334155"
                     strokeWidth={1}
                   />
+                  {/* Farbindikator für Score */}
+                  <circle
+                    cx={width - 245}
+                    cy={scoreY}
+                    r={6}
+                    fill={getColor(hoveredScore)}
+                  />
                   <text
                     x={width - 150}
-                    y={tooltipHeight - 10}
+                    y={scoreY + 4}
                     textAnchor="middle"
                     fill="#ffffff"
                     fontSize={12}
@@ -377,13 +532,27 @@ export function SunburstChart({ data, width = 1200, height = 1200 }: SunburstCha
                   >
                     Bewertung: {hoveredScore.toFixed(1)} / 10
                   </text>
-                  {/* Farbindikator */}
-                  <circle
-                    cx={width - 250}
-                    cy={tooltipHeight - 10}
-                    r={6}
-                    fill={getColor(hoveredScore)}
-                  />
+                  {/* Priorität */}
+                  {hoveredPriority && (
+                    <>
+                      <circle
+                        cx={width - 245}
+                        cy={priorityY}
+                        r={6}
+                        fill={getPriorityColor(hoveredPriority)}
+                      />
+                      <text
+                        x={width - 150}
+                        y={priorityY + 4}
+                        textAnchor="middle"
+                        fill="#ffffff"
+                        fontSize={12}
+                        fontWeight="bold"
+                      >
+                        Priorität: {hoveredPriority.toUpperCase()}
+                      </text>
+                    </>
+                  )}
                 </>
               )}
             </g>
@@ -391,22 +560,43 @@ export function SunburstChart({ data, width = 1200, height = 1200 }: SunburstCha
         })()}
       </svg>
       {/* Legende */}
-      <div className="flex gap-4 mt-4 flex-wrap justify-center">
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded bg-red-500"></div>
-          <span className="text-sm text-slate-300">1-3: Unausgereift</span>
+      <div className="flex flex-col gap-3 mt-4">
+        <div className="flex gap-4 flex-wrap justify-center">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded bg-red-500"></div>
+            <span className="text-sm text-slate-300">1-3: Unausgereift</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded bg-orange-500"></div>
+            <span className="text-sm text-slate-300">4-5: Wenig ausgereift</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded bg-blue-500"></div>
+            <span className="text-sm text-slate-300">6-7: Ausgereift</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded bg-green-500"></div>
+            <span className="text-sm text-slate-300">8-10: Vollständig ausgereift</span>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded bg-orange-500"></div>
-          <span className="text-sm text-slate-300">4-5: Wenig ausgereift</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded bg-blue-500"></div>
-          <span className="text-sm text-slate-300">6-7: Ausgereift</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded bg-green-500"></div>
-          <span className="text-sm text-slate-300">8-10: Vollständig ausgereift</span>
+        <div className="flex gap-4 flex-wrap justify-center">
+          <span className="text-xs text-slate-400">Priorität:</span>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded" style={{ backgroundColor: getPriorityColor("A") }}></div>
+            <span className="text-sm text-slate-300">A: Höchste Priorität</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded" style={{ backgroundColor: getPriorityColor("B") }}></div>
+            <span className="text-sm text-slate-300">B: Hohe Priorität</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded" style={{ backgroundColor: getPriorityColor("C") }}></div>
+            <span className="text-sm text-slate-300">C: Mittlere Priorität</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded" style={{ backgroundColor: getPriorityColor("D") }}></div>
+            <span className="text-sm text-slate-300">D: Niedrige Priorität</span>
+          </div>
         </div>
       </div>
     </div>

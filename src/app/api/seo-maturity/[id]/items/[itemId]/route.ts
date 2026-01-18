@@ -30,7 +30,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const { score, title, description, category, order } = body;
+    const { score, title, description, category, order, priority } = body;
 
     const item = await prisma.sEOMaturityItem.update({
       where: { id: itemId },
@@ -40,6 +40,7 @@ export async function PATCH(
         ...(description !== undefined && { description }),
         ...(category && { category }),
         ...(order !== undefined && { order }),
+        ...(priority !== undefined && { priority: priority || null }),
       },
     });
 

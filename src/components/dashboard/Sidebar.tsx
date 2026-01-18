@@ -124,6 +124,15 @@ const navigation = [
     ),
   },
   {
+    name: "UBS KVP",
+    href: "/ubs-kvp",
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+    ),
+  },
+  {
     name: "Einstellungen",
     href: "/settings",
     icon: (
@@ -140,9 +149,9 @@ export function Sidebar() {
 
   return (
     <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-72 lg:flex-col">
-      <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-slate-800 px-6 pb-4 border-r border-slate-700">
+      <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-slate-50 dark:bg-slate-800 px-6 pb-4 border-r border-slate-200 dark:border-slate-700">
         <div className="flex h-16 shrink-0 items-center">
-          <h1 className="text-xl font-bold text-white">SME Dashboard</h1>
+          <h1 className="text-xl font-bold text-slate-900 dark:text-white">SME Dashboard</h1>
         </div>
         <nav className="flex flex-1 flex-col">
           <ul role="list" className="flex flex-1 flex-col gap-y-2">
@@ -157,7 +166,7 @@ export function Sidebar() {
                     className={`group flex gap-x-3 rounded-lg p-3 text-sm font-medium transition-all duration-200 ${
                       isActive && !hasChildren
                         ? "bg-blue-600 text-white"
-                        : "text-slate-300 hover:text-white hover:bg-slate-700"
+                        : "text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700"
                     }`}
                   >
                     {item.icon}
@@ -174,7 +183,7 @@ export function Sidebar() {
                               className={`group flex gap-x-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 ${
                                 isChildActive
                                   ? "bg-blue-600 text-white"
-                                  : "text-slate-400 hover:text-white hover:bg-slate-700/50"
+                                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-700/50"
                               }`}
                             >
                               {child.icon}

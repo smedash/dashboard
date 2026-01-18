@@ -61,6 +61,7 @@ export async function POST(request: NextRequest) {
             title: item.title,
             description: item.description || null,
             score: item.score || 1,
+            priority: item.priority || null,
             order: item.order !== undefined ? item.order : index,
           })) || [],
         },

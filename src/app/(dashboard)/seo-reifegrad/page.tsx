@@ -9,6 +9,7 @@ interface SEOMaturityItem {
   title: string;
   description?: string;
   score: number;
+  priority?: string | null; // A, B, C, D
   order: number;
 }
 
@@ -373,6 +374,31 @@ export default function SEOMaturityPage() {
     }
   };
 
+  const updateItemPriority = async (itemId: string, priority: string | null) => {
+    if (!selectedMaturity) return;
+
+    try {
+      const response = await fetch(
+        `/api/seo-maturity/${selectedMaturity.id}/items/${itemId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ priority }),
+        }
+      );
+
+      const data = await response.json();
+      if (data.item) {
+        const updatedItems = selectedMaturity.items.map((item) =>
+          item.id === itemId ? { ...item, priority: data.item.priority } : item
+        );
+        setSelectedMaturity({ ...selectedMaturity, items: updatedItems });
+      }
+    } catch (error) {
+      console.error("Error updating item priority:", error);
+    }
+  };
+
   const startEditingDescription = (itemId: string, currentDescription?: string) => {
     setEditingDescription(itemId);
     setDescriptionText(currentDescription || "");
@@ -479,6 +505,22 @@ export default function SEOMaturityPage() {
     if (score <= 5) return "Wenig ausgereift";
     if (score <= 7) return "Ausgereift";
     return "Vollständig ausgereift";
+  };
+
+  const getPriorityColor = (priority: string | null | undefined): string => {
+    if (!priority) return "bg-slate-600";
+    switch (priority.toUpperCase()) {
+      case "A":
+        return "bg-red-600";
+      case "B":
+        return "bg-orange-600";
+      case "C":
+        return "bg-yellow-600";
+      case "D":
+        return "bg-green-600";
+      default:
+        return "bg-slate-600";
+    }
   };
 
   // SEO-Erklärungen für jeden Punkt
@@ -600,6 +642,7 @@ export default function SEOMaturityPage() {
         name: item.title,
         value: item.score,
         score: item.score,
+        priority: item.priority || null,
       })),
     }));
   };
@@ -1052,20 +1095,22 @@ export default function SEOMaturityPage() {
                                 </div>
                               )}
                             </div>
-                            <div className="flex items-center gap-3">
-                              <div className="flex flex-col items-center">
+                            <div className="flex items-start gap-4 shrink-0">
+                              {/* Score-Kreis */}
+                              <div className="flex flex-col items-center" style={{ minWidth: '130px' }}>
                                 <div
                                   className={`w-12 h-12 rounded-full ${getScoreColor(
                                     item.score
-                                  )} flex items-center justify-center text-white font-bold`}
+                                  )} flex items-center justify-center text-white font-bold text-lg`}
                                 >
                                   {item.score}
                                 </div>
-                                <span className="text-xs text-slate-400 mt-1">
+                                <span className="text-xs text-slate-400 mt-1 text-center">
                                   {getScoreText(item.score)}
                                 </span>
                               </div>
-                              <div className="flex flex-col gap-1">
+                              {/* Slider */}
+                              <div className="flex flex-col gap-1 pt-1">
                                 <input
                                   type="range"
                                   min="1"
@@ -1074,12 +1119,34 @@ export default function SEOMaturityPage() {
                                   onChange={(e) =>
                                     updateItemScore(item.id, parseInt(e.target.value))
                                   }
-                                  className="w-32"
+                                  className="w-28"
                                 />
                                 <div className="flex justify-between text-xs text-slate-500">
                                   <span>1</span>
                                   <span>10</span>
                                 </div>
+                              </div>
+                              {/* Prioritätsauswahl */}
+                              <div className="flex flex-col items-center gap-1 pt-1">
+                                <label className="text-xs text-slate-400">Priorität</label>
+                                <select
+                                  value={item.priority || ""}
+                                  onChange={(e) =>
+                                    updateItemPriority(
+                                      item.id,
+                                      e.target.value || null
+                                    )
+                                  }
+                                  className={`px-2 py-1 rounded text-white text-sm font-bold ${getPriorityColor(
+                                    item.priority
+                                  )} border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                                >
+                                  <option value="">-</option>
+                                  <option value="A">A</option>
+                                  <option value="B">B</option>
+                                  <option value="C">C</option>
+                                  <option value="D">D</option>
+                                </select>
                               </div>
                             </div>
                           </div>

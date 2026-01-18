@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { PieChart } from "@/components/charts";
 
 interface KVPSubkeyword {
   id: string;
@@ -59,6 +60,7 @@ export default function UBSKVPPage() {
   const [urls, setUrls] = useState<KVPUrl[]>([]);
   const [rankings, setRankings] = useState<Record<string, Ranking[]>>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<"overview" | "analysis" | "workload">("overview");
   const [showNewForm, setShowNewForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newUrl, setNewUrl] = useState("");
@@ -71,6 +73,9 @@ export default function UBSKVPPage() {
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [commentText, setCommentText] = useState("");
   const [newCommentText, setNewCommentText] = useState<Record<string, string>>({});
+  const [searchText, setSearchText] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("");
+  const [focusKeywordFilter, setFocusKeywordFilter] = useState<string>("");
 
   useEffect(() => {
     fetchUrls();
@@ -261,10 +266,10 @@ export default function UBSKVPPage() {
     }
   };
 
-  const handleStartEditingComment = (urlId: string, currentComment?: string | null) => {
-    if (currentComment) {
+  const handleStartEditingComment = (urlId: string, commentId?: string, currentComment?: string | null) => {
+    if (commentId && currentComment) {
       // Bestehenden Kommentar bearbeiten
-      setEditingCommentId(urlId);
+      setEditingCommentId(commentId);
     } else {
       // Neuen Kommentar hinzufügen
       setEditingCommentId(`new-${urlId}`);
@@ -416,8 +421,8 @@ export default function UBSKVPPage() {
   if (isLoading) {
     return (
       <div className="space-y-8">
-        <h1 className="text-2xl font-bold text-white">UBS KVP</h1>
-        <div className="h-64 bg-slate-800 rounded-xl animate-pulse"></div>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">UBS KVP</h1>
+        <div className="h-64 bg-white dark:bg-slate-800 rounded-xl animate-pulse border border-slate-200 dark:border-slate-700"></div>
       </div>
     );
   }
@@ -426,27 +431,67 @@ export default function UBSKVPPage() {
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">UBS KVP</h1>
-          <p className="text-slate-400 mt-1">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">UBS KVP</h1>
+          <p className="text-slate-600 dark:text-slate-400 mt-1">
             Kontinuierlicher Verbesserungsprozess
           </p>
         </div>
-        <button
-          onClick={() => setShowNewForm(!showNewForm)}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-        >
-          {showNewForm ? "Abbrechen" : "Neue URL hinzufügen"}
-        </button>
+        {activeTab === "overview" && (
+          <button
+            onClick={() => setShowNewForm(!showNewForm)}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+          >
+            {showNewForm ? "Abbrechen" : "Neue URL hinzufügen"}
+          </button>
+        )}
       </div>
 
-      {showNewForm && (
-        <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-          <h2 className="text-xl font-semibold text-white mb-4">
-            Neue URL hinzufügen
-          </h2>
-          <div className="space-y-4">
+      {/* Tabs */}
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <div className="flex border-b border-slate-200 dark:border-slate-700">
+          <button
+            onClick={() => setActiveTab("overview")}
+            className={`px-6 py-3 text-sm font-medium transition-colors ${
+              activeTab === "overview"
+                ? "text-slate-900 dark:text-white border-b-2 border-blue-500"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            }`}
+          >
+            Übersicht
+          </button>
+          <button
+            onClick={() => setActiveTab("analysis")}
+            className={`px-6 py-3 text-sm font-medium transition-colors ${
+              activeTab === "analysis"
+                ? "text-slate-900 dark:text-white border-b-2 border-blue-500"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            }`}
+          >
+            Auswertung
+          </button>
+          <button
+            onClick={() => setActiveTab("workload")}
+            className={`px-6 py-3 text-sm font-medium transition-colors ${
+              activeTab === "workload"
+                ? "text-slate-900 dark:text-white border-b-2 border-blue-500"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            }`}
+          >
+            Workload
+          </button>
+        </div>
+
+        <div className="p-6">
+          {activeTab === "overview" && (
+            <>
+              {showNewForm && (
+                <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 mb-6">
+                  <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-4">
+                    Neue URL hinzufügen
+                  </h2>
+                  <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                 URL *
               </label>
               <input
@@ -454,11 +499,11 @@ export default function UBSKVPPage() {
                 value={newUrl}
                 onChange={(e) => setNewUrl(e.target.value)}
                 placeholder="https://example.com/page"
-                className="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white"
+                className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                 Fokuskeyword *
               </label>
               <input
@@ -466,17 +511,17 @@ export default function UBSKVPPage() {
                 value={newFocusKeyword}
                 onChange={(e) => setNewFocusKeyword(e.target.value)}
                 placeholder="Hauptkeyword für diese URL"
-                className="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white"
+                className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                 Kategorie
               </label>
               <select
                 value={newCategory}
                 onChange={(e) => setNewCategory(e.target.value)}
-                className="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white"
+                className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
               >
                 <option value="">Keine Kategorie</option>
                 {KEYWORD_CATEGORIES.map((cat) => (
@@ -487,7 +532,7 @@ export default function UBSKVPPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                 Kommentar
               </label>
               <textarea
@@ -495,11 +540,11 @@ export default function UBSKVPPage() {
                 onChange={(e) => setNewComment(e.target.value)}
                 placeholder="Optionale Notizen oder Kommentare..."
                 rows={3}
-                className="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white"
+                className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                 Subkeywords
               </label>
               <div className="flex gap-2 mb-2">
@@ -514,7 +559,7 @@ export default function UBSKVPPage() {
                     }
                   }}
                   placeholder="Subkeyword eingeben und Enter drücken"
-                  className="flex-1 px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white"
+                  className="flex-1 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
                 />
                 <button
                   onClick={addSubkeywordToForm}
@@ -528,12 +573,12 @@ export default function UBSKVPPage() {
                   {newSubkeywords.map((keyword, index) => (
                     <span
                       key={index}
-                      className="inline-flex items-center gap-2 px-3 py-1 bg-slate-700 text-white rounded-lg text-sm"
+                      className="inline-flex items-center gap-2 px-3 py-1 bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white rounded-lg text-sm"
                     >
                       {keyword}
                       <button
                         onClick={() => removeSubkeywordFromForm(index)}
-                        className="text-red-400 hover:text-red-300"
+                        className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
                       >
                         ×
                       </button>
@@ -553,18 +598,122 @@ export default function UBSKVPPage() {
         </div>
       )}
 
-      {urls.length === 0 ? (
-        <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 text-center">
-          <p className="text-slate-400">
-            Noch keine URLs erfasst. Erstellen Sie Ihre erste URL.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {urls.map((url) => (
+              {/* Such- und Filter-Bereich */}
+              {(() => {
+                // Alle eindeutigen Fokuskeywords sammeln und alphabetisch sortieren
+                const uniqueFocusKeywords = Array.from(
+                  new Set(urls.map((url) => url.focusKeyword))
+                ).sort((a, b) => a.localeCompare(b, "de"));
+
+                // Filterlogik einmal berechnen
+                const filteredUrls = urls.filter((url) => {
+                  // Kategorie-Filter
+                  if (categoryFilter) {
+                    if (categoryFilter === "__no_category__" && url.category) return false;
+                    if (categoryFilter !== "__no_category__" && url.category !== categoryFilter) return false;
+                  }
+                  // Fokuskeyword-Filter
+                  if (focusKeywordFilter) {
+                    if (url.focusKeyword !== focusKeywordFilter) return false;
+                  }
+                  // Suchtext-Filter
+                  if (searchText) {
+                    const searchLower = searchText.toLowerCase();
+                    const matchesUrl = url.url.toLowerCase().includes(searchLower);
+                    const matchesFocusKeyword = url.focusKeyword.toLowerCase().includes(searchLower);
+                    const matchesSubkeywords = url.subkeywords.some((sub) =>
+                      sub.keyword.toLowerCase().includes(searchLower)
+                    );
+                    if (!matchesUrl && !matchesFocusKeyword && !matchesSubkeywords) return false;
+                  }
+                  return true;
+                });
+
+                return (
+                  <>
+                    <div className="mb-6 space-y-4">
+                      <div className="flex flex-col sm:flex-row gap-4">
+                        {/* Suchfeld */}
+                        <div className="flex-1">
+                          <input
+                            type="text"
+                            value={searchText}
+                            onChange={(e) => setSearchText(e.target.value)}
+                            placeholder="Suche nach URL oder Keyword..."
+                            className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        {/* Kategorie-Filter */}
+                        <div className="sm:w-64">
+                          <select
+                            value={categoryFilter}
+                            onChange={(e) => setCategoryFilter(e.target.value)}
+                            className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="">Alle Kategorien</option>
+                            {KEYWORD_CATEGORIES.map((cat) => (
+                              <option key={cat} value={cat}>
+                                {cat}
+                              </option>
+                            ))}
+                            <option value="__no_category__">Keine Kategorie</option>
+                          </select>
+                        </div>
+                        {/* Fokuskeyword-Filter */}
+                        <div className="sm:w-64">
+                          <select
+                            value={focusKeywordFilter}
+                            onChange={(e) => setFocusKeywordFilter(e.target.value)}
+                            className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="">Alle Fokuskeywords</option>
+                            {uniqueFocusKeywords.map((keyword) => (
+                              <option key={keyword} value={keyword}>
+                                {keyword}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        {/* Filter zurücksetzen */}
+                        {(searchText || categoryFilter || focusKeywordFilter) && (
+                          <button
+                            onClick={() => {
+                              setSearchText("");
+                              setCategoryFilter("");
+                              setFocusKeywordFilter("");
+                            }}
+                            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors whitespace-nowrap"
+                          >
+                            Filter zurücksetzen
+                          </button>
+                        )}
+                      </div>
+                      {/* Anzahl gefilterter Ergebnisse */}
+                      {filteredUrls.length !== urls.length && (
+                        <div className="text-sm text-slate-600 dark:text-slate-400">
+                          {filteredUrls.length} von {urls.length} URLs gefunden
+                        </div>
+                      )}
+                    </div>
+
+                    {urls.length === 0 ? (
+                      <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 text-center">
+                        <p className="text-slate-600 dark:text-slate-400">
+                          Noch keine URLs erfasst. Erstellen Sie Ihre erste URL.
+                        </p>
+                      </div>
+                    ) : filteredUrls.length === 0 ? (
+                      <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 text-center">
+                        <p className="text-slate-600 dark:text-slate-400">
+                          Keine URLs gefunden, die den Filterkriterien entsprechen.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {filteredUrls.map((url) => (
             <div
               key={url.id}
-              className="bg-slate-800 rounded-xl p-6 border border-slate-700"
+              className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700"
             >
               {editingId === url.id ? (
                 <EditUrlForm
@@ -613,7 +762,7 @@ export default function UBSKVPPage() {
                       <div className="flex gap-2">
                         <button
                           onClick={() => setEditingId(url.id)}
-                          className="p-2 text-blue-400 hover:text-blue-300 hover:bg-slate-700 rounded-lg transition-colors"
+                          className="p-2 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
                           title="Bearbeiten"
                         >
                           <svg
@@ -632,7 +781,7 @@ export default function UBSKVPPage() {
                         </button>
                         <button
                           onClick={() => handleDeleteUrl(url.id)}
-                          className="p-2 text-red-400 hover:text-red-300 hover:bg-slate-700 rounded-lg transition-colors"
+                          className="p-2 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
                           title="Löschen"
                         >
                           <svg
@@ -655,18 +804,18 @@ export default function UBSKVPPage() {
                     {/* Inhalt - volle Breite */}
                     <div>
                       <div className="mb-2">
-                        <h3 className="text-lg font-semibold text-white break-all">
+                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white break-all">
                           {url.url}
                         </h3>
                         {url.category && (
-                          <span className="text-xs text-slate-400 mt-1 inline-block">
+                          <span className="text-xs text-slate-600 dark:text-slate-400 mt-1 inline-block">
                             Kategorie: {url.category}
                           </span>
                         )}
                       </div>
                       <div className="mb-4">
                         <div className="flex items-center justify-between mb-2">
-                          <span className="text-xs font-medium text-slate-400">
+                          <span className="text-xs font-medium text-slate-700 dark:text-slate-400">
                             Kommentare ({url.comments?.length || 0})
                           </span>
                         </div>
@@ -675,7 +824,7 @@ export default function UBSKVPPage() {
                         {url.comments && url.comments.length > 0 && (
                           <div className="space-y-2 mb-3">
                             {url.comments.map((comment) => (
-                              <div key={comment.id} className="p-3 bg-slate-900 rounded-lg">
+                              <div key={comment.id} className="p-3 bg-slate-50 dark:bg-slate-900 rounded-lg">
                                 {editingCommentId === comment.id ? (
                                   <div className="space-y-2">
                                     <textarea
@@ -683,7 +832,7 @@ export default function UBSKVPPage() {
                                       onChange={(e) => setCommentText(e.target.value)}
                                       placeholder="Kommentar eingeben..."
                                       rows={3}
-                                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm"
+                                      className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white text-sm"
                                       autoFocus
                                     />
                                     <div className="flex gap-2">
@@ -695,7 +844,7 @@ export default function UBSKVPPage() {
                                       </button>
                                       <button
                                         onClick={handleCancelEditingComment}
-                                        className="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded transition-colors"
+                                        className="px-3 py-1 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-900 dark:text-white text-sm rounded transition-colors"
                                       >
                                         Abbrechen
                                       </button>
@@ -703,23 +852,23 @@ export default function UBSKVPPage() {
                                   </div>
                                 ) : (
                                   <div className="group">
-                                    <p className="text-sm text-slate-300 whitespace-pre-wrap">
+                                    <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
                                       {comment.text}
                                     </p>
                                     <div className="flex items-center justify-between mt-2">
-                                      <span className="text-xs text-slate-500">
+                                      <span className="text-xs text-slate-500 dark:text-slate-500">
                                         {formatDateTime(comment.createdAt)}
                                       </span>
                                       <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <button
-                                          onClick={() => handleStartEditingComment(url.id, comment.text)}
-                                          className="text-xs text-blue-400 hover:text-blue-300"
+                                          onClick={() => handleStartEditingComment(url.id, comment.id, comment.text)}
+                                          className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
                                         >
                                           Bearbeiten
                                         </button>
                                         <button
                                           onClick={() => handleDeleteComment(url.id, comment.id)}
-                                          className="text-xs text-red-400 hover:text-red-300"
+                                          className="text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
                                         >
                                           Löschen
                                         </button>
@@ -745,7 +894,7 @@ export default function UBSKVPPage() {
                               }
                               placeholder="Neuen Kommentar eingeben..."
                               rows={3}
-                              className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+                              className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white text-sm"
                               autoFocus
                             />
                             <div className="flex gap-2">
@@ -760,7 +909,7 @@ export default function UBSKVPPage() {
                                   setEditingCommentId(null);
                                   setNewCommentText({ ...newCommentText, [url.id]: "" });
                                 }}
-                                className="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded transition-colors"
+                                className="px-3 py-1 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-900 dark:text-white text-sm rounded transition-colors"
                               >
                                 Abbrechen
                               </button>
@@ -769,17 +918,17 @@ export default function UBSKVPPage() {
                         ) : (
                           <button
                             onClick={() => setEditingCommentId(`new-${url.id}`)}
-                            className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-slate-400 hover:text-slate-300 hover:border-slate-600 transition-colors"
+                            className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-300 hover:border-slate-400 dark:hover:border-slate-600 transition-colors"
                           >
                             + Neuen Kommentar hinzufügen
                           </button>
                         )}
                       </div>
                       <div className="mb-4">
-                        <div className="space-y-0 border border-slate-700 rounded-lg overflow-hidden">
+                        <div className="space-y-0 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
                           {/* Fokuskeyword - fett */}
-                          <div className="flex items-center justify-between gap-4 px-4 py-2 border-b border-slate-700">
-                            <span className="text-sm font-bold text-blue-400">
+                          <div className="flex items-center justify-between gap-4 px-4 py-2 border-b border-slate-200 dark:border-slate-700">
+                            <span className="text-sm font-bold text-blue-600 dark:text-blue-400">
                               {url.focusKeyword}
                             </span>
                             {(() => {
@@ -788,7 +937,7 @@ export default function UBSKVPPage() {
                                 return (
                                   <span className={`text-xs px-2 py-1 rounded flex-shrink-0 w-12 text-center ${
                                     ranking.position === null 
-                                      ? "bg-slate-700 text-slate-400" 
+                                      ? "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400" 
                                       : ranking.position <= 10 
                                       ? "bg-green-600 text-white" 
                                       : ranking.position <= 30 
@@ -805,7 +954,7 @@ export default function UBSKVPPage() {
                           
                           {/* Subkeywords - eingerückt und normal */}
                           {url.subkeywords.length > 0 && (
-                            <div className="divide-y divide-slate-700">
+                            <div className="divide-y divide-slate-200 dark:divide-slate-700">
                               {url.subkeywords.map((subkeyword, index) => {
                                 const ranking = getRankingForKeyword(url.id, subkeyword.keyword);
                                 return (
@@ -815,17 +964,17 @@ export default function UBSKVPPage() {
                                     title={`Hinzugefügt: ${formatDateTime(subkeyword.createdAt)}`}
                                   >
                                     <div className="flex items-center gap-2 flex-1 min-w-0">
-                                      <span className="text-sm text-slate-300">
+                                      <span className="text-sm text-slate-700 dark:text-slate-300">
                                         {subkeyword.keyword}
                                       </span>
-                                      <span className="text-xs text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <span className="text-xs text-slate-500 dark:text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity">
                                         ({formatDateTime(subkeyword.createdAt)})
                                       </span>
                                       <button
                                         onClick={() =>
                                           handleDeleteSubkeyword(url.id, subkeyword.id)
                                         }
-                                        className="text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity"
                                       >
                                         ×
                                       </button>
@@ -837,7 +986,7 @@ export default function UBSKVPPage() {
                                           : ranking.position <= 30 
                                           ? "bg-yellow-600 text-white" 
                                           : "bg-red-600 text-white"
-                                        : "bg-slate-600 text-slate-300"
+                                        : "bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-300"
                                     }`}>
                                       {ranking ? (ranking.position === null ? "N/A" : ranking.position) : "-"}
                                     </span>
@@ -859,9 +1008,365 @@ export default function UBSKVPPage() {
                 </>
               )}
             </div>
-          ))}
+                        ))}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+            </>
+          )}
+
+          {activeTab === "analysis" && (
+            <AnalysisView urls={urls} rankings={rankings} getRankingForKeyword={getRankingForKeyword} />
+          )}
+
+          {activeTab === "workload" && (
+            <WorkloadView urls={urls} />
+          )}
         </div>
-      )}
+      </div>
+    </div>
+  );
+}
+
+function AnalysisView({
+  urls,
+  rankings,
+  getRankingForKeyword,
+}: {
+  urls: KVPUrl[];
+  rankings: Record<string, Ranking[]>;
+  getRankingForKeyword: (urlId: string, keyword: string) => Ranking | null;
+}) {
+  // Berechne Kategorieverteilung
+  const categoryDistribution = urls.reduce((acc, url) => {
+    const category = url.category || "Keine Kategorie";
+    acc[category] = (acc[category] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const categoryData = Object.entries(categoryDistribution).map(([name, value]) => ({
+    name,
+    value,
+  }));
+
+  // Sammle alle Rankings für die Übersicht
+  const allRankings: Array<{
+    url: string;
+    keyword: string;
+    category: string | null;
+    position: number | null;
+    urlId: string;
+  }> = [];
+
+  urls.forEach((url) => {
+    // Fokuskeyword
+    const focusRanking = getRankingForKeyword(url.id, url.focusKeyword);
+    allRankings.push({
+      url: url.url,
+      keyword: url.focusKeyword,
+      category: url.category || null,
+      position: focusRanking?.position ?? null,
+      urlId: url.id,
+    });
+
+    // Subkeywords
+    url.subkeywords.forEach((subkeyword) => {
+      const subRanking = getRankingForKeyword(url.id, subkeyword.keyword);
+      allRankings.push({
+        url: url.url,
+        keyword: subkeyword.keyword,
+        category: url.category || null,
+        position: subRanking?.position ?? null,
+        urlId: url.id,
+      });
+    });
+  });
+
+  // Sortiere nach Position (beste zuerst, dann N/A)
+  const sortedRankings = [...allRankings].sort((a, b) => {
+    if (a.position === null && b.position === null) return 0;
+    if (a.position === null) return 1;
+    if (b.position === null) return -1;
+    return a.position - b.position;
+  });
+
+  // Statistiken
+  const totalKeywords = allRankings.length;
+  const keywordsWithRanking = allRankings.filter((r) => r.position !== null).length;
+  const top10Keywords = allRankings.filter((r) => r.position !== null && r.position <= 10).length;
+  const top30Keywords = allRankings.filter((r) => r.position !== null && r.position <= 30).length;
+
+  return (
+    <div className="space-y-6">
+      {/* Statistiken */}
+      <div className="grid grid-cols-4 gap-4">
+        <div className="bg-white dark:bg-slate-900 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
+          <div className="text-sm text-slate-600 dark:text-slate-400">Gesamt Keywords</div>
+          <div className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{totalKeywords}</div>
+        </div>
+        <div className="bg-white dark:bg-slate-900 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
+          <div className="text-sm text-slate-600 dark:text-slate-400">Mit Ranking</div>
+          <div className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{keywordsWithRanking}</div>
+        </div>
+        <div className="bg-white dark:bg-slate-900 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
+          <div className="text-sm text-slate-600 dark:text-slate-400">Top 10</div>
+          <div className="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">{top10Keywords}</div>
+        </div>
+        <div className="bg-white dark:bg-slate-900 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
+          <div className="text-sm text-slate-600 dark:text-slate-400">Top 30</div>
+          <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400 mt-1">{top30Keywords}</div>
+        </div>
+      </div>
+
+      {/* Kategorieverteilung */}
+      <div className="bg-white dark:bg-slate-900 rounded-lg p-6 border border-slate-200 dark:border-slate-700">
+        <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-4">Kategorieverteilung</h2>
+        {categoryData.length > 0 ? (
+          <div className="flex flex-col md:flex-row gap-6">
+            <div className="flex-1">
+              <PieChart data={categoryData} height={300} />
+            </div>
+            <div className="flex-1">
+              <div className="space-y-2">
+                {categoryData.map((item, index) => (
+                  <div key={item.name} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-4 h-4 rounded"
+                        style={{
+                          backgroundColor: ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"][
+                            index % 5
+                          ],
+                        }}
+                      />
+                      <span className="text-slate-900 dark:text-white font-medium">{item.name}</span>
+                    </div>
+                    <span className="text-slate-700 dark:text-slate-300 font-bold">{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <p className="text-slate-600 dark:text-slate-400">Keine Kategorien vorhanden</p>
+        )}
+      </div>
+
+      {/* Rankings-Übersicht */}
+      <div className="bg-white dark:bg-slate-900 rounded-lg p-6 border border-slate-200 dark:border-slate-700">
+        <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-4">Rankings-Übersicht</h2>
+        {sortedRankings.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-slate-200 dark:border-slate-700">
+                  <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Keyword</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">URL</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Kategorie</th>
+                  <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Position</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedRankings.map((ranking, index) => (
+                  <tr
+                    key={`${ranking.urlId}-${ranking.keyword}-${index}`}
+                    className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    <td className="py-3 px-4">
+                      <span className="text-slate-900 dark:text-white">{ranking.keyword}</span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className="text-slate-600 dark:text-slate-400 text-sm truncate max-w-xs block">
+                        {ranking.url}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className="text-slate-600 dark:text-slate-400 text-sm">
+                        {ranking.category || "Keine"}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      {ranking.position !== null ? (
+                        <span
+                          className={`inline-block px-2 py-1 rounded text-xs font-medium ${
+                            ranking.position <= 10
+                              ? "bg-green-600 text-white"
+                              : ranking.position <= 30
+                              ? "bg-yellow-600 text-white"
+                              : "bg-red-600 text-white"
+                          }`}
+                        >
+                          {ranking.position}
+                        </span>
+                      ) : (
+                        <span className="text-slate-500 dark:text-slate-500 text-xs">N/A</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="text-slate-600 dark:text-slate-400">Keine Rankings vorhanden</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function WorkloadView({ urls }: { urls: KVPUrl[] }) {
+  // Sortiere URLs nach Erstellungsdatum (neueste zuerst)
+  const sortedUrls = [...urls].sort((a, b) => {
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+
+  // Berechne Gesamtstatistiken
+  const totalUrls = urls.length;
+  const totalComments = urls.reduce((sum, url) => sum + (url.comments?.length || 0), 0);
+  const urlsWithComments = urls.filter((url) => (url.comments?.length || 0) > 0).length;
+
+  // Gruppiere URLs nach Monat
+  const urlsByMonth = urls.reduce((acc, url) => {
+    const date = new Date(url.createdAt);
+    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    acc[monthKey] = (acc[monthKey] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  // Gruppiere Kommentare nach Monat
+  const commentsByMonth = urls.reduce((acc, url) => {
+    url.comments?.forEach((comment) => {
+      const date = new Date(comment.createdAt);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+      acc[monthKey] = (acc[monthKey] || 0) + 1;
+    });
+    return acc;
+  }, {} as Record<string, number>);
+
+  return (
+    <div className="space-y-6">
+      {/* Statistiken */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="bg-white dark:bg-slate-900 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
+          <div className="text-sm text-slate-600 dark:text-slate-400">Gesamt URLs</div>
+          <div className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{totalUrls}</div>
+        </div>
+        <div className="bg-white dark:bg-slate-900 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
+          <div className="text-sm text-slate-600 dark:text-slate-400">Gesamt Kommentare</div>
+          <div className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{totalComments}</div>
+        </div>
+        <div className="bg-white dark:bg-slate-900 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
+          <div className="text-sm text-slate-600 dark:text-slate-400">URLs mit Kommentaren</div>
+          <div className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{urlsWithComments}</div>
+        </div>
+      </div>
+
+      {/* URLs-Übersicht */}
+      <div className="bg-white dark:bg-slate-900 rounded-lg p-6 border border-slate-200 dark:border-slate-700">
+        <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-4">URLs und Kommentare</h2>
+        {sortedUrls.length > 0 ? (
+          <div className="space-y-4">
+            {sortedUrls.map((url) => {
+              const commentCount = url.comments?.length || 0;
+              const sortedComments = [...(url.comments || [])].sort(
+                (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+              );
+
+              return (
+                <div key={url.id} className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-semibold text-slate-900 dark:text-white break-all mb-1">{url.url}</h3>
+                      <div className="flex items-center gap-4 mt-2">
+                        <div className="text-xs text-slate-600 dark:text-slate-400">
+                          <span className="font-medium">Angelegt:</span> {formatDateTime(url.createdAt)}
+                        </div>
+                        {url.updatedAt !== url.createdAt && (
+                          <div className="text-xs text-slate-500 dark:text-slate-500">
+                            <span className="font-medium">Aktualisiert:</span> {formatDateTime(url.updatedAt)}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="ml-4 flex-shrink-0">
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-600 text-white">
+                        {commentCount} {commentCount === 1 ? "Kommentar" : "Kommentare"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {commentCount > 0 && (
+                    <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+                      <div className="text-xs font-medium text-slate-700 dark:text-slate-400 mb-2">Kommentare:</div>
+                      <div className="space-y-2">
+                        {sortedComments.map((comment) => (
+                          <div key={comment.id} className="bg-white dark:bg-slate-900 rounded p-2">
+                            <p className="text-xs text-slate-700 dark:text-slate-300 mb-1">{comment.text}</p>
+                            <div className="text-xs text-slate-500 dark:text-slate-500">
+                              {formatDateTime(comment.createdAt)}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-slate-600 dark:text-slate-400">Keine URLs vorhanden</p>
+        )}
+      </div>
+
+      {/* Monatliche Übersicht */}
+      <div className="bg-white dark:bg-slate-900 rounded-lg p-6 border border-slate-200 dark:border-slate-700">
+        <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-4">Monatliche Übersicht</h2>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-3">URLs angelegt</h3>
+            <div className="space-y-2">
+              {Object.entries(urlsByMonth)
+                .sort((a, b) => b[0].localeCompare(a[0]))
+                .map(([month, count]) => (
+                  <div key={month} className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-800 rounded">
+                    <span className="text-sm text-slate-900 dark:text-white">
+                      {new Date(month + "-01").toLocaleDateString("de-DE", {
+                        year: "numeric",
+                        month: "long",
+                      })}
+                    </span>
+                    <span className="text-sm font-bold text-slate-900 dark:text-white">{count}</span>
+                  </div>
+                ))}
+            </div>
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-3">Kommentare erstellt</h3>
+            <div className="space-y-2">
+              {Object.entries(commentsByMonth)
+                .sort((a, b) => b[0].localeCompare(a[0]))
+                .map(([month, count]) => (
+                  <div key={month} className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-800 rounded">
+                    <span className="text-sm text-slate-900 dark:text-white">
+                      {new Date(month + "-01").toLocaleDateString("de-DE", {
+                        year: "numeric",
+                        month: "long",
+                      })}
+                    </span>
+                    <span className="text-sm font-bold text-slate-900 dark:text-white">{count}</span>
+                  </div>
+                ))}
+              {Object.keys(commentsByMonth).length === 0 && (
+                <p className="text-sm text-slate-500 dark:text-slate-500">Keine Kommentare vorhanden</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -922,7 +1427,7 @@ function EditUrlForm({
           type="url"
           value={editUrl}
           onChange={(e) => setEditUrl(e.target.value)}
-          className="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white"
+          className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
         />
       </div>
       <div>
@@ -933,7 +1438,7 @@ function EditUrlForm({
           type="text"
           value={editFocusKeyword}
           onChange={(e) => setEditFocusKeyword(e.target.value)}
-          className="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white"
+          className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
         />
       </div>
       <div>
@@ -943,7 +1448,7 @@ function EditUrlForm({
         <select
           value={editCategory}
           onChange={(e) => setEditCategory(e.target.value)}
-          className="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white"
+          className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
         >
           <option value="">Keine Kategorie</option>
           {KEYWORD_CATEGORIES.map((cat) => (
@@ -961,7 +1466,7 @@ function EditUrlForm({
           value={editComment}
           onChange={(e) => setEditComment(e.target.value)}
           rows={3}
-          className="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white"
+          className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
         />
       </div>
       <div>
@@ -1010,7 +1515,7 @@ function EditUrlForm({
               }
             }}
             placeholder="Subkeyword eingeben und Enter drücken"
-            className="flex-1 px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white"
+            className="flex-1 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
           />
           <button
             onClick={handleAddSubkeyword}
@@ -1063,7 +1568,7 @@ function AddSubkeywordForm({
         value={keyword}
         onChange={(e) => setKeyword(e.target.value)}
         placeholder="Subkeyword..."
-        className="px-3 py-1 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm"
+        className="px-3 py-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white text-sm"
       />
       <button
         type="submit"

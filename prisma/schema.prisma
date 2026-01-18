@@ -23,6 +23,7 @@ model User {
   snapshots     Snapshot[]
   seoMaturity   SEOMaturity[]
   rankTrackers  RankTracker[]
+  kvpUrls       KVPUrl[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 }
@@ -135,6 +136,7 @@ model SEOMaturityItem {
   title       String // Titel des Punktes
   description String? // Beschreibung
   score       Int         @default(1) // Bewertung 1-10
+  priority    String?     // Priorität: A, B, C, D
   order       Int         @default(0) // Reihenfolge innerhalb der Kategorie
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
@@ -186,4 +188,46 @@ model RankTrackerRanking {
 
   @@index([keywordId, date])
   @@index([date])
+}
+
+// UBS KVP (Kontinuierlicher Verbesserungsprozess) Model
+model KVPUrl {
+  id          String          @id @default(cuid())
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  url         String          @db.Text
+  focusKeyword String         // Fokuskeyword für die URL
+  category    String?         // Kategorie: Mortgages, Accounts&Cards, Investing, Pension, Digital Banking
+  comment     String?         @db.Text // Kommentarfeld (deprecated, wird durch KVPComment ersetzt)
+  subkeywords KVPSubkeyword[]
+  comments    KVPComment[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([userId])
+  @@index([category])
+}
+
+// UBS KVP Subkeywords - Beliebig viele Subkeywords pro URL
+model KVPSubkeyword {
+  id        String   @id @default(cuid())
+  urlId     String
+  url       KVPUrl   @relation(fields: [urlId], references: [id], onDelete: Cascade)
+  keyword   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([urlId])
+}
+
+// UBS KVP Kommentare - Beliebig viele Kommentare pro URL
+model KVPComment {
+  id        String   @id @default(cuid())
+  urlId     String
+  url       KVPUrl   @relation(fields: [urlId], references: [id], onDelete: Cascade)
+  text      String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([urlId])
 }

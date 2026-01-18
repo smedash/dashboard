@@ -35,22 +35,22 @@ export function StatCard({ title, value, change, subtitle, trend, format = "numb
 
   const getTrendColor = () => {
     if (trend === "up") {
-      return format === "position" ? "text-red-400" : "text-emerald-400";
+      return format === "position" ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400";
     }
     if (trend === "down") {
-      return format === "position" ? "text-emerald-400" : "text-red-400";
+      return format === "position" ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400";
     }
-    return "text-slate-400";
+    return "text-slate-600 dark:text-slate-400";
   };
 
   return (
-    <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+    <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
       <div className="flex items-center justify-between mb-4">
-        <span className="text-sm font-medium text-slate-400">{title}</span>
-        {icon && <span className="text-slate-500">{icon}</span>}
+        <span className="text-sm font-medium text-slate-600 dark:text-slate-400">{title}</span>
+        {icon && <span className="text-slate-500 dark:text-slate-500">{icon}</span>}
       </div>
       <div className="flex flex-col">
-        <span className="text-3xl font-bold text-white mb-1">
+        <span className="text-3xl font-bold text-slate-900 dark:text-white mb-1">
           {formatValue(value)}
         </span>
         {subtitle && (
@@ -62,10 +62,10 @@ export function StatCard({ title, value, change, subtitle, trend, format = "numb
           <span
             className={`text-sm font-medium px-2 py-1 rounded-md mt-2 inline-block w-fit ${
               isPositiveChange(change)
-                ? "bg-emerald-500/20 text-emerald-400"
+                ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400"
                 : change === 0
-                ? "bg-slate-600/50 text-slate-400"
-                : "bg-red-500/20 text-red-400"
+                ? "bg-slate-200 dark:bg-slate-600/50 text-slate-600 dark:text-slate-400"
+                : "bg-red-500/20 text-red-600 dark:text-red-400"
             }`}
           >
             {formatChange(change)}

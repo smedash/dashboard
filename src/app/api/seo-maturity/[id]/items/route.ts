@@ -35,7 +35,7 @@ export async function POST(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const { category, title, description, score } = body;
+    const { category, title, description, score, priority } = body;
 
     if (!category || !title) {
       return NextResponse.json(
@@ -57,6 +57,7 @@ export async function POST(
         title: title,
         description: description || null,
         score: score || 1,
+        priority: priority || null,
         order: maxOrder + 1,
       },
     });
