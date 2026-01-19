@@ -39,20 +39,37 @@ const getLightColor = (score: number): string => {
   return "#34d399"; // Hellgrün
 };
 
-// Farben für Priorität
+// Farben für Priorität - Weiß und Dunkelgrau statt Ampelsystem
 const getPriorityColor = (priority: string | null | undefined): string => {
-  if (!priority) return "#64748b"; // Slate für keine Priorität
+  if (!priority) return "#475569"; // Dunkelgrau für keine Priorität
   switch (priority.toUpperCase()) {
     case "A":
-      return "#dc2626"; // Rot
+      return "#ffffff"; // Weiß für höchste Priorität
     case "B":
-      return "#ea580c"; // Orange
+      return "#e2e8f0"; // Hellgrau
     case "C":
-      return "#ca8a04"; // Gelb
+      return "#cbd5e1"; // Mittelgrau
     case "D":
-      return "#16a34a"; // Grün
+      return "#94a3b8"; // Dunkleres Grau
     default:
-      return "#64748b";
+      return "#475569"; // Dunkelgrau
+  }
+};
+
+// Textfarbe für Priorität basierend auf Hintergrundfarbe
+const getPriorityTextColor = (priority: string | null | undefined): string => {
+  if (!priority) return "#ffffff"; // Weiß auf dunkelgrau
+  switch (priority.toUpperCase()) {
+    case "A":
+      return "#1e293b"; // Dunkelgrau auf weiß
+    case "B":
+      return "#1e293b"; // Dunkelgrau auf hellgrau
+    case "C":
+      return "#1e293b"; // Dunkelgrau auf mittelgrau
+    case "D":
+      return "#ffffff"; // Weiß auf dunklerem grau
+    default:
+      return "#ffffff";
   }
 };
 
@@ -275,12 +292,12 @@ export function SunburstChart({ data, width = 1200, height = 1200 }: SunburstCha
                       : item.name;
                   })()}
                 </text>
-                {/* Score Badge - am äußersten Rand des Strahls */}
+                {/* Score Badge - am äußersten Rand des Strahls mit 5px Padding zum äußeren Ring */}
                 {itemAngle > 0.02 && (
                   <>
                     <circle
-                      cx={centerX + (itemOuterRadius - 8) * Math.cos(itemMidAngle)}
-                      cy={centerY + (itemOuterRadius - 8) * Math.sin(itemMidAngle)}
+                      cx={centerX + (itemOuterRadius - 13) * Math.cos(itemMidAngle)}
+                      cy={centerY + (itemOuterRadius - 13) * Math.sin(itemMidAngle)}
                       r={8}
                       fill="#1e293b"
                       stroke="#ffffff"
@@ -289,8 +306,8 @@ export function SunburstChart({ data, width = 1200, height = 1200 }: SunburstCha
                       className="pointer-events-none"
                     />
                     <text
-                      x={centerX + (itemOuterRadius - 8) * Math.cos(itemMidAngle)}
-                      y={centerY + (itemOuterRadius - 8) * Math.sin(itemMidAngle)}
+                      x={centerX + (itemOuterRadius - 13) * Math.cos(itemMidAngle)}
+                      y={centerY + (itemOuterRadius - 13) * Math.sin(itemMidAngle)}
                       textAnchor="middle"
                       dominantBaseline="middle"
                       fill="#ffffff"
@@ -384,7 +401,7 @@ export function SunburstChart({ data, width = 1200, height = 1200 }: SunburstCha
                     y={centerY + (priorityInnerRadius + priorityOuterRadius) / 2 * Math.sin(itemMidAngle)}
                     textAnchor="middle"
                     dominantBaseline="middle"
-                    fill="#ffffff"
+                    fill={getPriorityTextColor(priority)}
                     fontSize={12}
                     fontWeight="bold"
                     className="pointer-events-none"

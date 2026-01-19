@@ -294,6 +294,9 @@ export default function SEOMaturityPage() {
   const [isAddingItem, setIsAddingItem] = useState(false);
   const [availableTeams, setAvailableTeams] = useState<Team[]>([]);
   const [selectedTeams, setSelectedTeams] = useState<Record<string, string[]>>({});
+  const [scoreFilter, setScoreFilter] = useState<{ min: number; max: number }>({ min: 1, max: 10 });
+  const [priorityFilter, setPriorityFilter] = useState<string[]>([]);
+  const [teamFilter, setTeamFilter] = useState<string[]>([]);
 
   useEffect(() => {
     fetchMaturities();
@@ -567,13 +570,13 @@ export default function SEOMaturityPage() {
     if (!priority) return "bg-slate-600";
     switch (priority.toUpperCase()) {
       case "A":
-        return "bg-red-600";
+        return "bg-white text-slate-900";
       case "B":
-        return "bg-orange-600";
+        return "bg-slate-200 text-slate-900";
       case "C":
-        return "bg-yellow-600";
+        return "bg-slate-400 text-white";
       case "D":
-        return "bg-green-600";
+        return "bg-slate-500 text-white";
       default:
         return "bg-slate-600";
     }
@@ -682,8 +685,35 @@ export default function SEOMaturityPage() {
   const prepareSunburstData = () => {
     if (!selectedMaturity) return [];
 
+    // Filtere Items basierend auf Reifegrad, Priorität und Teams
+    const filteredItems = selectedMaturity.items.filter((item) => {
+      // Reifegrad-Filter
+      const scoreMatch = item.score >= scoreFilter.min && item.score <= scoreFilter.max;
+      
+      // Prioritäts-Filter
+      let priorityMatch = true;
+      if (priorityFilter.length > 0) {
+        const itemPriority = item.priority ? item.priority.toUpperCase() : null;
+        priorityMatch = priorityFilter.some((filterPriority) => {
+          if (filterPriority === "KEINE") {
+            return itemPriority === null;
+          }
+          return itemPriority === filterPriority;
+        });
+      }
+      
+      // Team-Filter
+      let teamMatch = true;
+      if (teamFilter.length > 0) {
+        const itemTeamIds = item.teams?.map((t) => t.team.id) || [];
+        teamMatch = teamFilter.some((filterTeamId) => itemTeamIds.includes(filterTeamId));
+      }
+      
+      return scoreMatch && priorityMatch && teamMatch;
+    });
+
     const categoryMap = new Map<string, SEOMaturityItem[]>();
-    selectedMaturity.items.forEach((item) => {
+    filteredItems.forEach((item) => {
       if (!categoryMap.has(item.category)) {
         categoryMap.set(item.category, []);
       }
@@ -803,7 +833,118 @@ export default function SEOMaturityPage() {
 
             {/* Sunburst Chart */}
             <div className="mb-8">
-              <h3 className="text-lg font-semibold text-white mb-4">Übersicht</h3>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+                <h3 className="text-lg font-semibold text-white">Übersicht</h3>
+                
+                {/* Filter */}
+                <div className="flex flex-wrap items-center gap-4">
+                  {/* Reifegrad-Filter */}
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-slate-300 whitespace-nowrap">Reifegrad:</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="1"
+                        max="10"
+                        value={scoreFilter.min}
+                        onChange={(e) => setScoreFilter({ ...scoreFilter, min: Math.max(1, Math.min(10, parseInt(e.target.value) || 1)) })}
+                        className="w-16 px-2 py-1 bg-slate-800 border border-slate-700 rounded text-white text-sm"
+                      />
+                      <span className="text-slate-400">-</span>
+                      <input
+                        type="number"
+                        min="1"
+                        max="10"
+                        value={scoreFilter.max}
+                        onChange={(e) => setScoreFilter({ ...scoreFilter, max: Math.max(1, Math.min(10, parseInt(e.target.value) || 10)) })}
+                        className="w-16 px-2 py-1 bg-slate-800 border border-slate-700 rounded text-white text-sm"
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Prioritäts-Filter */}
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-slate-300 whitespace-nowrap">Priorität:</label>
+                    <div className="flex flex-wrap gap-2">
+                      {["A", "B", "C", "D", "KEINE"].map((priority) => {
+                        const isSelected = priorityFilter.includes(priority);
+                        return (
+                          <button
+                            key={priority}
+                            onClick={() => {
+                              if (isSelected) {
+                                setPriorityFilter(priorityFilter.filter((p) => p !== priority));
+                              } else {
+                                setPriorityFilter([...priorityFilter, priority]);
+                              }
+                            }}
+                            className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                              isSelected
+                                ? priority === "KEINE"
+                                  ? "bg-slate-600 text-white"
+                                  : priority === "A"
+                                  ? "bg-white text-slate-900"
+                                  : priority === "B"
+                                  ? "bg-slate-200 text-slate-900"
+                                  : priority === "C"
+                                  ? "bg-slate-400 text-white"
+                                  : "bg-slate-500 text-white"
+                                : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                            }`}
+                          >
+                            {priority}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  
+                  {/* Team-Filter */}
+                  {availableTeams.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm text-slate-300 whitespace-nowrap">Teams:</label>
+                      <div className="flex flex-wrap gap-2">
+                        {availableTeams.map((team) => {
+                          const isSelected = teamFilter.includes(team.id);
+                          return (
+                            <button
+                              key={team.id}
+                              onClick={() => {
+                                if (isSelected) {
+                                  setTeamFilter(teamFilter.filter((id) => id !== team.id));
+                                } else {
+                                  setTeamFilter([...teamFilter, team.id]);
+                                }
+                              }}
+                              className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                                isSelected
+                                  ? "bg-blue-600 text-white hover:bg-blue-700"
+                                  : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                              }`}
+                            >
+                              {team.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Filter zurücksetzen */}
+                  {(scoreFilter.min !== 1 || scoreFilter.max !== 10 || priorityFilter.length > 0 || teamFilter.length > 0) && (
+                    <button
+                      onClick={() => {
+                        setScoreFilter({ min: 1, max: 10 });
+                        setPriorityFilter([]);
+                        setTeamFilter([]);
+                      }}
+                      className="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm rounded transition-colors"
+                    >
+                      Filter zurücksetzen
+                    </button>
+                  )}
+                </div>
+              </div>
               <div className="flex justify-center w-full overflow-x-auto">
                 <SunburstChart data={prepareSunburstData()} width={1200} height={1200} />
               </div>
