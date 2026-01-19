@@ -16,11 +16,10 @@ export async function GET(
 
     const { id } = await params;
 
-    // Hole KVP URL mit Subkeywords
+    // Hole KVP URL mit Subkeywords (teamweiter Zugriff)
     const kvpUrl = await prisma.kVPUrl.findFirst({
       where: {
         id,
-        userId: session.user.id,
       },
       include: {
         subkeywords: {
@@ -33,9 +32,8 @@ export async function GET(
       return NextResponse.json({ error: "KVP URL not found" }, { status: 404 });
     }
 
-    // Hole Rank Tracker
+    // Hole Rank Tracker (teamweiter Zugriff - alle User teilen sich einen Tracker)
     const tracker = await prisma.rankTracker.findFirst({
-      where: { userId: session.user.id },
       include: {
         keywords: {
           where: {

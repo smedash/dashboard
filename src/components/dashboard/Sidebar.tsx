@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 
 const navigation = [
   {
@@ -13,15 +14,16 @@ const navigation = [
       </svg>
     ),
   },
-  {
-    name: "Snapshots",
-    href: "/snapshots",
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-      </svg>
-    ),
-  },
+  // TODO: Snapshots-Link temporär ausgeblendet, kann in Zukunft wieder aktiviert werden
+  // {
+  //   name: "Snapshots",
+  //   href: "/snapshots",
+  //   icon: (
+  //     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  //       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+  //     </svg>
+  //   ),
+  // },
   {
     name: "Auswertung",
     href: "/auswertung",
@@ -146,6 +148,10 @@ const navigation = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const isTicketsActive = pathname === "/tickets";
+  const isAdminActive = pathname.startsWith("/admin");
+  const isSuperadmin = session?.user?.role === "superadmin";
 
   return (
     <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-72 lg:flex-col">
@@ -198,6 +204,41 @@ export function Sidebar() {
               );
             })}
           </ul>
+          
+          {/* Unterer Bereich - separat */}
+          <div className="mt-auto pt-4 border-t border-slate-200 dark:border-slate-700 space-y-1">
+            {/* Admin Link - nur für Superadmins */}
+            {isSuperadmin && (
+              <Link
+                href="/admin/users"
+                className={`group flex gap-x-3 rounded-lg p-3 text-sm font-medium transition-all duration-200 ${
+                  isAdminActive
+                    ? "bg-amber-600 text-white"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700"
+                }`}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+                Nutzerverwaltung
+              </Link>
+            )}
+            
+            {/* Tickets Link */}
+            <Link
+              href="/tickets"
+              className={`group flex gap-x-3 rounded-lg p-3 text-sm font-medium transition-all duration-200 ${
+                isTicketsActive
+                  ? "bg-purple-600 text-white"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700"
+              }`}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+              </svg>
+              Bugs & Features
+            </Link>
+          </div>
         </nav>
       </div>
     </div>

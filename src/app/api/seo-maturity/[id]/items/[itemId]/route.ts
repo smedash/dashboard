@@ -30,7 +30,26 @@ export async function PATCH(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const { score, title, description, category, order, priority } = body;
+    const { score, title, description, category, order, priority, teamIds } = body;
+
+    // Aktualisiere Teams falls teamIds übergeben wurde
+    if (teamIds !== undefined) {
+      // Lösche alle bestehenden Team-Zuordnungen
+      await prisma.sEOMaturityItemTeam.deleteMany({
+        where: { itemId: itemId },
+      });
+
+      // Erstelle neue Team-Zuordnungen
+      if (Array.isArray(teamIds) && teamIds.length > 0) {
+        await prisma.sEOMaturityItemTeam.createMany({
+          data: teamIds.map((teamId: string) => ({
+            itemId: itemId,
+            teamId: teamId,
+          })),
+          skipDuplicates: true,
+        });
+      }
+    }
 
     const item = await prisma.sEOMaturityItem.update({
       where: { id: itemId },
@@ -41,6 +60,13 @@ export async function PATCH(
         ...(category && { category }),
         ...(order !== undefined && { order }),
         ...(priority !== undefined && { priority: priority || null }),
+      },
+      include: {
+        teams: {
+          include: {
+            team: true,
+          },
+        },
       },
     });
 

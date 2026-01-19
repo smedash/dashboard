@@ -4,27 +4,11 @@ import { useState, useEffect, useMemo } from "react";
 import { DataTable } from "@/components/ui/DataTable";
 import { BarChart } from "@/components/charts/BarChart";
 import { StatCard } from "@/components/ui/StatCard";
+import { PeriodSelector } from "@/components/ui/PeriodSelector";
+import { useProperty } from "@/contexts/PropertyContext";
 
-interface Snapshot {
-  id: string;
-  name: string;
-  startDate: string;
-  endDate: string;
-  totals: {
-    clicks: number;
-    impressions: number;
-    ctr: number;
-    position: number;
-  };
-  property: {
-    siteUrl: string;
-  };
-}
-
-interface SnapshotData {
-  dimension: string;
-  key: string;
-  pageUrl?: string | null;
+interface GSCRow {
+  keys: string[];
   clicks: number;
   impressions: number;
   ctr: number;
@@ -55,55 +39,95 @@ interface DirectoryStats {
 }
 
 export default function AuswertungPage() {
-  const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
-  const [selectedSnapshotId, setSelectedSnapshotId] = useState<string | null>(null);
-  const [snapshotData, setSnapshotData] = useState<SnapshotData[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { selectedProperty } = useProperty();
+  const [period, setPeriod] = useState("28d");
+  const [pagesData, setPagesData] = useState<GSCRow[]>([]);
+  const [queryPageData, setQueryPageData] = useState<GSCRow[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [selectedDirectory, setSelectedDirectory] = useState<string | null>(null);
   const [directoryDepth, setDirectoryDepth] = useState(4);
   const [viewMode, setViewMode] = useState<"directories" | "keywords">("directories");
   const [brandFilter, setBrandFilter] = useState("ubs");
   const [excludeBrand, setExcludeBrand] = useState(true);
+  const [totals, setTotals] = useState({
+    clicks: 0,
+    impressions: 0,
+    position: 0,
+  });
 
-  // Fetch all snapshots
+  // Fetch GSC data when property or period changes
   useEffect(() => {
-    async function fetchSnapshots() {
+    async function fetchData() {
+      if (!selectedProperty) {
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoadingData(true);
+      setError(null);
       try {
-        const response = await fetch("/api/snapshots");
-        const data = await response.json();
-        setSnapshots(data.snapshots || []);
-        if (data.snapshots?.length > 0) {
-          setSelectedSnapshotId(data.snapshots[0].id);
+        // Create timeout promise
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error("Zeitüberschreitung beim Laden der Daten")), 60000); // 60 seconds timeout
+        });
+
+        // Fetch data with timeout protection
+        // Reduce limits to improve performance - can be increased if needed
+        const pagesPromise = fetch(`/api/gsc/pages?siteUrl=${encodeURIComponent(selectedProperty)}&period=${period}&limit=10000`);
+        const queryPagePromise = fetch(`/api/gsc/query-page?siteUrl=${encodeURIComponent(selectedProperty)}&period=${period}&limit=10000`);
+        
+        const [pagesRes, queryPageRes] = await Promise.race([
+          Promise.all([pagesPromise, queryPagePromise]),
+          timeoutPromise,
+        ]) as [Response, Response];
+
+        // Check HTTP status codes
+        if (!pagesRes.ok || !queryPageRes.ok) {
+          const errorText = !pagesRes.ok 
+            ? await pagesRes.text() 
+            : await queryPageRes.text();
+          throw new Error(`API Error: ${pagesRes.status} ${queryPageRes.status} - ${errorText}`);
         }
+
+        const pagesResult = await pagesRes.json();
+        const queryPageResult = await queryPageRes.json();
+
+        if (pagesResult.error || queryPageResult.error) {
+          const errorMsg = pagesResult.error || queryPageResult.error;
+          console.error("Error fetching data:", errorMsg);
+          setError(errorMsg || "Fehler beim Laden der Daten");
+          return;
+        }
+
+        setPagesData(pagesResult.data || []);
+        setQueryPageData(queryPageResult.data || []);
+
+        // Calculate totals
+        const totalClicks = pagesResult.data?.reduce((sum: number, row: GSCRow) => sum + row.clicks, 0) || 0;
+        const totalImpressions = pagesResult.data?.reduce((sum: number, row: GSCRow) => sum + row.impressions, 0) || 0;
+        const totalPosition = pagesResult.data?.reduce((sum: number, row: GSCRow) => sum + row.position, 0) || 0;
+        const avgPosition = pagesResult.data?.length > 0 ? totalPosition / pagesResult.data.length : 0;
+
+        setTotals({
+          clicks: totalClicks,
+          impressions: totalImpressions,
+          position: avgPosition,
+        });
+
+        setSelectedDirectory(null);
       } catch (error) {
-        console.error("Error fetching snapshots:", error);
+        console.error("Error fetching GSC data:", error);
+        setError(error instanceof Error ? error.message : "Unbekannter Fehler beim Laden der Daten");
       } finally {
+        setIsLoadingData(false);
         setIsLoading(false);
       }
     }
-    fetchSnapshots();
-  }, []);
 
-  // Fetch snapshot data when selected
-  useEffect(() => {
-    async function fetchSnapshotData() {
-      if (!selectedSnapshotId) return;
-
-      setIsLoadingData(true);
-      try {
-        const response = await fetch(`/api/snapshots/${selectedSnapshotId}`);
-        const data = await response.json();
-        setSnapshotData(data.snapshot?.data || []);
-        setSelectedDirectory(null);
-      } catch (error) {
-        console.error("Error fetching snapshot data:", error);
-      } finally {
-        setIsLoadingData(false);
-      }
-    }
-    fetchSnapshotData();
-  }, [selectedSnapshotId]);
+    fetchData();
+  }, [selectedProperty, period]);
 
   // Parse URL and extract directory path
   const extractDirectoryPath = (url: string, depth: number): string => {
@@ -119,14 +143,12 @@ export default function AuswertungPage() {
 
   // Calculate directory statistics
   const directoryStats = useMemo(() => {
-    const pageData = snapshotData.filter((d) => d.dimension === "page");
-    const queryPageData = snapshotData.filter((d) => d.dimension === "query_page");
-
     const dirMap = new Map<string, DirectoryStats>();
 
     // Group pages by directory
-    pageData.forEach((page) => {
-      const dirPath = extractDirectoryPath(page.key, directoryDepth);
+    pagesData.forEach((page) => {
+      const pageUrl = page.keys[0];
+      const dirPath = extractDirectoryPath(pageUrl, directoryDepth);
 
       if (!dirMap.has(dirPath)) {
         dirMap.set(dirPath, {
@@ -147,7 +169,7 @@ export default function AuswertungPage() {
       dir.pageCount += 1;
       dir.position += page.position;
       dir.pages.push({
-        url: page.key,
+        url: pageUrl,
         clicks: page.clicks,
         impressions: page.impressions,
         ctr: page.ctr,
@@ -165,7 +187,7 @@ export default function AuswertungPage() {
     const stats = Array.from(dirMap.values()).sort((a, b) => b.clicks - a.clicks);
 
     return { directories: stats, queryPageData };
-  }, [snapshotData, directoryDepth]);
+  }, [pagesData, queryPageData, directoryDepth]);
 
   // Get keywords for selected directory based on actual URL data
   const directoryKeywords = useMemo(() => {
@@ -195,18 +217,22 @@ export default function AuswertungPage() {
     }>();
 
     // Use query_page data to get keywords per URL
+    // For query_page: keys[0] = query, keys[1] = page
     directoryStats.queryPageData.forEach((qp) => {
+      const query = qp.keys[0];
+      const pageUrl = qp.keys[1];
+      
       // Check if this keyword's page is in our directory
-      if (qp.pageUrl && pageUrlsInDirectory.has(qp.pageUrl)) {
-        const existing = keywordMap.get(qp.key);
+      if (pageUrl && pageUrlsInDirectory.has(pageUrl)) {
+        const existing = keywordMap.get(query);
         if (existing) {
           existing.clicks += qp.clicks;
           existing.impressions += qp.impressions;
           existing.position += qp.position;
           existing.pageCount += 1;
         } else {
-          keywordMap.set(qp.key, {
-            keyword: qp.key,
+          keywordMap.set(query, {
+            keyword: query,
             clicks: qp.clicks,
             impressions: qp.impressions,
             ctr: qp.ctr,
@@ -242,51 +268,12 @@ export default function AuswertungPage() {
     return keywords;
   }, [selectedDirectory, directoryStats.directories, directoryStats.queryPageData, brandFilter, excludeBrand]);
 
-  const selectedSnapshot = snapshots.find((s) => s.id === selectedSnapshotId);
   const selectedDir = directoryStats.directories.find((d) => d.path === selectedDirectory);
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("de-DE", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-  };
 
   const chartData = directoryStats.directories.slice(0, 10).map((dir) => ({
     directory: dir.path.length > 20 ? "..." + dir.path.slice(-20) : dir.path,
     clicks: dir.clicks,
   }));
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full"></div>
-      </div>
-    );
-  }
-
-  if (snapshots.length === 0) {
-    return (
-      <div className="text-center py-20">
-        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-700 flex items-center justify-center">
-          <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-          </svg>
-        </div>
-        <h2 className="text-xl font-bold text-white mb-2">Keine Snapshots vorhanden</h2>
-        <p className="text-slate-400 mb-4">
-          Erstelle zuerst einen Snapshot, um die Auswertung zu nutzen.
-        </p>
-        <a
-          href="/snapshots"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg transition-colors"
-        >
-          Zu den Snapshots
-        </a>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -295,18 +282,7 @@ export default function AuswertungPage() {
         <h1 className="text-2xl font-bold text-white">Auswertung</h1>
 
         <div className="flex flex-wrap items-center gap-4">
-          {/* Snapshot Selector */}
-          <select
-            value={selectedSnapshotId || ""}
-            onChange={(e) => setSelectedSnapshotId(e.target.value)}
-            className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            {snapshots.map((snapshot) => (
-              <option key={snapshot.id} value={snapshot.id}>
-                {snapshot.name} ({formatDate(snapshot.startDate)} - {formatDate(snapshot.endDate)})
-              </option>
-            ))}
-          </select>
+          <PeriodSelector value={period} onChange={setPeriod} />
 
           {/* Directory Depth */}
           <div className="flex items-center gap-2">
@@ -326,34 +302,64 @@ export default function AuswertungPage() {
         </div>
       </div>
 
+      {error && (
+        <div className="bg-red-500/20 border border-red-500/50 rounded-xl p-4">
+          <div className="flex items-center gap-2">
+            <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="text-red-400 font-medium">Fehler</span>
+          </div>
+          <p className="text-red-300 mt-2">{error}</p>
+        </div>
+      )}
+
       {isLoadingData ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+        <div className="flex flex-col items-center justify-center py-20">
+          <div className="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full mb-4"></div>
+          <div className="text-center">
+            <p className="text-lg font-medium text-white mb-2">
+              Hole Live-Daten aus der GSC...
+            </p>
+            <p className="text-sm text-slate-400">
+              Das kann einige Sekunden dauern!
+            </p>
+          </div>
+        </div>
+      ) : !selectedProperty ? (
+        <div className="text-center py-20">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-700 flex items-center justify-center">
+            <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-bold text-white mb-2">Bitte Property auswählen</h2>
+          <p className="text-slate-400">
+            Wähle eine Property aus, um die Auswertung zu starten.
+          </p>
         </div>
       ) : (
         <>
           {/* Overview Stats */}
-          {selectedSnapshot && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <StatCard
-                title="Verzeichnisse"
-                value={directoryStats.directories.length}
-              />
-              <StatCard
-                title="Gesamt Klicks"
-                value={selectedSnapshot.totals.clicks}
-              />
-              <StatCard
-                title="Gesamt Impressionen"
-                value={selectedSnapshot.totals.impressions}
-              />
-              <StatCard
-                title="Ø Position"
-                value={selectedSnapshot.totals.position}
-                format="position"
-              />
-            </div>
-          )}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <StatCard
+              title="Verzeichnisse"
+              value={directoryStats.directories.length}
+            />
+            <StatCard
+              title="Gesamt Klicks"
+              value={totals.clicks}
+            />
+            <StatCard
+              title="Gesamt Impressionen"
+              value={totals.impressions}
+            />
+            <StatCard
+              title="Ø Position"
+              value={totals.position}
+              format="position"
+            />
+          </div>
 
           {/* Chart */}
           <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
@@ -510,13 +516,10 @@ export default function AuswertungPage() {
                         </tbody>
                       </table>
                     ) : (
-                      // Keywords - jetzt korrekt pro Verzeichnis gefiltert
+                      // Keywords
                       directoryKeywords.length === 0 ? (
                         <div className="p-6 text-center text-slate-400">
                           <p>Keine Keywords für dieses Verzeichnis gefunden.</p>
-                          <p className="text-xs mt-2">
-                            Hinweis: Für neue Snapshots werden Keywords pro URL gespeichert.
-                          </p>
                         </div>
                       ) : (
                         <table className="w-full">
@@ -629,4 +632,3 @@ export default function AuswertungPage() {
     </div>
   );
 }
-

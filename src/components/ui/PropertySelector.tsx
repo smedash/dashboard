@@ -50,9 +50,21 @@ export function PropertySelector({ value, onChange }: PropertySelectorProps) {
 
         setProperties(finalProperties);
 
-        // Auto-select first property if none selected
-        if (!value && finalProperties?.length > 0) {
+        // Only auto-select first property if truly no value is set anywhere
+        // This should only happen on the very first load when nothing is saved
+        // We check both the prop value AND localStorage to avoid race conditions
+        const hasValue = value !== null && value !== undefined;
+        const savedProperty = typeof window !== "undefined" 
+          ? localStorage.getItem("gsc-selected-property")
+          : null;
+        
+        if (!hasValue && !savedProperty && finalProperties?.length > 0) {
+          // Only auto-select if there's truly no value anywhere
           onChange(finalProperties[0].siteUrl);
+        } else if (savedProperty && savedProperty !== value) {
+          // If there's a saved value but it doesn't match current value, restore it
+          // This handles the case where Context hasn't loaded yet
+          onChange(savedProperty);
         }
       } catch {
         setError("Fehler beim Laden der Properties");
@@ -62,7 +74,9 @@ export function PropertySelector({ value, onChange }: PropertySelectorProps) {
     }
 
     fetchProperties();
-  }, [value, onChange]);
+    // Only run once on mount, not when value changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (isLoading) {
     return (

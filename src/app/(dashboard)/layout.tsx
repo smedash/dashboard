@@ -1,7 +1,6 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { Sidebar } from "@/components/dashboard/Sidebar";
-import { Header } from "@/components/dashboard/Header";
+import { DashboardWrapper } from "@/components/dashboard/DashboardWrapper";
 
 export default async function DashboardLayout({
   children,
@@ -15,15 +14,9 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900 transition-colors">
-      <Sidebar />
-      <div className="lg:pl-72">
-        <Header user={session.user} />
-        <main className="py-8 px-4 sm:px-6 lg:px-8">
-          {children}
-        </main>
-      </div>
-    </div>
+    <DashboardWrapper user={session.user}>
+      {children}
+    </DashboardWrapper>
   );
 }
 

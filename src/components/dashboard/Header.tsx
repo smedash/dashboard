@@ -4,6 +4,8 @@ import { signOut } from "next-auth/react";
 import { useState } from "react";
 import Image from "next/image";
 import { useTheme } from "@/hooks/useTheme";
+import { PropertySelector } from "@/components/ui/PropertySelector";
+import { useProperty } from "@/contexts/PropertyContext";
 
 interface HeaderProps {
   user: {
@@ -17,6 +19,7 @@ export function Header({ user }: HeaderProps) {
   const [showDropdown, setShowDropdown] = useState(false);
   const [imageError, setImageError] = useState(false);
   const { theme, setTheme, mounted } = useTheme();
+  const { selectedProperty, setSelectedProperty } = useProperty();
 
   const toggleTheme = () => {
     setTheme(theme === "dark" ? "light" : "dark");
@@ -27,7 +30,10 @@ export function Header({ user }: HeaderProps) {
   return (
     <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm px-4 sm:gap-x-6 sm:px-6 lg:px-8">
       <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
-        <div className="flex flex-1"></div>
+        <div className="flex flex-1 items-center gap-x-4">
+          {/* Property Selector in Header */}
+          <PropertySelector value={selectedProperty} onChange={setSelectedProperty} />
+        </div>
         <div className="flex items-center gap-x-4 lg:gap-x-6">
           {/* Theme Toggle Button */}
           <button

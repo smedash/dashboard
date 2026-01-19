@@ -11,12 +11,14 @@ datasource db {
 }
 
 // NextAuth.js Models
+// Rollen: superadmin (volle Rechte), member (bearbeiten), viewer (nur lesen)
 model User {
   id            String        @id @default(cuid())
   name          String?
   email         String        @unique
   emailVerified DateTime?
   image         String?
+  role          String        @default("member") // superadmin, member, viewer
   accounts      Account[]
   sessions      Session[]
   gscProperties GSCProperty[]
@@ -24,8 +26,11 @@ model User {
   seoMaturity   SEOMaturity[]
   rankTrackers  RankTracker[]
   kvpUrls       KVPUrl[]
+  tickets       Ticket[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
+
+  @@index([role])
 }
 
 model Account {
@@ -129,19 +134,43 @@ model SEOMaturity {
 
 // SEO Reifegrad Item - Einzelne Checklistenpunkte
 model SEOMaturityItem {
-  id          String      @id @default(cuid())
+  id          String                  @id @default(cuid())
   maturityId  String
-  maturity    SEOMaturity @relation(fields: [maturityId], references: [id], onDelete: Cascade)
+  maturity    SEOMaturity             @relation(fields: [maturityId], references: [id], onDelete: Cascade)
   category    String // Kategorie (z.B. "Technische SEO", "Content", etc.)
   title       String // Titel des Punktes
   description String? // Beschreibung
-  score       Int         @default(1) // Bewertung 1-10
-  priority    String?     // Priorität: A, B, C, D
-  order       Int         @default(0) // Reihenfolge innerhalb der Kategorie
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  score       Int                     @default(1) // Bewertung 1-10
+  priority    String?                 // Priorität: A, B, C, D
+  order       Int                     @default(0) // Reihenfolge innerhalb der Kategorie
+  teams       SEOMaturityItemTeam[]   // Zuständige Teams
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
 
   @@index([maturityId, category])
+}
+
+// Team Model - Zuständige Teams für SEO Checkpunkte
+model Team {
+  id        String                  @id @default(cuid())
+  name      String                  @unique // "Content Factory", "SEO & Onsite-Steering", "Channels & Plattform"
+  items     SEOMaturityItemTeam[]
+  createdAt DateTime                @default(now())
+  updatedAt DateTime                @updatedAt
+}
+
+// Many-to-Many Beziehung zwischen SEOMaturityItem und Team
+model SEOMaturityItemTeam {
+  id        String            @id @default(cuid())
+  itemId    String
+  item      SEOMaturityItem   @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  teamId    String
+  team      Team              @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  createdAt DateTime          @default(now())
+
+  @@unique([itemId, teamId])
+  @@index([itemId])
+  @@index([teamId])
 }
 
 // Rank Tracker Model
@@ -230,4 +259,35 @@ model KVPComment {
   updatedAt DateTime @updatedAt
 
   @@index([urlId])
+}
+
+// Ticket System für Bugs und Feature-Wünsche
+model Ticket {
+  id          String         @id @default(cuid())
+  userId      String
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  description String         @db.Text
+  type        String         // "bug" oder "feature"
+  status      String         @default("open") // "open", "in_progress", "closed"
+  priority    String         @default("medium") // "low", "medium", "high"
+  comments    TicketComment[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([userId])
+  @@index([type])
+  @@index([status])
+}
+
+// Ticket Kommentare
+model TicketComment {
+  id        String   @id @default(cuid())
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  userId    String
+  text      String   @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([ticketId])
 }

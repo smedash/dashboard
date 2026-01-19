@@ -2,8 +2,9 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "crypto";
+import { canEdit } from "@/lib/rbac";
 
-// GET - Alle KVP URLs abrufen
+// GET - Alle KVP URLs abrufen (teamweiter Zugriff)
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
@@ -12,8 +13,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Teamweiter Zugriff - keine userId-Filterung
     const kvpUrls = await prisma.kVPUrl.findMany({
-      where: { userId: session.user.id },
       include: {
         subkeywords: {
           orderBy: { createdAt: "asc" },
@@ -35,13 +36,18 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Neue KVP URL erstellen
+// POST - Neue KVP URL erstellen (nur Member und Superadmin)
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Rollenprüfung: Viewer können nicht bearbeiten
+    if (!canEdit(session.user.role)) {
+      return NextResponse.json({ error: "Keine Berechtigung zum Bearbeiten" }, { status: 403 });
     }
 
     const body = await request.json();

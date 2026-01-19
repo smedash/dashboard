@@ -2,8 +2,9 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getGSCSearchAnalytics, getDateRange } from "@/lib/gsc";
 import { NextRequest, NextResponse } from "next/server";
+import { canEdit } from "@/lib/rbac";
 
-// GET - Alle Snapshots abrufen
+// GET - Alle Snapshots abrufen (teamweiter Zugriff)
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
@@ -37,13 +38,18 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Neuen Snapshot erstellen
+// POST - Neuen Snapshot erstellen (nur Member und Superadmin)
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Rollenprüfung: Viewer können nicht bearbeiten
+    if (!canEdit(session.user.role)) {
+      return NextResponse.json({ error: "Keine Berechtigung zum Bearbeiten" }, { status: 403 });
     }
 
     const body = await request.json();

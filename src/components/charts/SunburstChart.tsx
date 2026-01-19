@@ -8,6 +8,13 @@ interface SunburstData {
   children?: SunburstData[];
   score?: number;
   priority?: string | null;
+  teams?: Array<{
+    id: string;
+    team: {
+      id: string;
+      name: string;
+    };
+  }>;
 }
 
 interface SunburstChartProps {
@@ -53,6 +60,7 @@ export function SunburstChart({ data, width = 1200, height = 1200 }: SunburstCha
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [hoveredScore, setHoveredScore] = useState<number | null>(null);
   const [hoveredPriority, setHoveredPriority] = useState<string | null>(null);
+  const [hoveredTeams, setHoveredTeams] = useState<Array<{ id: string; name: string }> | null>(null);
   
   // Die Daten sollten bereits in der richtigen hierarchischen Struktur vorliegen
   const processedData = useMemo(() => {
@@ -154,11 +162,13 @@ export function SunburstChart({ data, width = 1200, height = 1200 }: SunburstCha
               setHoveredItem(`category-${category.name}`);
               setHoveredScore(Math.round(avgScore * 10) / 10);
               setHoveredPriority(null);
+              setHoveredTeams(null);
             }}
             onMouseLeave={() => {
               setHoveredItem(null);
               setHoveredScore(null);
               setHoveredPriority(null);
+              setHoveredTeams(null);
             }}
           />
           {angle > 0.05 && (
@@ -231,11 +241,13 @@ export function SunburstChart({ data, width = 1200, height = 1200 }: SunburstCha
               setHoveredItem(itemKey);
               setHoveredScore(score);
               setHoveredPriority(priority);
+              setHoveredTeams(item.teams?.map(t => t.team) || null);
             }}
             onMouseLeave={() => {
               setHoveredItem(null);
               setHoveredScore(null);
               setHoveredPriority(null);
+              setHoveredTeams(null);
             }}
             />
             {/* Item Text und Score */}
@@ -345,11 +357,13 @@ export function SunburstChart({ data, width = 1200, height = 1200 }: SunburstCha
                   setHoveredItem(itemKey);
                   setHoveredScore(score);
                   setHoveredPriority(priority);
+                  setHoveredTeams(item.teams?.map(t => t.team) || null);
                 }}
                 onMouseLeave={() => {
                   setHoveredItem(null);
                   setHoveredScore(null);
                   setHoveredPriority(null);
+                  setHoveredTeams(null);
                 }}
               />
               {/* Prioritäts-Badge */}
@@ -476,7 +490,8 @@ export function SunburstChart({ data, width = 1200, height = 1200 }: SunburstCha
           const separatorY = textEndY + 20;
           const scoreY = separatorY + 18;
           const priorityY = scoreY + 22;
-          const tooltipHeight = (hoveredPriority ? priorityY : scoreY) - tooltipY + 15;
+          const teamsY = hoveredPriority ? priorityY + 22 : scoreY + 22;
+          const tooltipHeight = (hoveredTeams && hoveredTeams.length > 0 ? teamsY + (hoveredTeams.length * 18) : (hoveredPriority ? priorityY : scoreY)) - tooltipY + 15;
           
           return (
             <g>
@@ -551,6 +566,41 @@ export function SunburstChart({ data, width = 1200, height = 1200 }: SunburstCha
                       >
                         Priorität: {hoveredPriority.toUpperCase()}
                       </text>
+                    </>
+                  )}
+                  {/* Teams / Involvement */}
+                  {hoveredTeams && hoveredTeams.length > 0 && (
+                    <>
+                      <line
+                        x1={width - 260}
+                        y1={teamsY - 10}
+                        x2={width - 40}
+                        y2={teamsY - 10}
+                        stroke="#334155"
+                        strokeWidth={1}
+                      />
+                      <text
+                        x={width - 150}
+                        y={teamsY + 4}
+                        textAnchor="middle"
+                        fill="#94a3b8"
+                        fontSize={11}
+                        fontWeight="bold"
+                      >
+                        Zuständige Teams:
+                      </text>
+                      {hoveredTeams.map((team, idx) => (
+                        <text
+                          key={team.id}
+                          x={width - 150}
+                          y={teamsY + 20 + (idx * 18)}
+                          textAnchor="middle"
+                          fill="#cbd5e1"
+                          fontSize={11}
+                        >
+                          • {team.name}
+                        </text>
+                      ))}
                     </>
                   )}
                 </>

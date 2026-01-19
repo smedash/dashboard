@@ -20,6 +20,13 @@ export async function GET(
       where: { id },
       include: {
         items: {
+          include: {
+            teams: {
+              include: {
+                team: true,
+              },
+            },
+          },
           orderBy: [{ category: "asc" }, { order: "asc" }],
         },
       },
@@ -95,6 +102,13 @@ export async function PATCH(
       },
       include: {
         items: {
+          include: {
+            teams: {
+              include: {
+                team: true,
+              },
+            },
+          },
           orderBy: [{ category: "asc" }, { order: "asc" }],
         },
       },

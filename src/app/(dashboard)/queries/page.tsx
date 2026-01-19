@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { DataTable } from "@/components/ui/DataTable";
 import { PeriodSelector } from "@/components/ui/PeriodSelector";
-import { PropertySelector } from "@/components/ui/PropertySelector";
+import { useProperty } from "@/contexts/PropertyContext";
 
 interface QueryRow {
   keys: string[];
@@ -14,7 +14,7 @@ interface QueryRow {
 }
 
 export default function QueriesPage() {
-  const [selectedProperty, setSelectedProperty] = useState<string | null>(null);
+  const { selectedProperty } = useProperty();
   const [period, setPeriod] = useState("28d");
   const [data, setData] = useState<QueryRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -85,7 +85,6 @@ export default function QueriesPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h1 className="text-2xl font-bold text-white">Suchanfragen</h1>
         <div className="flex flex-wrap items-center gap-4">
-          <PropertySelector value={selectedProperty} onChange={setSelectedProperty} />
           <PeriodSelector value={period} onChange={setPeriod} />
         </div>
       </div>
@@ -145,8 +144,16 @@ export default function QueriesPage() {
 
       <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
         {isLoading ? (
-          <div className="p-8 flex items-center justify-center">
-            <div className="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+          <div className="p-8 flex flex-col items-center justify-center">
+            <div className="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full mb-4"></div>
+            <div className="text-center">
+              <p className="text-lg font-medium text-white mb-2">
+                Hole Live-Daten aus der GSC...
+              </p>
+              <p className="text-sm text-slate-400">
+                Das kann einige Sekunden dauern!
+              </p>
+            </div>
           </div>
         ) : (
           <DataTable

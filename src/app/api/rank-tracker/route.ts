@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
-// GET - Rank Tracker und Keywords abrufen
+// GET - Rank Tracker und Keywords abrufen (teamweiter Zugriff)
 export async function GET() {
   try {
     const session = await auth();
@@ -11,9 +11,8 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Hole oder erstelle Standard Tracker für User
+    // Teamweiter Zugriff - Hole den ersten/einzigen Tracker (alle User teilen sich einen Tracker)
     let tracker = await prisma.rankTracker.findFirst({
-      where: { userId: session.user.id },
       include: {
         keywords: {
           include: {

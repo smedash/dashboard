@@ -35,7 +35,7 @@ export async function POST(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const { category, title, description, score, priority } = body;
+    const { category, title, description, score, priority, teamIds } = body;
 
     if (!category || !title) {
       return NextResponse.json(
@@ -59,6 +59,20 @@ export async function POST(
         score: score || 1,
         priority: priority || null,
         order: maxOrder + 1,
+        teams: {
+          create: Array.isArray(teamIds) && teamIds.length > 0
+            ? teamIds.map((teamId: string) => ({
+                teamId: teamId,
+              }))
+            : [],
+        },
+      },
+      include: {
+        teams: {
+          include: {
+            team: true,
+          },
+        },
       },
     });
 

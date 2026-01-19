@@ -3,6 +3,11 @@
 import { useState, useEffect } from "react";
 import { SunburstChart } from "@/components/charts/SunburstChart";
 
+interface Team {
+  id: string;
+  name: string;
+}
+
 interface SEOMaturityItem {
   id: string;
   category: string;
@@ -11,6 +16,10 @@ interface SEOMaturityItem {
   score: number;
   priority?: string | null; // A, B, C, D
   order: number;
+  teams?: Array<{
+    id: string;
+    team: Team;
+  }>;
 }
 
 interface SEOMaturity {
@@ -283,10 +292,23 @@ export default function SEOMaturityPage() {
   const [newItemDescription, setNewItemDescription] = useState<string>("");
   const [newItemScore, setNewItemScore] = useState<number>(1);
   const [isAddingItem, setIsAddingItem] = useState(false);
+  const [availableTeams, setAvailableTeams] = useState<Team[]>([]);
+  const [selectedTeams, setSelectedTeams] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
     fetchMaturities();
+    fetchTeams();
   }, []);
+
+  const fetchTeams = async () => {
+    try {
+      const response = await fetch("/api/seo-maturity/teams");
+      const data = await response.json();
+      setAvailableTeams(data.teams || []);
+    } catch (error) {
+      console.error("Error fetching teams:", error);
+    }
+  };
 
   const fetchMaturities = async () => {
     try {
@@ -300,7 +322,14 @@ export default function SEOMaturityPage() {
       }));
       setMaturities(translatedMaturities);
       if (translatedMaturities.length > 0 && !selectedMaturity) {
-        setSelectedMaturity(translatedMaturities[0]);
+        const maturity = translatedMaturities[0];
+        setSelectedMaturity(maturity);
+        // Initialisiere selectedTeams für alle Items
+        const teamsMap: Record<string, string[]> = {};
+        maturity.items.forEach((item: SEOMaturityItem) => {
+          teamsMap[item.id] = item.teams?.map((t) => t.team.id) || [];
+        });
+        setSelectedTeams(teamsMap);
       }
     } catch (error) {
       console.error("Error fetching maturities:", error);
@@ -390,12 +419,38 @@ export default function SEOMaturityPage() {
       const data = await response.json();
       if (data.item) {
         const updatedItems = selectedMaturity.items.map((item) =>
-          item.id === itemId ? { ...item, priority: data.item.priority } : item
+          item.id === itemId ? { ...item, priority: data.item.priority, teams: data.item.teams } : item
         );
         setSelectedMaturity({ ...selectedMaturity, items: updatedItems });
       }
     } catch (error) {
       console.error("Error updating item priority:", error);
+    }
+  };
+
+  const updateItemTeams = async (itemId: string, teamIds: string[]) => {
+    if (!selectedMaturity) return;
+
+    try {
+      const response = await fetch(
+        `/api/seo-maturity/${selectedMaturity.id}/items/${itemId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ teamIds }),
+        }
+      );
+
+      const data = await response.json();
+      if (data.item) {
+        const updatedItems = selectedMaturity.items.map((item) =>
+          item.id === itemId ? { ...item, teams: data.item.teams } : item
+        );
+        setSelectedMaturity({ ...selectedMaturity, items: updatedItems });
+        setSelectedTeams({ ...selectedTeams, [itemId]: teamIds });
+      }
+    } catch (error) {
+      console.error("Error updating item teams:", error);
     }
   };
 
@@ -473,6 +528,7 @@ export default function SEOMaturityPage() {
         });
         
         setSelectedMaturity({ ...selectedMaturity, items: updatedItems });
+        setSelectedTeams({ ...selectedTeams, [translatedItem.id]: translatedItem.teams?.map((t: any) => t.team.id) || [] });
         setShowAddItemForm(null);
         setNewItemCategory("");
         setNewItemTitle("");
@@ -643,6 +699,7 @@ export default function SEOMaturityPage() {
         value: item.score,
         score: item.score,
         priority: item.priority || null,
+        teams: item.teams || [],
       })),
     }));
   };
@@ -666,7 +723,18 @@ export default function SEOMaturityPage() {
               value={selectedMaturity?.id || ""}
               onChange={(e) => {
                 const maturity = maturities.find((m) => m.id === e.target.value);
-                setSelectedMaturity(maturity || null);
+                if (maturity) {
+                  setSelectedMaturity(maturity);
+                  // Initialisiere selectedTeams für alle Items
+                  const teamsMap: Record<string, string[]> = {};
+                  maturity.items.forEach((item: SEOMaturityItem) => {
+                    teamsMap[item.id] = item.teams?.map((t) => t.team.id) || [];
+                  });
+                  setSelectedTeams(teamsMap);
+                } else {
+                  setSelectedMaturity(null);
+                  setSelectedTeams({});
+                }
               }}
               className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white"
             >
@@ -1147,6 +1215,39 @@ export default function SEOMaturityPage() {
                                   <option value="C">C</option>
                                   <option value="D">D</option>
                                 </select>
+                              </div>
+                              {/* Team-Auswahl */}
+                              <div className="flex flex-col gap-1 pt-1 min-w-[200px]">
+                                <label className="text-xs text-slate-400">Zuständige Teams</label>
+                                <div className="flex flex-col gap-1">
+                                  {availableTeams.map((team) => {
+                                    const itemTeams = item.teams?.map((t) => t.team.id) || [];
+                                    const isSelected = itemTeams.includes(team.id);
+                                    return (
+                                      <label
+                                        key={team.id}
+                                        className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer hover:text-white transition-colors"
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={isSelected}
+                                          onChange={(e) => {
+                                            const currentTeams = itemTeams;
+                                            let newTeams: string[];
+                                            if (e.target.checked) {
+                                              newTeams = [...currentTeams, team.id];
+                                            } else {
+                                              newTeams = currentTeams.filter((id) => id !== team.id);
+                                            }
+                                            updateItemTeams(item.id, newTeams);
+                                          }}
+                                          className="w-3 h-3 rounded border-slate-600 bg-slate-800 text-blue-600 focus:ring-blue-500 focus:ring-1"
+                                        />
+                                        <span>{team.name}</span>
+                                      </label>
+                                    );
+                                  })}
+                                </div>
                               </div>
                             </div>
                           </div>
