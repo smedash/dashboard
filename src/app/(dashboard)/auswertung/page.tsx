@@ -40,12 +40,14 @@ interface DirectoryStats {
 
 export default function AuswertungPage() {
   const { selectedProperty } = useProperty();
+  const [mounted, setMounted] = useState(false);
   const [period, setPeriod] = useState("28d");
   const [pagesData, setPagesData] = useState<GSCRow[]>([]);
   const [queryPageData, setQueryPageData] = useState<GSCRow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [needsGoogleConnection, setNeedsGoogleConnection] = useState(false);
   const [selectedDirectory, setSelectedDirectory] = useState<string | null>(null);
   const [directoryDepth, setDirectoryDepth] = useState(4);
   const [viewMode, setViewMode] = useState<"directories" | "keywords">("directories");
@@ -57,6 +59,11 @@ export default function AuswertungPage() {
     position: 0,
   });
 
+  // Set mounted to true after component mounts to avoid hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // Fetch GSC data when property or period changes
   useEffect(() => {
     async function fetchData() {
@@ -67,6 +74,7 @@ export default function AuswertungPage() {
 
       setIsLoadingData(true);
       setError(null);
+      setNeedsGoogleConnection(false);
       try {
         // Create timeout promise
         const timeoutPromise = new Promise<never>((_, reject) => {
@@ -85,9 +93,17 @@ export default function AuswertungPage() {
 
         // Check HTTP status codes
         if (!pagesRes.ok || !queryPageRes.ok) {
-          const errorText = !pagesRes.ok 
-            ? await pagesRes.text() 
-            : await queryPageRes.text();
+          const errorResponse = !pagesRes.ok 
+            ? await pagesRes.json() 
+            : await queryPageRes.json();
+          
+          // Check if Google account needs to be connected
+          if (errorResponse.needsConnection || pagesRes.status === 403 || queryPageRes.status === 403) {
+            setNeedsGoogleConnection(true);
+            return;
+          }
+          
+          const errorText = errorResponse.error || JSON.stringify(errorResponse);
           throw new Error(`API Error: ${pagesRes.status} ${queryPageRes.status} - ${errorText}`);
         }
 
@@ -95,11 +111,20 @@ export default function AuswertungPage() {
         const queryPageResult = await queryPageRes.json();
 
         if (pagesResult.error || queryPageResult.error) {
+          // Check if error indicates missing Google connection
+          if (pagesResult.needsConnection || queryPageResult.needsConnection) {
+            setNeedsGoogleConnection(true);
+            return;
+          }
+          
           const errorMsg = pagesResult.error || queryPageResult.error;
           console.error("Error fetching data:", errorMsg);
           setError(errorMsg || "Fehler beim Laden der Daten");
           return;
         }
+        
+        // Reset needsGoogleConnection if data loads successfully
+        setNeedsGoogleConnection(false);
 
         setPagesData(pagesResult.data || []);
         setQueryPageData(queryPageResult.data || []);
@@ -302,7 +327,33 @@ export default function AuswertungPage() {
         </div>
       </div>
 
-      {error && (
+      {needsGoogleConnection ? (
+        <div className="bg-blue-500/20 border border-blue-500/50 rounded-xl p-6">
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0">
+              <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-blue-400 font-semibold mb-2">Google Account nicht verbunden</h3>
+              <p className="text-blue-300 mb-4">
+                Du hast Dich noch nicht via Google OAuth mit Deinem Google Account verbunden und kannst deshalb hier keine Daten sehen.
+              </p>
+              <a
+                href="/settings"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Zu den Einstellungen gehen
+              </a>
+            </div>
+          </div>
+        </div>
+      ) : error && (
         <div className="bg-red-500/20 border border-red-500/50 rounded-xl p-4">
           <div className="flex items-center gap-2">
             <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -326,7 +377,7 @@ export default function AuswertungPage() {
             </p>
           </div>
         </div>
-      ) : !selectedProperty ? (
+      ) : !mounted || !selectedProperty ? (
         <div className="text-center py-20">
           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-700 flex items-center justify-center">
             <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

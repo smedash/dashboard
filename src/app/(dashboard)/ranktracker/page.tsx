@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import { DataTable } from "@/components/ui/DataTable";
 import { LineChart } from "@/components/charts/LineChart";
+import { canEdit } from "@/lib/rbac";
 
 interface Keyword {
   id: string;
@@ -48,6 +50,8 @@ interface Ranking {
 }
 
 export default function RankTrackerPage() {
+  const { data: session } = useSession();
+  const canEditData = canEdit(session?.user?.role);
   const [tracker, setTracker] = useState<Tracker | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isFetching, setIsFetching] = useState(false);
@@ -315,15 +319,17 @@ export default function RankTrackerPage() {
               </option>
             ))}
           </select>
-          <button
-            onClick={() => setShowAddForm(!showAddForm)}
-            className="px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-900 dark:text-white rounded-lg transition-colors"
-          >
-            {showAddForm ? "Abbrechen" : "Keyword hinzufügen"}
-          </button>
+          {canEditData && (
+            <button
+              onClick={() => setShowAddForm(!showAddForm)}
+              className="px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-900 dark:text-white rounded-lg transition-colors"
+            >
+              {showAddForm ? "Abbrechen" : "Keyword hinzufügen"}
+            </button>
+          )}
           <button
             onClick={handleFetchRankings}
-            disabled={isFetching || !tracker || tracker.keywords.length === 0}
+            disabled={!canEditData || isFetching || !tracker || tracker.keywords.length === 0}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-600/50 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center gap-2"
           >
             {isFetching ? (
@@ -346,7 +352,7 @@ export default function RankTrackerPage() {
         </div>
       </div>
 
-      {showAddForm && (
+      {showAddForm && canEditData && (
         <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Neues Keyword hinzufügen</h2>
           <form onSubmit={handleAddKeyword} className="space-y-4">
@@ -446,13 +452,6 @@ export default function RankTrackerPage() {
                   },
                 },
                 {
-                  key: "targetUrl",
-                  header: "Ziel-Domain",
-                  render: (value) => {
-                    return <span className="text-slate-700 dark:text-slate-300">{value as string}</span>;
-                  },
-                },
-                {
                   key: "position",
                   header: "Position",
                   sortable: true,
@@ -494,26 +493,28 @@ export default function RankTrackerPage() {
                   header: "Aktionen",
                   render: (_, row) => (
                     <div className="flex gap-2 items-center">
-                      <button
-                        onClick={() => handleRefreshKeyword(row.id as string)}
-                        disabled={refreshingKeywordId === row.id}
-                        className="p-1.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 hover:text-slate-900 dark:hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                        title="Ranking aktualisieren"
-                      >
-                        <svg
-                          className={`w-4 h-4 ${refreshingKeywordId === row.id ? "animate-spin" : ""}`}
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
+                      {canEditData && (
+                        <button
+                          onClick={() => handleRefreshKeyword(row.id as string)}
+                          disabled={refreshingKeywordId === row.id}
+                          className="p-1.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 hover:text-slate-900 dark:hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          title="Ranking aktualisieren"
                         >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                          />
-                        </svg>
-                      </button>
+                          <svg
+                            className={`w-4 h-4 ${refreshingKeywordId === row.id ? "animate-spin" : ""}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                            />
+                          </svg>
+                        </button>
+                      )}
                       <button
                         onClick={() => handleKeywordSelect(row.id as string)}
                         className={`px-3 py-1 text-xs rounded ${
@@ -524,12 +525,14 @@ export default function RankTrackerPage() {
                       >
                         {selectedKeyword === row.id ? "Ausgewählt" : "Auswählen"}
                       </button>
-                      <button
-                        onClick={() => handleDeleteKeyword(row.id as string)}
-                        className="px-3 py-1 text-xs rounded bg-red-600/20 text-red-400 hover:bg-red-600/30"
-                      >
-                        Löschen
-                      </button>
+                      {canEditData && (
+                        <button
+                          onClick={() => handleDeleteKeyword(row.id as string)}
+                          className="px-3 py-1 text-xs rounded bg-red-600/20 text-red-400 hover:bg-red-600/30"
+                        >
+                          Löschen
+                        </button>
+                      )}
                     </div>
                   ),
                 },
@@ -563,14 +566,18 @@ export default function RankTrackerPage() {
           </div>
           <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">Noch keine Keywords</h3>
           <p className="text-slate-600 dark:text-slate-400 mb-6">
-            Füge Dein erstes Keyword hinzu, um Rankings zu tracken.
+            {canEditData 
+              ? "Füge Dein erstes Keyword hinzu, um Rankings zu tracken."
+              : "Es sind noch keine Keywords vorhanden."}
           </p>
-          <button
-            onClick={() => setShowAddForm(true)}
-            className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors"
-          >
-            Erstes Keyword hinzufügen
-          </button>
+          {canEditData && (
+            <button
+              onClick={() => setShowAddForm(true)}
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors"
+            >
+              Erstes Keyword hinzufügen
+            </button>
+          )}
         </div>
       )}
     </div>

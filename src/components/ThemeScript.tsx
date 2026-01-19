@@ -4,10 +4,11 @@ import { useEffect } from "react";
 
 export function ThemeScript() {
   useEffect(() => {
-    // Setze Theme beim ersten Laden
-    const savedTheme = localStorage.getItem("theme") || "dark";
+    // Immer Dark-Mode erzwingen
+    const theme = "dark";
+    localStorage.setItem("theme", theme);
     document.documentElement.classList.remove("light", "dark");
-    document.documentElement.classList.add(savedTheme);
+    document.documentElement.classList.add(theme);
   }, []);
 
   return null;

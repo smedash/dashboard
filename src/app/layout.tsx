@@ -34,7 +34,9 @@ export default function RootLayout({
             __html: `
               (function() {
                 try {
-                  const theme = localStorage.getItem('theme') || 'dark';
+                  // Immer Dark-Mode erzwingen
+                  const theme = 'dark';
+                  localStorage.setItem('theme', theme);
                   document.documentElement.classList.remove('light', 'dark');
                   document.documentElement.classList.add(theme);
                 } catch (e) {

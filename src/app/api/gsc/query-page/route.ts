@@ -12,14 +12,19 @@ export async function GET(request: NextRequest) {
 
     const searchParams = request.nextUrl.searchParams;
     const siteUrl = searchParams.get("siteUrl");
-    const period = searchParams.get("period") || "28d";
+    const period = searchParams.get("period");
+    const startDateParam = searchParams.get("startDate");
+    const endDateParam = searchParams.get("endDate");
     const limit = parseInt(searchParams.get("limit") || "25000");
 
     if (!siteUrl) {
       return NextResponse.json({ error: "siteUrl is required" }, { status: 400 });
     }
 
-    const { startDate, endDate } = getDateRange(period);
+    // Use direct dates if provided, otherwise use period
+    const { startDate, endDate } = startDateParam && endDateParam
+      ? { startDate: startDateParam, endDate: endDateParam }
+      : getDateRange(period || "28d");
 
     const data = await getGSCSearchAnalytics(session.user.id, siteUrl, {
       startDate,
@@ -34,6 +39,14 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("Error fetching GSC query-page data:", error);
+    
+    if (error instanceof Error && error.message === "No Google account connected") {
+      return NextResponse.json(
+        { error: "Google account not connected", needsConnection: true },
+        { status: 403 }
+      );
+    }
+    
     return NextResponse.json(
       { error: "Failed to fetch query-page data" },
       { status: 500 }

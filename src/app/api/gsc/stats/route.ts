@@ -97,6 +97,14 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("Error fetching GSC stats:", error);
+    
+    if (error instanceof Error && error.message === "No Google account connected") {
+      return NextResponse.json(
+        { error: "Google account not connected", needsConnection: true },
+        { status: 403 }
+      );
+    }
+    
     return NextResponse.json(
       { error: "Failed to fetch stats" },
       { status: 500 }

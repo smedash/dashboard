@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isSuperadmin } from "@/lib/rbac";
+import { sendWelcomeEmail } from "@/lib/resend";
 
 // GET /api/admin/users - Alle User abrufen (nur Superadmin)
 export async function GET() {
@@ -92,6 +93,34 @@ export async function POST(request: NextRequest) {
         createdAt: true,
       },
     });
+
+    // Hole Informationen über den einladenden Superadmin
+    const invitingUser = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: {
+        name: true,
+        email: true,
+      },
+    });
+
+    // Versende Willkommens-E-Mail
+    try {
+      const loginUrl = process.env.NEXTAUTH_URL 
+        ? `${process.env.NEXTAUTH_URL}/login`
+        : "https://dashboard.tasketeer.com/login";
+      
+      await sendWelcomeEmail({
+        to: email,
+        invitedBy: {
+          name: invitingUser?.name || null,
+          email: invitingUser?.email || "ein Administrator",
+        },
+        loginUrl,
+      });
+    } catch (emailError) {
+      // Logge Fehler, aber verhindere nicht die User-Erstellung
+      console.error("Error sending welcome email:", emailError);
+    }
 
     return NextResponse.json({ user }, { status: 201 });
   } catch (error) {

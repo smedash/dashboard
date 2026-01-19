@@ -10,18 +10,21 @@ export function useTheme() {
 
   useEffect(() => {
     setMounted(true);
-    const savedTheme = localStorage.getItem("theme") as Theme | null;
-    const currentTheme = savedTheme || "dark";
+    // Immer Dark-Mode erzwingen
+    const currentTheme: Theme = "dark";
+    localStorage.setItem("theme", currentTheme);
     setThemeState(currentTheme);
     document.documentElement.classList.remove("light", "dark");
     document.documentElement.classList.add(currentTheme);
   }, []);
 
   const setTheme = (newTheme: Theme) => {
-    setThemeState(newTheme);
-    localStorage.setItem("theme", newTheme);
+    // Immer Dark-Mode erzwingen, ignoriere andere Themes
+    const forcedTheme: Theme = "dark";
+    setThemeState(forcedTheme);
+    localStorage.setItem("theme", forcedTheme);
     document.documentElement.classList.remove("light", "dark");
-    document.documentElement.classList.add(newTheme);
+    document.documentElement.classList.add(forcedTheme);
   };
 
   return { theme, setTheme, mounted };
