@@ -10,7 +10,7 @@ export async function sendMagicLinkEmail({
   url: string;
 }) {
   const { data, error } = await resend.emails.send({
-    from: "SME Dashboard <auth@tasketeer.com>",
+    from: "SME Dashboard <mail@tasketeer.com>",
     to: to,
     subject: "Dein Magic Link zum Einloggen",
     html: `

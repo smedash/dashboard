@@ -8,7 +8,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Resend({
       apiKey: process.env.RESEND_API_KEY,
-      from: "SME Dashboard <auth@tasketeer.com>",
+      from: "SME Dashboard <mail@tasketeer.com>",
     }),
     // Google is handled separately via /api/auth/link-google for account linking
   ],
@@ -31,6 +31,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async session({ session, user }) {
       if (session.user) {
         session.user.id = user.id;
+        // Rolle aus der Datenbank laden
+        const dbUser = await prisma.user.findUnique({
+          where: { id: user.id },
+          select: { role: true },
+        });
+        session.user.role = dbUser?.role || "member";
       }
       return session;
     },
