@@ -6,18 +6,21 @@ import { DataTable } from "@/components/ui/DataTable";
 import { LineChart } from "@/components/charts/LineChart";
 import { canEdit } from "@/lib/rbac";
 
+interface RankingData {
+  id: string;
+  position: number | null;
+  url: string | null;
+  date: string;
+}
+
 interface Keyword {
   id: string;
   keyword: string;
   category: string | null;
   targetUrl: string | null;
   createdAt: string;
-  rankings: Array<{
-    id: string;
-    position: number | null;
-    url: string | null;
-    date: string;
-  }>;
+  rankings: RankingData[];
+  firstRanking?: RankingData | null;
 }
 
 const KEYWORD_CATEGORIES = [
@@ -62,7 +65,12 @@ export default function RankTrackerPage() {
   const [historicalRankings, setHistoricalRankings] = useState<Ranking[]>([]);
   const [selectedKeyword, setSelectedKeyword] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string>("");
+  const [developmentFilter, setDevelopmentFilter] = useState<string>("");
+  const [searchText, setSearchText] = useState<string>("");
+  const [urlFilter, setUrlFilter] = useState<string>("");
   const [refreshingKeywordId, setRefreshingKeywordId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const itemsPerPage = 25;
 
   useEffect(() => {
     fetchTracker();
@@ -210,27 +218,115 @@ export default function RankTrackerPage() {
     }
   }
 
-  // Bereite Daten für Tabelle vor (mit Kategorie-Filter)
+  // Hilfsfunktion für Delta-Berechnung
+  const calculateDelta = (current: number | null, previous: number | null): number | null => {
+    if (current === null || previous === null) return null;
+    return previous - current; // Positiv = Verbesserung (niedrigere Position ist besser)
+  };
+
+  // Hilfsfunktion für Delta-Anzeige
+  const renderDelta = (delta: number | null) => {
+    if (delta === null) return <span className="text-slate-500">-</span>;
+    if (delta === 0) return <span className="text-slate-500">±0</span>;
+    if (delta > 0) {
+      return (
+        <span className="text-green-600 dark:text-green-400 flex items-center gap-0.5">
+          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+          </svg>
+          +{delta}
+        </span>
+      );
+    }
+    return (
+      <span className="text-red-600 dark:text-red-400 flex items-center gap-0.5">
+        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+          <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+        </svg>
+        {delta}
+      </span>
+    );
+  };
+
+  // Bereite Daten für Tabelle vor (mit Kategorie- und Entwicklungs-Filter)
   const tableData = tracker?.keywords
-    .filter((keyword) => {
-      if (!categoryFilter) return true;
-      if (categoryFilter === "__none__") return !keyword.category;
-      return keyword.category === categoryFilter;
-    })
     .map((keyword) => {
       const latestRanking = keyword.rankings[0];
+      const previousRanking = keyword.rankings[1]; // Vorletztes Ranking
+      const firstRanking = keyword.firstRanking;
+      
+      const currentPosition = latestRanking?.position ?? null;
+      const previousPosition = previousRanking?.position ?? null;
+      const firstPosition = firstRanking?.position ?? null;
+      
       return {
         id: keyword.id,
         keyword: keyword.keyword,
         category: keyword.category,
         targetUrl: keyword.targetUrl || "ubs.com",
-        position: latestRanking?.position ?? null,
+        position: currentPosition,
+        deltaLast: calculateDelta(currentPosition, previousPosition),
+        deltaFirst: calculateDelta(currentPosition, firstPosition),
         url: latestRanking?.url ?? null,
         lastUpdate: latestRanking?.date
           ? new Date(latestRanking.date).toLocaleDateString("de-DE")
           : "Nie",
+        firstUpdate: firstRanking?.date
+          ? new Date(firstRanking.date).toLocaleDateString("de-DE")
+          : "Nie",
       };
+    })
+    .filter((row) => {
+      // Suchtext-Filter (Keywords)
+      if (searchText) {
+        const searchLower = searchText.toLowerCase();
+        if (!row.keyword.toLowerCase().includes(searchLower)) return false;
+      }
+      
+      // URL-Filter (Ranking URL enthält)
+      if (urlFilter) {
+        const urlLower = urlFilter.toLowerCase();
+        if (!row.url?.toLowerCase().includes(urlLower)) return false;
+      }
+      
+      // Kategorie-Filter
+      if (categoryFilter) {
+        if (categoryFilter === "__none__" && row.category) return false;
+        if (categoryFilter !== "__none__" && row.category !== categoryFilter) return false;
+      }
+      
+      // Entwicklungs-Filter
+      if (developmentFilter) {
+        switch (developmentFilter) {
+          case "improved_last":
+            return row.deltaLast !== null && row.deltaLast > 0;
+          case "improved_start":
+            return row.deltaFirst !== null && row.deltaFirst > 0;
+          case "declined_last":
+            return row.deltaLast !== null && row.deltaLast < 0;
+          case "declined_start":
+            return row.deltaFirst !== null && row.deltaFirst < 0;
+          case "unchanged_last":
+            return row.deltaLast === 0;
+          case "unchanged_start":
+            return row.deltaFirst === 0;
+          default:
+            return true;
+        }
+      }
+      
+      return true;
     }) || [];
+
+  // Pagination berechnen
+  const totalPages = Math.ceil(tableData.length / itemsPerPage);
+  const paginatedData = tableData.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  // Reset auf Seite 1 wenn Filter sich ändern
+  const resetPagination = () => setCurrentPage(1);
 
   // Bereite Chart-Daten vor
   const chartData: Array<Record<string, unknown>> = [];
@@ -304,11 +400,66 @@ export default function RankTrackerPage() {
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Ranktracker</h1>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Keyword-Suchfeld */}
+          <div className="relative">
+            <input
+              type="text"
+              value={searchText}
+              onChange={(e) => {
+                setSearchText(e.target.value);
+                setCurrentPage(1);
+              }}
+              placeholder="Keyword suchen..."
+              className="pl-9 pr-4 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white text-sm placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 w-44"
+            />
+            <svg
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 dark:text-slate-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+          </div>
+          {/* URL-Suchfeld */}
+          <div className="relative">
+            <input
+              type="text"
+              value={urlFilter}
+              onChange={(e) => {
+                setUrlFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              placeholder="URL enthält..."
+              className="pl-9 pr-4 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white text-sm placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 w-44"
+            />
+            <svg
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 dark:text-slate-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+              />
+            </svg>
+          </div>
           {/* Kategorie-Filter */}
           <select
             value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
+            onChange={(e) => {
+              setCategoryFilter(e.target.value);
+              setCurrentPage(1);
+            }}
             className="px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">Alle Kategorien</option>
@@ -319,6 +470,42 @@ export default function RankTrackerPage() {
               </option>
             ))}
           </select>
+          {/* Entwicklungs-Filter */}
+          <select
+            value={developmentFilter}
+            onChange={(e) => {
+              setDevelopmentFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Alle Entwicklungen</option>
+            <optgroup label="Seit letzter Aktualisierung">
+              <option value="improved_last">↑ Verbessert</option>
+              <option value="declined_last">↓ Verschlechtert</option>
+              <option value="unchanged_last">± Unverändert</option>
+            </optgroup>
+            <optgroup label="Seit Start">
+              <option value="improved_start">↑ Verbessert seit Start</option>
+              <option value="declined_start">↓ Verschlechtert seit Start</option>
+              <option value="unchanged_start">± Unverändert seit Start</option>
+            </optgroup>
+          </select>
+          {/* Filter zurücksetzen */}
+          {(categoryFilter || developmentFilter || searchText || urlFilter) && (
+            <button
+              onClick={() => {
+                setCategoryFilter("");
+                setDevelopmentFilter("");
+                setSearchText("");
+                setUrlFilter("");
+                setCurrentPage(1);
+              }}
+              className="px-3 py-2 bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500 text-slate-700 dark:text-slate-200 rounded-lg text-sm transition-colors"
+            >
+              Filter zurücksetzen
+            </button>
+          )}
           {canEditData && (
             <button
               onClick={() => setShowAddForm(!showAddForm)}
@@ -431,9 +618,21 @@ export default function RankTrackerPage() {
       {tracker && tracker.keywords.length > 0 ? (
         <>
           <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Keywords & Rankings</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                Keywords & Rankings
+                <span className="ml-2 text-sm font-normal text-slate-500 dark:text-slate-400">
+                  ({tracker.keywords.length})
+                </span>
+              </h2>
+              {(categoryFilter || developmentFilter || searchText || urlFilter) && (
+                <span className="text-sm text-slate-600 dark:text-slate-400">
+                  {tableData.length} von {tracker.keywords.length} gefiltert
+                </span>
+              )}
+            </div>
             <DataTable
-              data={tableData}
+              data={paginatedData}
               columns={[
                 {
                   key: "keyword",
@@ -455,16 +654,32 @@ export default function RankTrackerPage() {
                   key: "position",
                   header: "Position",
                   sortable: true,
-                  render: (value) => {
+                  render: (value, row) => {
                     if (value === null) {
+                      // Zeige ">100" wenn es ein Aktualisierungsdatum gibt, sonst "-"
+                      if (row.lastUpdate && row.lastUpdate !== "Nie") {
+                        return <span className="text-slate-500 dark:text-slate-500">&gt;100</span>;
+                      }
                       return <span className="text-slate-500 dark:text-slate-500">-</span>;
                     }
                     const pos = value as number;
                     let color = "text-red-600 dark:text-red-400";
                     if (pos <= 3) color = "text-green-600 dark:text-green-400";
                     else if (pos <= 10) color = "text-yellow-600 dark:text-yellow-400";
-                    return <span className={color}>{pos}</span>;
+                    return <span className={`font-semibold ${color}`}>{pos}</span>;
                   },
+                },
+                {
+                  key: "deltaLast",
+                  header: "Δ Letzte",
+                  sortable: true,
+                  render: (value) => renderDelta(value as number | null),
+                },
+                {
+                  key: "deltaFirst",
+                  header: "Δ Start",
+                  sortable: true,
+                  render: (value) => renderDelta(value as number | null),
                 },
                 {
                   key: "url",
@@ -476,7 +691,7 @@ export default function RankTrackerPage() {
                         href={value as string}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 truncate max-w-md block"
+                        className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 truncate max-w-xs block"
                       >
                         {value as string}
                       </a>
@@ -485,7 +700,7 @@ export default function RankTrackerPage() {
                 },
                 {
                   key: "lastUpdate",
-                  header: "Letzte Aktualisierung",
+                  header: "Aktualisiert",
                   sortable: true,
                 },
                 {
@@ -539,6 +754,80 @@ export default function RankTrackerPage() {
               ]}
               keyField="id"
             />
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                <div className="text-sm text-slate-600 dark:text-slate-400">
+                  Zeige {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, tableData.length)} von {tableData.length}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentPage(1)}
+                    disabled={currentPage === 1}
+                    className="px-2 py-1 text-sm bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 dark:text-slate-300 rounded transition-colors"
+                  >
+                    ««
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1 text-sm bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 dark:text-slate-300 rounded transition-colors"
+                  >
+                    «
+                  </button>
+                  
+                  {/* Seitenzahlen */}
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter((page) => {
+                        // Zeige erste, letzte, aktuelle und benachbarte Seiten
+                        if (page === 1 || page === totalPages) return true;
+                        if (Math.abs(page - currentPage) <= 1) return true;
+                        return false;
+                      })
+                      .map((page, index, arr) => {
+                        // Füge "..." zwischen nicht aufeinanderfolgenden Seiten ein
+                        const prevPage = arr[index - 1];
+                        const showEllipsis = prevPage && page - prevPage > 1;
+                        
+                        return (
+                          <span key={page} className="flex items-center gap-1">
+                            {showEllipsis && (
+                              <span className="px-2 text-slate-500 dark:text-slate-400">...</span>
+                            )}
+                            <button
+                              onClick={() => setCurrentPage(page)}
+                              className={`px-3 py-1 text-sm rounded transition-colors ${
+                                currentPage === page
+                                  ? "bg-blue-600 text-white"
+                                  : "bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300"
+                              }`}
+                            >
+                              {page}
+                            </button>
+                          </span>
+                        );
+                      })}
+                  </div>
+                  
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1 text-sm bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 dark:text-slate-300 rounded transition-colors"
+                  >
+                    »
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={currentPage === totalPages}
+                    className="px-2 py-1 text-sm bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 dark:text-slate-300 rounded transition-colors"
+                  >
+                    »»
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {chartData.length > 0 && (

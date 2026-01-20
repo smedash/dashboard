@@ -88,33 +88,23 @@ export async function POST(request: NextRequest) {
       
       console.log(`[fetchRankings] Ranking-Daten für "${keyword.keyword}":`, rankingData);
       
-      // Nur speichern wenn ein Ranking gefunden wurde (nicht null)
-      // Falls null, behalten wir das letzte bekannte Ranking
-      if (rankingData.position !== null) {
-        const ranking = await prisma.rankTrackerRanking.create({
-          data: {
-            keywordId: keyword.id,
-            position: rankingData.position,
-            url: rankingData.url,
-            date: new Date(),
-          },
-        });
+      // Speichere Ranking (auch wenn position null ist - zeigt an, dass wir geprüft haben)
+      const ranking = await prisma.rankTrackerRanking.create({
+        data: {
+          keywordId: keyword.id,
+          position: rankingData.position, // null wenn nicht in Top 100
+          url: rankingData.url,
+          date: new Date(),
+        },
+      });
 
-        savedRankings.push({
-          keyword: keyword.keyword,
-          ranking,
-        });
-      } else {
-        console.warn(`[fetchRankings] Kein Ranking gefunden für "${keyword.keyword}" - wird nicht gespeichert`);
-        // Hole das letzte bekannte Ranking
-        const lastRanking = await prisma.rankTrackerRanking.findFirst({
-          where: { keywordId: keyword.id },
-          orderBy: { date: "desc" },
-        });
-        
-        if (lastRanking) {
-          console.log(`[fetchRankings] Letztes bekanntes Ranking für "${keyword.keyword}": Position ${lastRanking.position}`);
-        }
+      savedRankings.push({
+        keyword: keyword.keyword,
+        ranking,
+      });
+      
+      if (rankingData.position === null) {
+        console.log(`[fetchRankings] "${keyword.keyword}" nicht in Top 100 gefunden - Zeitstempel gespeichert`);
       }
     }
     

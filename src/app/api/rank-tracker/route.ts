@@ -18,7 +18,7 @@ export async function GET() {
           include: {
             rankings: {
               orderBy: { date: "desc" },
-              take: 1, // Neuestes Ranking pro Keyword
+              take: 10, // Hole mehr Rankings für Entwicklungsanzeige
             },
           },
           orderBy: { createdAt: "desc" },
@@ -40,7 +40,7 @@ export async function GET() {
             include: {
               rankings: {
                 orderBy: { date: "desc" },
-                take: 1,
+                take: 10,
               },
             },
             orderBy: { createdAt: "desc" },
@@ -49,7 +49,43 @@ export async function GET() {
       });
     }
 
-    return NextResponse.json({ tracker });
+    // Hole zusätzlich das erste Ranking für jedes Keyword (für Entwicklung seit Start)
+    const keywordIds = tracker.keywords.map((k) => k.id);
+    
+    // Hole erstes Ranking pro Keyword
+    const firstRankings = await prisma.$queryRaw<Array<{
+      keywordId: string;
+      id: string;
+      position: number | null;
+      url: string | null;
+      date: Date;
+    }>>`
+      SELECT DISTINCT ON ("keywordId") "keywordId", id, position, url, date
+      FROM "RankTrackerRanking"
+      WHERE "keywordId" = ANY(${keywordIds})
+      ORDER BY "keywordId", date ASC
+    `;
+
+    // Erstelle Map für erstes Ranking
+    const firstRankingMap = new Map(
+      firstRankings.map((r) => [r.keywordId, {
+        id: r.id,
+        position: r.position,
+        url: r.url,
+        date: r.date,
+      }])
+    );
+
+    // Füge erstes Ranking zu jedem Keyword hinzu
+    const trackerWithFirstRanking = {
+      ...tracker,
+      keywords: tracker.keywords.map((keyword) => ({
+        ...keyword,
+        firstRanking: firstRankingMap.get(keyword.id) || null,
+      })),
+    };
+
+    return NextResponse.json({ tracker: trackerWithFirstRanking });
   } catch (error) {
     console.error("Error fetching rank tracker:", error);
     return NextResponse.json(
