@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
 import { PieChart } from "@/components/charts";
 import { canEdit } from "@/lib/rbac";
 
@@ -19,6 +20,32 @@ interface KVPComment {
   updatedAt: string;
 }
 
+interface MaturityItem {
+  id: string;
+  category: string;
+  title: string;
+  score: number;
+  maturityId: string;
+  maturityName: string;
+}
+
+interface MaturityLink {
+  id: string;
+  kvpUrlId: string;
+  maturityItemId: string;
+  createdAt: string;
+  maturityItem: {
+    id: string;
+    category: string;
+    title: string;
+    score: number;
+    maturity: {
+      id: string;
+      name: string;
+    };
+  };
+}
+
 interface KVPUrl {
   id: string;
   url: string;
@@ -27,6 +54,7 @@ interface KVPUrl {
   comment?: string | null; // Deprecated, wird durch comments ersetzt
   subkeywords: KVPSubkeyword[];
   comments: KVPComment[];
+  maturityLinks?: MaturityLink[];
   createdAt: string;
   updatedAt: string;
 }
@@ -60,6 +88,7 @@ const formatDateTime = (dateString: string): string => {
 
 export default function UBSKVPPage() {
   const { data: session } = useSession();
+  const searchParams = useSearchParams();
   const canEditData = canEdit(session?.user?.role);
   const [urls, setUrls] = useState<KVPUrl[]>([]);
   const [rankings, setRankings] = useState<Record<string, Ranking[]>>({});
@@ -77,20 +106,88 @@ export default function UBSKVPPage() {
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [commentText, setCommentText] = useState("");
   const [newCommentText, setNewCommentText] = useState<Record<string, string>>({});
-  const [searchText, setSearchText] = useState("");
+  const [searchText, setSearchText] = useState(searchParams.get("search") || "");
   const [categoryFilter, setCategoryFilter] = useState<string>("");
   const [focusKeywordFilter, setFocusKeywordFilter] = useState<string>("");
+  const [allMaturityItems, setAllMaturityItems] = useState<MaturityItem[]>([]);
+  const [maturityLinks, setMaturityLinks] = useState<Record<string, MaturityLink[]>>({});
+  const [editingMaturityLinks, setEditingMaturityLinks] = useState<string | null>(null);
+  const [selectedMaturityItems, setSelectedMaturityItems] = useState<string[]>([]);
 
   useEffect(() => {
     fetchUrls();
+    fetchAllMaturityItems();
   }, []);
 
+  // Update search text from URL params
   useEffect(() => {
-    // Lade Rankings für alle URLs
+    const searchFromUrl = searchParams.get("search");
+    if (searchFromUrl) {
+      setSearchText(searchFromUrl);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    // Lade Rankings und Maturity Links für alle URLs
     urls.forEach((url) => {
       fetchRankings(url.id);
+      fetchMaturityLinks(url.id);
     });
   }, [urls]);
+
+  const fetchAllMaturityItems = async () => {
+    try {
+      const response = await fetch("/api/seo-maturity/items");
+      const data = await response.json();
+      setAllMaturityItems(data.items || []);
+    } catch (error) {
+      console.error("Error fetching maturity items:", error);
+    }
+  };
+
+  const fetchMaturityLinks = async (urlId: string) => {
+    try {
+      const response = await fetch(`/api/kvp/${urlId}/maturity-links`);
+      const data = await response.json();
+      if (data.links) {
+        setMaturityLinks((prev) => ({
+          ...prev,
+          [urlId]: data.links,
+        }));
+      }
+    } catch (error) {
+      console.error("Error fetching maturity links:", error);
+    }
+  };
+
+  const handleUpdateMaturityLinks = async (urlId: string) => {
+    try {
+      const response = await fetch(`/api/kvp/${urlId}/maturity-links`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ maturityItemIds: selectedMaturityItems }),
+      });
+
+      const data = await response.json();
+      if (data.links) {
+        setMaturityLinks((prev) => ({
+          ...prev,
+          [urlId]: data.links,
+        }));
+      }
+      setEditingMaturityLinks(null);
+      setSelectedMaturityItems([]);
+    } catch (error) {
+      console.error("Error updating maturity links:", error);
+      alert("Fehler beim Speichern der Verknüpfungen");
+    }
+  };
+
+  const startEditingMaturityLinks = (urlId: string) => {
+    const currentLinks = maturityLinks[urlId] || [];
+    setSelectedMaturityItems(currentLinks.map((l) => l.maturityItemId));
+    setEditingMaturityLinks(urlId);
+  };
 
   const fetchUrls = async () => {
     try {
@@ -934,6 +1031,127 @@ export default function UBSKVPPage() {
                           </button>
                         ) : null}
                       </div>
+
+                      {/* SEO-Reifegrad-Verknüpfungen */}
+                      <div className="mb-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-medium text-slate-700 dark:text-slate-400">
+                            SEO-Reifegrad Verknüpfungen ({maturityLinks[url.id]?.length || 0})
+                          </span>
+                          {canEditData && editingMaturityLinks !== url.id && (
+                            <button
+                              onClick={() => startEditingMaturityLinks(url.id)}
+                              className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+                            >
+                              Bearbeiten
+                            </button>
+                          )}
+                        </div>
+
+                        {editingMaturityLinks === url.id ? (
+                          <div className="space-y-3 p-3 bg-slate-50 dark:bg-slate-900 rounded-lg">
+                            <p className="text-xs text-slate-600 dark:text-slate-400">
+                              Wähle die SEO-Reifegradpunkte aus, auf die dieser KVP einzahlt:
+                            </p>
+                            <div className="max-h-64 overflow-y-auto space-y-2">
+                              {/* Gruppiere nach Kategorie */}
+                              {Array.from(new Set(allMaturityItems.map((item) => item.category))).map((category) => (
+                                <div key={category} className="space-y-1">
+                                  <div className="text-xs font-semibold text-slate-700 dark:text-slate-300 sticky top-0 bg-slate-50 dark:bg-slate-900 py-1">
+                                    {category}
+                                  </div>
+                                  {allMaturityItems
+                                    .filter((item) => item.category === category)
+                                    .map((item) => (
+                                      <label
+                                        key={item.id}
+                                        className="flex items-start gap-2 p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded cursor-pointer"
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={selectedMaturityItems.includes(item.id)}
+                                          onChange={(e) => {
+                                            if (e.target.checked) {
+                                              setSelectedMaturityItems([...selectedMaturityItems, item.id]);
+                                            } else {
+                                              setSelectedMaturityItems(selectedMaturityItems.filter((id) => id !== item.id));
+                                            }
+                                          }}
+                                          className="mt-0.5 w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500"
+                                        />
+                                        <div className="flex-1 min-w-0">
+                                          <span className="text-sm text-slate-900 dark:text-white block">
+                                            {item.title}
+                                          </span>
+                                          <span className="text-xs text-slate-500 dark:text-slate-500">
+                                            {item.maturityName} • Score: {item.score}/10
+                                          </span>
+                                        </div>
+                                      </label>
+                                    ))}
+                                </div>
+                              ))}
+                            </div>
+                            <div className="flex gap-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                              <button
+                                onClick={() => handleUpdateMaturityLinks(url.id)}
+                                className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded transition-colors"
+                              >
+                                Speichern ({selectedMaturityItems.length} ausgewählt)
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setEditingMaturityLinks(null);
+                                  setSelectedMaturityItems([]);
+                                }}
+                                className="px-3 py-1 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-900 dark:text-white text-sm rounded transition-colors"
+                              >
+                                Abbrechen
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div>
+                            {maturityLinks[url.id] && maturityLinks[url.id].length > 0 ? (
+                              <div className="space-y-1">
+                                {maturityLinks[url.id].map((link) => (
+                                  <div
+                                    key={link.id}
+                                    className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-900 rounded text-sm"
+                                  >
+                                    <div className="flex-1 min-w-0">
+                                      <span className="text-slate-900 dark:text-white block truncate">
+                                        {link.maturityItem.title}
+                                      </span>
+                                      <span className="text-xs text-slate-500 dark:text-slate-500">
+                                        {link.maturityItem.category} • {link.maturityItem.maturity.name}
+                                      </span>
+                                    </div>
+                                    <span
+                                      className={`ml-2 px-2 py-0.5 rounded text-xs font-medium ${
+                                        link.maturityItem.score <= 3
+                                          ? "bg-red-500 text-white"
+                                          : link.maturityItem.score <= 5
+                                          ? "bg-orange-500 text-white"
+                                          : link.maturityItem.score <= 7
+                                          ? "bg-blue-500 text-white"
+                                          : "bg-green-500 text-white"
+                                      }`}
+                                    >
+                                      {link.maturityItem.score}/10
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-xs text-slate-500 dark:text-slate-500 italic">
+                                Keine Verknüpfungen vorhanden
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
                       <div className="mb-4">
                         <div className="space-y-0 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
                           {/* Fokuskeyword - fett */}

@@ -8,6 +8,19 @@ interface Team {
   name: string;
 }
 
+interface KVPLink {
+  linkId: string;
+  linkCreatedAt: string;
+  kvp: {
+    id: string;
+    url: string;
+    focusKeyword: string;
+    category: string | null;
+    createdAt: string;
+    updatedAt: string;
+  };
+}
+
 interface SEOMaturityItem {
   id: string;
   category: string;
@@ -20,6 +33,7 @@ interface SEOMaturityItem {
     id: string;
     team: Team;
   }>;
+  kvpLinks?: KVPLink[];
 }
 
 interface SEOMaturity {
@@ -297,11 +311,45 @@ export default function SEOMaturityPage() {
   const [scoreFilter, setScoreFilter] = useState<{ min: number; max: number }>({ min: 1, max: 10 });
   const [priorityFilter, setPriorityFilter] = useState<string[]>([]);
   const [teamFilter, setTeamFilter] = useState<string[]>([]);
+  const [kvpLinksMap, setKvpLinksMap] = useState<Record<string, KVPLink[]>>({});
+  const [expandedKvpItems, setExpandedKvpItems] = useState<string[]>([]);
 
   useEffect(() => {
     fetchMaturities();
     fetchTeams();
   }, []);
+
+  // Lade KVP-Links wenn eine Maturity ausgewählt wird
+  useEffect(() => {
+    if (selectedMaturity) {
+      selectedMaturity.items.forEach((item) => {
+        fetchKvpLinksForItem(selectedMaturity.id, item.id);
+      });
+    }
+  }, [selectedMaturity?.id]);
+
+  const fetchKvpLinksForItem = async (maturityId: string, itemId: string) => {
+    try {
+      const response = await fetch(`/api/seo-maturity/${maturityId}/items/${itemId}/kvp-links`);
+      const data = await response.json();
+      if (data.links) {
+        setKvpLinksMap((prev) => ({
+          ...prev,
+          [itemId]: data.links,
+        }));
+      }
+    } catch (error) {
+      console.error("Error fetching KVP links:", error);
+    }
+  };
+
+  const toggleKvpExpansion = (itemId: string) => {
+    setExpandedKvpItems((prev) =>
+      prev.includes(itemId)
+        ? prev.filter((id) => id !== itemId)
+        : [...prev, itemId]
+    );
+  };
 
   const fetchTeams = async () => {
     try {
@@ -1346,9 +1394,7 @@ export default function SEOMaturityPage() {
                                       e.target.value || null
                                     )
                                   }
-                                  className={`px-2 py-1 rounded text-white text-sm font-bold ${getPriorityColor(
-                                    item.priority
-                                  )} border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                                  className="px-2 py-1 rounded text-white text-sm font-bold bg-slate-800 border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 >
                                   <option value="">-</option>
                                   <option value="A">A</option>
@@ -1356,6 +1402,11 @@ export default function SEOMaturityPage() {
                                   <option value="C">C</option>
                                   <option value="D">D</option>
                                 </select>
+                                {item.priority && (
+                                  <span className={`mt-1 px-2 py-0.5 rounded text-xs font-bold ${getPriorityColor(item.priority)}`}>
+                                    {item.priority}
+                                  </span>
+                                )}
                               </div>
                               {/* Team-Auswahl */}
                               <div className="flex flex-col gap-1 pt-1 min-w-[200px]">
@@ -1390,6 +1441,85 @@ export default function SEOMaturityPage() {
                                   })}
                                 </div>
                               </div>
+                            </div>
+
+                            {/* Verknüpfte KVPs - immer anzeigen für konsistentes Layout */}
+                            <div className="mt-4 pt-4 border-t border-slate-700">
+                              {kvpLinksMap[item.id] && kvpLinksMap[item.id].length > 0 ? (
+                                <>
+                                  <button
+                                    onClick={() => toggleKvpExpansion(item.id)}
+                                    className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 transition-colors"
+                                  >
+                                    <svg
+                                      className={`w-4 h-4 transition-transform ${
+                                        expandedKvpItems.includes(item.id) ? "rotate-90" : ""
+                                      }`}
+                                      fill="none"
+                                      stroke="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M9 5l7 7-7 7"
+                                      />
+                                    </svg>
+                                    <span>
+                                      {kvpLinksMap[item.id].length} verknüpfte{" "}
+                                      {kvpLinksMap[item.id].length === 1 ? "KVP" : "KVPs"}
+                                    </span>
+                                  </button>
+
+                                  {expandedKvpItems.includes(item.id) && (
+                                    <div className="mt-3 space-y-2">
+                                      {kvpLinksMap[item.id].map((link) => (
+                                        <a
+                                          key={link.linkId}
+                                          href={`/ubs-kvp?search=${encodeURIComponent(link.kvp.focusKeyword)}`}
+                                          className="block p-3 bg-slate-800 hover:bg-slate-750 rounded-lg border border-slate-700 hover:border-slate-600 transition-colors group"
+                                        >
+                                          <div className="flex items-start justify-between gap-3">
+                                            <div className="flex-1 min-w-0">
+                                              <div className="flex items-center gap-2 mb-1">
+                                                <span className="text-sm font-medium text-blue-400 group-hover:text-blue-300 truncate">
+                                                  {link.kvp.focusKeyword}
+                                                </span>
+                                                {link.kvp.category && (
+                                                  <span className="px-2 py-0.5 text-xs bg-slate-700 text-slate-300 rounded">
+                                                    {link.kvp.category}
+                                                  </span>
+                                                )}
+                                              </div>
+                                              <span className="text-xs text-slate-500 truncate block">
+                                                {link.kvp.url}
+                                              </span>
+                                            </div>
+                                            <svg
+                                              className="w-4 h-4 text-slate-500 group-hover:text-slate-400 flex-shrink-0"
+                                              fill="none"
+                                              stroke="currentColor"
+                                              viewBox="0 0 24 24"
+                                            >
+                                              <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth={2}
+                                                d="M9 5l7 7-7 7"
+                                              />
+                                            </svg>
+                                          </div>
+                                        </a>
+                                      ))}
+                                    </div>
+                                  )}
+                                </>
+                              ) : (
+                                <span className="text-sm text-slate-500 italic">
+                                  Keine KVPs verknüpft
+                                </span>
+                              )}
                             </div>
                           </div>
                         ))}

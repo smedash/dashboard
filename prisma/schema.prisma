@@ -144,6 +144,7 @@ model SEOMaturityItem {
   priority    String?                 // Priorität: A, B, C, D
   order       Int                     @default(0) // Reihenfolge innerhalb der Kategorie
   teams       SEOMaturityItemTeam[]   // Zuständige Teams
+  kvpLinks    KVPMaturityItemLink[]   // Verknüpfung zu KVP-URLs
   createdAt   DateTime                @default(now())
   updatedAt   DateTime                @updatedAt
 
@@ -221,20 +222,35 @@ model RankTrackerRanking {
 
 // UBS KVP (Kontinuierlicher Verbesserungsprozess) Model
 model KVPUrl {
-  id          String          @id @default(cuid())
-  userId      String
-  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  url         String          @db.Text
-  focusKeyword String         // Fokuskeyword für die URL
-  category    String?         // Kategorie: Mortgages, Accounts&Cards, Investing, Pension, Digital Banking
-  comment     String?         @db.Text // Kommentarfeld (deprecated, wird durch KVPComment ersetzt)
-  subkeywords KVPSubkeyword[]
-  comments    KVPComment[]
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  id           String                @id @default(cuid())
+  userId       String
+  user         User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  url          String                @db.Text
+  focusKeyword String                // Fokuskeyword für die URL
+  category     String?               // Kategorie: Mortgages, Accounts&Cards, Investing, Pension, Digital Banking
+  comment      String?               @db.Text // Kommentarfeld (deprecated, wird durch KVPComment ersetzt)
+  subkeywords  KVPSubkeyword[]
+  comments     KVPComment[]
+  maturityLinks KVPMaturityItemLink[] // Verknüpfung zu SEO-Reifegradpunkten
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
 
   @@index([userId])
   @@index([category])
+}
+
+// KVP-Reifegrad-Verknüpfung: Many-to-Many zwischen KVPUrl und SEOMaturityItem
+model KVPMaturityItemLink {
+  id              String          @id @default(cuid())
+  kvpUrlId        String
+  kvpUrl          KVPUrl          @relation(fields: [kvpUrlId], references: [id], onDelete: Cascade)
+  maturityItemId  String
+  maturityItem    SEOMaturityItem @relation(fields: [maturityItemId], references: [id], onDelete: Cascade)
+  createdAt       DateTime        @default(now())
+
+  @@unique([kvpUrlId, maturityItemId])
+  @@index([kvpUrlId])
+  @@index([maturityItemId])
 }
 
 // UBS KVP Subkeywords - Beliebig viele Subkeywords pro URL
