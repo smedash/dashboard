@@ -236,6 +236,133 @@ export async function fetchRankings(
   throw new Error("Keine Rankings gefunden");
 }
 
+// ==========================================
+// SEARCH VOLUME API
+// ==========================================
+
+export interface SearchVolumeResult {
+  keyword: string;
+  search_volume: number | null;
+  competition: string | null;
+  competition_index: number | null;
+  cpc: number | null;
+  low_top_of_page_bid: number | null;
+  high_top_of_page_bid: number | null;
+  monthly_searches: Array<{
+    year: number;
+    month: number;
+    search_volume: number;
+  }> | null;
+}
+
+/**
+ * Ruft das Suchvolumen für Keywords ab - verwendet den LIVE Endpunkt
+ * Basiert auf: https://docs.dataforseo.com/v3/keywords_data/google_ads/search_volume/live/
+ * HINWEIS: Location wird IMMER auf Schweiz gesetzt, unabhängig vom übergebenen Parameter
+ */
+export async function fetchSearchVolume(
+  keywords: string[],
+  location: string = "Switzerland",
+  language: string = "German"
+): Promise<SearchVolumeResult[]> {
+  // ERZWINGE IMMER Schweiz - ignoriere übergebene Location (wie bei fetchRankings)
+  const forcedLocation = "Switzerland";
+  const forcedLanguage = language || "German";
+
+  // Location und Language Codes
+  const locationCodeMap: Record<string, number> = {
+    Switzerland: 2756,
+    Germany: 2276,
+    "United States": 2840,
+  };
+
+  const languageCodeMap: Record<string, string> = {
+    German: "de",
+    English: "en",
+    French: "fr",
+    Italian: "it",
+  };
+
+  const locationCode = locationCodeMap[forcedLocation] || 2756;
+  const languageCode = languageCodeMap[forcedLanguage] || "de";
+
+  console.log(`[fetchSearchVolume] Rufe Suchvolumen für ${keywords.length} Keywords ab`);
+  console.log(`[fetchSearchVolume] Location Parameter: "${location}", ERZWUNGEN: "${forcedLocation}"`);
+  console.log(`[fetchSearchVolume] Location Code: ${locationCode} (Schweiz), Language Code: ${languageCode}`);
+
+  // Die API unterstützt maximal 1000 Keywords pro Request
+  // Wir teilen die Keywords in Batches von 100 auf
+  const batchSize = 100;
+  const allResults: SearchVolumeResult[] = [];
+
+  for (let i = 0; i < keywords.length; i += batchSize) {
+    const batch = keywords.slice(i, i + batchSize);
+    console.log(`[fetchSearchVolume] Verarbeite Batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(keywords.length / batchSize)}`);
+
+    try {
+      // Explizit Schweiz setzen mit location_code UND location_name
+      const requestBody = [{
+        keywords: batch,
+        location_code: 2756, // Schweiz - HARDCODED
+        location_name: "Switzerland",
+        language_code: "de",
+        language_name: "German",
+      }];
+
+      console.log(`[fetchSearchVolume] Request Body:`, JSON.stringify(requestBody, null, 2));
+
+      const response = await fetch(`${DATAFORSEO_API_URL}/keywords_data/google_ads/search_volume/live`, {
+        method: "POST",
+        headers: {
+          Authorization: getAuthHeader(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[fetchSearchVolume] API Fehler: ${response.status} - ${errorText}`);
+        continue; // Weiter mit nächstem Batch
+      }
+
+      const data = await response.json();
+
+      if (data.tasks && data.tasks.length > 0) {
+        const task = data.tasks[0];
+        console.log(`[fetchSearchVolume] Response Status: ${task.status_code} (${task.status_message})`);
+
+        if (task.status_code === 20000 && task.result && task.result.length > 0) {
+          const results = task.result as (SearchVolumeResult & { location_code?: number })[];
+          console.log(`[fetchSearchVolume] ✓ ${results.length} Suchvolumen-Ergebnisse erhalten`);
+          
+          // Logge die ersten 5 Ergebnisse mit Location Code zur Überprüfung
+          results.slice(0, 5).forEach((r) => {
+            console.log(`[fetchSearchVolume]   "${r.keyword}": ${r.search_volume || 0} monatliche Suchen (Location: ${r.location_code || 'N/A'})`);
+          });
+
+          allResults.push(...results);
+        } else {
+          console.warn(`[fetchSearchVolume] ✗ Keine Ergebnisse: ${task.status_message}`);
+        }
+      }
+
+      // Kurze Pause zwischen Batches um Rate-Limits zu vermeiden
+      if (i + batchSize < keywords.length) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+    } catch (error) {
+      console.error(`[fetchSearchVolume] Fehler bei Batch:`, error);
+      // Weiter mit nächstem Batch
+    }
+  }
+
+  console.log(`[fetchSearchVolume] ====== Fertig ======`);
+  console.log(`[fetchSearchVolume] Gesamt: ${allResults.length} Ergebnisse für ${keywords.length} Keywords`);
+
+  return allResults;
+}
+
 /**
  * Findet die Position einer URL in den Rankings
  * Sucht standardmäßig nach ubs.com URLs, wenn keine targetUrl angegeben ist

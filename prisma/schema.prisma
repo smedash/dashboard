@@ -191,15 +191,17 @@ model RankTracker {
 
 // Rank Tracker Keyword - Keywords die getrackt werden
 model RankTrackerKeyword {
-  id        String               @id @default(cuid())
-  trackerId String
-  tracker   RankTracker          @relation(fields: [trackerId], references: [id], onDelete: Cascade)
-  keyword   String
-  category  String? // Kategorie: Mortgages, Accounts&Cards, Investing, Pension, Digital Banking
-  targetUrl String? // Optional: URL für die das Keyword getrackt werden soll
-  rankings  RankTrackerRanking[]
-  createdAt DateTime             @default(now())
-  updatedAt DateTime             @updatedAt
+  id                String               @id @default(cuid())
+  trackerId         String
+  tracker           RankTracker          @relation(fields: [trackerId], references: [id], onDelete: Cascade)
+  keyword           String
+  category          String? // Kategorie: Mortgages, Accounts&Cards, Investing, Pension, Digital Banking
+  targetUrl         String? // Optional: URL für die das Keyword getrackt werden soll
+  searchVolume      Int? // Monatliches Suchvolumen von DataForSEO
+  searchVolumeUpdatedAt DateTime? // Zeitpunkt der letzten Suchvolumen-Aktualisierung
+  rankings          RankTrackerRanking[]
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
 
   @@unique([trackerId, keyword])
   @@index([trackerId])

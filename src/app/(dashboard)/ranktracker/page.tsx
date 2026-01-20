@@ -28,6 +28,8 @@ interface Keyword {
   rankings: RankingData[];
   firstRanking?: RankingData | null;
   kvp?: KvpInfo | null;
+  searchVolume?: number | null;
+  searchVolumeUpdatedAt?: string | null;
 }
 
 const KEYWORD_CATEGORIES = [
@@ -77,6 +79,7 @@ export default function RankTrackerPage() {
   const [urlFilter, setUrlFilter] = useState<string>("");
   const [refreshingKeywordId, setRefreshingKeywordId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const [isFetchingVolume, setIsFetchingVolume] = useState(false);
   const itemsPerPage = 25;
 
   useEffect(() => {
@@ -225,6 +228,30 @@ export default function RankTrackerPage() {
     }
   }
 
+  async function handleFetchSearchVolume() {
+    setIsFetchingVolume(true);
+    try {
+      const response = await fetch("/api/rank-tracker/search-volume", {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        alert(error.error || "Fehler beim Abrufen des Suchvolumens");
+        return;
+      }
+
+      const data = await response.json();
+      alert(data.message || "Suchvolumen erfolgreich abgerufen");
+      await fetchTracker();
+    } catch (error) {
+      console.error("Error fetching search volume:", error);
+      alert("Fehler beim Abrufen des Suchvolumens");
+    } finally {
+      setIsFetchingVolume(false);
+    }
+  }
+
   // Hilfsfunktion für Delta-Berechnung
   const calculateDelta = (current: number | null, previous: number | null): number | null => {
     if (current === null || previous === null) return null;
@@ -282,6 +309,7 @@ export default function RankTrackerPage() {
           ? new Date(firstRanking.date).toLocaleDateString("de-DE")
           : "Nie",
         kvp: keyword.kvp || null,
+        searchVolume: keyword.searchVolume ?? null,
       };
     })
     .filter((row) => {
@@ -544,6 +572,28 @@ export default function RankTrackerPage() {
               </>
             )}
           </button>
+          <button
+            onClick={handleFetchSearchVolume}
+            disabled={!canEditData || isFetchingVolume || !tracker || tracker.keywords.length === 0}
+            className="px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-purple-600/50 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center gap-2"
+          >
+            {isFetchingVolume ? (
+              <>
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Lädt...
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                Suchvolumen abrufen
+              </>
+            )}
+          </button>
         </div>
       </div>
 
@@ -656,6 +706,23 @@ export default function RankTrackerPage() {
                       return <span className="text-slate-500 dark:text-slate-500">-</span>;
                     }
                     return <span className="text-slate-700 dark:text-slate-300">{value as string}</span>;
+                  },
+                },
+                {
+                  key: "searchVolume",
+                  header: "Suchvolumen",
+                  sortable: true,
+                  render: (value) => {
+                    if (value === null || value === undefined) {
+                      return <span className="text-slate-500 dark:text-slate-500">-</span>;
+                    }
+                    // Formatiere das Suchvolumen mit Tausender-Trennzeichen
+                    const formattedVolume = (value as number).toLocaleString("de-DE");
+                    return (
+                      <span className="text-slate-700 dark:text-slate-300 font-medium">
+                        {formattedVolume}
+                      </span>
+                    );
                   },
                 },
                 {

@@ -105,13 +105,15 @@ export async function GET() {
       });
     });
 
-    // Füge erstes Ranking und KVP-Info zu jedem Keyword hinzu
+    // Füge erstes Ranking, KVP-Info und Suchvolumen zu jedem Keyword hinzu
     const trackerWithFirstRanking = {
       ...tracker,
       keywords: tracker.keywords.map((keyword) => ({
         ...keyword,
         firstRanking: firstRankingMap.get(keyword.id) || null,
         kvp: keywordToKvpMap.get(keyword.keyword.toLowerCase()) || null,
+        searchVolume: (keyword as any).searchVolume || null,
+        searchVolumeUpdatedAt: (keyword as any).searchVolumeUpdatedAt || null,
       })),
     };
 
