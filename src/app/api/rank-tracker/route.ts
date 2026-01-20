@@ -51,6 +51,7 @@ export async function GET() {
 
     // Hole zusätzlich das erste Ranking für jedes Keyword (für Entwicklung seit Start)
     const keywordIds = tracker.keywords.map((k) => k.id);
+    const keywordStrings = tracker.keywords.map((k) => k.keyword.toLowerCase());
     
     // Hole erstes Ranking pro Keyword
     const firstRankings = await prisma.$queryRaw<Array<{
@@ -76,12 +77,41 @@ export async function GET() {
       }])
     );
 
-    // Füge erstes Ranking zu jedem Keyword hinzu
+    // Hole alle KVPs mit ihren Keywords
+    const kvpUrls = await prisma.kVPUrl.findMany({
+      include: {
+        subkeywords: true,
+      },
+    });
+
+    // Erstelle eine Map: keyword (lowercase) -> KVP Info
+    const keywordToKvpMap = new Map<string, { id: string; url: string; focusKeyword: string }>();
+    
+    kvpUrls.forEach((kvp) => {
+      // Fokuskeyword
+      keywordToKvpMap.set(kvp.focusKeyword.toLowerCase(), {
+        id: kvp.id,
+        url: kvp.url,
+        focusKeyword: kvp.focusKeyword,
+      });
+      
+      // Subkeywords
+      kvp.subkeywords.forEach((sub) => {
+        keywordToKvpMap.set(sub.keyword.toLowerCase(), {
+          id: kvp.id,
+          url: kvp.url,
+          focusKeyword: kvp.focusKeyword,
+        });
+      });
+    });
+
+    // Füge erstes Ranking und KVP-Info zu jedem Keyword hinzu
     const trackerWithFirstRanking = {
       ...tracker,
       keywords: tracker.keywords.map((keyword) => ({
         ...keyword,
         firstRanking: firstRankingMap.get(keyword.id) || null,
+        kvp: keywordToKvpMap.get(keyword.keyword.toLowerCase()) || null,
       })),
     };
 

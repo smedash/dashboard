@@ -13,6 +13,12 @@ interface RankingData {
   date: string;
 }
 
+interface KvpInfo {
+  id: string;
+  url: string;
+  focusKeyword: string;
+}
+
 interface Keyword {
   id: string;
   keyword: string;
@@ -21,6 +27,7 @@ interface Keyword {
   createdAt: string;
   rankings: RankingData[];
   firstRanking?: RankingData | null;
+  kvp?: KvpInfo | null;
 }
 
 const KEYWORD_CATEGORIES = [
@@ -274,6 +281,7 @@ export default function RankTrackerPage() {
         firstUpdate: firstRanking?.date
           ? new Date(firstRanking.date).toLocaleDateString("de-DE")
           : "Nie",
+        kvp: keyword.kvp || null,
       };
     })
     .filter((row) => {
@@ -704,49 +712,64 @@ export default function RankTrackerPage() {
                   sortable: true,
                 },
                 {
+                  key: "kvp",
+                  header: "KVP",
+                  render: (value) => {
+                    const kvp = value as KvpInfo | null;
+                    if (!kvp) {
+                      return <span className="text-slate-500 dark:text-slate-500">-</span>;
+                    }
+                    return (
+                      <a
+                        href={`/ubs-kvp?search=${encodeURIComponent(kvp.focusKeyword)}`}
+                        className="inline-flex items-center gap-1 px-2 py-1 bg-green-600/20 text-green-400 hover:bg-green-600/30 rounded text-xs transition-colors"
+                        title={`KVP: ${kvp.focusKeyword}`}
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Ja
+                      </a>
+                    );
+                  },
+                },
+                {
                   key: "actions",
                   header: "Aktionen",
                   render: (_, row) => (
                     <div className="flex gap-2 items-center">
                       {canEditData && (
-                        <button
-                          onClick={() => handleRefreshKeyword(row.id as string)}
-                          disabled={refreshingKeywordId === row.id}
-                          className="p-1.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 hover:text-slate-900 dark:hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                          title="Ranking aktualisieren"
-                        >
-                          <svg
-                            className={`w-4 h-4 ${refreshingKeywordId === row.id ? "animate-spin" : ""}`}
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
+                        <>
+                          <button
+                            onClick={() => handleRefreshKeyword(row.id as string)}
+                            disabled={refreshingKeywordId === row.id}
+                            className="p-1.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 hover:text-slate-900 dark:hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            title="Ranking aktualisieren"
                           >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                            />
-                          </svg>
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleKeywordSelect(row.id as string)}
-                        className={`px-3 py-1 text-xs rounded ${
-                          selectedKeyword === row.id
-                            ? "bg-blue-600 text-white"
-                            : "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
-                        }`}
-                      >
-                        {selectedKeyword === row.id ? "Ausgewählt" : "Auswählen"}
-                      </button>
-                      {canEditData && (
-                        <button
-                          onClick={() => handleDeleteKeyword(row.id as string)}
-                          className="px-3 py-1 text-xs rounded bg-red-600/20 text-red-400 hover:bg-red-600/30"
-                        >
-                          Löschen
-                        </button>
+                            <svg
+                              className={`w-4 h-4 ${refreshingKeywordId === row.id ? "animate-spin" : ""}`}
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                              />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => handleDeleteKeyword(row.id as string)}
+                            className="p-1.5 rounded bg-red-600/20 text-red-400 hover:bg-red-600/30 transition-colors"
+                            title="Löschen"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </>
                       )}
                     </div>
                   ),
