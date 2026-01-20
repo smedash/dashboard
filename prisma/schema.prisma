@@ -309,3 +309,73 @@ model TicketComment {
 
   @@index([ticketId])
 }
+
+// Linkprofil - Gespeicherte Backlink-Daten von DataForSEO
+// Target ist immer ubs.com (hardcoded)
+model BacklinkProfile {
+  id                       String   @id @default(cuid())
+  target                   String   @default("ubs.com")
+  totalBacklinks           Int      @default(0)
+  totalReferringDomains    Int      @default(0)
+  totalReferringMainDomains Int     @default(0)
+  totalReferringIps        Int      @default(0)
+  totalReferringSubnets    Int      @default(0)
+  dofollow                 Int      @default(0)
+  nofollow                 Int      @default(0)
+  newBacklinks             Int      @default(0)
+  lostBacklinks            Int      @default(0)
+  backlinks                Backlink[]
+  referringDomains         ReferringDomain[]
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  @@index([target])
+}
+
+// Einzelne Backlinks
+model Backlink {
+  id                 String          @id @default(cuid())
+  profileId          String
+  profile            BacklinkProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  domainFrom         String
+  urlFrom            String          @db.Text
+  urlTo              String          @db.Text
+  tldFrom            String?
+  rank               Int             @default(0)
+  pageFromRank       Int             @default(0)
+  domainFromRank     Int             @default(0)
+  domainFromCountry  String?
+  pageFromTitle      String?         @db.Text
+  firstSeen          DateTime?
+  lastSeen           DateTime?
+  itemType           String?         // anchor, image, redirect, etc.
+  dofollow           Boolean         @default(true)
+  anchor             String?         @db.Text
+  isNew              Boolean         @default(false)
+  isLost             Boolean         @default(false)
+  backlinkSpamScore  Int             @default(0)
+  createdAt          DateTime        @default(now())
+
+  @@index([profileId])
+  @@index([domainFrom])
+  @@index([dofollow])
+  @@index([isNew])
+  @@index([isLost])
+}
+
+// Referring Domains
+model ReferringDomain {
+  id                 String          @id @default(cuid())
+  profileId          String
+  profile            BacklinkProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  domain             String
+  rank               Int             @default(0)
+  backlinks          Int             @default(0)
+  firstSeen          DateTime?
+  backlinksSpamScore Int             @default(0)
+  createdAt          DateTime        @default(now())
+
+  @@unique([profileId, domain])
+  @@index([profileId])
+  @@index([rank])
+}

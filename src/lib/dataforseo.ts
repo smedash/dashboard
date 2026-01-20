@@ -363,6 +363,303 @@ export async function fetchSearchVolume(
   return allResults;
 }
 
+// ==========================================
+// BACKLINKS API
+// ==========================================
+
+export interface BacklinkItem {
+  type: string;
+  domain_from: string;
+  url_from: string;
+  url_from_https: boolean;
+  domain_to: string;
+  url_to: string;
+  url_to_https: boolean;
+  tld_from: string;
+  is_new: boolean;
+  is_lost: boolean;
+  backlink_spam_score: number;
+  rank: number;
+  page_from_rank: number;
+  domain_from_rank: number;
+  domain_from_platform_type: string[] | null;
+  domain_from_is_ip: boolean;
+  domain_from_ip: string | null;
+  domain_from_country: string | null;
+  page_from_external_links: number;
+  page_from_internal_links: number;
+  page_from_size: number;
+  page_from_encoding: string | null;
+  page_from_language: string | null;
+  page_from_title: string | null;
+  page_from_status_code: number;
+  first_seen: string;
+  prev_seen: string | null;
+  last_seen: string;
+  item_type: string;
+  attributes: string[] | null;
+  dofollow: boolean;
+  original: boolean;
+  alt: string | null;
+  image_url: string | null;
+  anchor: string | null;
+  text_pre: string | null;
+  text_post: string | null;
+  semantic_location: string | null;
+  links_count: number;
+  group_count: number;
+  is_broken: boolean;
+  url_to_status_code: number;
+  url_to_spam_score: number;
+  url_to_redirect_target: string | null;
+  ranked_keywords_info: {
+    page_from_keywords_count_top_3: number;
+    page_from_keywords_count_top_10: number;
+    page_from_keywords_count_top_100: number;
+  } | null;
+  is_indirect_link: boolean;
+  indirect_link_path: string[] | null;
+}
+
+export interface BacklinksSummary {
+  target: string;
+  total_backlinks: number;
+  total_referring_domains: number;
+  total_referring_main_domains: number;
+  total_referring_ips: number;
+  total_referring_subnets: number;
+  dofollow: number;
+  nofollow: number;
+  new_backlinks: number;
+  lost_backlinks: number;
+}
+
+export interface BacklinksResult {
+  target: string;
+  total_count: number;
+  items_count: number;
+  items: BacklinkItem[];
+}
+
+/**
+ * Ruft das Backlink-Profil für ubs.com ab
+ * Verwendet den Backlinks Live Endpunkt: https://docs.dataforseo.com/v3/backlinks/backlinks/live/
+ */
+export async function fetchBacklinks(
+  limit: number = 100,
+  offset: number = 0,
+  orderBy: string = "rank,desc",
+  filters?: { dofollow?: boolean; isLost?: boolean; isNew?: boolean }
+): Promise<BacklinksResult> {
+  // Target ist IMMER ubs.com - keine andere Domain erlaubt
+  const target = "ubs.com";
+  
+  console.log(`[fetchBacklinks] Rufe Backlinks für ${target} ab (Limit: ${limit}, Offset: ${offset})`);
+
+  // Baue Filter-Array auf
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const filterArray: any[] = [];
+  
+  if (filters?.dofollow !== undefined) {
+    filterArray.push(["dofollow", "=", filters.dofollow]);
+  }
+  
+  if (filters?.isLost !== undefined) {
+    filterArray.push(["is_lost", "=", filters.isLost]);
+  }
+  
+  if (filters?.isNew !== undefined) {
+    filterArray.push(["is_new", "=", filters.isNew]);
+  }
+
+  const requestBody = [{
+    target,
+    limit,
+    offset,
+    order_by: [orderBy],
+    backlinks_status_type: "live",
+    include_subdomains: true,
+    ...(filterArray.length > 0 ? { filters: filterArray } : {}),
+  }];
+
+  console.log(`[fetchBacklinks] Request Body:`, JSON.stringify(requestBody, null, 2));
+
+  const response = await fetch(`${DATAFORSEO_API_URL}/backlinks/backlinks/live`, {
+    method: "POST",
+    headers: {
+      Authorization: getAuthHeader(),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(requestBody),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`[fetchBacklinks] API Fehler: ${response.status} - ${errorText}`);
+    throw new Error(`DataForSEO Backlinks API error: ${response.status} - ${errorText}`);
+  }
+
+  const data = await response.json();
+
+  if (data.tasks && data.tasks.length > 0) {
+    const task = data.tasks[0];
+    console.log(`[fetchBacklinks] Response Status: ${task.status_code} (${task.status_message})`);
+
+    if (task.status_code === 20000 && task.result && task.result.length > 0) {
+      const result = task.result[0];
+      console.log(`[fetchBacklinks] ✓ ${result.items_count} Backlinks von ${result.total_count} gesamt abgerufen`);
+      
+      return result;
+    } else {
+      console.warn(`[fetchBacklinks] ✗ Keine Ergebnisse: ${task.status_message}`);
+      throw new Error(`Keine Backlinks gefunden: ${task.status_message}`);
+    }
+  }
+
+  throw new Error("Unerwartete API-Antwort");
+}
+
+/**
+ * Ruft eine Zusammenfassung des Backlink-Profils für ubs.com ab
+ * Verwendet den Backlinks Summary Endpunkt
+ */
+export async function fetchBacklinksSummary(): Promise<BacklinksSummary> {
+  // Target ist IMMER ubs.com - keine andere Domain erlaubt
+  const target = "ubs.com";
+  
+  console.log(`[fetchBacklinksSummary] Rufe Backlinks-Summary für ${target} ab`);
+
+  const requestBody = [{
+    target,
+    include_subdomains: true,
+  }];
+
+  const response = await fetch(`${DATAFORSEO_API_URL}/backlinks/summary/live`, {
+    method: "POST",
+    headers: {
+      Authorization: getAuthHeader(),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(requestBody),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`[fetchBacklinksSummary] API Fehler: ${response.status} - ${errorText}`);
+    throw new Error(`DataForSEO Backlinks Summary API error: ${response.status} - ${errorText}`);
+  }
+
+  const data = await response.json();
+
+  if (data.tasks && data.tasks.length > 0) {
+    const task = data.tasks[0];
+    console.log(`[fetchBacklinksSummary] Response Status: ${task.status_code} (${task.status_message})`);
+
+    if (task.status_code === 20000 && task.result && task.result.length > 0) {
+      const result = task.result[0];
+      console.log(`[fetchBacklinksSummary] ✓ Summary abgerufen:`, {
+        total_backlinks: result.backlinks,
+        referring_domains: result.referring_domains,
+        dofollow: result.backlinks_dofollow,
+        nofollow: result.backlinks_nofollow,
+      });
+      
+      return {
+        target,
+        total_backlinks: result.backlinks || 0,
+        total_referring_domains: result.referring_domains || 0,
+        total_referring_main_domains: result.referring_main_domains || 0,
+        total_referring_ips: result.referring_ips || 0,
+        total_referring_subnets: result.referring_subnets || 0,
+        dofollow: result.backlinks_dofollow || 0,
+        nofollow: result.backlinks_nofollow || 0,
+        new_backlinks: result.backlinks_new || 0,
+        lost_backlinks: result.backlinks_lost || 0,
+      };
+    } else {
+      console.warn(`[fetchBacklinksSummary] ✗ Keine Ergebnisse: ${task.status_message}`);
+      throw new Error(`Keine Backlinks-Summary gefunden: ${task.status_message}`);
+    }
+  }
+
+  throw new Error("Unerwartete API-Antwort");
+}
+
+/**
+ * Ruft Referring Domains für ubs.com ab
+ */
+export async function fetchReferringDomains(
+  limit: number = 100,
+  offset: number = 0,
+  orderBy: string = "rank,desc"
+): Promise<{ total_count: number; items_count: number; items: Array<{
+  type: string;
+  domain: string;
+  rank: number;
+  backlinks: number;
+  first_seen: string;
+  lost_date: string | null;
+  backlinks_spam_score: number;
+  broken_backlinks: number;
+  broken_pages: number;
+  referring_ips: number;
+  referring_subnets: number;
+  referring_pages: number;
+  referring_links_tld: Record<string, number> | null;
+  referring_links_types: Record<string, number> | null;
+  referring_links_attributes: Record<string, number> | null;
+  referring_links_platform_types: Record<string, number> | null;
+  referring_links_semantic_locations: Record<string, number> | null;
+  referring_links_countries: Record<string, number> | null;
+}> }> {
+  // Target ist IMMER ubs.com - keine andere Domain erlaubt
+  const target = "ubs.com";
+  
+  console.log(`[fetchReferringDomains] Rufe Referring Domains für ${target} ab (Limit: ${limit}, Offset: ${offset})`);
+
+  const requestBody = [{
+    target,
+    limit,
+    offset,
+    order_by: [orderBy],
+    include_subdomains: true,
+  }];
+
+  const response = await fetch(`${DATAFORSEO_API_URL}/backlinks/referring_domains/live`, {
+    method: "POST",
+    headers: {
+      Authorization: getAuthHeader(),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(requestBody),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`[fetchReferringDomains] API Fehler: ${response.status} - ${errorText}`);
+    throw new Error(`DataForSEO Referring Domains API error: ${response.status} - ${errorText}`);
+  }
+
+  const data = await response.json();
+
+  if (data.tasks && data.tasks.length > 0) {
+    const task = data.tasks[0];
+    console.log(`[fetchReferringDomains] Response Status: ${task.status_code} (${task.status_message})`);
+
+    if (task.status_code === 20000 && task.result && task.result.length > 0) {
+      const result = task.result[0];
+      console.log(`[fetchReferringDomains] ✓ ${result.items_count} Referring Domains von ${result.total_count} gesamt abgerufen`);
+      
+      return result;
+    } else {
+      console.warn(`[fetchReferringDomains] ✗ Keine Ergebnisse: ${task.status_message}`);
+      throw new Error(`Keine Referring Domains gefunden: ${task.status_message}`);
+    }
+  }
+
+  throw new Error("Unerwartete API-Antwort");
+}
+
 /**
  * Findet die Position einer URL in den Rankings
  * Sucht standardmäßig nach ubs.com URLs, wenn keine targetUrl angegeben ist
