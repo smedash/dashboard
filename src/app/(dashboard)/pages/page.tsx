@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { DataTable } from "@/components/ui/DataTable";
 import { PeriodSelector } from "@/components/ui/PeriodSelector";
 import { useProperty } from "@/contexts/PropertyContext";
+import Link from "next/link";
 
 interface PageRow {
   keys: string[];
@@ -13,12 +14,34 @@ interface PageRow {
   position: number;
 }
 
+interface KVPUrl {
+  id: string;
+  url: string;
+  focusKeyword: string;
+}
+
 export default function PagesPage() {
   const { selectedProperty } = useProperty();
   const [period, setPeriod] = useState("28d");
   const [data, setData] = useState<PageRow[]>([]);
+  const [kvpUrls, setKvpUrls] = useState<KVPUrl[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [kvpFilter, setKvpFilter] = useState<"all" | "with" | "without">("all");
+
+  // Lade KVP-URLs einmalig
+  useEffect(() => {
+    async function fetchKvpUrls() {
+      try {
+        const response = await fetch("/api/kvp");
+        const result = await response.json();
+        setKvpUrls(result.urls || []);
+      } catch (error) {
+        console.error("Error fetching KVP URLs:", error);
+      }
+    }
+    fetchKvpUrls();
+  }, []);
 
   useEffect(() => {
     async function fetchData() {
@@ -41,13 +64,25 @@ export default function PagesPage() {
     fetchData();
   }, [selectedProperty, period]);
 
+  // Erstelle ein Set mit allen KVP-URLs für schnellen Lookup
+  const kvpUrlSet = useMemo(() => {
+    return new Set(kvpUrls.map((kvp) => kvp.url));
+  }, [kvpUrls]);
+
   const tableData = useMemo(() => {
     const searchLower = searchQuery.toLowerCase().trim();
 
     return data
       .filter((row) => {
-        if (!searchLower) return true;
-        return row.keys[0].toLowerCase().includes(searchLower);
+        // Textsuche
+        if (searchLower && !row.keys[0].toLowerCase().includes(searchLower)) {
+          return false;
+        }
+        // KVP Filter
+        const hasKvp = kvpUrlSet.has(row.keys[0]);
+        if (kvpFilter === "with" && !hasKvp) return false;
+        if (kvpFilter === "without" && hasKvp) return false;
+        return true;
       })
       .map((row, index) => ({
         id: index,
@@ -56,8 +91,9 @@ export default function PagesPage() {
         impressions: row.impressions,
         ctr: row.ctr,
         position: row.position,
+        hasKvp: kvpUrlSet.has(row.keys[0]),
       }));
-  }, [data, searchQuery]);
+  }, [data, searchQuery, kvpUrlSet, kvpFilter]);
 
   const formatUrl = (url: string) => {
     try {
@@ -77,7 +113,7 @@ export default function PagesPage() {
         </div>
       </div>
 
-      {/* Search */}
+      {/* Search und Filter */}
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
         <div className="flex flex-wrap items-center gap-4">
           <div className="relative flex-1 min-w-[300px]">
@@ -104,6 +140,47 @@ export default function PagesPage() {
               </button>
             )}
           </div>
+          
+          {/* KVP Filter */}
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-700 rounded-lg p-1">
+            <button
+              onClick={() => setKvpFilter("all")}
+              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                kvpFilter === "all"
+                  ? "bg-white dark:bg-slate-600 text-slate-900 dark:text-white shadow-sm"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+              }`}
+            >
+              Alle
+            </button>
+            <button
+              onClick={() => setKvpFilter("with")}
+              className={`px-3 py-1.5 text-sm rounded-md transition-colors flex items-center gap-1.5 ${
+                kvpFilter === "with"
+                  ? "bg-white dark:bg-slate-600 text-slate-900 dark:text-white shadow-sm"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+              }`}
+            >
+              <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              Mit KVP
+            </button>
+            <button
+              onClick={() => setKvpFilter("without")}
+              className={`px-3 py-1.5 text-sm rounded-md transition-colors flex items-center gap-1.5 ${
+                kvpFilter === "without"
+                  ? "bg-white dark:bg-slate-600 text-slate-900 dark:text-white shadow-sm"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+              }`}
+            >
+              <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Ohne KVP
+            </button>
+          </div>
+
           <span className="text-sm text-slate-600 dark:text-slate-400">
             {tableData.length} von {data.length} Seiten
           </span>
@@ -142,6 +219,34 @@ export default function PagesPage() {
                   >
                     {formatUrl(String(value))}
                   </a>
+                ),
+              },
+              {
+                key: "hasKvp",
+                header: "KVP",
+                sortable: true,
+                render: (value, row) => (
+                  value ? (
+                    <Link
+                      href={`/ubs-kvp?search=${encodeURIComponent(String(row.page))}`}
+                      className="inline-flex items-center justify-center w-6 h-6 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors"
+                      title="KVP vorhanden - klicken zum Anzeigen"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </Link>
+                  ) : (
+                    <Link
+                      href={`/ubs-kvp`}
+                      className="inline-flex items-center justify-center w-6 h-6 text-slate-400 dark:text-slate-500 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors"
+                      title="Kein KVP vorhanden - klicken zum Erstellen"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                    </Link>
+                  )
                 ),
               },
               {
