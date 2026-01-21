@@ -3,11 +3,17 @@ import { prisma } from "@/lib/prisma";
 import { google } from "googleapis";
 import { NextRequest, NextResponse } from "next/server";
 
-const oauth2Client = new google.auth.OAuth2(
-  process.env.GOOGLE_CLIENT_ID,
-  process.env.GOOGLE_CLIENT_SECRET,
-  process.env.NEXTAUTH_URL + "/api/auth/link-google/callback"
-);
+function getOAuth2Client() {
+  const baseUrl = process.env.NEXTAUTH_URL;
+  if (!baseUrl) {
+    throw new Error("NEXTAUTH_URL is not configured");
+  }
+  return new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    `${baseUrl}/api/auth/link-google/callback`
+  );
+}
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -32,6 +38,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Exchange code for tokens
+    const oauth2Client = getOAuth2Client();
     const { tokens } = await oauth2Client.getToken(code);
     
     if (!tokens.access_token) {

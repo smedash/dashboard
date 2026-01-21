@@ -11,6 +11,7 @@
     "add-user": "tsx scripts/add-user.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.2",
     "@auth/prisma-adapter": "^2.11.1",
     "@prisma/client": "^5.22.0",
     "dotenv": "^17.2.3",

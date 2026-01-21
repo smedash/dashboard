@@ -3,11 +3,17 @@ import { prisma } from "@/lib/prisma";
 import { google } from "googleapis";
 import { NextRequest, NextResponse } from "next/server";
 
-const oauth2Client = new google.auth.OAuth2(
-  process.env.GOOGLE_CLIENT_ID,
-  process.env.GOOGLE_CLIENT_SECRET,
-  process.env.NEXTAUTH_URL + "/api/auth/link-google/callback"
-);
+function getOAuth2Client() {
+  const baseUrl = process.env.NEXTAUTH_URL;
+  if (!baseUrl) {
+    throw new Error("NEXTAUTH_URL is not configured");
+  }
+  return new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    `${baseUrl}/api/auth/link-google/callback`
+  );
+}
 
 // GET - Start OAuth flow
 export async function GET(request: NextRequest) {
@@ -24,6 +30,7 @@ export async function GET(request: NextRequest) {
     "https://www.googleapis.com/auth/webmasters.readonly",
   ];
 
+  const oauth2Client = getOAuth2Client();
   const url = oauth2Client.generateAuthUrl({
     access_type: "offline",
     scope: scopes,
