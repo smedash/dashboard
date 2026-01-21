@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { SunburstChart } from "@/components/charts/SunburstChart";
+import { useState, useEffect, useRef } from "react";
+import { SunburstChart, SunburstChartRef } from "@/components/charts";
 
 interface Team {
   id: string;
@@ -313,6 +313,18 @@ export default function SEOMaturityPage() {
   const [teamFilter, setTeamFilter] = useState<string[]>([]);
   const [kvpLinksMap, setKvpLinksMap] = useState<Record<string, KVPLink[]>>({});
   const [expandedKvpItems, setExpandedKvpItems] = useState<string[]>([]);
+  
+  // Ref für SunburstChart Export
+  const sunburstChartRef = useRef<SunburstChartRef>(null);
+
+  // Export-Handler
+  const handleExportChart = () => {
+    if (sunburstChartRef.current) {
+      const date = new Date().toISOString().split('T')[0];
+      const maturityName = selectedMaturity?.name.replace(/\s+/g, '-').toLowerCase() || 'chart';
+      sunburstChartRef.current.exportToPng(`seo-reifegrad-${maturityName}-${date}.png`);
+    }
+  };
 
   useEffect(() => {
     fetchMaturities();
@@ -882,7 +894,19 @@ export default function SEOMaturityPage() {
             {/* Sunburst Chart */}
             <div className="mb-8">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-                <h3 className="text-lg font-semibold text-white">Übersicht</h3>
+                <div className="flex items-center gap-3">
+                  <h3 className="text-lg font-semibold text-white">Übersicht</h3>
+                  <button
+                    onClick={handleExportChart}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded-lg transition-colors"
+                    title="Chart als PNG exportieren"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    PNG Export
+                  </button>
+                </div>
                 
                 {/* Filter */}
                 <div className="flex flex-wrap items-center gap-4">
@@ -994,7 +1018,7 @@ export default function SEOMaturityPage() {
                 </div>
               </div>
               <div className="flex justify-center w-full overflow-x-auto">
-                <SunburstChart data={prepareSunburstData()} width={1200} height={1200} />
+                <SunburstChart ref={sunburstChartRef} data={prepareSunburstData()} width={1200} height={1200} />
               </div>
             </div>
 

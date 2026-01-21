@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, ReactElement } from "react";
+import { useMemo, useState, ReactElement, forwardRef, useImperativeHandle, useRef, useCallback } from "react";
 
 interface SunburstData {
   name: string;
@@ -21,6 +21,10 @@ interface SunburstChartProps {
   data: SunburstData[];
   width?: number;
   height?: number;
+}
+
+export interface SunburstChartRef {
+  exportToPng: (filename?: string) => void;
 }
 
 // Farben basierend auf Score
@@ -73,12 +77,64 @@ const getPriorityTextColor = (priority: string | null | undefined): string => {
   }
 };
 
-export function SunburstChart({ data, width = 1200, height = 1200 }: SunburstChartProps) {
+export const SunburstChart = forwardRef<SunburstChartRef, SunburstChartProps>(
+  function SunburstChart({ data, width = 1200, height = 1200 }, ref) {
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [hoveredScore, setHoveredScore] = useState<number | null>(null);
   const [hoveredPriority, setHoveredPriority] = useState<string | null>(null);
   const [hoveredTeams, setHoveredTeams] = useState<Array<{ id: string; name: string }> | null>(null);
-  
+  const svgRef = useRef<SVGSVGElement>(null);
+
+  // Export-Funktion für PNG
+  const exportToPng = useCallback((filename: string = "seo-reifegrad-chart.png") => {
+    if (!svgRef.current) return;
+
+    const svg = svgRef.current;
+    const svgData = new XMLSerializer().serializeToString(svg);
+    
+    // SVG-Daten für bessere Kompatibilität aufbereiten
+    const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(svgBlob);
+    
+    const img = new Image();
+    img.onload = () => {
+      // Canvas mit höherer Auflösung für bessere Qualität
+      const scale = 2;
+      const canvas = document.createElement("canvas");
+      canvas.width = width * scale;
+      canvas.height = height * scale;
+      const ctx = canvas.getContext("2d");
+      
+      if (ctx) {
+        // Hintergrund zeichnen
+        ctx.fillStyle = "#0f172a"; // slate-900 Hintergrund
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // SVG skaliert zeichnen
+        ctx.scale(scale, scale);
+        ctx.drawImage(img, 0, 0);
+        
+        // Als PNG herunterladen
+        const pngUrl = canvas.toDataURL("image/png");
+        const downloadLink = document.createElement("a");
+        downloadLink.href = pngUrl;
+        downloadLink.download = filename;
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+      }
+      
+      URL.revokeObjectURL(url);
+    };
+    
+    img.src = url;
+  }, [width, height]);
+
+  // Ref-Methoden exponieren
+  useImperativeHandle(ref, () => ({
+    exportToPng,
+  }), [exportToPng]);
+
   // Die Daten sollten bereits in der richtigen hierarchischen Struktur vorliegen
   const processedData = useMemo(() => {
     if (!data || data.length === 0) return [];
@@ -431,7 +487,7 @@ export function SunburstChart({ data, width = 1200, height = 1200 }: SunburstCha
 
   return (
     <div className="flex flex-col items-center">
-      <svg width={width} height={height} className="overflow-visible" style={{ overflow: "visible" }}>
+      <svg ref={svgRef} width={width} height={height} className="overflow-visible" style={{ overflow: "visible" }}>
         {/* Prioritäten Ring (ganz außen) */}
         <g>{renderPriorities(processedData)}</g>
         {/* Items Ring */}
@@ -668,4 +724,4 @@ export function SunburstChart({ data, width = 1200, height = 1200 }: SunburstCha
       </div>
     </div>
   );
-}
+});
