@@ -9,12 +9,12 @@ const basePrismaAdapter = PrismaAdapter(prisma);
 
 const customAdapter = {
   ...basePrismaAdapter,
-  // Überschreibe useVerificationToken um Race Conditions zu vermeiden
-  // (z.B. wenn E-Mail-Clients Links prefetchen oder User doppelt klicken)
+  // Überschreibe useVerificationToken um Mail-Scanner-Schutz zu implementieren
+  // Tokens können 2x verwendet werden, damit ein Scanner-Klick nicht den Token verbraucht
   async useVerificationToken(params: { identifier: string; token: string }) {
     try {
-      // Versuche den Token zu finden und zu löschen
-      const verificationToken = await prisma.verificationToken.delete({
+      // Finde den Token zuerst
+      const existingToken = await prisma.verificationToken.findUnique({
         where: {
           identifier_token: {
             identifier: params.identifier,
@@ -22,20 +22,79 @@ const customAdapter = {
           },
         },
       });
-      return verificationToken;
+
+      if (!existingToken) {
+        console.warn(
+          "[Auth] Verification token not found - may have been used already:",
+          params.identifier
+        );
+        return null;
+      }
+
+      // Prüfe ob Token abgelaufen ist
+      if (existingToken.expires < new Date()) {
+        // Token ist abgelaufen - löschen und null zurückgeben
+        await prisma.verificationToken.delete({
+          where: {
+            identifier_token: {
+              identifier: params.identifier,
+              token: params.token,
+            },
+          },
+        }).catch(() => {}); // Ignoriere Fehler falls bereits gelöscht
+        console.warn("[Auth] Verification token expired:", params.identifier);
+        return null;
+      }
+
+      // Dekrementiere usesRemaining
+      const newUsesRemaining = (existingToken.usesRemaining ?? 2) - 1;
+
+      if (newUsesRemaining <= 0) {
+        // Letzte Nutzung - Token löschen
+        await prisma.verificationToken.delete({
+          where: {
+            identifier_token: {
+              identifier: params.identifier,
+              token: params.token,
+            },
+          },
+        });
+        console.log("[Auth] Verification token used (final use):", params.identifier);
+      } else {
+        // Noch Nutzungen übrig - nur Counter dekrementieren
+        await prisma.verificationToken.update({
+          where: {
+            identifier_token: {
+              identifier: params.identifier,
+              token: params.token,
+            },
+          },
+          data: {
+            usesRemaining: newUsesRemaining,
+          },
+        });
+        console.log(
+          `[Auth] Verification token used (${newUsesRemaining} uses remaining):`,
+          params.identifier
+        );
+      }
+
+      // Token-Daten zurückgeben (ohne usesRemaining, da NextAuth das nicht erwartet)
+      return {
+        identifier: existingToken.identifier,
+        token: existingToken.token,
+        expires: existingToken.expires,
+      };
     } catch (error) {
-      // Token existiert nicht mehr - das ist OK (wurde bereits verwendet)
-      // Gib null zurück, damit NextAuth den Fehler "Verification" anzeigt
-      // anstatt einen Server-Error zu werfen
+      // Race Condition: Token wurde zwischen find und update/delete gelöscht
       if (
         error &&
         typeof error === "object" &&
         "code" in error &&
         error.code === "P2025"
       ) {
-        // P2025 = "Record to delete does not exist"
         console.warn(
-          "[Auth] Verification token not found - may have been used already:",
+          "[Auth] Verification token race condition:",
           params.identifier
         );
         return null;

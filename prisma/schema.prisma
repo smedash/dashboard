@@ -60,9 +60,10 @@ model Session {
 }
 
 model VerificationToken {
-  identifier String
-  token      String   @unique
-  expires    DateTime
+  identifier    String
+  token         String   @unique
+  expires       DateTime
+  usesRemaining Int      @default(2) // Erlaubt 2 Nutzungen (für Mail-Scanner-Schutz)
 
   @@unique([identifier, token])
 }
