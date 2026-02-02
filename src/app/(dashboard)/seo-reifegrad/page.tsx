@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { SunburstChart, SunburstChartRef } from "@/components/charts";
 
 interface Team {
@@ -316,6 +316,10 @@ export default function SEOMaturityPage() {
   
   // Ref für SunburstChart Export
   const sunburstChartRef = useRef<SunburstChartRef>(null);
+  
+  // Refs für Debouncing der Score-Updates
+  const scoreUpdateTimeouts = useRef<Record<string, NodeJS.Timeout>>({});
+  const scoreUpdateAbortControllers = useRef<Record<string, AbortController>>({});
 
   // Export-Handler
   const handleExportChart = () => {
@@ -329,6 +333,14 @@ export default function SEOMaturityPage() {
   useEffect(() => {
     fetchMaturities();
     fetchTeams();
+    
+    // Cleanup bei Unmount
+    return () => {
+      // Alle Timeouts löschen
+      Object.values(scoreUpdateTimeouts.current).forEach(clearTimeout);
+      // Alle laufenden Requests abbrechen
+      Object.values(scoreUpdateAbortControllers.current).forEach(controller => controller.abort());
+    };
   }, []);
 
   // Lade KVP-Links wenn eine Maturity ausgewählt wird
@@ -441,30 +453,69 @@ export default function SEOMaturityPage() {
     }
   };
 
-  const updateItemScore = async (itemId: string, score: number) => {
+  // Optimistisches Update + Debounced API-Call für Score
+  const updateItemScoreOptimistic = useCallback((itemId: string, score: number) => {
     if (!selectedMaturity) return;
 
-    try {
-      const response = await fetch(
-        `/api/seo-maturity/${selectedMaturity.id}/items/${itemId}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ score }),
-        }
-      );
+    // Sofort lokalen State aktualisieren (optimistisches Update)
+    const updatedItems = selectedMaturity.items.map((item) =>
+      item.id === itemId ? { ...item, score } : item
+    );
+    setSelectedMaturity({ ...selectedMaturity, items: updatedItems });
+  }, [selectedMaturity]);
 
-      const data = await response.json();
-      if (data.item) {
-        const updatedItems = selectedMaturity.items.map((item) =>
-          item.id === itemId ? { ...item, score: data.item.score } : item
-        );
-        setSelectedMaturity({ ...selectedMaturity, items: updatedItems });
-      }
-    } catch (error) {
-      console.error("Error updating item score:", error);
+  const updateItemScoreDebounced = useCallback((itemId: string, score: number, maturityId: string) => {
+    // Bestehenden Timeout für dieses Item löschen
+    if (scoreUpdateTimeouts.current[itemId]) {
+      clearTimeout(scoreUpdateTimeouts.current[itemId]);
     }
-  };
+
+    // Bestehenden Request abbrechen
+    if (scoreUpdateAbortControllers.current[itemId]) {
+      scoreUpdateAbortControllers.current[itemId].abort();
+    }
+
+    // Neuen Timeout setzen (500ms Debounce)
+    scoreUpdateTimeouts.current[itemId] = setTimeout(async () => {
+      const abortController = new AbortController();
+      scoreUpdateAbortControllers.current[itemId] = abortController;
+
+      try {
+        const response = await fetch(
+          `/api/seo-maturity/${maturityId}/items/${itemId}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ score }),
+            signal: abortController.signal,
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to update score");
+        }
+
+        // Bei Erfolg nichts tun - der lokale State ist bereits aktualisiert
+      } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") {
+          // Request wurde absichtlich abgebrochen - ignorieren
+          return;
+        }
+        console.error("Error updating item score:", error);
+        // Optional: Bei Fehler könnte man den alten Wert wiederherstellen
+      }
+    }, 500);
+  }, []);
+
+  const updateItemScore = useCallback((itemId: string, score: number) => {
+    if (!selectedMaturity) return;
+    
+    // 1. Sofort lokalen State aktualisieren
+    updateItemScoreOptimistic(itemId, score);
+    
+    // 2. API-Call mit Debouncing
+    updateItemScoreDebounced(itemId, score, selectedMaturity.id);
+  }, [selectedMaturity, updateItemScoreOptimistic, updateItemScoreDebounced]);
 
   const updateItemPriority = async (itemId: string, priority: string | null) => {
     if (!selectedMaturity) return;
