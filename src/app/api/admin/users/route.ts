@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { isSuperadmin } from "@/lib/rbac";
+import { hasFullAdminRights } from "@/lib/rbac";
 import { sendWelcomeEmail } from "@/lib/resend";
 
 // GET /api/admin/users - Alle User abrufen (nur Superadmin)
@@ -12,7 +12,7 @@ export async function GET() {
       return NextResponse.json({ error: "Nicht authentifiziert" }, { status: 401 });
     }
 
-    if (!isSuperadmin(session.user.role)) {
+    if (!hasFullAdminRights(session.user.role)) {
       return NextResponse.json({ error: "Keine Berechtigung" }, { status: 403 });
     }
 
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Nicht authentifiziert" }, { status: 401 });
     }
 
-    if (!isSuperadmin(session.user.role)) {
+    if (!hasFullAdminRights(session.user.role)) {
       return NextResponse.json({ error: "Keine Berechtigung" }, { status: 403 });
     }
 
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validiere Rolle
-    const validRoles = ["superadmin", "member", "viewer"];
+    const validRoles = ["superadmin", "agentur", "member", "viewer"];
     const userRole = validRoles.includes(role) ? role : "member";
 
     const user = await prisma.user.create({

@@ -137,6 +137,8 @@ export default function AdminUsersPage() {
     switch (role) {
       case "superadmin":
         return "bg-purple-500/20 text-purple-400 border-purple-500/30";
+      case "agentur":
+        return "bg-amber-500/20 text-amber-400 border-amber-500/30";
       case "member":
         return "bg-blue-500/20 text-blue-400 border-blue-500/30";
       case "viewer":
@@ -154,14 +156,15 @@ export default function AdminUsersPage() {
     });
   };
 
-  // Prüfe ob User Superadmin ist
-  if (session?.user?.role !== "superadmin") {
+  // Prüfe ob User volle Admin-Rechte hat (Superadmin oder Agentur)
+  const hasAdminRights = session?.user?.role === "superadmin" || session?.user?.role === "agentur";
+  if (!hasAdminRights) {
     return (
       <div className="space-y-8">
         <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Nutzerverwaltung</h1>
         <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-6 text-center">
           <p className="text-red-400">Sie haben keine Berechtigung für diese Seite.</p>
-          <p className="text-slate-400 text-sm mt-2">Nur Superadmins können Nutzer verwalten.</p>
+          <p className="text-slate-400 text-sm mt-2">Nur Superadmins und Agenturen können Nutzer verwalten.</p>
         </div>
       </div>
     );
@@ -248,6 +251,7 @@ export default function AdminUsersPage() {
               >
                 <option value="viewer">Betrachter - Kann nur lesen</option>
                 <option value="member">Mitglied - Kann bearbeiten</option>
+                <option value="agentur">Agentur - Volle Rechte</option>
                 <option value="superadmin">Superadmin - Volle Rechte</option>
               </select>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -280,8 +284,8 @@ export default function AdminUsersPage() {
       )}
 
       {/* Rollen-Übersicht */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {(["superadmin", "member", "viewer"] as Role[]).map((role) => {
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {(["superadmin", "agentur", "member", "viewer"] as Role[]).map((role) => {
           const count = users.filter((u) => u.role === role).length;
           return (
             <div
@@ -344,6 +348,7 @@ export default function AdminUsersPage() {
                     >
                       <option value="viewer">Betrachter</option>
                       <option value="member">Mitglied</option>
+                      <option value="agentur">Agentur</option>
                       <option value="superadmin">Superadmin</option>
                     </select>
                   ) : (

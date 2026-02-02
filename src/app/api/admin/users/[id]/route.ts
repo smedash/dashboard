@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { isSuperadmin } from "@/lib/rbac";
+import { hasFullAdminRights } from "@/lib/rbac";
 
 // PATCH /api/admin/users/[id] - User aktualisieren (nur Superadmin)
 export async function PATCH(
@@ -14,7 +14,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Nicht authentifiziert" }, { status: 401 });
     }
 
-    if (!isSuperadmin(session.user.role)) {
+    if (!hasFullAdminRights(session.user.role)) {
       return NextResponse.json({ error: "Keine Berechtigung" }, { status: 403 });
     }
 
@@ -31,22 +31,25 @@ export async function PATCH(
       return NextResponse.json({ error: "Nutzer nicht gefunden" }, { status: 404 });
     }
 
-    // Verhindere, dass sich der letzte Superadmin selbst degradiert
-    if (existingUser.role === "superadmin" && role !== "superadmin") {
-      const superadminCount = await prisma.user.count({
-        where: { role: "superadmin" },
+    // Verhindere, dass sich der letzte Admin mit vollen Rechten selbst degradiert
+    const isCurrentlyFullAdmin = existingUser.role === "superadmin" || existingUser.role === "agentur";
+    const willBeFullAdmin = role === "superadmin" || role === "agentur";
+    
+    if (isCurrentlyFullAdmin && !willBeFullAdmin) {
+      const fullAdminCount = await prisma.user.count({
+        where: { role: { in: ["superadmin", "agentur"] } },
       });
       
-      if (superadminCount <= 1) {
+      if (fullAdminCount <= 1) {
         return NextResponse.json(
-          { error: "Es muss mindestens ein Superadmin existieren" },
+          { error: "Es muss mindestens ein Admin mit vollen Rechten existieren" },
           { status: 400 }
         );
       }
     }
 
     // Validiere Rolle
-    const validRoles = ["superadmin", "member", "viewer"];
+    const validRoles = ["superadmin", "agentur", "member", "viewer"];
     const updateData: { name?: string; role?: string } = {};
     
     if (name !== undefined) updateData.name = name;
@@ -86,7 +89,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Nicht authentifiziert" }, { status: 401 });
     }
 
-    if (!isSuperadmin(session.user.role)) {
+    if (!hasFullAdminRights(session.user.role)) {
       return NextResponse.json({ error: "Keine Berechtigung" }, { status: 403 });
     }
 
@@ -109,15 +112,15 @@ export async function DELETE(
       return NextResponse.json({ error: "Nutzer nicht gefunden" }, { status: 404 });
     }
 
-    // Verhindere Löschen des letzten Superadmins
-    if (existingUser.role === "superadmin") {
-      const superadminCount = await prisma.user.count({
-        where: { role: "superadmin" },
+    // Verhindere Löschen des letzten Admins mit vollen Rechten
+    if (existingUser.role === "superadmin" || existingUser.role === "agentur") {
+      const fullAdminCount = await prisma.user.count({
+        where: { role: { in: ["superadmin", "agentur"] } },
       });
       
-      if (superadminCount <= 1) {
+      if (fullAdminCount <= 1) {
         return NextResponse.json(
-          { error: "Der letzte Superadmin kann nicht gelöscht werden" },
+          { error: "Der letzte Admin mit vollen Rechten kann nicht gelöscht werden" },
           { status: 400 }
         );
       }

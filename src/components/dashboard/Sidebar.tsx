@@ -143,6 +143,15 @@ const navigation: NavigationItem[] = [
     ),
   },
   {
+    name: "Briefings",
+    href: "/briefings",
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+    ),
+  },
+  {
     name: "SuperAgent",
     href: "/superagent",
     icon: (
@@ -160,7 +169,7 @@ export function Sidebar() {
   const isAdminActive = pathname.startsWith("/admin");
   const isSettingsActive = pathname === "/settings";
   const isReportingActive = pathname === "/reporting";
-  const isSuperadmin = session?.user?.role === "superadmin";
+  const hasAdminRights = session?.user?.role === "superadmin" || session?.user?.role === "agentur";
 
   return (
     <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-72 lg:flex-col">
@@ -217,7 +226,7 @@ export function Sidebar() {
           {/* Unterer Bereich - separat */}
           <div className="mt-auto pt-4 border-t border-slate-200 dark:border-slate-700 space-y-1">
             {/* Admin Link - nur für Superadmins */}
-            {isSuperadmin && (
+            {hasAdminRights && (
               <Link
                 href="/admin/users"
                 className={`group flex gap-x-3 rounded-lg p-3 text-sm font-medium transition-all duration-200 ${

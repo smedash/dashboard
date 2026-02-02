@@ -11,14 +11,14 @@ datasource db {
 }
 
 // NextAuth.js Models
-// Rollen: superadmin (volle Rechte), member (bearbeiten), viewer (nur lesen)
+// Rollen: superadmin/agentur (volle Rechte), member (bearbeiten), viewer (nur lesen)
 model User {
   id            String        @id @default(cuid())
   name          String?
   email         String        @unique
   emailVerified DateTime?
   image         String?
-  role          String        @default("member") // superadmin, member, viewer
+  role          String        @default("member") // superadmin, agentur, member, viewer
   accounts      Account[]
   sessions      Session[]
   gscProperties GSCProperty[]
@@ -27,6 +27,8 @@ model User {
   rankTrackers  RankTracker[]
   kvpUrls       KVPUrl[]
   tickets       Ticket[]
+  briefingsRequested Briefing[] @relation("BriefingRequester") // Briefings die der User bestellt hat
+  briefingsAssigned  Briefing[] @relation("BriefingAssignee")  // Briefings die der User bearbeitet
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
@@ -309,6 +311,65 @@ model TicketComment {
   createdAt DateTime @default(now())
 
   @@index([ticketId])
+}
+
+// Briefing System - SEO Content Briefings
+model Briefing {
+  id                String   @id @default(cuid())
+  
+  // Beziehungen
+  requesterId       String   // User der das Briefing bestellt hat (member)
+  requester         User     @relation("BriefingRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  assigneeId        String?  // User der das Briefing bearbeitet (agentur)
+  assignee          User?    @relation("BriefingAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  
+  // Status
+  status            String   @default("ordered") // ordered, in_progress, completed
+  briefingNumber    Int      @default(autoincrement()) // Automatische Briefing-Nr.
+  
+  // Grunddaten
+  title             String   // Briefing-Titel
+  contentAction     String   // "edit" | "merge" | "new" - Content überarbeiten/mergen/neu erstellen
+  targetAudience    String?  @db.Text // Zielgruppe
+  funnelStage       String?  // "attention" | "interest" | "desire" | "action"
+  goals             String?  @db.Text // Ziele / KPIs (User Story)
+  
+  // Keywords & Cluster
+  focusKeyword      String?  // Fokus-Keyword
+  keywordCluster    String?  @db.Text // Keyword-Cluster
+  topicCluster      String?  @db.Text // Topic-Cluster
+  searchIntent      String?  // "informational" | "navigational" | "transactional" | "commercial"
+  
+  // URLs
+  url               String?  @db.Text // URL
+  benchmarkUrls     String?  @db.Text // Benchmark (2 Wettbewerber URLs)
+  csArticle         String?  @db.Text // CS Artikel (wenn vorhanden)
+  
+  // Content-Aufbau (wird von Agentur ausgefüllt)
+  titleTag          String?  @db.Text // Title Tag
+  metaDescription   String?  @db.Text // Meta Description
+  navTitle          String?  // Navigationstitel (analog H1)
+  h1                String?  // H1
+  mainParagraph     String?  @db.Text // Hauptparagraf
+  primaryCta        String?  @db.Text // Primary CTA
+  secondaryCta      String?  @db.Text // Secondary CTA auf weiterführende Seite
+  inboundCta        String?  @db.Text // Inbound CTA auf diese Seite
+  bodyContent       String?  @db.Text // Fliesstext/Struktur (H2 – H4)
+  internalLinks     String?  @db.Text // Interne Verlinkungen
+  missingTopics     String?  @db.Text // Missing Topics
+  notes             String?  @db.Text // Bemerkungen
+  
+  // Mehrsprachigkeit
+  titleEn           String?  // EN Titel
+  titleFr           String?  // FR Titel
+  titleIt           String?  // IT Titel
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  @@index([requesterId])
+  @@index([assigneeId])
+  @@index([status])
 }
 
 // Linkprofil - Gespeicherte Backlink-Daten von DataForSEO
