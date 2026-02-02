@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { DataTable } from "@/components/ui/DataTable";
+import { StatCard } from "@/components/ui/StatCard";
 import { LineChart } from "@/components/charts/LineChart";
 import { canEdit } from "@/lib/rbac";
 
@@ -935,6 +936,60 @@ export default function RankTrackerPage() {
               />
             </div>
           )}
+
+          {/* Ranking-Änderungen Übersicht */}
+          {(() => {
+            // Berechne Statistiken aus den ungefilterten Daten (alle Keywords)
+            const allKeywordsData = tracker?.keywords.map((keyword) => {
+              const latestRanking = keyword.rankings[0];
+              const previousRanking = keyword.rankings[1];
+              const currentPosition = latestRanking?.position ?? null;
+              const previousPosition = previousRanking?.position ?? null;
+              if (currentPosition === null || previousPosition === null) return null;
+              return previousPosition - currentPosition; // Positiv = Verbesserung
+            }) || [];
+
+            const improved = allKeywordsData.filter((delta) => delta !== null && delta > 0).length;
+            const declined = allKeywordsData.filter((delta) => delta !== null && delta < 0).length;
+            const unchanged = allKeywordsData.filter((delta) => delta === 0).length;
+
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <StatCard
+                  title="Gestiegen"
+                  value={improved}
+                  subtitle="seit letzter Aktualisierung"
+                  trend="up"
+                  icon={
+                    <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+                    </svg>
+                  }
+                />
+                <StatCard
+                  title="Gefallen"
+                  value={declined}
+                  subtitle="seit letzter Aktualisierung"
+                  trend="down"
+                  icon={
+                    <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                  }
+                />
+                <StatCard
+                  title="Keine Änderung"
+                  value={unchanged}
+                  subtitle="seit letzter Aktualisierung"
+                  icon={
+                    <svg className="w-5 h-5 text-slate-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M5 10a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1z" clipRule="evenodd" />
+                    </svg>
+                  }
+                />
+              </div>
+            );
+          })()}
         </>
       ) : (
         <div className="bg-white dark:bg-slate-800 rounded-xl p-12 border border-slate-200 dark:border-slate-700 text-center">
