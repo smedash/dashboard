@@ -28,11 +28,18 @@ interface TaskUser {
   email: string;
 }
 
+interface TaskCommentUser {
+  id: string;
+  name: string | null;
+  email: string;
+}
+
 interface TaskComment {
   id: string;
   text: string;
   userId: string;
   createdAt: string;
+  user?: TaskCommentUser;
 }
 
 interface Task {
@@ -298,6 +305,7 @@ function TaskDetailModal({
   onClose,
   onUpdate,
   onDelete,
+  onCommentAdded,
   canEditData,
 }: {
   task: Task;
@@ -305,6 +313,7 @@ function TaskDetailModal({
   onClose: () => void;
   onUpdate: (updates: Partial<Task> & { assigneeIds?: string[] }) => void;
   onDelete: () => void;
+  onCommentAdded: (taskId: string, comment: TaskComment) => void;
   canEditData: boolean;
 }) {
   const [isEditing, setIsEditing] = useState(false);
@@ -313,6 +322,16 @@ function TaskDetailModal({
     task.assignees?.map((a) => a.id) || []
   );
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Comment states
+  const [newComment, setNewComment] = useState("");
+  const [isAddingComment, setIsAddingComment] = useState(false);
+  const [localComments, setLocalComments] = useState<TaskComment[]>(task.comments || []);
+
+  // Update local comments when task changes
+  useEffect(() => {
+    setLocalComments(task.comments || []);
+  }, [task.comments]);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -322,6 +341,30 @@ function TaskDetailModal({
     });
     setIsEditing(false);
     setIsSaving(false);
+  };
+
+  const handleAddComment = async () => {
+    if (!newComment.trim() || isAddingComment) return;
+    
+    setIsAddingComment(true);
+    try {
+      const response = await fetch(`/api/tasks/${task.id}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: newComment.trim() }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setLocalComments((prev) => [...prev, data.comment]);
+        onCommentAdded(task.id, data.comment);
+        setNewComment("");
+      }
+    } catch (error) {
+      console.error("Error adding comment:", error);
+    } finally {
+      setIsAddingComment(false);
+    }
   };
 
   const toggleAssignee = (userId: string) => {
@@ -537,24 +580,85 @@ function TaskDetailModal({
             )}
           </div>
 
-          {/* Comments */}
-          {task.comments.length > 0 && (
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                Kommentare ({task.comments.length})
-              </label>
-              <div className="space-y-2">
-                {task.comments.map((comment) => (
+          {/* Comments Section */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              Kommentare & Notizen ({localComments.length})
+            </label>
+            
+            {/* Existing Comments */}
+            {localComments.length > 0 && (
+              <div className="space-y-3 mb-4">
+                {localComments.map((comment) => (
                   <div key={comment.id} className="bg-slate-100 dark:bg-slate-900 rounded-lg p-3">
-                    <p className="text-sm text-slate-700 dark:text-slate-300">{comment.text}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
-                      {formatDate(comment.createdAt)}
-                    </p>
+                    <div className="flex items-start gap-2">
+                      <div className="w-7 h-7 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-medium shrink-0">
+                        {(comment.user?.name || comment.user?.email || "?").charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-sm font-medium text-slate-900 dark:text-white">
+                            {comment.user?.name || comment.user?.email || "Unbekannt"}
+                          </span>
+                          <span className="text-xs text-slate-500 dark:text-slate-500">
+                            {formatDate(comment.createdAt)}
+                          </span>
+                        </div>
+                        <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
+                          {comment.text}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            )}
+
+            {/* Add Comment Form */}
+            {canEditData && (
+              <div className="border border-slate-300 dark:border-slate-600 rounded-lg overflow-hidden">
+                <textarea
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  placeholder="Kommentar oder Notiz hinzufügen..."
+                  rows={3}
+                  className="w-full px-3 py-2 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm resize-none border-0 focus:ring-0 focus:outline-none"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                      handleAddComment();
+                    }
+                  }}
+                />
+                <div className="flex items-center justify-between px-3 py-2 bg-slate-50 dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700">
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                    Cmd/Ctrl + Enter zum Senden
+                  </span>
+                  <button
+                    onClick={handleAddComment}
+                    disabled={!newComment.trim() || isAddingComment}
+                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white text-sm rounded-lg transition-colors flex items-center gap-1"
+                  >
+                    {isAddingComment ? (
+                      <>
+                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                        Senden...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                        </svg>
+                        Senden
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Footer */}
@@ -1386,6 +1490,22 @@ export default function TasksPage() {
           onClose={() => setSelectedTask(null)}
           onUpdate={handleUpdateTask}
           onDelete={handleDeleteTask}
+          onCommentAdded={(taskId, comment) => {
+            // Update tasks list with new comment
+            setTasks((prev) =>
+              prev.map((t) =>
+                t.id === taskId
+                  ? { ...t, comments: [...t.comments, comment] }
+                  : t
+              )
+            );
+            // Update selected task
+            setSelectedTask((prev) =>
+              prev && prev.id === taskId
+                ? { ...prev, comments: [...prev.comments, comment] }
+                : prev
+            );
+          }}
           canEditData={canEditData}
         />
       )}
