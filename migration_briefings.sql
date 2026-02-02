@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS "Briefing" (
     "bodyContent" TEXT,
     "internalLinks" TEXT,
     "missingTopics" TEXT,
+    "faqs" TEXT,
     "notes" TEXT,
     
     -- Mehrsprachigkeit

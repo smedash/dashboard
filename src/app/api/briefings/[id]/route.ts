@@ -104,6 +104,8 @@ export async function PATCH(
     // Grunddaten - können vom Owner oder Admin geändert werden (nur wenn Status "ordered")
     if ((isOwner || isAdmin) && briefing.status === "ordered") {
       if (body.title !== undefined) updateData.title = body.title;
+      if (body.briefingType !== undefined) updateData.briefingType = body.briefingType;
+      if (body.category !== undefined) updateData.category = body.category || null;
       if (body.contentAction !== undefined) updateData.contentAction = body.contentAction;
       if (body.targetAudience !== undefined) updateData.targetAudience = body.targetAudience;
       if (body.funnelStage !== undefined) updateData.funnelStage = body.funnelStage;
@@ -115,12 +117,17 @@ export async function PATCH(
       if (body.url !== undefined) updateData.url = body.url;
       if (body.benchmarkUrls !== undefined) updateData.benchmarkUrls = body.benchmarkUrls;
       if (body.csArticle !== undefined) updateData.csArticle = body.csArticle;
+      // Lexikon-Felder
+      if (body.lexiconDefinition !== undefined) updateData.lexiconDefinition = body.lexiconDefinition;
+      if (body.lexiconSynonyms !== undefined) updateData.lexiconSynonyms = body.lexiconSynonyms;
+      if (body.lexiconRelated !== undefined) updateData.lexiconRelated = body.lexiconRelated;
     }
 
     // Content-Felder - nur Admins (Agentur/Superadmin)
     if (isAdmin) {
       if (body.status !== undefined) updateData.status = body.status;
       if (body.assigneeId !== undefined) updateData.assigneeId = body.assigneeId;
+      if (body.deadline !== undefined) updateData.deadline = body.deadline ? new Date(body.deadline) : null;
       if (body.titleTag !== undefined) updateData.titleTag = body.titleTag;
       if (body.metaDescription !== undefined) updateData.metaDescription = body.metaDescription;
       if (body.navTitle !== undefined) updateData.navTitle = body.navTitle;
@@ -129,9 +136,12 @@ export async function PATCH(
       if (body.primaryCta !== undefined) updateData.primaryCta = body.primaryCta;
       if (body.secondaryCta !== undefined) updateData.secondaryCta = body.secondaryCta;
       if (body.inboundCta !== undefined) updateData.inboundCta = body.inboundCta;
+      if (body.keywordsetLongtail !== undefined) updateData.keywordsetLongtail = body.keywordsetLongtail;
+      if (body.topicclusterContent !== undefined) updateData.topicclusterContent = body.topicclusterContent;
       if (body.bodyContent !== undefined) updateData.bodyContent = body.bodyContent;
       if (body.internalLinks !== undefined) updateData.internalLinks = body.internalLinks;
       if (body.missingTopics !== undefined) updateData.missingTopics = body.missingTopics;
+      if (body.faqs !== undefined) updateData.faqs = body.faqs;
       if (body.notes !== undefined) updateData.notes = body.notes;
       if (body.titleEn !== undefined) updateData.titleEn = body.titleEn;
       if (body.titleFr !== undefined) updateData.titleFr = body.titleFr;

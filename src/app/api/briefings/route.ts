@@ -77,6 +77,8 @@ export async function POST(request: Request) {
     const body = await request.json();
     const {
       title,
+      briefingType,
+      category,
       contentAction,
       targetAudience,
       funnelStage,
@@ -88,21 +90,40 @@ export async function POST(request: Request) {
       url,
       benchmarkUrls,
       csArticle,
+      // Lexikon-spezifische Felder
+      lexiconDefinition,
+      lexiconSynonyms,
+      lexiconRelated,
     } = body;
 
-    if (!title?.trim() || !contentAction) {
+    if (!title?.trim() || !briefingType) {
       return NextResponse.json(
-        { error: "Titel und Ausgangslage sind erforderlich" },
+        { error: "Titel und Briefing-Typ sind erforderlich" },
         { status: 400 }
       );
     }
+
+    // Validiere briefingType
+    const validTypes = ["new_content", "edit_content", "lexicon"];
+    if (!validTypes.includes(briefingType)) {
+      return NextResponse.json(
+        { error: "Ungültiger Briefing-Typ" },
+        { status: 400 }
+      );
+    }
+
+    // Deadline automatisch auf 10 Tage nach Bestellung setzen
+    const deadline = new Date();
+    deadline.setDate(deadline.getDate() + 10);
 
     // Briefing erstellen
     const briefing = await prisma.briefing.create({
       data: {
         requesterId: user.id,
         title: title.trim(),
-        contentAction,
+        briefingType,
+        category: category || null, // Kategorie (Mortgages, Accounts&Cards, Investing, Pension, Digital Banking)
+        contentAction: contentAction || briefingType, // Fallback auf briefingType wenn nicht gesetzt
         targetAudience: targetAudience?.trim() || null,
         funnelStage: funnelStage || null,
         goals: goals?.trim() || null,
@@ -113,7 +134,12 @@ export async function POST(request: Request) {
         url: url?.trim() || null,
         benchmarkUrls: benchmarkUrls?.trim() || null,
         csArticle: csArticle?.trim() || null,
+        // Lexikon-Felder
+        lexiconDefinition: lexiconDefinition?.trim() || null,
+        lexiconSynonyms: lexiconSynonyms?.trim() || null,
+        lexiconRelated: lexiconRelated?.trim() || null,
         status: "ordered",
+        deadline,
       },
       include: {
         requester: {

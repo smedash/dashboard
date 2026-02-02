@@ -327,6 +327,12 @@ model Briefing {
   status            String   @default("ordered") // ordered, in_progress, completed
   briefingNumber    Int      @default(autoincrement()) // Automatische Briefing-Nr.
   
+  // Briefing-Typ (Vorlage)
+  briefingType      String   @default("new_content") // "new_content" | "edit_content" | "lexicon"
+  
+  // Kategorie - gleiche wie bei KVP (Mortgages, Accounts&Cards, Investing, Pension, Digital Banking)
+  category          String?  // Kategorie für bessere Zuordnung und Auswertung
+  
   // Grunddaten
   title             String   // Briefing-Titel
   contentAction     String   // "edit" | "merge" | "new" - Content überarbeiten/mergen/neu erstellen
@@ -354,9 +360,12 @@ model Briefing {
   primaryCta        String?  @db.Text // Primary CTA
   secondaryCta      String?  @db.Text // Secondary CTA auf weiterführende Seite
   inboundCta        String?  @db.Text // Inbound CTA auf diese Seite
+  keywordsetLongtail String? @db.Text // Keywordset/Longtail Keywords
+  topicclusterContent String? @db.Text // Topiccluster für Content
   bodyContent       String?  @db.Text // Fliesstext/Struktur (H2 – H4)
   internalLinks     String?  @db.Text // Interne Verlinkungen
   missingTopics     String?  @db.Text // Missing Topics
+  faqs              String?  @db.Text // FAQs zum Thema
   notes             String?  @db.Text // Bemerkungen
   
   // Mehrsprachigkeit
@@ -364,12 +373,22 @@ model Briefing {
   titleFr           String?  // FR Titel
   titleIt           String?  // IT Titel
   
+  // Lexikon-spezifische Felder
+  lexiconDefinition String?  @db.Text // Kurze Definition des Begriffs (1-2 Sätze)
+  lexiconSynonyms   String?  @db.Text // Synonyme / alternative Begriffe
+  lexiconRelated    String?  @db.Text // Verwandte Begriffe / Themen
+  
+  // Deadline - automatisch 10 Tage nach Bestellung, änderbar durch Agentur
+  deadline          DateTime?
+  
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
   
   @@index([requesterId])
   @@index([assigneeId])
   @@index([status])
+  @@index([briefingType])
+  @@index([category])
 }
 
 // Linkprofil - Gespeicherte Backlink-Daten von DataForSEO
