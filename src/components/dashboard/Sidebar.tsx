@@ -211,7 +211,10 @@ export function Sidebar() {
   return (
     <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-72 lg:flex-col">
       <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-slate-50 dark:bg-slate-800 px-6 pb-4 border-r border-slate-200 dark:border-slate-700">
-        <div className="flex h-16 shrink-0 items-center">
+        <div className="flex h-16 shrink-0 items-center gap-3">
+          <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
           <h1 className="text-xl font-bold text-slate-900 dark:text-white">SME Dashboard</h1>
         </div>
         <nav className="flex flex-1 flex-col">
