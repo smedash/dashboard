@@ -2,6 +2,8 @@ import { Resend } from "resend";
 
 export const resend = new Resend(process.env.RESEND_API_KEY);
 
+const EMAIL_FROM = process.env.EMAIL_FROM || "SME Dashboard <system@smedash.com>";
+
 export async function sendMagicLinkEmail({
   to,
   url,
@@ -10,7 +12,7 @@ export async function sendMagicLinkEmail({
   url: string;
 }) {
   const { data, error } = await resend.emails.send({
-    from: "SME Dashboard <mail@tasketeer.com>",
+    from: EMAIL_FROM,
     to: to,
     subject: "Dein Magic Link zum Einloggen",
     html: `
@@ -60,7 +62,7 @@ export async function sendNewBriefingNotification({
   dashboardUrl: string;
 }) {
   const { data, error } = await resend.emails.send({
-    from: "SME Dashboard <mail@tasketeer.com>",
+    from: EMAIL_FROM,
     to: to,
     subject: `Neue Briefing-Bestellung: ${briefingTitle} (#${briefingNumber})`,
     html: `
@@ -135,7 +137,7 @@ export async function sendTaskAssignmentNotification({
   const priorityColor = priorityColors[priority] || "#3b82f6";
 
   const { data, error } = await resend.emails.send({
-    from: "SME Dashboard <mail@tasketeer.com>",
+    from: EMAIL_FROM,
     to: to,
     subject: `Neuer Task zugewiesen: ${taskTitle}`,
     html: `
@@ -200,7 +202,7 @@ export async function sendTaskCommentNotification({
     : commentText;
 
   const { data, error } = await resend.emails.send({
-    from: "SME Dashboard <mail@tasketeer.com>",
+    from: EMAIL_FROM,
     to: to,
     subject: `Neuer Kommentar: ${taskTitle}`,
     html: `
@@ -251,7 +253,7 @@ export async function sendBriefingCompletedNotification({
   dashboardUrl: string;
 }) {
   const { data, error } = await resend.emails.send({
-    from: "SME Dashboard <mail@tasketeer.com>",
+    from: EMAIL_FROM,
     to: to,
     subject: `Briefing fertiggestellt: ${briefingTitle} (#${briefingNumber})`,
     html: `
@@ -315,7 +317,7 @@ export async function sendWelcomeEmail({
   const invitedByName = invitedBy.name || invitedBy.email;
   
   const { data, error } = await resend.emails.send({
-    from: "SME Dashboard <mail@tasketeer.com>",
+    from: EMAIL_FROM,
     to: to,
     subject: "Willkommen im SME Dashboard",
     html: `
