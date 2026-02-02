@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { canEdit } from "@/lib/rbac";
+import { sendTaskAssignmentNotification } from "@/lib/resend";
 
 // GET - Einzelnen Task abrufen
 export async function GET(
@@ -70,14 +71,22 @@ export async function PATCH(
     const body = await request.json();
     const { title, description, status, priority, dueDate, category, labels, assigneeIds } = body;
 
-    // Prüfen ob Task existiert
+    // Prüfen ob Task existiert und bestehende Assignees laden
     const existingTask = await prisma.task.findUnique({
       where: { id },
+      include: {
+        assignees: {
+          select: { userId: true },
+        },
+      },
     });
 
     if (!existingTask) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
+
+    // Bestehende Assignee-IDs merken für spätere Benachrichtigung
+    const existingAssigneeIds = existingTask.assignees.map((a) => a.userId);
 
     // Build update data
     const updateData: Record<string, unknown> = {};
@@ -131,6 +140,43 @@ export async function PATCH(
       ...task,
       assignees: task.assignees.map((a) => a.user),
     };
+
+    // E-Mail-Benachrichtigung an NEUE Assignees senden
+    if (assigneeIds !== undefined) {
+      const newAssigneeIds = assigneeIds.filter(
+        (userId: string) => !existingAssigneeIds.includes(userId)
+      );
+
+      if (newAssigneeIds.length > 0) {
+        try {
+          const baseUrl = process.env.NEXTAUTH_URL || "https://sme-dashboard.vercel.app";
+          const dashboardUrl = `${baseUrl}/tasks`;
+          const creatorName = session.user.name || session.user.email || "Unbekannt";
+
+          // Neue Assignees aus den aktualisierten Task-Daten filtern
+          const newAssignees = task.assignees.filter((a) =>
+            newAssigneeIds.includes(a.userId)
+          );
+
+          for (const assignee of newAssignees) {
+            if (assignee.user.email) {
+              await sendTaskAssignmentNotification({
+                to: assignee.user.email,
+                taskTitle: task.title,
+                taskDescription: task.description,
+                creatorName,
+                priority: task.priority,
+                dueDate: task.dueDate?.toISOString() || null,
+                dashboardUrl,
+              });
+            }
+          }
+        } catch (emailError) {
+          // E-Mail-Fehler loggen, aber Task-Update nicht abbrechen
+          console.error("Error sending task assignment notification emails:", emailError);
+        }
+      }
+    }
 
     return NextResponse.json({ task: transformedTask });
   } catch (error) {

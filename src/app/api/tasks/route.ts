@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { canEdit } from "@/lib/rbac";
+import { sendTaskAssignmentNotification } from "@/lib/resend";
 
 // GET - Alle Tasks abrufen
 export async function GET() {
@@ -112,6 +113,32 @@ export async function POST(request: NextRequest) {
       ...task,
       assignees: task.assignees.map((a) => a.user),
     };
+
+    // E-Mail-Benachrichtigung an alle Assignees senden
+    if (assigneeIds?.length > 0) {
+      try {
+        const baseUrl = process.env.NEXTAUTH_URL || "https://sme-dashboard.vercel.app";
+        const dashboardUrl = `${baseUrl}/tasks`;
+        const creatorName = session.user.name || session.user.email || "Unbekannt";
+
+        for (const assignee of task.assignees) {
+          if (assignee.user.email) {
+            await sendTaskAssignmentNotification({
+              to: assignee.user.email,
+              taskTitle: task.title,
+              taskDescription: task.description,
+              creatorName,
+              priority: task.priority,
+              dueDate: task.dueDate?.toISOString() || null,
+              dashboardUrl,
+            });
+          }
+        }
+      } catch (emailError) {
+        // E-Mail-Fehler loggen, aber Task-Erstellung nicht abbrechen
+        console.error("Error sending task assignment notification emails:", emailError);
+      }
+    }
 
     return NextResponse.json({ task: transformedTask });
   } catch (error) {
