@@ -21,15 +21,6 @@ const navigation: NavigationItem[] = [
       </svg>
     ),
   },
-  {
-    name: "Tasks",
-    href: "/tasks",
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-      </svg>
-    ),
-  },
   // TODO: Snapshots-Link temporär ausgeblendet, kann in Zukunft wieder aktiviert werden
   // {
   //   name: "Snapshots",
@@ -198,6 +189,7 @@ export function Sidebar() {
   const isAdminActive = pathname.startsWith("/admin");
   const isSettingsActive = pathname === "/settings";
   const isReportingActive = pathname === "/reporting";
+  const isTasksActive = pathname === "/tasks";
   const hasAdminRights = session?.user?.role === "superadmin" || session?.user?.role === "agentur";
 
   return (
@@ -251,6 +243,26 @@ export function Sidebar() {
               );
             })}
           </ul>
+          
+          {/* Aufgaben - separate Menübox */}
+          <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
+            <h3 className="px-3 mb-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              Aufgaben
+            </h3>
+            <Link
+              href="/tasks"
+              className={`group flex gap-x-3 rounded-lg p-3 text-sm font-medium transition-all duration-200 ${
+                isTasksActive
+                  ? "bg-blue-600 text-white"
+                  : "text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700"
+              }`}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+              </svg>
+              Kanban Board
+            </Link>
+          </div>
           
           {/* Unterer Bereich - separat */}
           <div className="mt-auto pt-4 border-t border-slate-200 dark:border-slate-700 space-y-1">
