@@ -10,7 +10,8 @@ interface NavigationItem {
   children?: NavigationItem[];
 }
 
-const navigation: NavigationItem[] = [
+// Hauptnavigation (nur Dashboard)
+const mainNavigation: NavigationItem[] = [
   {
     name: "Dashboard",
     href: "/",
@@ -20,16 +21,10 @@ const navigation: NavigationItem[] = [
       </svg>
     ),
   },
-  // TODO: Snapshots-Link temporär ausgeblendet, kann in Zukunft wieder aktiviert werden
-  // {
-  //   name: "Snapshots",
-  //   href: "/snapshots",
-  //   icon: (
-  //     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-  //       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-  //     </svg>
-  //   ),
-  // },
+];
+
+// Daten-Navigation (Auswertung, Ranktracker, Linkprofil)
+const dataNavigation: NavigationItem[] = [
   {
     name: "Auswertung",
     href: "/auswertung",
@@ -104,6 +99,10 @@ const navigation: NavigationItem[] = [
       </svg>
     ),
   },
+];
+
+// Prozesse-Navigation (SEO KVP, SEO Reifegrad, Briefings)
+const processNavigation: NavigationItem[] = [
   {
     name: "SEO KVP",
     href: "/ubs-kvp",
@@ -135,7 +134,7 @@ const navigation: NavigationItem[] = [
         name: "Übersicht",
         href: "/briefings",
         icon: (
-          <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
         ),
@@ -144,27 +143,70 @@ const navigation: NavigationItem[] = [
         name: "Auswertung",
         href: "/briefings/auswertung",
         icon: (
-          <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
           </svg>
         ),
       },
     ],
   },
-  {
-    name: "SuperAgent",
-    href: "/superagent",
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
-      </svg>
-    ),
-  },
 ];
+
+// Hilfsfunktion zum Rendern von Navigation Items
+function NavigationItems({ items, pathname }: { items: NavigationItem[]; pathname: string }) {
+  return (
+    <ul role="list" className="space-y-1">
+      {items.map((item) => {
+        const isActive = pathname === item.href || (item.children && item.children.some(child => pathname === child.href));
+        const hasChildren = item.children && item.children.length > 0;
+        
+        return (
+          <li key={item.name}>
+            <Link
+              href={item.href}
+              className={`group flex gap-x-3 rounded-lg p-3 text-sm font-medium transition-all duration-200 ${
+                isActive && !hasChildren
+                  ? "bg-blue-600 text-white"
+                  : "text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700"
+              }`}
+            >
+              {item.icon}
+              {item.name}
+            </Link>
+            {item.children && item.children.length > 0 && (
+              <ul className="ml-8 mt-1 space-y-1">
+                {item.children.map((child) => {
+                  const isChildActive = pathname === child.href;
+                  return (
+                    <li key={child.name}>
+                      <Link
+                        href={child.href}
+                        className={`group flex gap-x-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 ${
+                          isChildActive
+                            ? "bg-blue-600 text-white"
+                            : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-700/50"
+                        }`}
+                      >
+                        {child.icon}
+                        {child.name}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
 
 export function Sidebar() {
   const pathname = usePathname();
   const isTasksActive = pathname === "/tasks";
+  const isSuperAgentActive = pathname === "/superagent";
+  const isSEOHelperActive = pathname.startsWith("/seo-helper");
 
   return (
     <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-72 lg:flex-col">
@@ -173,52 +215,26 @@ export function Sidebar() {
           <h1 className="text-xl font-bold text-slate-900 dark:text-white">SME Dashboard</h1>
         </div>
         <nav className="flex flex-1 flex-col">
-          <ul role="list" className="flex flex-1 flex-col gap-y-2">
-            {navigation.map((item) => {
-              const isActive = pathname === item.href || (item.children && item.children.some(child => pathname === child.href));
-              const hasChildren = item.children && item.children.length > 0;
-              
-              return (
-                <li key={item.name}>
-                  <Link
-                    href={item.href}
-                    className={`group flex gap-x-3 rounded-lg p-3 text-sm font-medium transition-all duration-200 ${
-                      isActive && !hasChildren
-                        ? "bg-blue-600 text-white"
-                        : "text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700"
-                    }`}
-                  >
-                    {item.icon}
-                    {item.name}
-                  </Link>
-                  {item.children && item.children.length > 0 && (
-                    <ul className="ml-8 mt-1 space-y-1">
-                      {item.children.map((child) => {
-                        const isChildActive = pathname === child.href;
-                        return (
-                          <li key={child.name}>
-                            <Link
-                              href={child.href}
-                              className={`group flex gap-x-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 ${
-                                isChildActive
-                                  ? "bg-blue-600 text-white"
-                                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-700/50"
-                              }`}
-                            >
-                              {child.icon}
-                              {child.name}
-                            </Link>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
+          {/* Hauptnavigation */}
+          <NavigationItems items={mainNavigation} pathname={pathname} />
           
-          {/* Aufgaben - separate Menübox */}
+          {/* Daten - Menübox */}
+          <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
+            <h3 className="px-3 mb-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              Daten
+            </h3>
+            <NavigationItems items={dataNavigation} pathname={pathname} />
+          </div>
+          
+          {/* Prozesse - Menübox */}
+          <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
+            <h3 className="px-3 mb-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              Prozesse
+            </h3>
+            <NavigationItems items={processNavigation} pathname={pathname} />
+          </div>
+          
+          {/* Aufgaben - Menübox */}
           <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
             <h3 className="px-3 mb-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               Aufgaben
@@ -235,6 +251,36 @@ export function Sidebar() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
               </svg>
               Kanban Board
+            </Link>
+          </div>
+          
+          {/* KI & Tools - ganz unten */}
+          <div className="mt-auto pt-4 border-t border-slate-200 dark:border-slate-700 space-y-1">
+            <Link
+              href="/superagent"
+              className={`group flex gap-x-3 rounded-lg p-3 text-sm font-medium transition-all duration-200 ${
+                isSuperAgentActive
+                  ? "bg-purple-600 text-white"
+                  : "text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700"
+              }`}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
+              </svg>
+              SuperAgent
+            </Link>
+            <Link
+              href="/seo-helper"
+              className={`group flex gap-x-3 rounded-lg p-3 text-sm font-medium transition-all duration-200 ${
+                isSEOHelperActive
+                  ? "bg-teal-600 text-white"
+                  : "text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700"
+              }`}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437l1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008z" />
+              </svg>
+              SEO Helper
             </Link>
           </div>
           
