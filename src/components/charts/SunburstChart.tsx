@@ -83,7 +83,20 @@ export const SunburstChart = forwardRef<SunburstChartRef, SunburstChartProps>(
   const [hoveredScore, setHoveredScore] = useState<number | null>(null);
   const [hoveredPriority, setHoveredPriority] = useState<string | null>(null);
   const [hoveredTeams, setHoveredTeams] = useState<Array<{ id: string; name: string }> | null>(null);
+  const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const svgRef = useRef<SVGSVGElement>(null);
+
+  // Mouse-Position tracken relativ zum SVG
+  const handleMouseMove = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
+    if (!svgRef.current) return;
+    const rect = svgRef.current.getBoundingClientRect();
+    const scaleX = width / rect.width;
+    const scaleY = height / rect.height;
+    setMousePos({
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY,
+    });
+  }, [width, height]);
 
   // Export-Funktion für PNG
   const exportToPng = useCallback((filename: string = "seo-reifegrad-chart.png") => {
@@ -487,7 +500,7 @@ export const SunburstChart = forwardRef<SunburstChartRef, SunburstChartProps>(
 
   return (
     <div className="flex flex-col items-center">
-      <svg ref={svgRef} width={width} height={height} className="overflow-visible" style={{ overflow: "visible" }}>
+      <svg ref={svgRef} width={width} height={height} className="overflow-visible" style={{ overflow: "visible" }} onMouseMove={handleMouseMove}>
         {/* Prioritäten Ring (ganz außen) */}
         <g>{renderPriorities(processedData)}</g>
         {/* Items Ring */}
@@ -514,7 +527,7 @@ export const SunburstChart = forwardRef<SunburstChartRef, SunburstChartProps>(
         >
           SEO
         </text>
-        {/* Tooltip für gehoverte Items */}
+        {/* Tooltip für gehoverte Items - folgt der Mausposition */}
         {hoveredItem && (() => {
           const isCategory = hoveredItem.startsWith("category-");
           // Item-Key Format: "item-KategorieName-ItemName" - nur den ItemName extrahieren
@@ -554,24 +567,53 @@ export const SunburstChart = forwardRef<SunburstChartRef, SunburstChartProps>(
           
           const textLines = wrapText(displayText, 35);
           
-          // Positionen sequentiell von oben nach unten berechnen
-          const tooltipY = 20;
+          // Tooltip-Dimensionen
+          const tooltipWidth = 260;
           const paddingTop = 25;
-          const textStartY = tooltipY + paddingTop;
           const textLineHeight = 18;
-          const textEndY = textStartY + (textLines.length - 1) * textLineHeight;
-          const separatorY = textEndY + 20;
+          const textBlockHeight = textLines.length * textLineHeight;
+          const separatorGap = 20;
+          const scoreLineHeight = 22;
+          const priorityLineHeight = hoveredPriority ? 22 : 0;
+          const teamsHeaderHeight = hoveredTeams && hoveredTeams.length > 0 ? 30 : 0;
+          const teamsListHeight = hoveredTeams && hoveredTeams.length > 0 ? hoveredTeams.length * 18 : 0;
+          const tooltipHeight = paddingTop + textBlockHeight + separatorGap + scoreLineHeight + priorityLineHeight + teamsHeaderHeight + teamsListHeight + 15;
+          
+          // Intelligente Positionierung: Tooltip erscheint neben der Maus
+          const offset = 15; // Abstand zur Maus
+          let tooltipX = mousePos.x + offset;
+          let tooltipY = mousePos.y - tooltipHeight / 2;
+          
+          // Wenn Tooltip rechts nicht passt, links anzeigen
+          if (tooltipX + tooltipWidth > width - 10) {
+            tooltipX = mousePos.x - tooltipWidth - offset;
+          }
+          // Wenn links auch nicht passt, mindestens bei 10 starten
+          if (tooltipX < 10) {
+            tooltipX = 10;
+          }
+          
+          // Vertikale Begrenzung
+          if (tooltipY < 10) {
+            tooltipY = 10;
+          }
+          if (tooltipY + tooltipHeight > height - 10) {
+            tooltipY = height - tooltipHeight - 10;
+          }
+          
+          // Relative Positionen innerhalb des Tooltips
+          const textStartY = tooltipY + paddingTop;
+          const separatorY = textStartY + textBlockHeight + 10;
           const scoreY = separatorY + 18;
           const priorityY = scoreY + 22;
           const teamsY = hoveredPriority ? priorityY + 22 : scoreY + 22;
-          const tooltipHeight = (hoveredTeams && hoveredTeams.length > 0 ? teamsY + (hoveredTeams.length * 18) : (hoveredPriority ? priorityY : scoreY)) - tooltipY + 15;
           
           return (
-            <g>
+            <g style={{ pointerEvents: "none" }}>
               <rect
-                x={width - 280}
+                x={tooltipX}
                 y={tooltipY}
-                width={260}
+                width={tooltipWidth}
                 height={tooltipHeight}
                 fill="#1e293b"
                 stroke="#334155"
@@ -582,7 +624,7 @@ export const SunburstChart = forwardRef<SunburstChartRef, SunburstChartProps>(
               {textLines.map((line, idx) => (
                 <text
                   key={idx}
-                  x={width - 150}
+                  x={tooltipX + tooltipWidth / 2}
                   y={textStartY + idx * textLineHeight}
                   textAnchor="middle"
                   fill="#ffffff"
@@ -596,22 +638,22 @@ export const SunburstChart = forwardRef<SunburstChartRef, SunburstChartProps>(
               {hoveredScore !== null && (
                 <>
                   <line
-                    x1={width - 260}
+                    x1={tooltipX + 20}
                     y1={separatorY}
-                    x2={width - 40}
+                    x2={tooltipX + tooltipWidth - 20}
                     y2={separatorY}
                     stroke="#334155"
                     strokeWidth={1}
                   />
                   {/* Farbindikator für Score */}
                   <circle
-                    cx={width - 245}
+                    cx={tooltipX + 35}
                     cy={scoreY}
                     r={6}
                     fill={getColor(hoveredScore)}
                   />
                   <text
-                    x={width - 150}
+                    x={tooltipX + tooltipWidth / 2}
                     y={scoreY + 4}
                     textAnchor="middle"
                     fill="#ffffff"
@@ -624,13 +666,13 @@ export const SunburstChart = forwardRef<SunburstChartRef, SunburstChartProps>(
                   {hoveredPriority && (
                     <>
                       <circle
-                        cx={width - 245}
+                        cx={tooltipX + 35}
                         cy={priorityY}
                         r={6}
                         fill={getPriorityColor(hoveredPriority)}
                       />
                       <text
-                        x={width - 150}
+                        x={tooltipX + tooltipWidth / 2}
                         y={priorityY + 4}
                         textAnchor="middle"
                         fill="#ffffff"
@@ -645,15 +687,15 @@ export const SunburstChart = forwardRef<SunburstChartRef, SunburstChartProps>(
                   {hoveredTeams && hoveredTeams.length > 0 && (
                     <>
                       <line
-                        x1={width - 260}
+                        x1={tooltipX + 20}
                         y1={teamsY - 10}
-                        x2={width - 40}
+                        x2={tooltipX + tooltipWidth - 20}
                         y2={teamsY - 10}
                         stroke="#334155"
                         strokeWidth={1}
                       />
                       <text
-                        x={width - 150}
+                        x={tooltipX + tooltipWidth / 2}
                         y={teamsY + 4}
                         textAnchor="middle"
                         fill="#94a3b8"
@@ -665,7 +707,7 @@ export const SunburstChart = forwardRef<SunburstChartRef, SunburstChartProps>(
                       {hoveredTeams.map((team, idx) => (
                         <text
                           key={team.id}
-                          x={width - 150}
+                          x={tooltipX + tooltipWidth / 2}
                           y={teamsY + 20 + (idx * 18)}
                           textAnchor="middle"
                           fill="#cbd5e1"
