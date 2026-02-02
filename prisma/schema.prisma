@@ -30,6 +30,8 @@ model User {
   tickets       Ticket[]
   briefingsRequested Briefing[] @relation("BriefingRequester") // Briefings die der User bestellt hat
   briefingsAssigned  Briefing[] @relation("BriefingAssignee")  // Briefings die der User bearbeitet
+  tasksCreated  Task[]         @relation("TaskCreator") // Tasks die der User erstellt hat
+  taskAssignments TaskAssignee[] @relation("TaskAssignee") // Tasks die dem User zugewiesen sind
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
@@ -405,6 +407,57 @@ model Briefing {
   @@index([status])
   @@index([briefingType])
   @@index([category])
+}
+
+// Task Management - Kanban Board
+model Task {
+  id          String         @id @default(cuid())
+  title       String
+  description String?        @db.Text
+  status      String         @default("backlog") // backlog, todo, in_progress, review, done
+  priority    String         @default("medium") // low, medium, high, urgent
+  order       Int            @default(0) // Reihenfolge innerhalb der Spalte
+  dueDate     DateTime?
+  category    String?        // Kategorie: Mortgages, Accounts&Cards, Investing, Pension, Digital Banking
+  labels      String[]       // Zusätzliche Labels/Tags
+  creatorId   String
+  creator     User           @relation("TaskCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  assignees   TaskAssignee[] // Mehrere zugewiesene Bearbeiter
+  comments    TaskComment[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([creatorId])
+  @@index([status])
+  @@index([priority])
+  @@index([category])
+  @@index([status, order])
+}
+
+// Task Zuweisungen - Many-to-Many zwischen Task und User
+model TaskAssignee {
+  id        String   @id @default(cuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation("TaskAssignee", fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([taskId, userId])
+  @@index([taskId])
+  @@index([userId])
+}
+
+// Task Kommentare
+model TaskComment {
+  id        String   @id @default(cuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId    String
+  text      String   @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([taskId])
 }
 
 // Linkprofil - Gespeicherte Backlink-Daten von DataForSEO
