@@ -82,6 +82,15 @@ const CATEGORIES = [
   "Digital Banking",
 ];
 
+// Kategorie-Farben für Timeline
+const CATEGORY_COLORS: Record<string, { bg: string; border: string; text: string }> = {
+  "Mortgages": { bg: "bg-blue-100 dark:bg-blue-900/30", border: "border-blue-500", text: "text-blue-700 dark:text-blue-300" },
+  "Accounts&Cards": { bg: "bg-green-100 dark:bg-green-900/30", border: "border-green-500", text: "text-green-700 dark:text-green-300" },
+  "Investing": { bg: "bg-purple-100 dark:bg-purple-900/30", border: "border-purple-500", text: "text-purple-700 dark:text-purple-300" },
+  "Pension": { bg: "bg-orange-100 dark:bg-orange-900/30", border: "border-orange-500", text: "text-orange-700 dark:text-orange-300" },
+  "Digital Banking": { bg: "bg-cyan-100 dark:bg-cyan-900/30", border: "border-cyan-500", text: "text-cyan-700 dark:text-cyan-300" },
+};
+
 // Sortable Task Card Component
 function SortableTaskCard({
   task,
@@ -756,6 +765,258 @@ function NewTaskModal({
   );
 }
 
+// Timeline View Component
+function TimelineView({
+  tasks,
+  onTaskClick,
+  filterCategory,
+}: {
+  tasks: Task[];
+  onTaskClick: (task: Task) => void;
+  filterCategory: string;
+}) {
+  // Nur Tasks mit Fälligkeitsdatum anzeigen
+  const tasksWithDueDate = tasks.filter((task) => task.dueDate);
+  
+  // Tasks nach Kategorie filtern (falls Filter gesetzt)
+  const filteredTasks = filterCategory === "all" 
+    ? tasksWithDueDate 
+    : tasksWithDueDate.filter((task) => task.category === filterCategory);
+
+  // Zeitraum berechnen (heute bis 8 Wochen in die Zukunft)
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const startDate = new Date(today);
+  startDate.setDate(startDate.getDate() - 7); // Eine Woche in der Vergangenheit für überfällige Tasks
+  
+  const endDate = new Date(today);
+  endDate.setDate(endDate.getDate() + 56); // 8 Wochen in die Zukunft
+
+  // Wochen generieren
+  const weeks: { start: Date; end: Date; label: string }[] = [];
+  const currentWeekStart = new Date(startDate);
+  currentWeekStart.setDate(currentWeekStart.getDate() - currentWeekStart.getDay() + 1); // Montag
+  
+  while (currentWeekStart < endDate) {
+    const weekEnd = new Date(currentWeekStart);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+    
+    weeks.push({
+      start: new Date(currentWeekStart),
+      end: weekEnd,
+      label: `KW ${getWeekNumber(currentWeekStart)}`,
+    });
+    
+    currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+  }
+
+  // Hilfsfunktion für Kalenderwoche
+  function getWeekNumber(date: Date): number {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  }
+
+  // Tasks nach Kategorie gruppieren
+  const categories = filterCategory === "all" 
+    ? [...new Set(filteredTasks.map((t) => t.category || "Keine Kategorie"))]
+    : [filterCategory];
+
+  // Position eines Tasks auf der Timeline berechnen
+  const getTaskPosition = (dueDate: string, createdAt: string) => {
+    const due = new Date(dueDate);
+    const created = new Date(createdAt);
+    
+    const totalDays = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
+    
+    // Startposition (Erstelldatum oder Anfang der Timeline)
+    const effectiveStart = created < startDate ? startDate : created;
+    const startPosition = Math.max(0, ((effectiveStart.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) / totalDays * 100);
+    
+    // Endposition (Fälligkeitsdatum)
+    const endPosition = Math.min(100, ((due.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) / totalDays * 100);
+    
+    // Breite
+    const width = Math.max(2, endPosition - startPosition);
+    
+    return { left: startPosition, width };
+  };
+
+  // Heute-Linie Position
+  const todayPosition = ((today.getTime() - startDate.getTime()) / (endDate.getTime() - startDate.getTime())) * 100;
+
+  if (filteredTasks.length === 0) {
+    return (
+      <div className="bg-white dark:bg-slate-800 rounded-xl p-8 text-center">
+        <svg className="w-16 h-16 mx-auto text-slate-300 dark:text-slate-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+        <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">
+          Keine Tasks mit Fälligkeitsdatum
+        </h3>
+        <p className="text-slate-500 dark:text-slate-400">
+          Füge Tasks ein Fälligkeitsdatum hinzu, um sie in der Timeline zu sehen.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white dark:bg-slate-800 rounded-xl overflow-hidden">
+      {/* Timeline Header mit Wochen */}
+      <div className="border-b border-slate-200 dark:border-slate-700">
+        <div className="flex">
+          {/* Kategorie-Spalte */}
+          <div className="w-48 flex-shrink-0 p-3 border-r border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Kategorie</span>
+          </div>
+          {/* Wochen-Header */}
+          <div className="flex-1 flex relative">
+            {weeks.map((week, idx) => (
+              <div
+                key={idx}
+                className="flex-1 p-2 text-center border-r border-slate-200 dark:border-slate-700 last:border-r-0"
+              >
+                <span className="text-xs font-medium text-slate-600 dark:text-slate-400">{week.label}</span>
+                <div className="text-xs text-slate-400 dark:text-slate-500">
+                  {week.start.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Timeline Body */}
+      <div className="max-h-[500px] overflow-y-auto">
+        {categories.map((category) => {
+          const categoryTasks = filteredTasks.filter((t) => (t.category || "Keine Kategorie") === category);
+          if (categoryTasks.length === 0) return null;
+          
+          const colors = CATEGORY_COLORS[category] || { bg: "bg-slate-100 dark:bg-slate-700", border: "border-slate-400", text: "text-slate-700 dark:text-slate-300" };
+          
+          return (
+            <div key={category} className="border-b border-slate-200 dark:border-slate-700 last:border-b-0">
+              {/* Kategorie-Header */}
+              <div className="flex bg-slate-50 dark:bg-slate-900/30">
+                <div className="w-48 flex-shrink-0 p-3 border-r border-slate-200 dark:border-slate-700">
+                  <span className={`text-sm font-medium ${colors.text}`}>{category}</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400 ml-2">({categoryTasks.length})</span>
+                </div>
+                <div className="flex-1 relative min-h-[40px]">
+                  {/* Heute-Linie */}
+                  <div
+                    className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-10"
+                    style={{ left: `${todayPosition}%` }}
+                  >
+                    <div className="absolute -top-1 left-1/2 -translate-x-1/2 px-1 py-0.5 bg-red-500 text-white text-xs rounded whitespace-nowrap">
+                      Heute
+                    </div>
+                  </div>
+                  {/* Wochen-Grid */}
+                  <div className="absolute inset-0 flex">
+                    {weeks.map((_, idx) => (
+                      <div key={idx} className="flex-1 border-r border-slate-100 dark:border-slate-800 last:border-r-0" />
+                    ))}
+                  </div>
+                </div>
+              </div>
+              
+              {/* Tasks in dieser Kategorie */}
+              {categoryTasks.map((task) => {
+                const position = getTaskPosition(task.dueDate!, task.createdAt);
+                const isOverdue = new Date(task.dueDate!) < today && task.status !== "done";
+                const priority = PRIORITIES.find((p) => p.id === task.priority);
+                const status = COLUMNS.find((c) => c.id === task.status);
+                
+                return (
+                  <div key={task.id} className="flex hover:bg-slate-50 dark:hover:bg-slate-900/20">
+                    <div className="w-48 flex-shrink-0 p-2 border-r border-slate-200 dark:border-slate-700">
+                      <button
+                        onClick={() => onTaskClick(task)}
+                        className="text-left w-full"
+                      >
+                        <p className="text-sm text-slate-900 dark:text-white truncate hover:text-blue-600 dark:hover:text-blue-400">
+                          {task.title}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          {status && (
+                            <span className={`px-1.5 py-0.5 text-xs rounded ${status.bgColor} ${status.color}`}>
+                              {status.title}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    </div>
+                    <div className="flex-1 relative py-2 px-1">
+                      {/* Heute-Linie */}
+                      <div
+                        className="absolute top-0 bottom-0 w-0.5 bg-red-500/30 z-0"
+                        style={{ left: `${todayPosition}%` }}
+                      />
+                      {/* Wochen-Grid */}
+                      <div className="absolute inset-0 flex">
+                        {weeks.map((_, idx) => (
+                          <div key={idx} className="flex-1 border-r border-slate-100 dark:border-slate-800 last:border-r-0" />
+                        ))}
+                      </div>
+                      {/* Task-Balken */}
+                      <div
+                        className={`absolute top-2 bottom-2 rounded-full cursor-pointer transition-all hover:opacity-80 ${colors.bg} border-l-4 ${colors.border} ${isOverdue ? "opacity-60" : ""}`}
+                        style={{
+                          left: `${position.left}%`,
+                          width: `${position.width}%`,
+                          minWidth: "60px",
+                        }}
+                        onClick={() => onTaskClick(task)}
+                        title={`${task.title} - Fällig: ${new Date(task.dueDate!).toLocaleDateString("de-DE")}`}
+                      >
+                        <div className="h-full flex items-center px-2 overflow-hidden">
+                          <span className={`text-xs font-medium truncate ${colors.text}`}>
+                            {task.title}
+                          </span>
+                          {priority && (
+                            <span className={`ml-1 px-1 py-0.5 text-xs rounded ${priority.bgColor} ${priority.color} shrink-0`}>
+                              {priority.label.charAt(0)}
+                            </span>
+                          )}
+                          {isOverdue && (
+                            <span className="ml-1 text-red-500 text-xs shrink-0">!</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Legende */}
+      <div className="p-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
+        <div className="flex flex-wrap items-center gap-4 text-xs">
+          <span className="font-medium text-slate-600 dark:text-slate-400">Legende:</span>
+          {Object.entries(CATEGORY_COLORS).map(([cat, colors]) => (
+            <div key={cat} className="flex items-center gap-1">
+              <div className={`w-3 h-3 rounded ${colors.bg} border-l-2 ${colors.border}`} />
+              <span className="text-slate-600 dark:text-slate-400">{cat}</span>
+            </div>
+          ))}
+          <div className="flex items-center gap-1 ml-4">
+            <div className="w-3 h-0.5 bg-red-500" />
+            <span className="text-slate-600 dark:text-slate-400">Heute</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Main Page Component
 export default function TasksPage() {
   const { data: session } = useSession();
@@ -767,6 +1028,9 @@ export default function TasksPage() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [newTaskStatus, setNewTaskStatus] = useState<string | null>(null);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+
+  // View state
+  const [viewMode, setViewMode] = useState<"kanban" | "timeline">("kanban");
 
   // Filter states
   const [filterPriority, setFilterPriority] = useState<string>("all");
@@ -977,20 +1241,51 @@ export default function TasksPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Tasks</h1>
           <p className="text-slate-600 dark:text-slate-400 mt-1">
-            Kanban Board für Aufgabenverwaltung
+            {viewMode === "kanban" ? "Kanban Board für Aufgabenverwaltung" : "Zeitliche Übersicht aller Tasks"}
           </p>
         </div>
-        {canEditData && (
-          <button
-            onClick={() => setNewTaskStatus("backlog")}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-2"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Neuer Task
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {/* View Switcher */}
+          <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
+            <button
+              onClick={() => setViewMode("kanban")}
+              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center gap-2 ${
+                viewMode === "kanban"
+                  ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+              </svg>
+              Kanban
+            </button>
+            <button
+              onClick={() => setViewMode("timeline")}
+              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center gap-2 ${
+                viewMode === "timeline"
+                  ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              Timeline
+            </button>
+          </div>
+          {canEditData && (
+            <button
+              onClick={() => setNewTaskStatus("backlog")}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Neuer Task
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Filters */}
@@ -1044,33 +1339,44 @@ export default function TasksPage() {
       </div>
 
       {/* Kanban Board */}
-      <DndContext
-        sensors={sensors}
-        collisionDetection={rectIntersection}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      >
-        <div className="flex gap-4 overflow-x-auto pb-4 -mx-4 px-4">
-          {COLUMNS.map((column) => (
-            <DroppableColumn
-              key={column.id}
-              column={column}
-              tasks={tasksByColumn[column.id]}
-              onTaskClick={setSelectedTask}
-              onAddTask={setNewTaskStatus}
-              canEditData={canEditData}
-            />
-          ))}
-        </div>
+      {viewMode === "kanban" && (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={rectIntersection}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="flex gap-4 overflow-x-auto pb-4 -mx-4 px-4">
+            {COLUMNS.map((column) => (
+              <DroppableColumn
+                key={column.id}
+                column={column}
+                tasks={tasksByColumn[column.id]}
+                onTaskClick={setSelectedTask}
+                onAddTask={setNewTaskStatus}
+                canEditData={canEditData}
+              />
+            ))}
+          </div>
 
-        <DragOverlay>
-          {activeTask && (
-            <div className="bg-white dark:bg-slate-800 rounded-lg p-3 border border-blue-500 shadow-lg w-72 opacity-90">
-              <TaskCardContent task={activeTask} />
-            </div>
-          )}
-        </DragOverlay>
-      </DndContext>
+          <DragOverlay>
+            {activeTask && (
+              <div className="bg-white dark:bg-slate-800 rounded-lg p-3 border border-blue-500 shadow-lg w-72 opacity-90">
+                <TaskCardContent task={activeTask} />
+              </div>
+            )}
+          </DragOverlay>
+        </DndContext>
+      )}
+
+      {/* Timeline View */}
+      {viewMode === "timeline" && (
+        <TimelineView
+          tasks={filteredTasks}
+          onTaskClick={setSelectedTask}
+          filterCategory={filterCategory}
+        />
+      )}
 
       {/* Task Detail Modal */}
       {selectedTask && (
