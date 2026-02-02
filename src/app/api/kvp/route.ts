@@ -22,6 +22,18 @@ export async function GET(request: NextRequest) {
         comments: {
           orderBy: { createdAt: "asc" },
         },
+        assignees: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
+          orderBy: { createdAt: "asc" },
+        },
       } as any, // Type assertion bis Prisma Client neu generiert wurde
       orderBy: { updatedAt: "desc" },
     });
@@ -51,7 +63,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { url, focusKeyword, category, comment, subkeywords } = body;
+    const { url, focusKeyword, category, comment, subkeywords, assigneeIds } = body;
 
     if (!url || !focusKeyword) {
       return NextResponse.json(
@@ -82,9 +94,27 @@ export async function POST(request: NextRequest) {
             keyword: keyword.trim(),
           })),
         },
+        // Erstelle Nutzerzuweisungen
+        assignees: {
+          create: (assigneeIds || []).map((userId: string) => ({
+            userId,
+          })),
+        },
       } as any,
       include: {
         subkeywords: {
+          orderBy: { createdAt: "asc" },
+        },
+        assignees: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
           orderBy: { createdAt: "asc" },
         },
       },
@@ -117,6 +147,7 @@ export async function POST(request: NextRequest) {
     const kvpUrlWithComments = {
       ...kvpUrl,
       comments,
+      assignees: (kvpUrl as any).assignees || [],
     };
 
     // Hole oder erstelle Rank Tracker

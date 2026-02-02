@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
+import { randomBytes } from "crypto";
 
 // GET - Einzelne KVP URL abrufen
 export async function GET(
@@ -16,16 +17,28 @@ export async function GET(
 
     const { id } = await params;
 
+    // Teamweiter Zugriff - alle können lesen
     const kvpUrl = await prisma.kVPUrl.findFirst({
       where: {
         id,
-        userId: session.user.id,
       },
       include: {
         subkeywords: {
           orderBy: { createdAt: "asc" },
         },
         comments: {
+          orderBy: { createdAt: "asc" },
+        },
+        assignees: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
           orderBy: { createdAt: "asc" },
         },
       } as any, // Type assertion bis Prisma Client neu generiert wurde
@@ -59,7 +72,7 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await request.json();
-    const { url, focusKeyword, category, comment } = body;
+    const { url, focusKeyword, category, comment, assigneeIds } = body;
 
     // Validiere Kategorie falls angegeben
     if (category) {
@@ -72,17 +85,28 @@ export async function PATCH(
       }
     }
 
-    // Prüfen ob die URL dem User gehört und hole aktuelle Daten
+    // Prüfen ob die URL existiert (teamweiter Zugriff - alle können bearbeiten)
     const existingUrl = await prisma.kVPUrl.findFirst({
       where: {
         id,
-        userId: session.user.id,
       },
       include: {
         subkeywords: {
           orderBy: { createdAt: "asc" },
         },
         comments: {
+          orderBy: { createdAt: "asc" },
+        },
+        assignees: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
           orderBy: { createdAt: "asc" },
         },
       } as any, // Type assertion bis Prisma Client neu generiert wurde
@@ -97,6 +121,23 @@ export async function PATCH(
     // Bestimme das finale Fokuskeyword (neu oder bestehend)
     const finalFocusKeyword = focusKeyword || existingUrl.focusKeyword;
 
+    // Wenn assigneeIds übergeben wurden, aktualisiere die Zuweisungen
+    if (assigneeIds !== undefined) {
+      // Lösche alle bestehenden Zuweisungen
+      await prisma.$executeRaw`DELETE FROM "KVPAssignee" WHERE "kvpUrlId" = ${id}`;
+      
+      // Erstelle neue Zuweisungen
+      if (Array.isArray(assigneeIds) && assigneeIds.length > 0) {
+        for (const userId of assigneeIds) {
+          const assigneeId = `a${randomBytes(16).toString('hex')}`;
+          await prisma.$executeRaw`
+            INSERT INTO "KVPAssignee" ("id", "kvpUrlId", "userId", "createdAt")
+            VALUES (${assigneeId}, ${id}, ${userId}, NOW())
+          `;
+        }
+      }
+    }
+
     const kvpUrl = await prisma.kVPUrl.update({
       where: { id },
       data: {
@@ -110,6 +151,18 @@ export async function PATCH(
           orderBy: { createdAt: "asc" },
         },
         comments: {
+          orderBy: { createdAt: "asc" },
+        },
+        assignees: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
           orderBy: { createdAt: "asc" },
         },
       } as any, // Type assertion bis Prisma Client neu generiert wurde

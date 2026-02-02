@@ -6,6 +6,20 @@ import { useSearchParams } from "next/navigation";
 import { PieChart } from "@/components/charts";
 import { canEdit } from "@/lib/rbac";
 
+interface SimpleUser {
+  id: string;
+  name: string | null;
+  email: string;
+}
+
+interface KVPAssignee {
+  id: string;
+  kvpUrlId: string;
+  userId: string;
+  createdAt: string;
+  user: SimpleUser;
+}
+
 interface KVPSubkeyword {
   id: string;
   keyword: string;
@@ -55,6 +69,7 @@ interface KVPUrl {
   subkeywords: KVPSubkeyword[];
   comments: KVPComment[];
   maturityLinks?: MaturityLink[];
+  assignees?: KVPAssignee[]; // Zugewiesene Nutzer
   createdAt: string;
   updatedAt: string;
 }
@@ -113,11 +128,25 @@ export default function UBSKVPPage() {
   const [maturityLinks, setMaturityLinks] = useState<Record<string, MaturityLink[]>>({});
   const [editingMaturityLinks, setEditingMaturityLinks] = useState<string | null>(null);
   const [selectedMaturityItems, setSelectedMaturityItems] = useState<string[]>([]);
+  const [allUsers, setAllUsers] = useState<SimpleUser[]>([]);
+  const [newAssigneeIds, setNewAssigneeIds] = useState<string[]>([]);
+  const [assigneeFilter, setAssigneeFilter] = useState<string>("");
 
   useEffect(() => {
     fetchUrls();
     fetchAllMaturityItems();
+    fetchAllUsers();
   }, []);
+
+  const fetchAllUsers = async () => {
+    try {
+      const response = await fetch("/api/users");
+      const data = await response.json();
+      setAllUsers(data.users || []);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+    }
+  };
 
   // Update search text from URL params
   useEffect(() => {
@@ -239,6 +268,7 @@ export default function UBSKVPPage() {
           category: newCategory || null,
           comment: newComment.trim() || null,
           subkeywords: newSubkeywords.filter((k) => k.trim()),
+          assigneeIds: newAssigneeIds,
         }),
       });
 
@@ -259,7 +289,7 @@ export default function UBSKVPPage() {
     }
   };
 
-  const handleUpdateUrl = async (id: string, url: string, focusKeyword: string, category: string, comment: string) => {
+  const handleUpdateUrl = async (id: string, url: string, focusKeyword: string, category: string, comment: string, assigneeIds?: string[]) => {
     try {
       const response = await fetch(`/api/kvp/${id}`, {
         method: "PATCH",
@@ -269,6 +299,7 @@ export default function UBSKVPPage() {
           focusKeyword: focusKeyword.trim(),
           category: category || null,
           comment: comment.trim() || null,
+          ...(assigneeIds !== undefined && { assigneeIds }),
         }),
       });
 
@@ -506,6 +537,7 @@ export default function UBSKVPPage() {
     setNewComment("");
     setNewSubkeywords([]);
     setNewSubkeywordInput("");
+    setNewAssigneeIds([]);
   };
 
   const addSubkeywordToForm = () => {
@@ -688,6 +720,45 @@ export default function UBSKVPPage() {
                 </div>
               )}
             </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                Verantwortliche Personen
+              </label>
+              <div className="space-y-2">
+                {allUsers.map((user) => (
+                  <label
+                    key={user.id}
+                    className="flex items-center gap-2 p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={newAssigneeIds.includes(user.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setNewAssigneeIds([...newAssigneeIds, user.id]);
+                        } else {
+                          setNewAssigneeIds(newAssigneeIds.filter((id) => id !== user.id));
+                        }
+                      }}
+                      className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-slate-900 dark:text-white">
+                      {user.name || user.email}
+                    </span>
+                    {user.name && (
+                      <span className="text-xs text-slate-500 dark:text-slate-500">
+                        ({user.email})
+                      </span>
+                    )}
+                  </label>
+                ))}
+              </div>
+              {newAssigneeIds.length > 0 && (
+                <div className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+                  {newAssigneeIds.length} Person{newAssigneeIds.length !== 1 ? "en" : ""} ausgewählt
+                </div>
+              )}
+            </div>
             <button
               onClick={handleCreateUrl}
               disabled={isSaving || !newUrl.trim() || !newFocusKeyword.trim()}
@@ -717,6 +788,14 @@ export default function UBSKVPPage() {
                   if (focusKeywordFilter) {
                     if (url.focusKeyword !== focusKeywordFilter) return false;
                   }
+                  // Verantwortliche-Filter
+                  if (assigneeFilter) {
+                    if (assigneeFilter === "__no_assignee__") {
+                      if (url.assignees && url.assignees.length > 0) return false;
+                    } else {
+                      if (!url.assignees || !url.assignees.some((a) => a.userId === assigneeFilter)) return false;
+                    }
+                  }
                   // Suchtext-Filter
                   if (searchText) {
                     const searchLower = searchText.toLowerCase();
@@ -725,7 +804,11 @@ export default function UBSKVPPage() {
                     const matchesSubkeywords = url.subkeywords.some((sub) =>
                       sub.keyword.toLowerCase().includes(searchLower)
                     );
-                    if (!matchesUrl && !matchesFocusKeyword && !matchesSubkeywords) return false;
+                    const matchesAssignee = url.assignees?.some((a) =>
+                      (a.user.name?.toLowerCase().includes(searchLower)) ||
+                      a.user.email.toLowerCase().includes(searchLower)
+                    );
+                    if (!matchesUrl && !matchesFocusKeyword && !matchesSubkeywords && !matchesAssignee) return false;
                   }
                   return true;
                 });
@@ -775,13 +858,30 @@ export default function UBSKVPPage() {
                             ))}
                           </select>
                         </div>
+                        {/* Verantwortliche-Filter */}
+                        <div className="sm:w-64">
+                          <select
+                            value={assigneeFilter}
+                            onChange={(e) => setAssigneeFilter(e.target.value)}
+                            className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="">Alle Verantwortlichen</option>
+                            <option value="__no_assignee__">Keine Zuweisung</option>
+                            {allUsers.map((user) => (
+                              <option key={user.id} value={user.id}>
+                                {user.name || user.email}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
                         {/* Filter zurücksetzen */}
-                        {(searchText || categoryFilter || focusKeywordFilter) && (
+                        {(searchText || categoryFilter || focusKeywordFilter || assigneeFilter) && (
                           <button
                             onClick={() => {
                               setSearchText("");
                               setCategoryFilter("");
                               setFocusKeywordFilter("");
+                              setAssigneeFilter("");
                             }}
                             className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors whitespace-nowrap"
                           >
@@ -821,8 +921,9 @@ export default function UBSKVPPage() {
               {editingId === url.id ? (
                 <EditUrlForm
                   url={urls.find((u) => u.id === url.id) || url}
-                  onSave={(updatedUrl, focusKeyword, category, comment) => {
-                    handleUpdateUrl(url.id, updatedUrl, focusKeyword, category, comment);
+                  allUsers={allUsers}
+                  onSave={(updatedUrl, focusKeyword, category, comment, assigneeIds) => {
+                    handleUpdateUrl(url.id, updatedUrl, focusKeyword, category, comment, assigneeIds);
                   }}
                   onCancel={() => setEditingId(null)}
                   onAddSubkeyword={async (keyword) => {
@@ -909,15 +1010,41 @@ export default function UBSKVPPage() {
                     {/* Inhalt - volle Breite */}
                     <div>
                       <div className="mb-2">
-                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white break-all">
-                          {url.url}
-                        </h3>
-                        {url.category && (
-                          <span className="text-xs text-slate-600 dark:text-slate-400 mt-1 inline-block">
-                            Kategorie: {url.category}
-                          </span>
-                        )}
-                      </div>
+                                      <h3 className="text-lg font-semibold text-slate-900 dark:text-white break-all">
+                                          {url.url}
+                                        </h3>
+                                        <div className="flex flex-wrap items-center gap-2 mt-1">
+                                          {url.category && (
+                                            <span className="text-xs text-slate-600 dark:text-slate-400">
+                                              Kategorie: {url.category}
+                                            </span>
+                                          )}
+                                          {url.assignees && url.assignees.length > 0 && (
+                                            <div className="flex items-center gap-1">
+                                              <span className="text-xs text-slate-500 dark:text-slate-500">•</span>
+                                              <span className="text-xs text-slate-600 dark:text-slate-400">
+                                                Verantwortlich:
+                                              </span>
+                                              <div className="flex flex-wrap gap-1">
+                                                {url.assignees.map((assignee) => (
+                                                  <span
+                                                    key={assignee.id}
+                                                    className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200"
+                                                    title={assignee.user.email}
+                                                  >
+                                                    {assignee.user.name || assignee.user.email}
+                                                  </span>
+                                                ))}
+                                              </div>
+                                            </div>
+                                          )}
+                                          {(!url.assignees || url.assignees.length === 0) && (
+                                            <span className="text-xs text-orange-600 dark:text-orange-400 italic">
+                                              Keine Zuweisung
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
                       <div className="mb-4">
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-xs font-medium text-slate-700 dark:text-slate-400">
@@ -1459,6 +1586,24 @@ function WorkloadView({ urls }: { urls: KVPUrl[] }) {
   const totalUrls = urls.length;
   const totalComments = urls.reduce((sum, url) => sum + (url.comments?.length || 0), 0);
   const urlsWithComments = urls.filter((url) => (url.comments?.length || 0) > 0).length;
+  const urlsWithAssignees = urls.filter((url) => (url.assignees?.length || 0) > 0).length;
+  const urlsWithoutAssignees = urls.filter((url) => !(url.assignees?.length)).length;
+
+  // Gruppiere URLs nach Verantwortlichen
+  const urlsByAssignee = urls.reduce((acc, url) => {
+    if (!url.assignees || url.assignees.length === 0) {
+      const key = "__no_assignee__";
+      if (!acc[key]) acc[key] = { name: "Nicht zugewiesen", email: "", urls: [] };
+      acc[key].urls.push(url);
+    } else {
+      url.assignees.forEach((assignee) => {
+        const key = assignee.userId;
+        if (!acc[key]) acc[key] = { name: assignee.user.name || assignee.user.email, email: assignee.user.email, urls: [] };
+        acc[key].urls.push(url);
+      });
+    }
+    return acc;
+  }, {} as Record<string, { name: string; email: string; urls: KVPUrl[] }>);
 
   // Gruppiere URLs nach Monat
   const urlsByMonth = urls.reduce((acc, url) => {
@@ -1481,7 +1626,7 @@ function WorkloadView({ urls }: { urls: KVPUrl[] }) {
   return (
     <div className="space-y-6">
       {/* Statistiken */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="bg-white dark:bg-slate-900 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
           <div className="text-sm text-slate-600 dark:text-slate-400">Gesamt URLs</div>
           <div className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{totalUrls}</div>
@@ -1493,6 +1638,65 @@ function WorkloadView({ urls }: { urls: KVPUrl[] }) {
         <div className="bg-white dark:bg-slate-900 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
           <div className="text-sm text-slate-600 dark:text-slate-400">URLs mit Kommentaren</div>
           <div className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{urlsWithComments}</div>
+        </div>
+        <div className="bg-white dark:bg-slate-900 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
+          <div className="text-sm text-slate-600 dark:text-slate-400">Mit Verantwortlichen</div>
+          <div className="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">{urlsWithAssignees}</div>
+        </div>
+        <div className="bg-white dark:bg-slate-900 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
+          <div className="text-sm text-slate-600 dark:text-slate-400">Ohne Zuweisung</div>
+          <div className="text-2xl font-bold text-orange-600 dark:text-orange-400 mt-1">{urlsWithoutAssignees}</div>
+        </div>
+      </div>
+
+      {/* Workload nach Verantwortlichen */}
+      <div className="bg-white dark:bg-slate-900 rounded-lg p-6 border border-slate-200 dark:border-slate-700">
+        <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-4">Workload nach Verantwortlichen</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Object.entries(urlsByAssignee)
+            .sort((a, b) => b[1].urls.length - a[1].urls.length)
+            .map(([key, data]) => (
+              <div
+                key={key}
+                className={`p-4 rounded-lg border ${
+                  key === "__no_assignee__"
+                    ? "bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800"
+                    : "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className={`font-medium ${
+                    key === "__no_assignee__"
+                      ? "text-orange-700 dark:text-orange-400"
+                      : "text-slate-900 dark:text-white"
+                  }`}>
+                    {data.name}
+                  </span>
+                  <span className={`px-2 py-1 rounded-full text-sm font-bold ${
+                    key === "__no_assignee__"
+                      ? "bg-orange-200 dark:bg-orange-800 text-orange-800 dark:text-orange-200"
+                      : "bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200"
+                  }`}>
+                    {data.urls.length}
+                  </span>
+                </div>
+                {data.email && key !== "__no_assignee__" && (
+                  <div className="text-xs text-slate-500 dark:text-slate-500 mb-2">{data.email}</div>
+                )}
+                <div className="space-y-1 max-h-32 overflow-y-auto">
+                  {data.urls.slice(0, 5).map((url) => (
+                    <div key={url.id} className="text-xs text-slate-600 dark:text-slate-400 truncate" title={url.url}>
+                      {url.focusKeyword}
+                    </div>
+                  ))}
+                  {data.urls.length > 5 && (
+                    <div className="text-xs text-slate-500 dark:text-slate-500 italic">
+                      +{data.urls.length - 5} weitere
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
         </div>
       </div>
 
@@ -1512,7 +1716,7 @@ function WorkloadView({ urls }: { urls: KVPUrl[] }) {
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1 min-w-0">
                       <h3 className="text-sm font-semibold text-slate-900 dark:text-white break-all mb-1">{url.url}</h3>
-                      <div className="flex items-center gap-4 mt-2">
+                      <div className="flex flex-wrap items-center gap-4 mt-2">
                         <div className="text-xs text-slate-600 dark:text-slate-400">
                           <span className="font-medium">Angelegt:</span> {formatDateTime(url.createdAt)}
                         </div>
@@ -1520,6 +1724,23 @@ function WorkloadView({ urls }: { urls: KVPUrl[] }) {
                           <div className="text-xs text-slate-500 dark:text-slate-500">
                             <span className="font-medium">Aktualisiert:</span> {formatDateTime(url.updatedAt)}
                           </div>
+                        )}
+                        {url.assignees && url.assignees.length > 0 ? (
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs text-slate-500 dark:text-slate-500">Verantwortlich:</span>
+                            <div className="flex flex-wrap gap-1">
+                              {url.assignees.map((a) => (
+                                <span
+                                  key={a.id}
+                                  className="px-1.5 py-0.5 rounded text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200"
+                                >
+                                  {a.user.name || a.user.email}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-orange-600 dark:text-orange-400 italic">Keine Zuweisung</span>
                         )}
                       </div>
                     </div>
@@ -1605,13 +1826,15 @@ function WorkloadView({ urls }: { urls: KVPUrl[] }) {
 
 function EditUrlForm({
   url,
+  allUsers,
   onSave,
   onCancel,
   onAddSubkeyword,
   onDeleteSubkeyword,
 }: {
   url: KVPUrl;
-  onSave: (url: string, focusKeyword: string, category: string, comment: string) => void;
+  allUsers: SimpleUser[];
+  onSave: (url: string, focusKeyword: string, category: string, comment: string, assigneeIds: string[]) => void;
   onCancel: () => void;
   onAddSubkeyword: (keyword: string) => Promise<void>;
   onDeleteSubkeyword: (subkeywordId: string) => Promise<void>;
@@ -1622,6 +1845,9 @@ function EditUrlForm({
   const [editComment, setEditComment] = useState(url.comment || "");
   const [editSubkeywords, setEditSubkeywords] = useState<KVPSubkeyword[]>(url.subkeywords);
   const [newSubkeywordInput, setNewSubkeywordInput] = useState("");
+  const [editAssigneeIds, setEditAssigneeIds] = useState<string[]>(
+    url.assignees?.map((a) => a.userId) || []
+  );
 
   const handleAddSubkeyword = async () => {
     if (!newSubkeywordInput.trim()) return;
@@ -1757,9 +1983,48 @@ function EditUrlForm({
           </button>
         </div>
       </div>
+      <div>
+        <label className="block text-sm font-medium text-slate-300 mb-2">
+          Verantwortliche Personen
+        </label>
+        <div className="space-y-2 max-h-48 overflow-y-auto p-2 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
+          {allUsers.map((user) => (
+            <label
+              key={user.id}
+              className="flex items-center gap-2 p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded cursor-pointer"
+            >
+              <input
+                type="checkbox"
+                checked={editAssigneeIds.includes(user.id)}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setEditAssigneeIds([...editAssigneeIds, user.id]);
+                  } else {
+                    setEditAssigneeIds(editAssigneeIds.filter((id) => id !== user.id));
+                  }
+                }}
+                className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-sm text-slate-900 dark:text-white">
+                {user.name || user.email}
+              </span>
+              {user.name && (
+                <span className="text-xs text-slate-500 dark:text-slate-500">
+                  ({user.email})
+                </span>
+              )}
+            </label>
+          ))}
+        </div>
+        {editAssigneeIds.length > 0 && (
+          <div className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+            {editAssigneeIds.length} Person{editAssigneeIds.length !== 1 ? "en" : ""} ausgewählt
+          </div>
+        )}
+      </div>
       <div className="flex gap-2">
         <button
-          onClick={() => onSave(editUrl, editFocusKeyword, editCategory, editComment)}
+          onClick={() => onSave(editUrl, editFocusKeyword, editCategory, editComment, editAssigneeIds)}
           disabled={!editUrl.trim() || !editFocusKeyword.trim()}
           className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
         >

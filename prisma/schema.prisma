@@ -26,6 +26,7 @@ model User {
   seoMaturity   SEOMaturity[]
   rankTrackers  RankTracker[]
   kvpUrls       KVPUrl[]
+  kvpAssignments KVPAssignee[] // KVPs zu denen der User zugewiesen ist
   tickets       Ticket[]
   briefingsRequested Briefing[] @relation("BriefingRequester") // Briefings die der User bestellt hat
   briefingsAssigned  Briefing[] @relation("BriefingAssignee")  // Briefings die der User bearbeitet
@@ -237,11 +238,26 @@ model KVPUrl {
   subkeywords  KVPSubkeyword[]
   comments     KVPComment[]
   maturityLinks KVPMaturityItemLink[] // Verknüpfung zu SEO-Reifegradpunkten
+  assignees    KVPAssignee[]         // Zugewiesene Nutzer (Verantwortlichkeiten)
   createdAt    DateTime              @default(now())
   updatedAt    DateTime              @updatedAt
 
   @@index([userId])
   @@index([category])
+}
+
+// KVP Nutzerzuweisungen - Many-to-Many zwischen KVPUrl und User
+model KVPAssignee {
+  id        String   @id @default(cuid())
+  kvpUrlId  String
+  kvpUrl    KVPUrl   @relation(fields: [kvpUrlId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([kvpUrlId, userId])
+  @@index([kvpUrlId])
+  @@index([userId])
 }
 
 // KVP-Reifegrad-Verknüpfung: Many-to-Many zwischen KVPUrl und SEOMaturityItem
