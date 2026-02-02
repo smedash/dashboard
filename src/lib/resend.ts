@@ -239,6 +239,70 @@ export async function sendTaskCommentNotification({
   return data;
 }
 
+export async function sendBriefingCompletedNotification({
+  to,
+  briefingTitle,
+  briefingNumber,
+  dashboardUrl,
+}: {
+  to: string;
+  briefingTitle: string;
+  briefingNumber: number;
+  dashboardUrl: string;
+}) {
+  const { data, error } = await resend.emails.send({
+    from: "SME Dashboard <mail@tasketeer.com>",
+    to: to,
+    subject: `Briefing fertiggestellt: ${briefingTitle} (#${briefingNumber})`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f4f4f5; margin: 0; padding: 40px 20px;">
+          <div style="max-width: 480px; margin: 0 auto; background-color: white; border-radius: 12px; padding: 40px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+            <div style="text-align: center; margin-bottom: 24px;">
+              <div style="display: inline-block; background-color: #10b981; border-radius: 50%; padding: 12px;">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              </div>
+            </div>
+            <h1 style="color: #18181b; font-size: 24px; margin: 0 0 16px 0; text-align: center;">Briefing fertiggestellt!</h1>
+            <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 24px 0; text-align: center;">
+              Dein Briefing wurde fertiggestellt und steht zum Download bereit.
+            </p>
+            <div style="background-color: #f4f4f5; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+              <p style="color: #52525b; font-size: 14px; margin: 0 0 8px 0;"><strong>Briefing-Nr.:</strong> #${briefingNumber}</p>
+              <p style="color: #52525b; font-size: 14px; margin: 0;"><strong>Titel:</strong> ${briefingTitle}</p>
+            </div>
+            <p style="color: #52525b; font-size: 14px; line-height: 1.6; margin: 0 0 24px 0;">
+              Du kannst das Briefing jetzt als PDF herunterladen oder direkt im Dashboard ansehen.
+            </p>
+            <div style="text-align: center;">
+              <a href="${dashboardUrl}" style="display: inline-block; background-color: #10b981; color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+                Briefing ansehen & PDF downloaden
+              </a>
+            </div>
+            <p style="color: #a1a1aa; font-size: 14px; margin: 24px 0 0 0; text-align: center;">
+              Diese E-Mail wurde automatisch vom SME Dashboard versendet.
+            </p>
+          </div>
+        </body>
+      </html>
+    `,
+  });
+
+  if (error) {
+    console.error("Failed to send briefing completed notification email:", error);
+    throw error;
+  }
+
+  return data;
+}
+
 export async function sendWelcomeEmail({
   to,
   invitedBy,

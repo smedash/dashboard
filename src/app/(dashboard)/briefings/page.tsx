@@ -56,7 +56,7 @@ interface Briefing {
   lexiconRelated: string | null;
   // Deadline
   deadline: string | null;
-  status: "ordered" | "in_progress" | "completed";
+  status: "ordered" | "in_progress" | "in_review" | "completed";
   requester: { id: string; name: string | null; email: string };
   assignee: { id: string; name: string | null; email: string } | null;
   createdAt: string;
@@ -519,6 +519,8 @@ export default function BriefingsPage() {
         return "Bestellt";
       case "in_progress":
         return "In Bearbeitung";
+      case "in_review":
+        return "In Prüfung";
       case "completed":
         return "Fertig";
       default:
@@ -558,6 +560,8 @@ export default function BriefingsPage() {
         return "bg-blue-500/20 text-blue-400 border-blue-500/30";
       case "in_progress":
         return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30";
+      case "in_review":
+        return "bg-purple-500/20 text-purple-400 border-purple-500/30";
       case "completed":
         return "bg-green-500/20 text-green-400 border-green-500/30";
       default:
@@ -578,6 +582,7 @@ export default function BriefingsPage() {
     total: briefings.length,
     ordered: briefings.filter((b) => b.status === "ordered").length,
     inProgress: briefings.filter((b) => b.status === "in_progress").length,
+    inReview: briefings.filter((b) => b.status === "in_review").length,
     completed: briefings.filter((b) => b.status === "completed").length,
   };
 
@@ -1037,6 +1042,7 @@ export default function BriefingsPage() {
             <option value="all">Alle</option>
             <option value="ordered">Bestellt</option>
             <option value="in_progress">In Bearbeitung</option>
+            <option value="in_review">In Prüfung</option>
             <option value="completed">Fertig</option>
           </select>
         </div>
@@ -1135,9 +1141,9 @@ export default function BriefingsPage() {
                         <>
                           <span>•</span>
                           <span className={`flex items-center gap-1 ${
-                            new Date(briefing.deadline) < new Date() && briefing.status !== "completed"
+                            new Date(briefing.deadline) < new Date() && briefing.status !== "completed" && briefing.status !== "in_review"
                               ? "text-red-500 font-medium"
-                              : new Date(briefing.deadline) < new Date(Date.now() + 3 * 24 * 60 * 60 * 1000) && briefing.status !== "completed"
+                              : new Date(briefing.deadline) < new Date(Date.now() + 3 * 24 * 60 * 60 * 1000) && briefing.status !== "completed" && briefing.status !== "in_review"
                               ? "text-orange-500"
                               : ""
                           }`}>
@@ -1149,8 +1155,8 @@ export default function BriefingsPage() {
                         </>
                       )}
                     </div>
-                    {/* Download PDF Button - nur bei Status "fertig" */}
-                    {briefing.status === "completed" && (
+                    {/* Download PDF Button - bei Status "in_review" oder "completed" */}
+                    {(briefing.status === "in_review" || briefing.status === "completed") && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -1205,8 +1211,8 @@ export default function BriefingsPage() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  {/* PDF Download Button - nur bei Status "fertig" */}
-                  {selectedBriefing.status === "completed" && (
+                  {/* PDF Download Button - bei Status "in_review" oder "completed" */}
+                  {(selectedBriefing.status === "in_review" || selectedBriefing.status === "completed") && (
                     <button
                       onClick={() => downloadBriefingPdf(selectedBriefing)}
                       className="p-2 text-green-500 hover:bg-green-500/10 rounded-lg transition-colors"
@@ -1252,6 +1258,7 @@ export default function BriefingsPage() {
                     >
                       <option value="ordered">Bestellt</option>
                       <option value="in_progress">In Bearbeitung</option>
+                      <option value="in_review">In Prüfung</option>
                       <option value="completed">Fertig</option>
                     </select>
                   </div>
@@ -1264,7 +1271,7 @@ export default function BriefingsPage() {
                       value={selectedBriefing.deadline ? new Date(selectedBriefing.deadline).toISOString().split('T')[0] : ''}
                       onChange={(e) => updateBriefing(selectedBriefing.id, { deadline: e.target.value || null })}
                       className={`px-3 py-2 rounded-lg text-sm border bg-white dark:bg-slate-900 text-slate-900 dark:text-white ${
-                        selectedBriefing.deadline && new Date(selectedBriefing.deadline) < new Date() && selectedBriefing.status !== "completed"
+                        selectedBriefing.deadline && new Date(selectedBriefing.deadline) < new Date() && selectedBriefing.status !== "completed" && selectedBriefing.status !== "in_review"
                           ? "border-red-500 text-red-500"
                           : "border-slate-300 dark:border-slate-600"
                       }`}
@@ -1309,12 +1316,12 @@ export default function BriefingsPage() {
                     <div className="col-span-2">
                       <span className="text-slate-500 dark:text-slate-400">Deadline:</span>
                       <span className={`ml-2 ${
-                        new Date(selectedBriefing.deadline) < new Date() && selectedBriefing.status !== "completed"
+                        new Date(selectedBriefing.deadline) < new Date() && selectedBriefing.status !== "completed" && selectedBriefing.status !== "in_review"
                           ? "text-red-500 font-medium"
                           : "text-slate-900 dark:text-white"
                       }`}>
                         {formatDate(selectedBriefing.deadline)}
-                        {new Date(selectedBriefing.deadline) < new Date() && selectedBriefing.status !== "completed" && " (überfällig)"}
+                        {new Date(selectedBriefing.deadline) < new Date() && selectedBriefing.status !== "completed" && selectedBriefing.status !== "in_review" && " (überfällig)"}
                       </span>
                     </div>
                   )}

@@ -60,6 +60,7 @@ export async function GET() {
       total: number;
       ordered: number;
       inProgress: number;
+      inReview: number;
       completed: number;
       last30Days: number;
     }> = {};
@@ -74,6 +75,7 @@ export async function GET() {
           total: 0,
           ordered: 0,
           inProgress: 0,
+          inReview: 0,
           completed: 0,
           last30Days: 0,
         };
@@ -85,6 +87,8 @@ export async function GET() {
         briefingsByUser[requesterId].ordered++;
       } else if (briefing.status === "in_progress") {
         briefingsByUser[requesterId].inProgress++;
+      } else if (briefing.status === "in_review") {
+        briefingsByUser[requesterId].inReview++;
       } else if (briefing.status === "completed") {
         briefingsByUser[requesterId].completed++;
       }
@@ -118,18 +122,21 @@ export async function GET() {
       new_content: {
         total: allBriefings.filter(b => b.briefingType === "new_content").length,
         completed: allBriefings.filter(b => b.briefingType === "new_content" && b.status === "completed").length,
+        inReview: allBriefings.filter(b => b.briefingType === "new_content" && b.status === "in_review").length,
         inProgress: allBriefings.filter(b => b.briefingType === "new_content" && b.status === "in_progress").length,
         ordered: allBriefings.filter(b => b.briefingType === "new_content" && b.status === "ordered").length,
       },
       edit_content: {
         total: allBriefings.filter(b => b.briefingType === "edit_content").length,
         completed: allBriefings.filter(b => b.briefingType === "edit_content" && b.status === "completed").length,
+        inReview: allBriefings.filter(b => b.briefingType === "edit_content" && b.status === "in_review").length,
         inProgress: allBriefings.filter(b => b.briefingType === "edit_content" && b.status === "in_progress").length,
         ordered: allBriefings.filter(b => b.briefingType === "edit_content" && b.status === "ordered").length,
       },
       lexicon: {
         total: allBriefings.filter(b => b.briefingType === "lexicon").length,
         completed: allBriefings.filter(b => b.briefingType === "lexicon" && b.status === "completed").length,
+        inReview: allBriefings.filter(b => b.briefingType === "lexicon" && b.status === "in_review").length,
         inProgress: allBriefings.filter(b => b.briefingType === "lexicon" && b.status === "in_progress").length,
         ordered: allBriefings.filter(b => b.briefingType === "lexicon" && b.status === "ordered").length,
       },
@@ -137,13 +144,14 @@ export async function GET() {
 
     // Statistiken nach Kategorie (gleiche Kategorien wie bei KVP)
     const CATEGORIES = ["Mortgages", "Accounts&Cards", "Investing", "Pension", "Digital Banking"];
-    const byCategory: Record<string, { total: number; completed: number; inProgress: number; ordered: number }> = {};
+    const byCategory: Record<string, { total: number; completed: number; inReview: number; inProgress: number; ordered: number }> = {};
     
     // Initialisiere alle Kategorien
     CATEGORIES.forEach(cat => {
       byCategory[cat] = {
         total: allBriefings.filter(b => b.category === cat).length,
         completed: allBriefings.filter(b => b.category === cat && b.status === "completed").length,
+        inReview: allBriefings.filter(b => b.category === cat && b.status === "in_review").length,
         inProgress: allBriefings.filter(b => b.category === cat && b.status === "in_progress").length,
         ordered: allBriefings.filter(b => b.category === cat && b.status === "ordered").length,
       };
@@ -153,6 +161,7 @@ export async function GET() {
     byCategory["Keine Kategorie"] = {
       total: allBriefings.filter(b => !b.category).length,
       completed: allBriefings.filter(b => !b.category && b.status === "completed").length,
+      inReview: allBriefings.filter(b => !b.category && b.status === "in_review").length,
       inProgress: allBriefings.filter(b => !b.category && b.status === "in_progress").length,
       ordered: allBriefings.filter(b => !b.category && b.status === "ordered").length,
     };
@@ -162,14 +171,16 @@ export async function GET() {
       total: allBriefings.length,
       ordered: allBriefings.filter(b => b.status === "ordered").length,
       inProgress: allBriefings.filter(b => b.status === "in_progress").length,
+      inReview: allBriefings.filter(b => b.status === "in_review").length,
       completed: allBriefings.filter(b => b.status === "completed").length,
     };
 
-    // Überfällige Briefings (Deadline überschritten und nicht completed)
+    // Überfällige Briefings (Deadline überschritten und nicht completed oder in_review)
     const overdueBriefings = allBriefings.filter(b => 
       b.deadline && 
       new Date(b.deadline) < now && 
-      b.status !== "completed"
+      b.status !== "completed" &&
+      b.status !== "in_review"
     ).length;
 
     // Monatliche Entwicklung (letzte 6 Monate)

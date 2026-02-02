@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { hasFullAdminRights } from "@/lib/rbac";
 import { StatCard } from "@/components/ui/StatCard";
-import { BarChart } from "@/components/charts";
+import { BarChart, PieChart } from "@/components/charts";
 
 interface BriefingStats {
   timeBasedStats: {
@@ -20,6 +20,7 @@ interface BriefingStats {
     total: number;
     ordered: number;
     inProgress: number;
+    inReview: number;
     completed: number;
     last30Days: number;
   }[];
@@ -28,18 +29,20 @@ interface BriefingStats {
     completedCount: number;
   };
   byType: {
-    new_content: { total: number; completed: number; inProgress: number; ordered: number };
-    edit_content: { total: number; completed: number; inProgress: number; ordered: number };
-    lexicon: { total: number; completed: number; inProgress: number; ordered: number };
+    new_content: { total: number; completed: number; inReview: number; inProgress: number; ordered: number };
+    edit_content: { total: number; completed: number; inReview: number; inProgress: number; ordered: number };
+    lexicon: { total: number; completed: number; inReview: number; inProgress: number; ordered: number };
   };
   statusOverview: {
     total: number;
     ordered: number;
     inProgress: number;
+    inReview: number;
     completed: number;
   };
   overdueBriefings: number;
   monthlyTrend: { month: string; count: number }[];
+  byCategory: Record<string, { total: number; completed: number; inReview: number; inProgress: number; ordered: number }>;
 }
 
 export default function BriefingAuswertungPage() {
@@ -235,8 +238,8 @@ export default function BriefingAuswertungPage() {
         </div>
       </div>
 
-      {/* Status Übersicht & Typ-Verteilung */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Status Übersicht, Typ-Verteilung & Kategorie-Verteilung */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Status Übersicht */}
         <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
           <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
@@ -259,6 +262,13 @@ export default function BriefingAuswertungPage() {
             </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
+                <div className="w-3 h-3 rounded-full bg-purple-500"></div>
+                <span className="text-slate-700 dark:text-slate-300">In Prüfung</span>
+              </div>
+              <span className="font-semibold text-slate-900 dark:text-white">{stats.statusOverview.inReview}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
                 <div className="w-3 h-3 rounded-full bg-green-500"></div>
                 <span className="text-slate-700 dark:text-slate-300">Fertig</span>
               </div>
@@ -274,6 +284,10 @@ export default function BriefingAuswertungPage() {
                   <div 
                     className="bg-green-500 transition-all duration-500"
                     style={{ width: `${(stats.statusOverview.completed / stats.statusOverview.total) * 100}%` }}
+                  ></div>
+                  <div 
+                    className="bg-purple-500 transition-all duration-500"
+                    style={{ width: `${(stats.statusOverview.inReview / stats.statusOverview.total) * 100}%` }}
                   ></div>
                   <div 
                     className="bg-yellow-500 transition-all duration-500"
@@ -299,7 +313,7 @@ export default function BriefingAuswertungPage() {
               <div>
                 <span className="font-medium text-emerald-600 dark:text-emerald-400">Neuer Content</span>
                 <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  {stats.byType.new_content.completed} fertig / {stats.byType.new_content.inProgress} in Bearbeitung / {stats.byType.new_content.ordered} bestellt
+                  {stats.byType.new_content.completed} fertig / {stats.byType.new_content.inReview} in Prüfung / {stats.byType.new_content.inProgress} in Bearbeitung / {stats.byType.new_content.ordered} bestellt
                 </div>
               </div>
               <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{stats.byType.new_content.total}</span>
@@ -308,20 +322,38 @@ export default function BriefingAuswertungPage() {
               <div>
                 <span className="font-medium text-orange-600 dark:text-orange-400">Content überarbeiten</span>
                 <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  {stats.byType.edit_content.completed} fertig / {stats.byType.edit_content.inProgress} in Bearbeitung / {stats.byType.edit_content.ordered} bestellt
+                  {stats.byType.edit_content.completed} fertig / {stats.byType.edit_content.inReview} in Prüfung / {stats.byType.edit_content.inProgress} in Bearbeitung / {stats.byType.edit_content.ordered} bestellt
                 </div>
               </div>
               <span className="text-2xl font-bold text-orange-600 dark:text-orange-400">{stats.byType.edit_content.total}</span>
             </div>
-            <div className="flex items-center justify-between p-3 bg-purple-500/10 rounded-lg border border-purple-500/30">
+            <div className="flex items-center justify-between p-3 bg-violet-500/10 rounded-lg border border-violet-500/30">
               <div>
-                <span className="font-medium text-purple-600 dark:text-purple-400">Lexikon</span>
+                <span className="font-medium text-violet-600 dark:text-violet-400">Lexikon</span>
                 <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  {stats.byType.lexicon.completed} fertig / {stats.byType.lexicon.inProgress} in Bearbeitung / {stats.byType.lexicon.ordered} bestellt
+                  {stats.byType.lexicon.completed} fertig / {stats.byType.lexicon.inReview} in Prüfung / {stats.byType.lexicon.inProgress} in Bearbeitung / {stats.byType.lexicon.ordered} bestellt
                 </div>
               </div>
-              <span className="text-2xl font-bold text-purple-600 dark:text-purple-400">{stats.byType.lexicon.total}</span>
+              <span className="text-2xl font-bold text-violet-600 dark:text-violet-400">{stats.byType.lexicon.total}</span>
             </div>
+          </div>
+        </div>
+
+        {/* Kategorie-Verteilung (Pie-Chart) */}
+        <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+            Nach Kategorie
+          </h3>
+          <div className="h-64">
+            <PieChart
+              data={Object.entries(stats.byCategory)
+                .filter(([, value]) => value.total > 0)
+                .map(([name, value]) => ({
+                  name: name,
+                  value: value.total,
+                }))}
+              height={240}
+            />
           </div>
         </div>
       </div>
@@ -357,6 +389,7 @@ export default function BriefingAuswertungPage() {
                 <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Gesamt</th>
                 <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Bestellt</th>
                 <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">In Bearbeitung</th>
+                <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">In Prüfung</th>
                 <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Fertig</th>
                 <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Letzte 30 Tage</th>
               </tr>
@@ -382,6 +415,11 @@ export default function BriefingAuswertungPage() {
                     </span>
                   </td>
                   <td className="text-right py-3 px-4">
+                    <span className="px-2 py-1 text-xs rounded-full bg-purple-500/20 text-purple-600 dark:text-purple-400">
+                      {user.inReview}
+                    </span>
+                  </td>
+                  <td className="text-right py-3 px-4">
                     <span className="px-2 py-1 text-xs rounded-full bg-green-500/20 text-green-600 dark:text-green-400">
                       {user.completed}
                     </span>
@@ -391,7 +429,7 @@ export default function BriefingAuswertungPage() {
               ))}
               {stats.userStats.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-500 dark:text-slate-400">
+                  <td colSpan={7} className="py-8 text-center text-slate-500 dark:text-slate-400">
                     Noch keine Briefings vorhanden
                   </td>
                 </tr>

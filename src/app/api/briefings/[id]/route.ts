@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { hasFullAdminRights } from "@/lib/rbac";
+import { sendBriefingCompletedNotification } from "@/lib/resend";
 
 // GET - Einzelnes Briefing laden
 export async function GET(
@@ -155,6 +156,10 @@ export async function PATCH(
       );
     }
 
+    // Prüfen ob Status auf "completed" geändert wird
+    const statusChangedToCompleted = 
+      body.status === "completed" && briefing.status !== "completed";
+
     const updatedBriefing = await prisma.briefing.update({
       where: { id },
       data: updateData,
@@ -175,6 +180,24 @@ export async function PATCH(
         },
       },
     });
+
+    // E-Mail an Besteller senden wenn Status auf "completed" geändert wurde
+    if (statusChangedToCompleted) {
+      try {
+        const baseUrl = process.env.NEXTAUTH_URL || "https://sme-dashboard.vercel.app";
+        const dashboardUrl = `${baseUrl}/briefings`;
+
+        await sendBriefingCompletedNotification({
+          to: updatedBriefing.requester.email,
+          briefingTitle: updatedBriefing.title,
+          briefingNumber: updatedBriefing.briefingNumber,
+          dashboardUrl,
+        });
+      } catch (emailError) {
+        // E-Mail-Fehler loggen, aber Update nicht abbrechen
+        console.error("Error sending briefing completed notification:", emailError);
+      }
+    }
 
     return NextResponse.json({ briefing: updatedBriefing });
   } catch (error) {
