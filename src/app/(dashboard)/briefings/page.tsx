@@ -54,6 +54,8 @@ interface Briefing {
   lexiconDefinition: string | null;
   lexiconSynonyms: string | null;
   lexiconRelated: string | null;
+  // Grafische Darstellung
+  diagramUrl: string | null;
   // Deadline
   deadline: string | null;
   status: "ordered" | "in_progress" | "in_review" | "completed";
@@ -79,6 +81,7 @@ export default function BriefingsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [aiLoadingField, setAiLoadingField] = useState<string | null>(null);
+  const [diagramLoading, setDiagramLoading] = useState(false);
 
   // Form states für neue Bestellung
   const [newBriefingType, setNewBriefingType] = useState<BriefingType>("new_content");
@@ -255,6 +258,57 @@ export default function BriefingsPage() {
       alert("Fehler bei der KI-Generierung");
     } finally {
       setAiLoadingField(null);
+    }
+  };
+
+  // Diagramm generieren (nur für Agentur-User)
+  const generateDiagram = async (briefingId: string) => {
+    if (!isAgenturUser) return;
+    
+    try {
+      setDiagramLoading(true);
+      const response = await fetch(`/api/briefings/${briefingId}/generate-diagram`, {
+        method: "POST",
+      });
+
+      const data = await response.json();
+      if (data.briefing) {
+        setBriefings(briefings.map((b) => (b.id === briefingId ? data.briefing : b)));
+        setSelectedBriefing(data.briefing);
+      } else if (data.error) {
+        alert(data.error);
+      }
+    } catch (error) {
+      console.error("Error generating diagram:", error);
+      alert("Fehler bei der Diagramm-Generierung");
+    } finally {
+      setDiagramLoading(false);
+    }
+  };
+
+  // Diagramm löschen (nur für Agentur-User)
+  const deleteDiagram = async (briefingId: string) => {
+    if (!isAgenturUser) return;
+    if (!confirm("Diagramm wirklich löschen?")) return;
+    
+    try {
+      setDiagramLoading(true);
+      const response = await fetch(`/api/briefings/${briefingId}/generate-diagram`, {
+        method: "DELETE",
+      });
+
+      const data = await response.json();
+      if (data.briefing) {
+        setBriefings(briefings.map((b) => (b.id === briefingId ? data.briefing : b)));
+        setSelectedBriefing(data.briefing);
+      } else if (data.error) {
+        alert(data.error);
+      }
+    } catch (error) {
+      console.error("Error deleting diagram:", error);
+      alert("Fehler beim Löschen des Diagramms");
+    } finally {
+      setDiagramLoading(false);
     }
   };
 
@@ -435,6 +489,30 @@ export default function BriefingsPage() {
     addSection("Keywordset/Longtail", briefing.keywordsetLongtail);
     addSection("Topiccluster", briefing.topicclusterContent);
     addSection("Fliesstext/Struktur", briefing.bodyContent);
+    
+    // Grafische Darstellung als Bild einfügen (falls vorhanden)
+    if (briefing.diagramUrl) {
+      y += 5;
+      if (y > doc.internal.pageSize.getHeight() - 80) {
+        doc.addPage();
+        y = 20;
+      }
+      
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(100, 100, 100);
+      doc.text("Grafische Darstellung", margin, y);
+      y += 5;
+      
+      // Hinweis dass das Bild extern verfügbar ist
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(59, 130, 246); // Blau
+      doc.textWithLink("Schaubild ansehen (externe URL)", margin, y, { url: briefing.diagramUrl });
+      y += 10;
+      doc.setTextColor(0, 0, 0);
+    }
+    
     addSection("Interne Verlinkungen", briefing.internalLinks);
     // Missing Topics nur bei edit_content
     if (briefing.briefingType === "edit_content") {
@@ -1721,6 +1799,71 @@ export default function BriefingsPage() {
                       />
                     </div>
 
+                    {/* Grafische Darstellung */}
+                    <div className="border border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-4 bg-slate-50 dark:bg-slate-800/50">
+                      <div className="flex items-center justify-between mb-3">
+                        <label className="text-xs font-medium text-slate-600 dark:text-slate-400 flex items-center gap-2">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                          Grafische Darstellung
+                        </label>
+                        {isAgenturUser && (
+                          <div className="flex items-center gap-2">
+                            {selectedBriefing.diagramUrl && (
+                              <button
+                                onClick={() => deleteDiagram(selectedBriefing.id)}
+                                disabled={diagramLoading}
+                                className="flex items-center gap-1 px-2 py-1 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded transition-colors disabled:opacity-50"
+                                title="Diagramm löschen"
+                              >
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            )}
+                            <button
+                              onClick={() => generateDiagram(selectedBriefing.id)}
+                              disabled={diagramLoading || !selectedBriefing.bodyContent}
+                              className="flex items-center gap-1 px-2 py-1 text-xs bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 rounded transition-colors disabled:opacity-50"
+                              title={selectedBriefing.bodyContent ? "Schaubild mit KI generieren" : "Zuerst Fliesstext/Struktur ausfüllen"}
+                            >
+                              {diagramLoading ? (
+                                <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                              ) : (
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>
+                              )}
+                              {selectedBriefing.diagramUrl ? "Neu generieren" : "KI generieren"}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      {selectedBriefing.diagramUrl ? (
+                        <div className="space-y-2">
+                          <a href={selectedBriefing.diagramUrl} target="_blank" rel="noopener noreferrer" className="block">
+                            <img 
+                              src={selectedBriefing.diagramUrl} 
+                              alt="Grafische Darstellung" 
+                              className="w-full rounded-lg border border-slate-200 dark:border-slate-700 hover:opacity-90 transition-opacity cursor-pointer"
+                            />
+                          </a>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
+                            Klicken zum Öffnen in neuem Tab
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center py-8 text-slate-400 dark:text-slate-500">
+                          <svg className="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                          <p className="text-sm">Noch kein Schaubild generiert</p>
+                          {!selectedBriefing.bodyContent && (
+                            <p className="text-xs mt-1">Zuerst Fliesstext/Struktur ausfüllen</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
                     {/* Interne Verlinkungen */}
                     <div>
                       <div className="flex items-center justify-between mb-1">
@@ -1891,6 +2034,24 @@ export default function BriefingsPage() {
                       <div>
                         <span className="text-slate-500 dark:text-slate-400">Fliesstext/Struktur:</span>
                         <p className="text-slate-900 dark:text-white whitespace-pre-wrap">{selectedBriefing.bodyContent}</p>
+                      </div>
+                    )}
+                    {selectedBriefing.diagramUrl && (
+                      <div>
+                        <span className="text-slate-500 dark:text-slate-400 flex items-center gap-2 mb-2">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                          Grafische Darstellung:
+                        </span>
+                        <a href={selectedBriefing.diagramUrl} target="_blank" rel="noopener noreferrer" className="block">
+                          <img 
+                            src={selectedBriefing.diagramUrl} 
+                            alt="Grafische Darstellung" 
+                            className="w-full rounded-lg border border-slate-200 dark:border-slate-700 hover:opacity-90 transition-opacity cursor-pointer"
+                          />
+                        </a>
+                        <p className="text-xs text-slate-400 mt-1 text-center">Klicken zum Öffnen in neuem Tab</p>
                       </div>
                     )}
                     {selectedBriefing.faqs && (

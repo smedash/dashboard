@@ -396,6 +396,9 @@ model Briefing {
   lexiconSynonyms   String?  @db.Text // Synonyme / alternative Begriffe
   lexiconRelated    String?  @db.Text // Verwandte Begriffe / Themen
   
+  // Grafische Darstellung - KI-generiertes Schaubild basierend auf bodyContent
+  diagramUrl        String?  @db.Text // URL zum generierten Diagramm in Vercel Blob
+  
   // Deadline - automatisch 10 Tage nach Bestellung, änderbar durch Agentur
   deadline          DateTime?
   

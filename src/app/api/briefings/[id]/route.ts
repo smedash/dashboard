@@ -147,6 +147,7 @@ export async function PATCH(
       if (body.titleEn !== undefined) updateData.titleEn = body.titleEn;
       if (body.titleFr !== undefined) updateData.titleFr = body.titleFr;
       if (body.titleIt !== undefined) updateData.titleIt = body.titleIt;
+      if (body.diagramUrl !== undefined) updateData.diagramUrl = body.diagramUrl;
     }
 
     if (Object.keys(updateData).length === 0) {
