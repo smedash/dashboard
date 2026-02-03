@@ -286,6 +286,35 @@ export default function BriefingsPage() {
     }
   };
 
+  // Diagramm manuell hochladen (nur für Agentur-User)
+  const uploadDiagram = async (briefingId: string, file: File) => {
+    if (!isAgenturUser) return;
+    
+    try {
+      setDiagramLoading(true);
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch(`/api/briefings/${briefingId}/generate-diagram`, {
+        method: "PUT",
+        body: formData,
+      });
+
+      const data = await response.json();
+      if (data.briefing) {
+        setBriefings(briefings.map((b) => (b.id === briefingId ? data.briefing : b)));
+        setSelectedBriefing(data.briefing);
+      } else if (data.error) {
+        alert(data.error);
+      }
+    } catch (error) {
+      console.error("Error uploading diagram:", error);
+      alert("Fehler beim Hochladen des Diagramms");
+    } finally {
+      setDiagramLoading(false);
+    }
+  };
+
   // Diagramm löschen (nur für Agentur-User)
   const deleteDiagram = async (briefingId: string) => {
     if (!isAgenturUser) return;
@@ -1835,6 +1864,28 @@ export default function BriefingsPage() {
                               )}
                               {selectedBriefing.diagramUrl ? "Neu generieren" : "KI generieren"}
                             </button>
+                            <label
+                              className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 rounded transition-colors cursor-pointer disabled:opacity-50"
+                              title="Eigenes Schaubild hochladen"
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                              </svg>
+                              Hochladen
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                disabled={diagramLoading}
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    uploadDiagram(selectedBriefing.id, file);
+                                    e.target.value = "";
+                                  }
+                                }}
+                              />
+                            </label>
                           </div>
                         )}
                       </div>
