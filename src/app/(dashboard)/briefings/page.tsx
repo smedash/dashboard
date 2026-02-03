@@ -342,7 +342,7 @@ export default function BriefingsPage() {
   };
 
   // PDF-Download für fertiges Briefing
-  const downloadBriefingPdf = (briefing: Briefing) => {
+  const downloadBriefingPdf = async (briefing: Briefing) => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 20;
@@ -380,60 +380,135 @@ export default function BriefingsPage() {
         .trim();
     };
 
-    // Helper für Text mit automatischem Zeilenumbruch
-    const addText = (text: string, fontSize: number = 10, isBold: boolean = false) => {
-      doc.setFontSize(fontSize);
-      doc.setFont("helvetica", isBold ? "bold" : "normal");
-      const cleanedText = cleanMarkdownForPdf(text);
-      const lines = doc.splitTextToSize(cleanedText, contentWidth);
-      
-      // Seitenumbruch prüfen
-      const lineHeight = fontSize * 0.5;
-      if (y + lines.length * lineHeight > doc.internal.pageSize.getHeight() - 20) {
-        doc.addPage();
-        y = 20;
-      }
-      
-      doc.text(lines, margin, y);
-      y += lines.length * lineHeight + 2;
+    const cardPadding = 6;
+    const cardMargin = margin - 3;
+    const cardWidth = contentWidth + 6;
+    const cardRadius = 3;
+
+    // Helper: Card-Hintergrund zeichnen
+    const drawCardBackground = (cardY: number, cardHeight: number, color: [number, number, number] = [248, 250, 252]) => {
+      doc.setFillColor(color[0], color[1], color[2]);
+      doc.setDrawColor(226, 232, 240); // Slate-200 Border
+      doc.roundedRect(cardMargin, cardY, cardWidth, cardHeight, cardRadius, cardRadius, "FD");
     };
 
-    const addSection = (label: string, value: string | null) => {
-      if (!value) return;
-      
-      // Markdown bereinigen
-      const cleanedValue = cleanMarkdownForPdf(value);
-      const lines = doc.splitTextToSize(cleanedValue, contentWidth);
-      const lineHeight = 5;
-      
-      // Mindestens Label + 3 Zeilen Content müssen auf die Seite passen
-      // Sonst Seitenumbruch VOR dem Label
-      const minContentHeight = 5 + Math.min(lines.length, 3) * lineHeight + 10;
-      if (y + minContentHeight > doc.internal.pageSize.getHeight() - 20) {
+    // Helper: Section-Header mit farbigem Akzent
+    const addSectionHeader = (title: string, accentColor: [number, number, number] = [37, 99, 235]) => {
+      y += 14; // Mehr Abstand vor Section-Header
+      if (y > doc.internal.pageSize.getHeight() - 40) {
         doc.addPage();
         y = 20;
       }
       
-      doc.setFontSize(9);
+      // Farbiger Akzent-Balken links
+      doc.setFillColor(accentColor[0], accentColor[1], accentColor[2]);
+      doc.roundedRect(cardMargin, y - 4, 3, 12, 1.5, 1.5, "F");
+      
+      doc.setFontSize(11);
       doc.setFont("helvetica", "bold");
-      doc.setTextColor(100, 100, 100);
-      doc.text(label, margin, y);
-      y += 5;
+      doc.setTextColor(30, 41, 59); // Slate-800
+      doc.text(title, cardMargin + 8, y + 3);
+      y += 14;
+    };
+
+    // Helper: Einzelnes Feld in einer Card (Label + Value)
+    const addField = (label: string, value: string | null, isInCard: boolean = true) => {
+      if (!value) return;
       
-      doc.setFontSize(10);
+      const cleanedValue = cleanMarkdownForPdf(value);
+      doc.setFontSize(9);
       doc.setFont("helvetica", "normal");
-      doc.setTextColor(0, 0, 0);
+      const innerWidth = isInCard ? contentWidth - 4 : contentWidth;
+      const lines = doc.splitTextToSize(cleanedValue, innerWidth);
+      const lineHeight = 4.5;
+      const fieldHeight = 6 + lines.length * lineHeight;
       
-      // Content zeilenweise ausgeben mit Seitenumbruch-Handling
+      // Seitenumbruch prüfen
+      if (y + fieldHeight > doc.internal.pageSize.getHeight() - 20) {
+        doc.addPage();
+        y = 20;
+      }
+      
+      // Label
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(100, 116, 139); // Slate-500
+      const labelX = isInCard ? cardMargin + cardPadding : margin;
+      doc.text(label.toUpperCase(), labelX, y);
+      y += 4;
+      
+      // Value
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(30, 41, 59); // Slate-800
+      const valueX = isInCard ? cardMargin + cardPadding : margin;
+      
       for (let i = 0; i < lines.length; i++) {
         if (y + lineHeight > doc.internal.pageSize.getHeight() - 20) {
           doc.addPage();
           y = 20;
         }
-        doc.text(lines[i], margin, y);
+        doc.text(lines[i], valueX, y);
         y += lineHeight;
       }
-      y += 6; // Abstand nach Section
+      y += 4;
+    };
+
+    // Helper: Card mit mehreren Feldern
+    const addCard = (fields: Array<{label: string, value: string | null}>) => {
+      // Felder filtern (nur mit Wert)
+      const validFields = fields.filter(f => f.value);
+      if (validFields.length === 0) return;
+      
+      // Höhe berechnen
+      doc.setFontSize(9);
+      let totalHeight = cardPadding * 2;
+      for (const field of validFields) {
+        const cleanedValue = cleanMarkdownForPdf(field.value!);
+        const lines = doc.splitTextToSize(cleanedValue, contentWidth - 4);
+        totalHeight += 10 + lines.length * 4.5;
+      }
+      
+      // Seitenumbruch wenn Card nicht passt
+      if (y + totalHeight > doc.internal.pageSize.getHeight() - 20) {
+        doc.addPage();
+        y = 20;
+      }
+      
+      const cardStartY = y - 2;
+      
+      // Card-Hintergrund zeichnen
+      drawCardBackground(cardStartY, totalHeight);
+      
+      y += cardPadding - 2;
+      
+      // Felder hinzufügen
+      for (const field of validFields) {
+        addField(field.label, field.value, true);
+      }
+      
+      y += 6; // Mehr Abstand nach Card
+    };
+
+    // Helper: Einzelne kleine Card für ein Feld
+    const addSingleFieldCard = (label: string, value: string | null) => {
+      if (!value) return;
+      
+      const cleanedValue = cleanMarkdownForPdf(value);
+      doc.setFontSize(9);
+      const lines = doc.splitTextToSize(cleanedValue, contentWidth - 4);
+      const cardHeight = cardPadding * 2 + 10 + lines.length * 4.5;
+      
+      if (y + cardHeight > doc.internal.pageSize.getHeight() - 20) {
+        doc.addPage();
+        y = 20;
+      }
+      
+      const cardStartY = y - 2;
+      drawCardBackground(cardStartY, cardHeight);
+      y += cardPadding - 2;
+      addField(label, value, true);
+      y += 6; // Mehr Abstand nach Card
     };
 
     // Header (erweitert für mehr Infos)
@@ -470,105 +545,120 @@ export default function BriefingsPage() {
     y = 62;
     doc.setTextColor(0, 0, 0);
 
-    // Bestelldaten Section
-    doc.setFillColor(240, 240, 240);
-    doc.rect(margin - 5, y - 5, contentWidth + 10, 8, "F");
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "bold");
-    doc.text("Bestelldaten", margin, y);
-    y += 12;
-
-    addSection("Kategorie", briefing.category);
-    addSection("Ausgangslage", getContentActionLabel(briefing.contentAction));
-    addSection("Zielgruppe", briefing.targetAudience);
-    addSection("Funnel-Stufe", getFunnelStageLabel(briefing.funnelStage));
-    addSection("Search Intent", getSearchIntentLabel(briefing.searchIntent));
-    addSection("Ziele / KPIs", briefing.goals);
-    addSection("Fokus-Keyword", briefing.focusKeyword);
-    addSection("URL", briefing.url);
-    addSection("Keyword-Cluster", briefing.keywordCluster);
-    addSection("Topic-Cluster", briefing.topicCluster);
-    addSection("Benchmark URLs", briefing.benchmarkUrls);
-    addSection("CS Artikel", briefing.csArticle);
-
-    // Content-Aufbau Section
-    y += 5;
-    if (y > doc.internal.pageSize.getHeight() - 50) {
-      doc.addPage();
-      y = 20;
-    }
+    // === BESTELLDATEN ===
+    addSectionHeader("Bestelldaten", [37, 99, 235]); // Blau
     
-    doc.setFillColor(240, 240, 240);
-    doc.rect(margin - 5, y - 5, contentWidth + 10, 8, "F");
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "bold");
-    doc.text("Content-Aufbau", margin, y);
-    y += 12;
+    addSingleFieldCard("Kategorie", briefing.category);
+    addSingleFieldCard("Ausgangslage", getContentActionLabel(briefing.contentAction));
+    addSingleFieldCard("Zielgruppe", briefing.targetAudience);
+    addSingleFieldCard("Funnel-Stufe", getFunnelStageLabel(briefing.funnelStage));
+    addSingleFieldCard("Search Intent", getSearchIntentLabel(briefing.searchIntent));
+    addSingleFieldCard("Ziele / KPIs", briefing.goals);
+    addSingleFieldCard("Fokus-Keyword", briefing.focusKeyword);
+    addSingleFieldCard("URL", briefing.url);
+    addSingleFieldCard("Keyword-Cluster", briefing.keywordCluster);
+    addSingleFieldCard("Topic-Cluster", briefing.topicCluster);
+    addSingleFieldCard("Benchmark URLs", briefing.benchmarkUrls);
+    addSingleFieldCard("CS Artikel", briefing.csArticle);
 
-    addSection("Title Tag", briefing.titleTag);
-    addSection("Meta Description", briefing.metaDescription);
-    addSection("Navigationstitel", briefing.navTitle);
-    addSection("H1", briefing.h1);
-    addSection("Hauptparagraf", briefing.mainParagraph);
-    addSection("Primary CTA", briefing.primaryCta);
-    addSection("Secondary CTA", briefing.secondaryCta);
-    addSection("Inbound CTA", briefing.inboundCta);
-    addSection("Keywordset/Longtail", briefing.keywordsetLongtail);
-    addSection("Topiccluster", briefing.topicclusterContent);
-    addSection("Fliesstext/Struktur", briefing.bodyContent);
+    // === CONTENT-AUFBAU ===
+    addSectionHeader("Content-Aufbau", [16, 185, 129]); // Grün
+    
+    addSingleFieldCard("Title Tag", briefing.titleTag);
+    addSingleFieldCard("Meta Description", briefing.metaDescription);
+    addSingleFieldCard("Navigationstitel", briefing.navTitle);
+    addSingleFieldCard("H1", briefing.h1);
+    addSingleFieldCard("Hauptparagraf", briefing.mainParagraph);
+    addSingleFieldCard("Primary CTA", briefing.primaryCta);
+    addSingleFieldCard("Secondary CTA", briefing.secondaryCta);
+    addSingleFieldCard("Inbound CTA", briefing.inboundCta);
+    addSingleFieldCard("Keywordset / Longtail", briefing.keywordsetLongtail);
+    addSingleFieldCard("Topiccluster", briefing.topicclusterContent);
+    addSingleFieldCard("Fliesstext / Struktur", briefing.bodyContent);
     
     // Grafische Darstellung als Bild einfügen (falls vorhanden)
     if (briefing.diagramUrl) {
-      y += 5;
-      if (y > doc.internal.pageSize.getHeight() - 80) {
-        doc.addPage();
-        y = 20;
-      }
+      y += 8;
       
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(100, 100, 100);
-      doc.text("Grafische Darstellung", margin, y);
-      y += 5;
-      
-      // Hinweis dass das Bild extern verfügbar ist
+      // Label
       doc.setFontSize(8);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(59, 130, 246); // Blau
-      doc.textWithLink("Schaubild ansehen (externe URL)", margin, y, { url: briefing.diagramUrl });
-      y += 10;
-      doc.setTextColor(0, 0, 0);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(100, 116, 139);
+      doc.text("GRAFISCHE DARSTELLUNG", cardMargin + cardPadding, y);
+      y += 5;
+      
+      // Bild laden und einfügen
+      try {
+        const imgResponse = await fetch(briefing.diagramUrl);
+        const imgBlob = await imgResponse.blob();
+        const imgBase64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(imgBlob);
+        });
+        
+        // Bildgröße berechnen
+        const img = new Image();
+        img.src = imgBase64;
+        await new Promise((resolve) => { img.onload = resolve; });
+        
+        const maxWidth = contentWidth - 8;
+        const maxHeight = 75;
+        let imgWidth = maxWidth;
+        let imgHeight = (img.height / img.width) * imgWidth;
+        
+        if (imgHeight > maxHeight) {
+          imgHeight = maxHeight;
+          imgWidth = (img.width / img.height) * imgHeight;
+        }
+        
+        // Card mit Bild
+        const imageCardHeight = imgHeight + cardPadding * 2 + 12;
+        if (y + imageCardHeight > doc.internal.pageSize.getHeight() - 20) {
+          doc.addPage();
+          y = 20;
+        }
+        
+        const cardStartY = y - 2;
+        drawCardBackground(cardStartY, imageCardHeight, [255, 255, 255]);
+        
+        // Bild zentriert einfügen
+        const imgX = cardMargin + (cardWidth - imgWidth) / 2;
+        doc.addImage(imgBase64, "PNG", imgX, y + 2, imgWidth, imgHeight);
+        y += imgHeight + 6;
+        
+        // Link unter dem Bild
+        doc.setFontSize(7);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(59, 130, 246);
+        doc.textWithLink("Schaubild in voller Auflösung ansehen", cardMargin + cardPadding, y, { url: briefing.diagramUrl });
+        y += cardPadding + 4;
+      } catch (imgError) {
+        console.error("Fehler beim Laden des Diagramms für PDF:", imgError);
+        y += 5;
+      }
+      doc.setTextColor(30, 41, 59);
     }
     
-    addSection("Interne Verlinkungen", briefing.internalLinks);
-    // Missing Topics nur bei edit_content
+    // === WEITERE INHALTE ===
+    addSectionHeader("Weitere Inhalte", [245, 158, 11]); // Amber/Orange
+    
+    addSingleFieldCard("Interne Verlinkungen", briefing.internalLinks);
+    
     if (briefing.briefingType === "edit_content") {
-      addSection("Missing Topics", briefing.missingTopics);
+      addSingleFieldCard("Missing Topics", briefing.missingTopics);
     }
-    addSection("FAQs", briefing.faqs);
-    addSection("Bemerkungen", briefing.notes);
+    
+    addSingleFieldCard("FAQs", briefing.faqs);
+    addSingleFieldCard("Bemerkungen", briefing.notes);
 
-    // Mehrsprachigkeit
+    // === MEHRSPRACHIGKEIT ===
     if (briefing.titleEn || briefing.titleFr || briefing.titleIt) {
-      y += 5;
-      if (y > doc.internal.pageSize.getHeight() - 40) {
-        doc.addPage();
-        y = 20;
-      }
+      addSectionHeader("Weitere Sprachen", [139, 92, 246]); // Violett
       
-      doc.setFillColor(240, 240, 240);
-      doc.rect(margin - 5, y - 5, contentWidth + 10, 8, "F");
-      doc.setTextColor(0, 0, 0);
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "bold");
-      doc.text("Weitere Sprachen", margin, y);
-      y += 12;
-
-      addSection("EN Titel", briefing.titleEn);
-      addSection("FR Titel", briefing.titleFr);
-      addSection("IT Titel", briefing.titleIt);
+      addSingleFieldCard("EN Titel", briefing.titleEn);
+      addSingleFieldCard("FR Titel", briefing.titleFr);
+      addSingleFieldCard("IT Titel", briefing.titleIt);
     }
 
     // Download
