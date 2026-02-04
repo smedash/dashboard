@@ -36,6 +36,7 @@ export default function ContentAnalyzerPage() {
   const [urlError, setUrlError] = useState("");
   const [urlMetadata, setUrlMetadata] = useState<UrlFetchResult | null>(null);
   const [inputMode, setInputMode] = useState<"text" | "url">("text");
+  const [taskCopySuccess, setTaskCopySuccess] = useState(false);
 
   const handleUrlFetch = async () => {
     if (!url.trim()) return;
@@ -341,6 +342,166 @@ export default function ContentAnalyzerPage() {
               Analysieren
             </button>
           </div>
+
+          {/* Improvement Suggestions - shown below content input */}
+          {showAnalysis && analysis && (() => {
+            const improvements: { issue: string; suggestion: string }[] = [];
+            
+            // Content improvements
+            if (analysis.wordCount < 300) {
+              improvements.push({
+                issue: "Zu wenig Content",
+                suggestion: `Erhöhe die Wortanzahl von ${analysis.wordCount} auf mindestens 300 Wörter`
+              });
+            } else if (analysis.wordCount < 1000) {
+              improvements.push({
+                issue: "Content könnte umfangreicher sein",
+                suggestion: `Erweitere den Content von ${analysis.wordCount} auf mindestens 1000 Wörter für bessere Rankings`
+              });
+            }
+            
+            if (analysis.avgWordsPerSentence > 20) {
+              improvements.push({
+                issue: "Sätze zu lang",
+                suggestion: `Kürze die Sätze von durchschnittlich ${analysis.avgWordsPerSentence} auf max. 20 Wörter pro Satz`
+              });
+            }
+            
+            if (analysis.paragraphCount < 3) {
+              improvements.push({
+                issue: "Zu wenige Absätze",
+                suggestion: "Strukturiere den Text in mindestens 3 Absätze für bessere Lesbarkeit"
+              });
+            }
+            
+            if (analysis.readabilityScore < 30) {
+              improvements.push({
+                issue: "Schwere Lesbarkeit",
+                suggestion: "Vereinfache die Sprache und verwende kürzere Sätze und einfachere Wörter"
+              });
+            }
+            
+            // Keyword improvements
+            if (keyword) {
+              if (analysis.keywordCount === 0) {
+                improvements.push({
+                  issue: "Keyword fehlt",
+                  suggestion: `Füge das Keyword "${keyword}" natürlich in den Text ein`
+                });
+              } else if (analysis.keywordDensity < 1) {
+                improvements.push({
+                  issue: "Keyword-Dichte zu niedrig",
+                  suggestion: `Erhöhe die Keyword-Dichte von ${analysis.keywordDensity.toFixed(2)}% auf 1-2.5%`
+                });
+              } else if (analysis.keywordDensity > 2.5) {
+                improvements.push({
+                  issue: "Keyword-Stuffing",
+                  suggestion: `Reduziere die Keyword-Dichte von ${analysis.keywordDensity.toFixed(2)}% auf 1-2.5%`
+                });
+              }
+            }
+            
+            // URL-based improvements
+            if (urlMetadata) {
+              if (!urlMetadata.title) {
+                improvements.push({
+                  issue: "Title-Tag fehlt",
+                  suggestion: "Füge einen aussagekräftigen Title-Tag hinzu (50-60 Zeichen)"
+                });
+              }
+              if (!urlMetadata.metaDescription) {
+                improvements.push({
+                  issue: "Meta-Description fehlt",
+                  suggestion: "Füge eine Meta-Description hinzu (150-160 Zeichen)"
+                });
+              }
+              if (!urlMetadata.headings.some(h => h.level === "H1")) {
+                improvements.push({
+                  issue: "H1-Überschrift fehlt",
+                  suggestion: "Füge eine H1-Überschrift als Haupttitel der Seite hinzu"
+                });
+              } else if (urlMetadata.headings.filter(h => h.level === "H1").length > 1) {
+                improvements.push({
+                  issue: "Mehrere H1-Überschriften",
+                  suggestion: `Reduziere die ${urlMetadata.headings.filter(h => h.level === "H1").length} H1-Überschriften auf genau eine`
+                });
+              }
+              if (!urlMetadata.headings.some(h => h.level === "H2")) {
+                improvements.push({
+                  issue: "H2-Überschriften fehlen",
+                  suggestion: "Strukturiere den Content mit H2-Überschriften für Abschnitte"
+                });
+              }
+            }
+            
+            if (improvements.length === 0) return null;
+            
+            return (
+              <div className="bg-amber-50 dark:bg-amber-900/20 rounded-2xl border border-amber-200 dark:border-amber-800 p-6">
+                <div className="flex items-start justify-between gap-4 mb-4">
+                  <h3 className="font-semibold text-amber-900 dark:text-amber-100 flex items-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    Verbesserungsvorschläge ({improvements.length})
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    {taskCopySuccess && (
+                      <span className="text-sm text-green-700 dark:text-green-400 flex items-center gap-1">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Kopiert
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const taskText = `Content-Optimierung: ${urlMetadata?.title || urlMetadata?.url || "Content Analyse"}
+${urlMetadata?.url ? `URL: ${urlMetadata.url}\n` : ""}${keyword ? `Keyword: ${keyword}\n` : ""}
+Verbesserungsvorschläge (${improvements.length}):
+
+${improvements.map((imp, i) => `${i + 1}. ${imp.issue}
+   → ${imp.suggestion}`).join("\n\n")}
+
+Aktuelle Werte:
+- Wörter: ${analysis.wordCount}
+- Lesbarkeit: ${analysis.readabilityScore}/100 (${analysis.readabilityLabel})
+- Wörter/Satz: ${analysis.avgWordsPerSentence}
+${keyword ? `- Keyword-Dichte: ${analysis.keywordDensity.toFixed(2)}%` : ""}`;
+                        
+                        await navigator.clipboard.writeText(taskText);
+                        setTaskCopySuccess(true);
+                        setTimeout(() => setTaskCopySuccess(false), 2000);
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-white bg-amber-600 hover:bg-amber-700 dark:bg-amber-500 dark:hover:bg-amber-600 rounded-lg transition-colors shadow-sm"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                      </svg>
+                      Als Task kopieren
+                    </button>
+                  </div>
+                </div>
+                
+                <ul className="space-y-3">
+                  {improvements.map((imp, index) => (
+                    <li key={index} className="text-sm">
+                      <p className="font-medium text-amber-800 dark:text-amber-200 flex items-start gap-2">
+                        <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        {imp.issue}
+                      </p>
+                      <p className="text-amber-700 dark:text-amber-300 ml-6 mt-0.5">
+                        → {imp.suggestion}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })()}
         </div>
 
         {/* Analysis Results */}
