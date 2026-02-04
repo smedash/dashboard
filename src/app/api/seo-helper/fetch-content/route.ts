@@ -165,14 +165,15 @@ function extractMetaDescription(html: string): string {
 function extractHeadings(html: string): { level: string; text: string }[] {
   const headings: { level: string; text: string }[] = [];
   
-  // Remove nav, header, footer elements before extracting headings
+  // Only remove nav elements - they contain navigation links, not content headings
+  // IMPORTANT: Don't remove <header> or <footer> as they often contain the main H1!
+  // Many modern websites put the page title H1 inside a <header> element
   let cleanHtml = html;
   cleanHtml = cleanHtml.replace(/<nav[^>]*>[\s\S]*?<\/nav>/gi, "");
-  cleanHtml = cleanHtml.replace(/<header[^>]*>[\s\S]*?<\/header>/gi, "");
-  cleanHtml = cleanHtml.replace(/<footer[^>]*>[\s\S]*?<\/footer>/gi, "");
-  cleanHtml = cleanHtml.replace(/<aside[^>]*>[\s\S]*?<\/aside>/gi, "");
   
-  const headingRegex = /<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/gi;
+  // Regex that matches h1-h6 tags with any attributes (class, id, style, data-*, etc.)
+  // Pattern: <h1 ...any attributes...>content</h1>
+  const headingRegex = /<h([1-6])(?:\s+[^>]*|\s*)>([\s\S]*?)<\/h\1\s*>/gi;
   
   let match;
   while ((match = headingRegex.exec(cleanHtml)) !== null) {
@@ -188,7 +189,7 @@ function extractHeadings(html: string): { level: string; text: string }[] {
     // Normalize whitespace
     text = text.replace(/\s+/g, " ").trim();
     
-    // Skip empty headings or those that are too long (likely nav remnants)
+    // Skip empty headings or those that are too long (likely remnants)
     if (text && text.length > 0 && text.length <= 200) {
       headings.push({ level, text });
     }
