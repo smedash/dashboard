@@ -65,14 +65,27 @@ export function BarChart({
             width={90}
           />
           <Tooltip
-            contentStyle={{
-              backgroundColor: "#1e293b",
-              border: "1px solid #334155",
-              borderRadius: "8px",
-              color: "#f1f5f9",
+            content={({ active, payload, label }) => {
+              if (active && payload && payload.length > 0) {
+                const value = payload[0].value as number;
+                return (
+                  <div
+                    style={{
+                      backgroundColor: "#1e293b",
+                      border: "1px solid #334155",
+                      borderRadius: "8px",
+                      padding: "8px 12px",
+                    }}
+                  >
+                    <p style={{ margin: 0, fontWeight: 500, color: "#f1f5f9" }}>{label}</p>
+                    <p style={{ margin: "4px 0 0 0", color: "#ffffff" }}>
+                      Anzahl: {value.toLocaleString("de-DE")}
+                    </p>
+                  </div>
+                );
+              }
+              return null;
             }}
-            labelStyle={{ color: "#e2e8f0" }}
-            itemStyle={{ color: "#ffffff" }}
           />
           <Bar dataKey={yKey} radius={[0, 4, 4, 0]}>
             {data.map((_, index) => (
@@ -100,13 +113,27 @@ export function BarChart({
           tickLine={{ stroke: "#475569" }}
         />
         <Tooltip
-          contentStyle={{
-            backgroundColor: "#1e293b",
-            border: "1px solid #334155",
-            borderRadius: "8px",
-            color: "#f1f5f9",
+          content={({ active, payload, label }) => {
+            if (active && payload && payload.length > 0) {
+              const value = payload[0].value as number;
+              return (
+                <div
+                  style={{
+                    backgroundColor: "#1e293b",
+                    border: "1px solid #334155",
+                    borderRadius: "8px",
+                    padding: "8px 12px",
+                  }}
+                >
+                  <p style={{ margin: 0, fontWeight: 500, color: "#f1f5f9" }}>{label}</p>
+                  <p style={{ margin: "4px 0 0 0", color: "#ffffff" }}>
+                    Anzahl: {value.toLocaleString("de-DE")}
+                  </p>
+                </div>
+              );
+            }
+            return null;
           }}
-          labelStyle={{ color: "#94a3b8" }}
         />
         <Bar dataKey={yKey} radius={[4, 4, 0, 0]}>
           {data.map((_, index) => (
