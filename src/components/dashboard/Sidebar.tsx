@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState, useEffect } from "react";
 
 interface NavigationItem {
   name: string;
@@ -152,48 +153,97 @@ const processNavigation: NavigationItem[] = [
   },
 ];
 
+// Chevron Icon für ausklappbare Menüs
+function ChevronIcon({ isOpen }: { isOpen: boolean }) {
+  return (
+    <svg
+      className={`w-4 h-4 ml-auto transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+    </svg>
+  );
+}
+
 // Hilfsfunktion zum Rendern von Navigation Items
-function NavigationItems({ items, pathname }: { items: NavigationItem[]; pathname: string }) {
+function NavigationItems({ 
+  items, 
+  pathname, 
+  expandedItems, 
+  onToggleExpand 
+}: { 
+  items: NavigationItem[]; 
+  pathname: string;
+  expandedItems: Set<string>;
+  onToggleExpand: (name: string) => void;
+}) {
   return (
     <ul role="list" className="space-y-1">
       {items.map((item) => {
         const isActive = pathname === item.href || (item.children && item.children.some(child => pathname === child.href));
         const hasChildren = item.children && item.children.length > 0;
+        const isExpanded = expandedItems.has(item.name);
         
         return (
           <li key={item.name}>
-            <Link
-              href={item.href}
-              className={`group flex gap-x-3 rounded-lg p-3 text-sm font-medium transition-all duration-200 ${
-                isActive && !hasChildren
-                  ? "bg-blue-600 text-white"
-                  : "text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700"
-              }`}
-            >
-              {item.icon}
-              {item.name}
-            </Link>
-            {item.children && item.children.length > 0 && (
-              <ul className="ml-8 mt-1 space-y-1">
-                {item.children.map((child) => {
-                  const isChildActive = pathname === child.href;
-                  return (
-                    <li key={child.name}>
-                      <Link
-                        href={child.href}
-                        className={`group flex gap-x-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 ${
-                          isChildActive
-                            ? "bg-blue-600 text-white"
-                            : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-700/50"
-                        }`}
-                      >
-                        {child.icon}
-                        {child.name}
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
+            {hasChildren ? (
+              // Für Items mit Kindern: Button zum Aus-/Einklappen
+              <button
+                onClick={() => onToggleExpand(item.name)}
+                className={`w-full group flex gap-x-3 rounded-lg p-3 text-sm font-medium transition-all duration-200 ${
+                  isActive
+                    ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                    : "text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700"
+                }`}
+              >
+                {item.icon}
+                {item.name}
+                <ChevronIcon isOpen={isExpanded} />
+              </button>
+            ) : (
+              // Für Items ohne Kinder: normaler Link
+              <Link
+                href={item.href}
+                className={`group flex gap-x-3 rounded-lg p-3 text-sm font-medium transition-all duration-200 ${
+                  isActive
+                    ? "bg-blue-600 text-white"
+                    : "text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700"
+                }`}
+              >
+                {item.icon}
+                {item.name}
+              </Link>
+            )}
+            {/* Ausklappbare Sublinks */}
+            {hasChildren && (
+              <div
+                className={`overflow-hidden transition-all duration-200 ease-in-out ${
+                  isExpanded ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+                }`}
+              >
+                <ul className="ml-8 mt-1 space-y-1">
+                  {item.children!.map((child) => {
+                    const isChildActive = pathname === child.href;
+                    return (
+                      <li key={child.name}>
+                        <Link
+                          href={child.href}
+                          className={`group flex gap-x-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 ${
+                            isChildActive
+                              ? "bg-blue-600 text-white"
+                              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-700/50"
+                          }`}
+                        >
+                          {child.icon}
+                          {child.name}
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
             )}
           </li>
         );
@@ -207,6 +257,45 @@ export function Sidebar() {
   const isTasksActive = pathname === "/tasks";
   const isSuperAgentActive = pathname === "/superagent";
   const isSEOHelperActive = pathname.startsWith("/seo-helper");
+  
+  // State für ausgeklappte Menüpunkte
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  
+  // Automatisch aufklappen wenn ein Child-Pfad aktiv ist
+  useEffect(() => {
+    const newExpanded = new Set<string>();
+    
+    // Prüfe alle Navigation-Arrays
+    [...dataNavigation, ...processNavigation].forEach(item => {
+      if (item.children) {
+        const isChildActive = item.children.some(child => pathname === child.href);
+        if (isChildActive || pathname === item.href) {
+          newExpanded.add(item.name);
+        }
+      }
+    });
+    
+    // Nur setzen wenn sich etwas geändert hat
+    if (newExpanded.size > 0) {
+      setExpandedItems(prev => {
+        const merged = new Set([...prev, ...newExpanded]);
+        return merged;
+      });
+    }
+  }, [pathname]);
+  
+  // Toggle-Funktion für Menüpunkte
+  const handleToggleExpand = (name: string) => {
+    setExpandedItems(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(name)) {
+        newSet.delete(name);
+      } else {
+        newSet.add(name);
+      }
+      return newSet;
+    });
+  };
 
   return (
     <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-72 lg:flex-col">
@@ -219,14 +308,24 @@ export function Sidebar() {
         </div>
         <nav className="flex flex-1 flex-col">
           {/* Hauptnavigation */}
-          <NavigationItems items={mainNavigation} pathname={pathname} />
+          <NavigationItems 
+            items={mainNavigation} 
+            pathname={pathname} 
+            expandedItems={expandedItems}
+            onToggleExpand={handleToggleExpand}
+          />
           
           {/* Daten - Menübox */}
           <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
             <h3 className="px-3 mb-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               Daten
             </h3>
-            <NavigationItems items={dataNavigation} pathname={pathname} />
+            <NavigationItems 
+              items={dataNavigation} 
+              pathname={pathname}
+              expandedItems={expandedItems}
+              onToggleExpand={handleToggleExpand}
+            />
           </div>
           
           {/* Prozesse - Menübox */}
@@ -234,7 +333,12 @@ export function Sidebar() {
             <h3 className="px-3 mb-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               Prozesse
             </h3>
-            <NavigationItems items={processNavigation} pathname={pathname} />
+            <NavigationItems 
+              items={processNavigation} 
+              pathname={pathname}
+              expandedItems={expandedItems}
+              onToggleExpand={handleToggleExpand}
+            />
           </div>
           
           {/* Aufgaben - Menübox */}
