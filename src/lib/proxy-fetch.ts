@@ -26,6 +26,7 @@ export async function proxyFetch(
 
   // If proxy is configured, use proxy-agent
   if (proxyUrl) {
+    console.log(`[proxyFetch] Using proxy: ${proxyUrl.substring(0, 30)}...`);
     return new Promise((resolve, reject) => {
       const parsedUrl = new URL(url);
       const isHttps = parsedUrl.protocol === "https:";
@@ -116,6 +117,7 @@ export async function proxyFetch(
   }
 
   // Fallback to direct fetch (for local development or if proxy not configured)
+  console.log(`[proxyFetch] NO PROXY CONFIGURED - using direct fetch for ${url}`);
   return fetch(url, {
     headers: options.headers || {},
     signal: AbortSignal.timeout(options.timeoutMs || 15000),
