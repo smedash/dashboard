@@ -3,6 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 
+interface FrequentQuestion {
+  question: string;
+  isAnswered: boolean;
+  coverageNote: string;
+}
+
 interface SummaryResult {
   executiveSummary: string;
   mainTopics: string[];
@@ -12,6 +18,7 @@ interface SummaryResult {
   suggestedKeywords: string[];
   contentType: string;
   readingTime: string;
+  frequentQuestions: FrequentQuestion[];
 }
 
 interface ApiResponse {
@@ -26,6 +33,7 @@ export default function AISummarizerPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<ApiResponse | null>(null);
+  const [copySuccess, setCopySuccess] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -247,6 +255,158 @@ export default function AISummarizerPage() {
                   ))}
                 </div>
               </div>
+
+              {/* Frequent Questions / FAQ Coverage */}
+              {result.summary.frequentQuestions && result.summary.frequentQuestions.length > 0 && (
+                <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                      <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Häufige Fragen & Content-Abdeckung
+                    </h3>
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        {result.summary.frequentQuestions.filter(q => q.isAnswered).length} beantwortet
+                      </span>
+                      <span className="text-slate-300 dark:text-slate-600">|</span>
+                      <span className="flex items-center gap-1 text-red-600 dark:text-red-400">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        {result.summary.frequentQuestions.filter(q => !q.isAnswered).length} fehlt
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {/* Progress Bar */}
+                  <div className="mb-6">
+                    <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-gradient-to-r from-green-500 to-emerald-500 transition-all"
+                        style={{ 
+                          width: `${(result.summary.frequentQuestions.filter(q => q.isAnswered).length / result.summary.frequentQuestions.length) * 100}%` 
+                        }}
+                      />
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {Math.round((result.summary.frequentQuestions.filter(q => q.isAnswered).length / result.summary.frequentQuestions.length) * 100)}% der häufigen Fragen werden im Content beantwortet
+                    </p>
+                  </div>
+
+                  {/* Questions List */}
+                  <div className="space-y-4">
+                    {result.summary.frequentQuestions.map((faq, index) => (
+                      <div 
+                        key={index}
+                        className={`p-4 rounded-xl border ${
+                          faq.isAnswered 
+                            ? "bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800" 
+                            : "bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800"
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center ${
+                            faq.isAnswered 
+                              ? "bg-green-100 dark:bg-green-900/30" 
+                              : "bg-red-100 dark:bg-red-900/30"
+                          }`}>
+                            {faq.isAnswered ? (
+                              <svg className="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            ) : (
+                              <svg className="w-4 h-4 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <p className={`font-medium ${
+                              faq.isAnswered 
+                                ? "text-green-900 dark:text-green-100" 
+                                : "text-red-900 dark:text-red-100"
+                            }`}>
+                              {faq.question}
+                            </p>
+                            <p className={`text-sm mt-1 ${
+                              faq.isAnswered 
+                                ? "text-green-700 dark:text-green-300" 
+                                : "text-red-700 dark:text-red-300"
+                            }`}>
+                              {faq.coverageNote}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Recommendation if questions are missing */}
+                  {result.summary.frequentQuestions.some(q => !q.isAnswered) && (
+                    <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800">
+                      <div className="flex items-start justify-between gap-4 mb-3">
+                        <div className="flex items-start gap-2">
+                          <svg className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                          </svg>
+                          <p className="font-medium text-amber-800 dark:text-amber-200">Content-Optimierung empfohlen</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {copySuccess && (
+                            <span className="text-sm text-green-700 dark:text-green-400 flex items-center gap-1 animate-pulse">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                              ToDos erfolgreich kopiert
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const unansweredQuestions = result.summary.frequentQuestions.filter(q => !q.isAnswered);
+                              const taskText = `Content-Optimierung: ${result.title || result.url}
+
+Folgende häufig gestellte Fragen werden im Content nicht beantwortet:
+
+${unansweredQuestions.map((q, i) => `${i + 1}. ${q.question}
+   → ${q.coverageNote}`).join("\n\n")}
+
+Quelle: ${result.url}`;
+                              await navigator.clipboard.writeText(taskText);
+                              setCopySuccess(true);
+                              setTimeout(() => setCopySuccess(false), 2000);
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-white bg-amber-600 hover:bg-amber-700 dark:bg-amber-500 dark:hover:bg-amber-600 rounded-lg transition-colors shadow-sm"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                            </svg>
+                            Als Task kopieren
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2 ml-7">
+                        {result.summary.frequentQuestions.filter(q => !q.isAnswered).map((faq, index) => (
+                          <div key={index} className="text-sm">
+                            <p className="text-amber-800 dark:text-amber-200 font-medium">
+                              {index + 1}. Beantworte: &quot;{faq.question}&quot;
+                            </p>
+                            <p className="text-amber-700 dark:text-amber-300 text-xs mt-0.5 pl-4">
+                              → {faq.coverageNote}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Sidebar */}
@@ -306,6 +466,9 @@ export default function AISummarizerPage() {
               {/* Copy Summary Button */}
               <button
                 onClick={() => {
+                  const faqSection = result.summary.frequentQuestions && result.summary.frequentQuestions.length > 0
+                    ? `\n\n## Häufige Fragen (${result.summary.frequentQuestions.filter(q => q.isAnswered).length}/${result.summary.frequentQuestions.length} beantwortet)\n${result.summary.frequentQuestions.map((q, i) => `${i + 1}. ${q.isAnswered ? "✓" : "✗"} ${q.question}\n   ${q.coverageNote}`).join("\n")}`
+                    : "";
                   const summaryText = `# ${result.title || "Zusammenfassung"}
 
 ## Executive Summary
@@ -321,7 +484,7 @@ ${result.summary.mainTopics.join(", ")}
 - Content-Typ: ${result.summary.contentType}
 - Suchintention: ${getIntentLabel(result.summary.pageIntent).label}
 - Zielgruppe: ${result.summary.targetAudience}
-- SEO Keywords: ${result.summary.suggestedKeywords.join(", ")}
+- SEO Keywords: ${result.summary.suggestedKeywords.join(", ")}${faqSection}
 
 Quelle: ${result.url}`;
                   navigator.clipboard.writeText(summaryText);

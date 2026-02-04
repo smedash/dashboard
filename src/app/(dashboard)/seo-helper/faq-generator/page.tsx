@@ -40,6 +40,7 @@ export default function FAQGeneratorPage() {
   const [checkError, setCheckError] = useState("");
   const [checkResults, setCheckResults] = useState<FAQCheckResult[]>([]);
   const [checkSummary, setCheckSummary] = useState<CheckSummary | null>(null);
+  const [taskCopySuccess, setTaskCopySuccess] = useState(false);
 
   const handleGenerate = async () => {
     if (!keyword.trim()) return;
@@ -515,20 +516,72 @@ export default function FAQGeneratorPage() {
                   ? "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800"
                   : "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
               }`}>
-                <h3 className={`font-medium mb-2 ${
-                  checkSummary.coverage >= 70 
-                    ? "text-green-900 dark:text-green-100"
-                    : checkSummary.coverage >= 40
-                    ? "text-amber-900 dark:text-amber-100"
-                    : "text-red-900 dark:text-red-100"
-                }`}>
-                  {checkSummary.coverage >= 70 
-                    ? "Gute Abdeckung!" 
-                    : checkSummary.coverage >= 40 
-                    ? "Verbesserungspotenzial" 
-                    : "Content-Lücken gefunden"}
-                </h3>
-                <p className={`text-sm ${
+                <div className="flex items-start justify-between gap-4 mb-3">
+                  <h3 className={`font-medium ${
+                    checkSummary.coverage >= 70 
+                      ? "text-green-900 dark:text-green-100"
+                      : checkSummary.coverage >= 40
+                      ? "text-amber-900 dark:text-amber-100"
+                      : "text-red-900 dark:text-red-100"
+                  }`}>
+                    {checkSummary.coverage >= 70 
+                      ? "Gute Abdeckung!" 
+                      : checkSummary.coverage >= 40 
+                      ? "Verbesserungspotenzial" 
+                      : "Content-Lücken gefunden"}
+                  </h3>
+                  
+                  {/* Copy Button - nur anzeigen wenn es fehlende/teilweise Fragen gibt */}
+                  {checkResults.some(r => r.status === "missing" || r.status === "partial") && (
+                    <div className="flex items-center gap-2">
+                      {taskCopySuccess && (
+                        <span className="text-sm text-green-700 dark:text-green-400 flex items-center gap-1">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          ToDos erfolgreich kopiert
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const missingQuestions = checkResults.filter(r => r.status === "missing");
+                          const partialQuestions = checkResults.filter(r => r.status === "partial");
+                          
+                          const taskText = `FAQ Content-Optimierung: ${keyword}
+URL: ${checkUrl}
+
+${missingQuestions.length > 0 ? `Fehlende Antworten (${missingQuestions.length}):
+${missingQuestions.map((q, i) => `${i + 1}. ${q.question}`).join("\n")}` : ""}
+
+${partialQuestions.length > 0 ? `Unvollständige Antworten (${partialQuestions.length}):
+${partialQuestions.map((q, i) => `${i + 1}. ${q.question}
+   → ${q.evidence || "Antwort erweitern"}`).join("\n")}` : ""}
+
+Empfehlung: ${checkSummary.coverage >= 40 
+                            ? "Ergänze den Content um die fehlenden Themen für bessere Rankings."
+                            : "Erwäge, den Content deutlich zu erweitern oder eine FAQ-Sektion hinzuzufügen."}`;
+                          
+                          await navigator.clipboard.writeText(taskText.trim());
+                          setTaskCopySuccess(true);
+                          setTimeout(() => setTaskCopySuccess(false), 2000);
+                        }}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-white rounded-lg transition-colors shadow-sm ${
+                          checkSummary.coverage >= 40
+                            ? "bg-amber-600 hover:bg-amber-700 dark:bg-amber-500 dark:hover:bg-amber-600"
+                            : "bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600"
+                        }`}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                        </svg>
+                        Als Task kopieren
+                      </button>
+                    </div>
+                  )}
+                </div>
+                
+                <p className={`text-sm mb-4 ${
                   checkSummary.coverage >= 70 
                     ? "text-green-800 dark:text-green-200"
                     : checkSummary.coverage >= 40
@@ -541,6 +594,68 @@ export default function FAQGeneratorPage() {
                     ? "Einige wichtige Fragen werden noch nicht beantwortet. Ergänze den Content um die fehlenden Themen für bessere Rankings."
                     : "Viele wichtige Fragen werden auf der Seite nicht beantwortet. Erwäge, den Content deutlich zu erweitern oder eine FAQ-Sektion hinzuzufügen."}
                 </p>
+
+                {/* Konkrete Liste der fehlenden/teilweisen Fragen */}
+                {checkResults.some(r => r.status === "missing" || r.status === "partial") && (
+                  <div className="space-y-3 pt-3 border-t border-current/10">
+                    {checkResults.filter(r => r.status === "missing").length > 0 && (
+                      <div>
+                        <h4 className={`text-sm font-medium mb-2 ${
+                          checkSummary.coverage >= 40
+                            ? "text-amber-800 dark:text-amber-200"
+                            : "text-red-800 dark:text-red-200"
+                        }`}>
+                          Fehlende Antworten:
+                        </h4>
+                        <ul className="space-y-1">
+                          {checkResults.filter(r => r.status === "missing").map((result, index) => (
+                            <li key={index} className={`text-sm flex items-start gap-2 ${
+                              checkSummary.coverage >= 40
+                                ? "text-amber-700 dark:text-amber-300"
+                                : "text-red-700 dark:text-red-300"
+                            }`}>
+                              <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                              {result.question}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    
+                    {checkResults.filter(r => r.status === "partial").length > 0 && (
+                      <div>
+                        <h4 className={`text-sm font-medium mb-2 ${
+                          checkSummary.coverage >= 40
+                            ? "text-amber-800 dark:text-amber-200"
+                            : "text-red-800 dark:text-red-200"
+                        }`}>
+                          Unvollständige Antworten:
+                        </h4>
+                        <ul className="space-y-1">
+                          {checkResults.filter(r => r.status === "partial").map((result, index) => (
+                            <li key={index} className={`text-sm ${
+                              checkSummary.coverage >= 40
+                                ? "text-amber-700 dark:text-amber-300"
+                                : "text-red-700 dark:text-red-300"
+                            }`}>
+                              <div className="flex items-start gap-2">
+                                <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                {result.question}
+                              </div>
+                              {result.evidence && (
+                                <p className="text-xs ml-6 mt-0.5 opacity-80">→ Vorhanden: &quot;{result.evidence}&quot;</p>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}

@@ -93,9 +93,16 @@ export async function POST(request: NextRequest) {
       messages: [
         {
           role: "system",
-          content: `Du bist ein Experte für Content-Analyse und Zusammenfassungen. ${languageInstruction}
+          content: `Du bist ein Experte für Content-Analyse und SEO. ${languageInstruction}
 
-Deine Aufgabe ist es, den Inhalt einer Webseite zusammenzufassen und die wichtigsten Informationen herauszuarbeiten.
+Deine Aufgabe ist es, den Inhalt einer Webseite zusammenzufassen und eine Content-Gap-Analyse durchzuführen.
+
+WICHTIG für die FAQ-Analyse:
+- Generiere zuerst die 5 häufigsten Fragen, die Nutzer ALLGEMEIN zu den Themen/Keywords stellen würden
+- Diese Fragen basieren auf deinem allgemeinen Wissen über typische Suchanfragen, NICHT auf dem Inhalt der Seite
+- Prüfe dann KRITISCH und OBJEKTIV, ob der vorliegende Content diese Fragen tatsächlich beantwortet
+- Sei streng: Eine Frage gilt nur als beantwortet, wenn die Antwort explizit und ausreichend detailliert im Content vorkommt
+- Wenn ein Thema nur oberflächlich angeschnitten wird, gilt die Frage als NICHT beantwortet
 
 Erstelle eine strukturierte Zusammenfassung mit:
 1. Einer kurzen Executive Summary (2-3 Sätze)
@@ -103,6 +110,8 @@ Erstelle eine strukturierte Zusammenfassung mit:
 3. Der Zielgruppe (falls erkennbar)
 4. Dem Hauptzweck der Seite (informativ, kommerziell, etc.)
 5. Möglichen SEO-relevanten Keywords
+6. Den 5 häufigsten allgemeinen Fragen zu diesen Keywords (aus Nutzersicht)
+7. Für jede Frage: Wird sie im Content beantwortet? (strenge Prüfung!)
 
 Formatiere die Ausgabe als JSON mit folgendem Schema:
 {
@@ -113,19 +122,28 @@ Formatiere die Ausgabe als JSON mit folgendem Schema:
   "pageIntent": "informational|commercial|transactional|navigational",
   "suggestedKeywords": ["keyword1", "keyword2", ...],
   "contentType": "Artikel|Produktseite|Landingpage|Blog|etc.",
-  "readingTime": "Geschätzte Lesezeit in Minuten"
+  "readingTime": "Geschätzte Lesezeit in Minuten",
+  "frequentQuestions": [
+    {
+      "question": "Typische Nutzerfrage zu den Keywords (allgemein, nicht aus dem Content abgeleitet)",
+      "isAnswered": true/false,
+      "coverageNote": "Bei true: Wo genau wird es beantwortet. Bei false: Diese Info fehlt im Content komplett oder ist zu oberflächlich."
+    }
+  ]
 }`
         },
         {
           role: "user",
-          content: `Analysiere und fasse den folgenden Webseiteninhalt zusammen:
+          content: `Analysiere den folgenden Webseiteninhalt. 
+
+WICHTIG: Generiere zuerst die 5 typischen Fragen, die Nutzer zu diesem Thema bei Google suchen würden (basierend auf allgemeinem SEO-Wissen). Prüfe dann streng, ob der Content diese Fragen wirklich beantwortet.
 
 ${pageTitle ? `Seitentitel: ${pageTitle}\n\n` : ""}Inhalt:
 ${textContent}`
         }
       ],
       temperature: 0.5,
-      max_tokens: 2000,
+      max_tokens: 2500,
     });
 
     const responseContent = completion.choices[0]?.message?.content || "{}";
