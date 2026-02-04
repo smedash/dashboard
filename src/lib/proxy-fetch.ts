@@ -49,6 +49,8 @@ export async function proxyFetch(
         headers,
         agent: agent,
         timeout: options.timeoutMs || 15000,
+        // Allow self-signed certificates (required for Web Unblocker proxy)
+        rejectUnauthorized: false,
       };
 
       console.log(`[proxyFetch] Fetching ${url} through proxy`);
