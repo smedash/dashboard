@@ -50,7 +50,11 @@ export async function proxyFetch(
         timeout: options.timeoutMs || 15000,
       };
 
+      console.log(`[proxyFetch] Fetching ${url} through proxy`);
+
       const req = requestModule.request(requestOptions, (res) => {
+        console.log(`[proxyFetch] Response status: ${res.statusCode}, encoding: ${res.headers["content-encoding"]}`);
+
         const chunks: Buffer[] = [];
 
         // Handle compressed responses
@@ -98,6 +102,7 @@ export async function proxyFetch(
       });
 
       req.on("error", (error) => {
+        console.error(`[proxyFetch] Request error:`, error);
         reject(error);
       });
 
