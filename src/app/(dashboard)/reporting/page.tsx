@@ -75,6 +75,19 @@ const REPORT_TYPES = [
     available: true,
   },
   {
+    id: "kvp",
+    title: "KVP Report",
+    description: "Monatliche Übersicht der SEO-Massnahmen: neue KVPs, Fokus-/Subkeywords und adressierte Reifegradpunkte.",
+    href: "/reporting/kvp",
+    icon: (
+      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+    ),
+    color: "from-amber-500 to-orange-600",
+    available: true,
+  },
+  {
     id: "content",
     title: "Content-Report",
     description: "Performance-Analyse einzelner Seiten und Verzeichnisse mit Keyword-Abdeckung und Optimierungspotenzial.",
@@ -84,7 +97,7 @@ const REPORT_TYPES = [
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
       </svg>
     ),
-    color: "from-amber-500 to-orange-600",
+    color: "from-cyan-500 to-teal-600",
     available: false,
   },
   {
