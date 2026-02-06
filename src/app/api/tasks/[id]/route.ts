@@ -40,9 +40,30 @@ export async function GET(
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 
+    // User-Daten für Kommentar-Autoren laden (TaskComment hat keine user-Relation im Schema)
+    const commentUserIds = [...new Set(task.comments.map((c) => c.userId))];
+    const commentUsers =
+      commentUserIds.length > 0
+        ? await prisma.user.findMany({
+            where: { id: { in: commentUserIds } },
+            select: { id: true, name: true, email: true },
+          })
+        : [];
+    const commentUserMap = new Map(commentUsers.map((u) => [u.id, u]));
+
+    const commentsWithUsers = task.comments.map((comment) => ({
+      ...comment,
+      user: commentUserMap.get(comment.userId) ?? {
+        id: comment.userId,
+        name: null,
+        email: null,
+      },
+    }));
+
     const transformedTask = {
       ...task,
       assignees: task.assignees.map((a) => a.user),
+      comments: commentsWithUsers,
     };
 
     return NextResponse.json({ task: transformedTask });
@@ -136,9 +157,29 @@ export async function PATCH(
       },
     });
 
+    // User-Daten für Kommentar-Autoren anreichern
+    const commentUserIds = [...new Set(task.comments.map((c) => c.userId))];
+    const commentUsers =
+      commentUserIds.length > 0
+        ? await prisma.user.findMany({
+            where: { id: { in: commentUserIds } },
+            select: { id: true, name: true, email: true },
+          })
+        : [];
+    const commentUserMap = new Map(commentUsers.map((u) => [u.id, u]));
+    const commentsWithUsers = task.comments.map((comment) => ({
+      ...comment,
+      user: commentUserMap.get(comment.userId) ?? {
+        id: comment.userId,
+        name: null,
+        email: null,
+      },
+    }));
+
     const transformedTask = {
       ...task,
       assignees: task.assignees.map((a) => a.user),
+      comments: commentsWithUsers,
     };
 
     // E-Mail-Benachrichtigung an NEUE Assignees senden

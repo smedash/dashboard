@@ -35,10 +35,31 @@ export async function GET() {
       ],
     });
 
-    // Transform assignees for frontend
+    // User-Daten für Kommentar-Autoren laden
+    const allCommentUserIds = [
+      ...new Set(tasks.flatMap((t) => t.comments.map((c) => c.userId))),
+    ];
+    const commentUsers =
+      allCommentUserIds.length > 0
+        ? await prisma.user.findMany({
+            where: { id: { in: allCommentUserIds } },
+            select: { id: true, name: true, email: true },
+          })
+        : [];
+    const commentUserMap = new Map(commentUsers.map((u) => [u.id, u]));
+
+    // Transform assignees & comments for frontend
     const transformedTasks = tasks.map((task) => ({
       ...task,
       assignees: task.assignees.map((a) => a.user),
+      comments: task.comments.map((comment) => ({
+        ...comment,
+        user: commentUserMap.get(comment.userId) ?? {
+          id: comment.userId,
+          name: null,
+          email: null,
+        },
+      })),
     }));
 
     return NextResponse.json({ tasks: transformedTasks });
