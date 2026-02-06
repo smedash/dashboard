@@ -1,8 +1,81 @@
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { getGSCSearchAnalytics, getDateRange, getPreviousPeriodRange } from "@/lib/gsc";
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
+
+interface RankingKeywordInfo {
+  keyword: string;
+  position: number | null;
+  delta?: number | null;
+  deltaLast?: number | null;
+  deltaStart?: number | null;
+  category: string | null;
+  searchVolume: number | null;
+  url?: string | null;
+}
+
+interface TrafficReportInput {
+  period: { startDate: string; endDate: string };
+  previousPeriod: { startDate: string; endDate: string };
+  current: { clicks: number; impressions: number; ctr: number; position: number };
+  previous: { clicks: number; impressions: number; ctr: number; position: number };
+  changes: { clicks: number; impressions: number; ctr: number; position: number };
+  topKeywords: Array<{
+    keyword: string;
+    clicks: number;
+    impressions: number;
+    ctr: number;
+    position: number;
+  }>;
+  topPages: Array<{
+    url: string;
+    pathname: string;
+    clicks: number;
+    impressions: number;
+    ctr: number;
+    position: number;
+  }>;
+  devices: Array<{
+    device: string;
+    clicks: number;
+    impressions: number;
+    ctr: number;
+    position: number;
+  }>;
+  directories: Array<{
+    path: string;
+    clicks: number;
+    impressions: number;
+    ctr: number;
+    position: number;
+    pageCount: number;
+  }>;
+}
+
+interface RankingReportInput {
+  stats: {
+    total: number;
+    top3: number;
+    top10: number;
+    top20: number;
+    top50: number;
+    top100: number;
+    notRanking: number;
+    avgPosition: number;
+    improved: number;
+    declined: number;
+    unchanged: number;
+  };
+  categoryStats: Array<{
+    category: string;
+    total: number;
+    ranking: number;
+    top10: number;
+    avgPosition: number | null;
+  }>;
+  topImprovers: RankingKeywordInfo[];
+  topDecliners: RankingKeywordInfo[];
+  topKeywords: RankingKeywordInfo[];
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,11 +86,11 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { siteUrl, period } = body;
-
-    if (!siteUrl) {
-      return NextResponse.json({ error: "siteUrl is required" }, { status: 400 });
-    }
+    const { type, rankingData, trafficData } = body as {
+      type?: string;
+      rankingData?: RankingReportInput;
+      trafficData?: TrafficReportInput;
+    };
 
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json(
@@ -30,248 +103,173 @@ export async function POST(request: NextRequest) {
       apiKey: process.env.OPENAI_API_KEY,
     });
 
-    // 1. GSC Daten sammeln
-    const { startDate, endDate } = getDateRange(period || "28d");
-    const prevPeriod = getPreviousPeriodRange(startDate, endDate);
-
-    // GSC Stats
-    const [currentStats, previousStats] = await Promise.all([
-      getGSCSearchAnalytics(session.user.id, siteUrl, {
-        startDate,
-        endDate,
-        dimensions: ["date"],
-        rowLimit: 1000,
-      }),
-      getGSCSearchAnalytics(session.user.id, siteUrl, {
-        startDate: prevPeriod.startDate,
-        endDate: prevPeriod.endDate,
-        dimensions: ["date"],
-        rowLimit: 1000,
-      }),
-    ]);
-
-    // Top Pages
-    const topPages = await getGSCSearchAnalytics(session.user.id, siteUrl, {
-      startDate,
-      endDate,
-      dimensions: ["page"],
-      rowLimit: 20,
-    });
-
-    // Top Queries
-    const topQueries = await getGSCSearchAnalytics(session.user.id, siteUrl, {
-      startDate,
-      endDate,
-      dimensions: ["query"],
-      rowLimit: 20,
-    });
-
-    // Berechne Totals
-    const currentTotals = currentStats.rows.reduce(
-      (acc, row) => ({
-        clicks: acc.clicks + row.clicks,
-        impressions: acc.impressions + row.impressions,
-        ctr: 0,
-        position: acc.position + row.position,
-        count: acc.count + 1,
-      }),
-      { clicks: 0, impressions: 0, ctr: 0, position: 0, count: 0 }
-    );
-
-    const previousTotals = previousStats.rows.reduce(
-      (acc, row) => ({
-        clicks: acc.clicks + row.clicks,
-        impressions: acc.impressions + row.impressions,
-        ctr: 0,
-        position: acc.position + row.position,
-        count: acc.count + 1,
-      }),
-      { clicks: 0, impressions: 0, ctr: 0, position: 0, count: 0 }
-    );
-
-    const avgCurrentPosition = currentTotals.count > 0 ? currentTotals.position / currentTotals.count : 0;
-    const avgPreviousPosition = previousTotals.count > 0 ? previousTotals.position / previousTotals.count : 0;
-    const currentCTR = currentTotals.impressions > 0 ? currentTotals.clicks / currentTotals.impressions : 0;
-    const previousCTR = previousTotals.impressions > 0 ? previousTotals.clicks / previousTotals.impressions : 0;
-
-    // 2. Rank Tracker Daten sammeln
-    const tracker = await prisma.rankTracker.findFirst({
-      include: {
-        keywords: {
-          include: {
-            rankings: {
-              orderBy: { date: "desc" },
-              take: 1, // Neuestes Ranking pro Keyword
-            },
-          },
-        },
-      },
-    });
-
-    let rankStats = {
-      totalKeywords: 0,
-      top10: 0,
-      top30: 0,
-      top50: 0,
-      top100: 0,
-      noRanking: 0,
-    };
-
-    if (tracker) {
-      rankStats.totalKeywords = tracker.keywords.length;
-      tracker.keywords.forEach((keyword) => {
-        const latestRanking = keyword.rankings[0];
-        if (!latestRanking || latestRanking.position === null) {
-          rankStats.noRanking++;
-        } else if (latestRanking.position <= 10) {
-          rankStats.top10++;
-        } else if (latestRanking.position <= 30) {
-          rankStats.top30++;
-        } else if (latestRanking.position <= 50) {
-          rankStats.top50++;
-        } else if (latestRanking.position <= 100) {
-          rankStats.top100++;
-        } else {
-          rankStats.noRanking++;
-        }
-      });
+    // Ranking Report
+    if (type === "ranking" && rankingData) {
+      return await generateRankingReport(openai, rankingData);
     }
 
-    // 3. KVP Daten sammeln (neue KVPs im aktuellen Monat)
-    const now = new Date();
-    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-
-    const newKVPs = await prisma.kVPUrl.count({
-      where: {
-        createdAt: {
-          gte: firstDayOfMonth,
-          lte: lastDayOfMonth,
-        },
-      },
-    });
-
-    const totalKVPs = await prisma.kVPUrl.count();
-
-    // 4. Bereite Daten für OpenAI vor
-    const reportData = {
-      periode: {
-        aktuell: {
-          startDate,
-          endDate,
-          clicks: currentTotals.clicks,
-          impressions: currentTotals.impressions,
-          ctr: currentCTR,
-          avgPosition: avgCurrentPosition,
-        },
-        vorherig: {
-          startDate: prevPeriod.startDate,
-          endDate: prevPeriod.endDate,
-          clicks: previousTotals.clicks,
-          impressions: previousTotals.impressions,
-          ctr: previousCTR,
-          avgPosition: avgPreviousPosition,
-        },
-      },
-      topPages: topPages.rows.slice(0, 10).map((row) => ({
-        url: row.keys[0] || "",
-        clicks: row.clicks,
-        impressions: row.impressions,
-        ctr: row.ctr,
-        position: row.position,
-      })),
-      topQueries: topQueries.rows.slice(0, 10).map((row) => ({
-        keyword: row.keys[0] || "",
-        clicks: row.clicks,
-        impressions: row.impressions,
-        ctr: row.ctr,
-        position: row.position,
-      })),
-      rankTracker: rankStats,
-      kvps: {
-        neuDieserMonat: newKVPs,
-        gesamt: totalKVPs,
-      },
-    };
-
-    // 5. Generiere Prompt für OpenAI
-    const prompt = `Du bist ein SEO-Experte. Analysiere die folgenden Daten und erstelle einen umfassenden SEO-Report auf Deutsch.
-
-**Zeitraum:**
-- Aktuell: ${startDate} bis ${endDate}
-- Vorherig: ${prevPeriod.startDate} bis ${prevPeriod.endDate}
-
-**Google Search Console Performance:**
-- Klicks: ${currentTotals.clicks.toLocaleString("de-DE")} (Vorperiode: ${previousTotals.clicks.toLocaleString("de-DE")})
-- Impressionen: ${currentTotals.impressions.toLocaleString("de-DE")} (Vorperiode: ${previousTotals.impressions.toLocaleString("de-DE")})
-- CTR: ${(currentCTR * 100).toFixed(2)}% (Vorperiode: ${(previousCTR * 100).toFixed(2)}%)
-- Durchschnittliche Position: ${avgCurrentPosition.toFixed(1)} (Vorperiode: ${avgPreviousPosition.toFixed(1)})
-
-**Top-Performing URLs:**
-${reportData.topPages.map((page, i) => `${i + 1}. ${page.url} - ${page.clicks} Klicks, ${page.impressions} Impressionen, Position ${page.position.toFixed(1)}`).join("\n")}
-
-**Top-Performing Keywords:**
-${reportData.topQueries.map((query, i) => `${i + 1}. ${query.keyword} - ${query.clicks} Klicks, ${query.impressions} Impressionen, Position ${query.position.toFixed(1)}`).join("\n")}
-
-**Rank Tracker Statistiken:**
-- Gesamt Keywords getrackt: ${rankStats.totalKeywords}
-- Top 10 Rankings: ${rankStats.top10}
-- Top 30 Rankings: ${rankStats.top30}
-- Top 50 Rankings: ${rankStats.top50}
-- Top 100 Rankings: ${rankStats.top100}
-- Kein Ranking: ${rankStats.noRanking}
-
-**KVP (Kontinuierlicher Verbesserungsprozess):**
-- Neue KVPs diesen Monat: ${newKVPs}
-- Gesamt KVPs: ${totalKVPs}
-
-**Aufgabe:**
-Erstelle einen strukturierten SEO-Report mit folgenden Abschnitten:
-1. **Executive Summary** - Kurze Zusammenfassung der wichtigsten Erkenntnisse
-2. **Performance-Analyse** - Detaillierte Analyse der GSC-Daten mit Vergleich zur Vorperiode
-3. **Top-Performing Assets** - Analyse der besten URLs und Keywords
-4. **Ranking-Status** - Bewertung der Ranking-Situation
-5. **SEO-Empfehlungen** - Konkrete Handlungsempfehlungen basierend auf den Daten
-6. **Bewertung** - Gesamtbewertung der SEO-Performance (1-10 Skala mit Begründung)
-
-Der Report soll professionell, präzise und handlungsorientiert sein.`;
-
-    // 6. Rufe OpenAI API auf
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content: "Du bist ein erfahrener SEO-Experte, der detaillierte und handlungsorientierte SEO-Reports erstellt.",
-        },
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
-      temperature: 0.7,
-      max_tokens: 2000,
-    });
-
-    const aiReport = completion.choices[0]?.message?.content || "Fehler beim Generieren des Reports";
-
-    return NextResponse.json({
-      report: aiReport,
-      data: reportData,
-    });
-  } catch (error) {
-    console.error("Error generating AI report:", error);
-    
-    if (error instanceof Error && error.message === "No Google account connected") {
-      return NextResponse.json(
-        { error: "Google account not connected", needsConnection: true },
-        { status: 403 }
-      );
+    // Traffic Report
+    if (type === "traffic" && trafficData) {
+      return await generateTrafficReport(openai, trafficData);
     }
 
     return NextResponse.json(
-      { error: "Failed to generate AI report", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Ungültiger Report-Typ. Verwende type: 'ranking' oder 'traffic'" },
+      { status: 400 }
+    );
+  } catch (error) {
+    console.error("Error generating AI report:", error);
+
+    return NextResponse.json(
+      {
+        error: "Failed to generate AI report",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
       { status: 500 }
     );
   }
+}
+
+async function generateRankingReport(
+  openai: OpenAI,
+  data: RankingReportInput
+) {
+  const { stats, categoryStats, topImprovers, topDecliners, topKeywords } = data;
+
+  const prompt = `Du bist ein SEO-Experte. Analysiere die folgenden Ranking-Daten aus unserem Ranktracker und erstelle einen umfassenden Ranking-Report auf Deutsch.
+
+**Ranking-Übersicht:**
+- Keywords gesamt: ${stats.total}
+- Durchschnittliche Position: ${stats.avgPosition}
+- Top 3: ${stats.top3} Keywords
+- Top 4-10: ${stats.top10} Keywords  
+- Top 11-20: ${stats.top20} Keywords
+- Top 21-50: ${stats.top50} Keywords
+- Top 51-100: ${stats.top100} Keywords
+- Nicht rankend: ${stats.notRanking} Keywords
+
+**Entwicklung seit letztem Update:**
+- Verbessert: ${stats.improved} Keywords
+- Verschlechtert: ${stats.declined} Keywords
+- Unverändert: ${stats.unchanged} Keywords
+
+**Performance nach Kategorie:**
+${categoryStats.map((cat) => `- ${cat.category}: ${cat.total} Keywords, davon ${cat.ranking} rankend, ${cat.top10} in Top 10, Ø Position: ${cat.avgPosition ?? "n/a"}`).join("\n")}
+
+**Top 20 Keywords (beste Positionen):**
+${topKeywords.map((kw, i) => `${i + 1}. "${kw.keyword}" - Position ${kw.position}${kw.deltaLast !== null && kw.deltaLast !== undefined ? ` (Δ ${kw.deltaLast > 0 ? "+" : ""}${kw.deltaLast})` : ""}${kw.searchVolume ? `, SV: ${kw.searchVolume}` : ""}${kw.category ? ` [${kw.category}]` : ""}${kw.url ? ` → ${kw.url}` : ""}`).join("\n")}
+
+**Top Gewinner (grösste Verbesserungen):**
+${topImprovers.length > 0 ? topImprovers.map((kw, i) => `${i + 1}. "${kw.keyword}" - Position ${kw.position}, +${kw.delta || kw.deltaLast} Plätze verbessert${kw.searchVolume ? `, SV: ${kw.searchVolume}` : ""}${kw.category ? ` [${kw.category}]` : ""}`).join("\n") : "Keine Verbesserungen"}
+
+**Top Verlierer (grösste Verschlechterungen):**
+${topDecliners.length > 0 ? topDecliners.map((kw, i) => `${i + 1}. "${kw.keyword}" - Position ${kw.position}, ${kw.delta || kw.deltaLast} Plätze verschlechtert${kw.searchVolume ? `, SV: ${kw.searchVolume}` : ""}${kw.category ? ` [${kw.category}]` : ""}`).join("\n") : "Keine Verschlechterungen"}
+
+**Aufgabe:**
+Erstelle einen strukturierten Ranking-Report mit folgenden Abschnitten:
+1. **Executive Summary** - Kurze Zusammenfassung der Ranking-Situation (2-3 Sätze)
+2. **Ranking-Verteilung** - Analyse der Positions-Verteilung und was das für die Sichtbarkeit bedeutet
+3. **Kategorie-Analyse** - Welche Kategorien performen gut, welche haben Potenzial?
+4. **Gewinner & Verlierer** - Analyse der grössten Bewegungen und mögliche Ursachen
+5. **Top-Keywords Bewertung** - Bewertung der wichtigsten Keywords und Quick Wins
+6. **Handlungsempfehlungen** - 5-7 konkrete, priorisierte Massnahmen zur Verbesserung der Rankings
+7. **Gesamtbewertung** - Ranking-Gesundheit auf einer Skala von 1-10 mit Begründung
+
+Der Report soll professionell, datenbasiert und handlungsorientiert sein. Fokussiere auf actionable Insights.`;
+
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: [
+      {
+        role: "system",
+        content:
+          "Du bist ein erfahrener SEO-Experte, spezialisiert auf Ranking-Analysen und Keyword-Strategien. Du erstellst detaillierte und handlungsorientierte Ranking-Reports auf Deutsch.",
+      },
+      {
+        role: "user",
+        content: prompt,
+      },
+    ],
+    temperature: 0.7,
+    max_tokens: 3000,
+  });
+
+  const aiReport =
+    completion.choices[0]?.message?.content ||
+    "Fehler beim Generieren des Reports";
+
+  return NextResponse.json({
+    report: aiReport,
+  });
+}
+
+async function generateTrafficReport(
+  openai: OpenAI,
+  data: TrafficReportInput
+) {
+  const { period, previousPeriod, current, previous, changes, topKeywords, topPages, devices, directories } = data;
+
+  const formatPct = (val: number) => `${val >= 0 ? "+" : ""}${val.toFixed(1)}%`;
+  const deviceNames: Record<string, string> = { DESKTOP: "Desktop", MOBILE: "Mobile", TABLET: "Tablet" };
+
+  const prompt = `Du bist ein SEO-Experte. Analysiere die folgenden Traffic-Daten aus der Google Search Console und erstelle einen umfassenden Traffic-Report auf Deutsch.
+
+**Zeitraum:**
+- Aktuell: ${period.startDate} bis ${period.endDate}
+- Vorperiode: ${previousPeriod.startDate} bis ${previousPeriod.endDate}
+
+**Traffic-Übersicht (aktuell vs. Vorperiode):**
+- Klicks: ${current.clicks.toLocaleString("de-DE")} (${formatPct(changes.clicks)}, Vorperiode: ${previous.clicks.toLocaleString("de-DE")})
+- Impressionen: ${current.impressions.toLocaleString("de-DE")} (${formatPct(changes.impressions)}, Vorperiode: ${previous.impressions.toLocaleString("de-DE")})
+- CTR: ${(current.ctr * 100).toFixed(2)}% (${formatPct(changes.ctr)}, Vorperiode: ${(previous.ctr * 100).toFixed(2)}%)
+- Ø Position: ${current.position.toFixed(1)} (${formatPct(changes.position)}, Vorperiode: ${previous.position.toFixed(1)})
+
+**Geräte-Verteilung:**
+${devices.map((d) => `- ${deviceNames[d.device] || d.device}: ${d.clicks.toLocaleString("de-DE")} Klicks, ${d.impressions.toLocaleString("de-DE")} Impr., CTR ${(d.ctr * 100).toFixed(1)}%, Pos. ${d.position.toFixed(1)}`).join("\n")}
+
+**Top 20 Keywords:**
+${topKeywords.slice(0, 20).map((kw, i) => `${i + 1}. "${kw.keyword}" - ${kw.clicks} Klicks, ${kw.impressions} Impr., CTR ${(kw.ctr * 100).toFixed(1)}%, Pos. ${kw.position.toFixed(1)}`).join("\n")}
+
+**Top 20 Seiten:**
+${topPages.slice(0, 20).map((p, i) => `${i + 1}. ${p.pathname} - ${p.clicks} Klicks, ${p.impressions} Impr., CTR ${(p.ctr * 100).toFixed(1)}%, Pos. ${p.position.toFixed(1)}`).join("\n")}
+
+**Top Verzeichnisse:**
+${directories.slice(0, 15).map((d, i) => `${i + 1}. ${d.path} - ${d.clicks} Klicks, ${d.pageCount} Seiten, CTR ${(d.ctr * 100).toFixed(1)}%, Pos. ${d.position.toFixed(1)}`).join("\n")}
+
+**Aufgabe:**
+Erstelle einen strukturierten Traffic-Report mit folgenden Abschnitten:
+1. **Executive Summary** - Kurze Zusammenfassung der Traffic-Situation und Entwicklung (2-3 Sätze)
+2. **Performance-Analyse** - Detaillierte Analyse der KPIs mit Vergleich zur Vorperiode, Trends bewerten
+3. **Geräte-Analyse** - Wie verteilt sich der Traffic auf Geräte? Mobile-Optimierungsbedarf?
+4. **Top-Content Bewertung** - Welche Seiten/Verzeichnisse performen gut? Wo gibt es Potenzial?
+5. **Keyword-Analyse** - Bewertung der Top-Keywords, CTR-Potenziale und Quick Wins
+6. **Handlungsempfehlungen** - 5-7 konkrete, priorisierte Massnahmen zur Traffic-Steigerung
+7. **Gesamtbewertung** - Traffic-Gesundheit auf einer Skala von 1-10 mit Begründung
+
+Der Report soll professionell, datenbasiert und handlungsorientiert sein. Fokussiere auf actionable Insights.`;
+
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: [
+      {
+        role: "system",
+        content:
+          "Du bist ein erfahrener SEO-Experte, spezialisiert auf Traffic-Analysen und organische Suchmaschinenoptimierung. Du erstellst detaillierte und handlungsorientierte Traffic-Reports auf Deutsch.",
+      },
+      {
+        role: "user",
+        content: prompt,
+      },
+    ],
+    temperature: 0.7,
+    max_tokens: 3000,
+  });
+
+  const aiReport =
+    completion.choices[0]?.message?.content ||
+    "Fehler beim Generieren des Reports";
+
+  return NextResponse.json({
+    report: aiReport,
+  });
 }
