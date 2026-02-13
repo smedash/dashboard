@@ -348,7 +348,7 @@ export default function ChangelogPage() {
       </div>
 
       {/* Statistik-Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {/* Gesamtzeit - hervorgehoben */}
         <div className="col-span-2 lg:col-span-1 bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 rounded-xl p-4 text-white">
           <div className="flex items-center gap-3">
@@ -404,19 +404,6 @@ export default function ChangelogPage() {
             <div>
               <p className="text-2xl font-bold text-slate-900 dark:text-white">{stats.refactors}</p>
               <p className="text-xs text-slate-500 dark:text-slate-400">Refactorings</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-              <svg className="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-slate-900 dark:text-white">{stats.uniqueDates}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Aktive Tage</p>
             </div>
           </div>
         </div>
