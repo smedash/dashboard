@@ -600,7 +600,7 @@ export default function ChangelogPage() {
                       <div className="flex items-center gap-3 mt-2 text-xs text-slate-400 dark:text-slate-500">
                         <span className="font-mono">{commit.shortHash}</span>
                         <span className="hidden sm:inline">•</span>
-                        <span className="hidden sm:inline">{commit.author}</span>
+                        <span className="hidden sm:inline">smedash</span>
                         <span>•</span>
                         <span>
                           {new Date(commit.date).toLocaleTimeString("de-DE", {

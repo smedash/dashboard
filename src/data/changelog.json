@@ -1,7 +1,29 @@
 {
-  "generatedAt": "2026-02-13T14:20:31.319Z",
-  "totalCommits": 79,
+  "generatedAt": "2026-02-13T14:29:46.859Z",
+  "totalCommits": 81,
   "commits": [
+    {
+      "hash": "05e10d3d5e8b7a5481efcfaf8b504c7ac015895f",
+      "shortHash": "05e10d3",
+      "author": "smedash",
+      "date": "2026-02-13 15:27:02 +0100",
+      "subject": "refactor(navigation): Changelog-Link von Sidebar ins User-Menü verschieben",
+      "type": "refactor",
+      "typeLabel": "Refactoring",
+      "scope": "navigation",
+      "message": "Changelog-Link von Sidebar ins User-Menü verschieben"
+    },
+    {
+      "hash": "be83e8df4d004f25033f441b0140595b9c05ff6b",
+      "shortHash": "be83e8d",
+      "author": "smedash",
+      "date": "2026-02-13 15:24:32 +0100",
+      "subject": "feat(changelog): Live-Refresh per Button statt Redeploy",
+      "type": "feat",
+      "typeLabel": "Feature",
+      "scope": "changelog",
+      "message": "Live-Refresh per Button statt Redeploy"
+    },
     {
       "hash": "b400ea72db38af734de98a5cd830f54731d4e2da",
       "shortHash": "b400ea7",
@@ -712,7 +734,7 @@
       "author": "Tasketeer",
       "date": "2026-01-18 22:44:55 +0100",
       "subject": "KVP: Kommentar-System implementiert und UI-Layout verbessert",
-      "type": "kvp",
+      "type": "other",
       "typeLabel": "Sonstiges",
       "scope": null,
       "message": "Kommentar-System implementiert und UI-Layout verbessert"
@@ -745,7 +767,7 @@
       "author": "Tasketeer",
       "date": "2025-12-19 10:41:38 +0100",
       "subject": "Security: Magic-Link nur für registrierte User",
-      "type": "security",
+      "type": "other",
       "typeLabel": "Sonstiges",
       "scope": null,
       "message": "Magic-Link nur für registrierte User"
@@ -789,8 +811,8 @@
       "author": "Nicolas Sacotte",
       "date": "2025-12-14 19:56:00 +0100",
       "subject": "Feature: Separates Google-Linking ohne Logout",
-      "type": "feature",
-      "typeLabel": "Sonstiges",
+      "type": "feat",
+      "typeLabel": "Feature",
       "scope": null,
       "message": "Separates Google-Linking ohne Logout"
     },
@@ -800,8 +822,8 @@
       "author": "Nicolas Sacotte",
       "date": "2025-12-14 19:40:57 +0100",
       "subject": "Feature: Login und Google OAuth getrennt",
-      "type": "feature",
-      "typeLabel": "Sonstiges",
+      "type": "feat",
+      "typeLabel": "Feature",
       "scope": null,
       "message": "Login und Google OAuth getrennt"
     },
@@ -811,7 +833,7 @@
       "author": "Nicolas Sacotte",
       "date": "2025-12-14 19:37:38 +0100",
       "subject": "SEO: robots.txt und noindex,nofollow für alle Seiten",
-      "type": "seo",
+      "type": "other",
       "typeLabel": "Sonstiges",
       "scope": null,
       "message": "robots.txt und noindex,nofollow für alle Seiten"
@@ -833,8 +855,8 @@
       "author": "Nicolas Sacotte",
       "date": "2025-12-14 19:19:15 +0100",
       "subject": "Feature: Mehr Daten, Pagination und UI-Verbesserungen",
-      "type": "feature",
-      "typeLabel": "Sonstiges",
+      "type": "feat",
+      "typeLabel": "Feature",
       "scope": null,
       "message": "Mehr Daten, Pagination und UI-Verbesserungen"
     },
@@ -874,6 +896,28 @@
   ],
   "groupedByDate": {
     "2026-02-13": [
+      {
+        "hash": "05e10d3d5e8b7a5481efcfaf8b504c7ac015895f",
+        "shortHash": "05e10d3",
+        "author": "smedash",
+        "date": "2026-02-13 15:27:02 +0100",
+        "subject": "refactor(navigation): Changelog-Link von Sidebar ins User-Menü verschieben",
+        "type": "refactor",
+        "typeLabel": "Refactoring",
+        "scope": "navigation",
+        "message": "Changelog-Link von Sidebar ins User-Menü verschieben"
+      },
+      {
+        "hash": "be83e8df4d004f25033f441b0140595b9c05ff6b",
+        "shortHash": "be83e8d",
+        "author": "smedash",
+        "date": "2026-02-13 15:24:32 +0100",
+        "subject": "feat(changelog): Live-Refresh per Button statt Redeploy",
+        "type": "feat",
+        "typeLabel": "Feature",
+        "scope": "changelog",
+        "message": "Live-Refresh per Button statt Redeploy"
+      },
       {
         "hash": "b400ea72db38af734de98a5cd830f54731d4e2da",
         "shortHash": "b400ea7",
@@ -1602,7 +1646,7 @@
         "author": "Tasketeer",
         "date": "2026-01-18 22:44:55 +0100",
         "subject": "KVP: Kommentar-System implementiert und UI-Layout verbessert",
-        "type": "kvp",
+        "type": "other",
         "typeLabel": "Sonstiges",
         "scope": null,
         "message": "Kommentar-System implementiert und UI-Layout verbessert"
@@ -1639,7 +1683,7 @@
         "author": "Tasketeer",
         "date": "2025-12-19 10:41:38 +0100",
         "subject": "Security: Magic-Link nur für registrierte User",
-        "type": "security",
+        "type": "other",
         "typeLabel": "Sonstiges",
         "scope": null,
         "message": "Magic-Link nur für registrierte User"
@@ -1687,8 +1731,8 @@
         "author": "Nicolas Sacotte",
         "date": "2025-12-14 19:56:00 +0100",
         "subject": "Feature: Separates Google-Linking ohne Logout",
-        "type": "feature",
-        "typeLabel": "Sonstiges",
+        "type": "feat",
+        "typeLabel": "Feature",
         "scope": null,
         "message": "Separates Google-Linking ohne Logout"
       },
@@ -1698,8 +1742,8 @@
         "author": "Nicolas Sacotte",
         "date": "2025-12-14 19:40:57 +0100",
         "subject": "Feature: Login und Google OAuth getrennt",
-        "type": "feature",
-        "typeLabel": "Sonstiges",
+        "type": "feat",
+        "typeLabel": "Feature",
         "scope": null,
         "message": "Login und Google OAuth getrennt"
       },
@@ -1709,7 +1753,7 @@
         "author": "Nicolas Sacotte",
         "date": "2025-12-14 19:37:38 +0100",
         "subject": "SEO: robots.txt und noindex,nofollow für alle Seiten",
-        "type": "seo",
+        "type": "other",
         "typeLabel": "Sonstiges",
         "scope": null,
         "message": "robots.txt und noindex,nofollow für alle Seiten"
@@ -1731,8 +1775,8 @@
         "author": "Nicolas Sacotte",
         "date": "2025-12-14 19:19:15 +0100",
         "subject": "Feature: Mehr Daten, Pagination und UI-Verbesserungen",
-        "type": "feature",
-        "typeLabel": "Sonstiges",
+        "type": "feat",
+        "typeLabel": "Feature",
         "scope": null,
         "message": "Mehr Daten, Pagination und UI-Verbesserungen"
       },

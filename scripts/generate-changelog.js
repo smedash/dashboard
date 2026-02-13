@@ -15,13 +15,35 @@ const path = require('path');
 const GIT_LOG_FORMAT = '%H|%h|%an|%ai|%s';
 const MAX_COMMITS = 500;
 
+// Bekannte Typen und Aliase normalisieren
+const KNOWN_TYPES = new Set(['feat', 'fix', 'refactor', 'chore', 'docs', 'style', 'perf', 'test', 'ci', 'build']);
+const TYPE_ALIASES = {
+  feature: 'feat',
+  bugfix: 'fix',
+  hotfix: 'fix',
+  doc: 'docs',
+  styling: 'style',
+  performance: 'perf',
+  tests: 'test',
+  testing: 'test',
+  maintenance: 'chore',
+  cleanup: 'chore',
+};
+
+function normalizeType(rawType) {
+  const lower = rawType.toLowerCase();
+  if (KNOWN_TYPES.has(lower)) return lower;
+  if (TYPE_ALIASES[lower]) return TYPE_ALIASES[lower];
+  return 'other';
+}
+
 function parseCommitMessage(subject) {
   // Conventional commit pattern: type(scope): message
   const conventionalMatch = subject.match(/^(\w+)(?:\(([^)]+)\))?\s*:\s*(.+)$/);
   
   if (conventionalMatch) {
     return {
-      type: conventionalMatch[1].toLowerCase(),
+      type: normalizeType(conventionalMatch[1]),
       scope: conventionalMatch[2] || null,
       message: conventionalMatch[3].trim(),
     };
