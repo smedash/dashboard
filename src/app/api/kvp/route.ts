@@ -22,6 +22,9 @@ export async function GET(request: NextRequest) {
         comments: {
           orderBy: { createdAt: "asc" },
         },
+        files: {
+          orderBy: { createdAt: "desc" },
+        },
         assignees: {
           include: {
             user: {

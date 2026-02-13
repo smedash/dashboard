@@ -29,6 +29,9 @@ export async function GET(
         comments: {
           orderBy: { createdAt: "asc" },
         },
+        files: {
+          orderBy: { createdAt: "desc" },
+        },
         assignees: {
           include: {
             user: {
@@ -97,6 +100,9 @@ export async function PATCH(
         comments: {
           orderBy: { createdAt: "asc" },
         },
+        files: {
+          orderBy: { createdAt: "desc" },
+        },
         assignees: {
           include: {
             user: {
@@ -152,6 +158,9 @@ export async function PATCH(
         },
         comments: {
           orderBy: { createdAt: "asc" },
+        },
+        files: {
+          orderBy: { createdAt: "desc" },
         },
         assignees: {
           include: {

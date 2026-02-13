@@ -34,6 +34,16 @@ interface KVPComment {
   updatedAt: string;
 }
 
+interface KVPFile {
+  id: string;
+  urlId: string;
+  fileName: string;
+  fileUrl: string;
+  fileSize: number;
+  fileType: string;
+  createdAt: string;
+}
+
 interface MaturityItem {
   id: string;
   category: string;
@@ -68,6 +78,7 @@ interface KVPUrl {
   comment?: string | null; // Deprecated, wird durch comments ersetzt
   subkeywords: KVPSubkeyword[];
   comments: KVPComment[];
+  files?: KVPFile[];
   maturityLinks?: MaturityLink[];
   assignees?: KVPAssignee[]; // Zugewiesene Nutzer
   createdAt: string;
@@ -88,6 +99,26 @@ interface Ranking {
   url: string | null;
   date: string;
 }
+
+// Funktion zum Formatieren von Dateigrößen
+const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+};
+
+// Icon-Komponente für Dateitypen
+const getFileIcon = (fileType: string): string => {
+  if (fileType.startsWith("image/")) return "🖼️";
+  if (fileType === "application/pdf") return "📄";
+  if (fileType.includes("spreadsheet") || fileType.includes("excel") || fileType.includes("csv")) return "📊";
+  if (fileType.includes("document") || fileType.includes("word")) return "📝";
+  if (fileType.includes("presentation") || fileType.includes("powerpoint")) return "📈";
+  if (fileType.includes("zip") || fileType.includes("rar") || fileType.includes("tar")) return "📦";
+  return "📎";
+};
 
 // Funktion zum Formatieren von Datum und Uhrzeit
 const formatDateTime = (dateString: string): string => {
@@ -530,6 +561,67 @@ export default function UBSKVPPage() {
     }
   };
 
+  const handleUploadFiles = async (urlId: string, files: FileList | File[]) => {
+    if (!files || files.length === 0) return;
+
+    const formData = new FormData();
+    Array.from(files).forEach((file) => {
+      formData.append("files", file);
+    });
+
+    try {
+      const response = await fetch(`/api/kvp/${urlId}/files`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Upload fehlgeschlagen");
+      }
+
+      const data = await response.json();
+      if (data.files) {
+        // Aktualisiere den KVP mit den neuen Dateien
+        setUrls(
+          urls.map((u) =>
+            u.id === urlId
+              ? { ...u, files: [...(u.files || []), ...data.files] }
+              : u
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Error uploading files:", error);
+      alert(`Fehler beim Hochladen: ${error instanceof Error ? error.message : "Unbekannter Fehler"}`);
+    }
+  };
+
+  const handleDeleteFile = async (urlId: string, fileId: string) => {
+    if (!confirm("Datei wirklich löschen?")) return;
+
+    try {
+      const response = await fetch(`/api/kvp/${urlId}/files?fileId=${fileId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Fehler beim Löschen");
+      }
+
+      setUrls(
+        urls.map((u) =>
+          u.id === urlId
+            ? { ...u, files: (u.files || []).filter((f) => f.id !== fileId) }
+            : u
+        )
+      );
+    } catch (error) {
+      console.error("Error deleting file:", error);
+      alert("Fehler beim Löschen der Datei");
+    }
+  };
+
   const resetForm = () => {
     setNewUrl("");
     setNewFocusKeyword("");
@@ -946,6 +1038,8 @@ export default function UBSKVPPage() {
                       await fetchRankings(url.id);
                     }
                   }}
+                  onUploadFiles={(files) => handleUploadFiles(url.id, files)}
+                  onDeleteFile={(fileId) => handleDeleteFile(url.id, fileId)}
                 />
               ) : (
                 <>
@@ -1157,6 +1251,63 @@ export default function UBSKVPPage() {
                             + Neuen Kommentar hinzufügen
                           </button>
                         ) : null}
+                      </div>
+
+                      {/* Dateien */}
+                      <div className="mb-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-medium text-slate-700 dark:text-slate-400">
+                            Dateien ({url.files?.length || 0})
+                          </span>
+                        </div>
+                        
+                        {/* Bestehende Dateien anzeigen */}
+                        {url.files && url.files.length > 0 && (
+                          <div className="space-y-2 mb-3">
+                            {url.files.map((file) => (
+                              <div
+                                key={file.id}
+                                className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-900 rounded-lg group"
+                              >
+                                <a
+                                  href={file.fileUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-2 flex-1 min-w-0 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                                >
+                                  <span className="text-lg flex-shrink-0">{getFileIcon(file.fileType)}</span>
+                                  <div className="flex-1 min-w-0">
+                                    <span className="text-sm text-slate-900 dark:text-white block truncate">
+                                      {file.fileName}
+                                    </span>
+                                    <span className="text-xs text-slate-500 dark:text-slate-500">
+                                      {formatFileSize(file.fileSize)} • {formatDateTime(file.createdAt)}
+                                    </span>
+                                  </div>
+                                </a>
+                                {canEditData && (
+                                  <button
+                                    onClick={() => handleDeleteFile(url.id, file.id)}
+                                    className="p-1 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-2"
+                                    title="Datei löschen"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Datei-Upload */}
+                        {canEditData && (
+                          <FileUploadArea
+                            kvpId={url.id}
+                            onUpload={(files) => handleUploadFiles(url.id, files)}
+                          />
+                        )}
                       </div>
 
                       {/* SEO-Reifegrad-Verknüpfungen */}
@@ -1831,6 +1982,8 @@ function EditUrlForm({
   onCancel,
   onAddSubkeyword,
   onDeleteSubkeyword,
+  onUploadFiles,
+  onDeleteFile,
 }: {
   url: KVPUrl;
   allUsers: SimpleUser[];
@@ -1838,6 +1991,8 @@ function EditUrlForm({
   onCancel: () => void;
   onAddSubkeyword: (keyword: string) => Promise<void>;
   onDeleteSubkeyword: (subkeywordId: string) => Promise<void>;
+  onUploadFiles: (files: FileList | File[]) => Promise<void>;
+  onDeleteFile: (fileId: string) => Promise<void>;
 }) {
   const [editUrl, setEditUrl] = useState(url.url);
   const [editFocusKeyword, setEditFocusKeyword] = useState(url.focusKeyword);
@@ -1984,6 +2139,53 @@ function EditUrlForm({
         </div>
       </div>
       <div>
+        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+          Dateien ({url.files?.length || 0})
+        </label>
+        {/* Bestehende Dateien */}
+        {url.files && url.files.length > 0 && (
+          <div className="space-y-2 mb-3">
+            {url.files.map((file) => (
+              <div
+                key={file.id}
+                className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-900 rounded-lg group"
+              >
+                <a
+                  href={file.fileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 flex-1 min-w-0 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                >
+                  <span className="text-lg flex-shrink-0">{getFileIcon(file.fileType)}</span>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm text-slate-900 dark:text-white block truncate">
+                      {file.fileName}
+                    </span>
+                    <span className="text-xs text-slate-500 dark:text-slate-500">
+                      {formatFileSize(file.fileSize)} • {formatDateTime(file.createdAt)}
+                    </span>
+                  </div>
+                </a>
+                <button
+                  onClick={() => onDeleteFile(file.id)}
+                  className="p-1 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-2"
+                  title="Datei löschen"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        {/* Upload-Bereich */}
+        <FileUploadArea
+          kvpId={url.id}
+          onUpload={onUploadFiles}
+        />
+      </div>
+      <div>
         <label className="block text-sm font-medium text-slate-300 mb-2">
           Verantwortliche Personen
         </label>
@@ -2037,6 +2239,98 @@ function EditUrlForm({
           Abbrechen
         </button>
       </div>
+    </div>
+  );
+}
+
+function FileUploadArea({
+  kvpId,
+  onUpload,
+}: {
+  kvpId: string;
+  onUpload: (files: FileList | File[]) => Promise<void>;
+}) {
+  const [isUploading, setIsUploading] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setIsUploading(true);
+      try {
+        await onUpload(e.target.files);
+      } finally {
+        setIsUploading(false);
+        // Input zurücksetzen damit gleiche Datei erneut hochgeladen werden kann
+        e.target.value = "";
+      }
+    }
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      setIsUploading(true);
+      try {
+        await onUpload(e.dataTransfer.files);
+      } finally {
+        setIsUploading(false);
+      }
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
+
+  return (
+    <div
+      onDrop={handleDrop}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      className={`relative border-2 border-dashed rounded-lg p-4 text-center transition-colors ${
+        isDragOver
+          ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+          : "border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600"
+      }`}
+    >
+      {isUploading ? (
+        <div className="flex items-center justify-center gap-2">
+          <svg className="w-5 h-5 animate-spin text-blue-600" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+          </svg>
+          <span className="text-sm text-slate-600 dark:text-slate-400">Wird hochgeladen...</span>
+        </div>
+      ) : (
+        <>
+          <label className="cursor-pointer">
+            <div className="flex flex-col items-center gap-1">
+              <svg className="w-6 h-6 text-slate-400 dark:text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              <span className="text-sm text-slate-600 dark:text-slate-400">
+                Dateien hierher ziehen oder <span className="text-blue-600 dark:text-blue-400 underline">auswählen</span>
+              </span>
+              <span className="text-xs text-slate-500 dark:text-slate-500">
+                Max. 10 MB pro Datei
+              </span>
+            </div>
+            <input
+              type="file"
+              multiple
+              onChange={handleFileChange}
+              className="hidden"
+            />
+          </label>
+        </>
+      )}
     </div>
   );
 }
