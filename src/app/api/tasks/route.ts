@@ -27,6 +27,9 @@ export async function GET() {
         comments: {
           orderBy: { createdAt: "desc" },
         },
+        files: {
+          orderBy: { createdAt: "desc" },
+        },
       },
       orderBy: [
         { status: "asc" },
@@ -126,6 +129,9 @@ export async function POST(request: NextRequest) {
           },
         },
         comments: true,
+        files: {
+          orderBy: { createdAt: "desc" },
+        },
       },
     });
 

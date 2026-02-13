@@ -33,6 +33,9 @@ export async function GET(
         comments: {
           orderBy: { createdAt: "asc" },
         },
+        files: {
+          orderBy: { createdAt: "desc" },
+        },
       },
     });
 
@@ -153,6 +156,9 @@ export async function PATCH(
         },
         comments: {
           orderBy: { createdAt: "asc" },
+        },
+        files: {
+          orderBy: { createdAt: "desc" },
         },
       },
     });

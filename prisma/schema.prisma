@@ -442,6 +442,7 @@ model Task {
   creator     User           @relation("TaskCreator", fields: [creatorId], references: [id], onDelete: Cascade)
   assignees   TaskAssignee[] // Mehrere zugewiesene Bearbeiter
   comments    TaskComment[]
+  files       TaskFile[]     // Hochgeladene Dateien (Vercel Blob)
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
@@ -473,6 +474,20 @@ model TaskComment {
   task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   userId    String
   text      String   @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([taskId])
+}
+
+// Task Dateien - Hochgeladene Dateien via Vercel Blob
+model TaskFile {
+  id        String   @id @default(cuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  fileName  String   // Originaler Dateiname
+  fileUrl   String   @db.Text // Vercel Blob URL
+  fileSize  Int      // Dateigröße in Bytes
+  fileType  String   // MIME-Type (z.B. image/png, application/pdf)
   createdAt DateTime @default(now())
 
   @@index([taskId])

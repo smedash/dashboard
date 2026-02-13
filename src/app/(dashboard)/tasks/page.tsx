@@ -42,6 +42,16 @@ interface TaskComment {
   user?: TaskCommentUser;
 }
 
+interface TaskFile {
+  id: string;
+  taskId: string;
+  fileName: string;
+  fileUrl: string;
+  fileSize: number;
+  fileType: string;
+  createdAt: string;
+}
+
 interface Task {
   id: string;
   title: string;
@@ -55,6 +65,7 @@ interface Task {
   creator: TaskUser;
   assignees: TaskUser[];
   comments: TaskComment[];
+  files?: TaskFile[];
   createdAt: string;
   updatedAt: string;
 }
@@ -97,6 +108,96 @@ const CATEGORY_COLORS: Record<string, { bg: string; border: string; text: string
   "Pension": { bg: "bg-orange-100 dark:bg-orange-900/30", border: "border-orange-500", text: "text-orange-700 dark:text-orange-300" },
   "Digital Banking": { bg: "bg-cyan-100 dark:bg-cyan-900/30", border: "border-cyan-500", text: "text-cyan-700 dark:text-cyan-300" },
 };
+
+// Hilfsfunktionen für Dateien
+const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+};
+
+const getFileIcon = (fileType: string): string => {
+  if (fileType.startsWith("image/")) return "🖼️";
+  if (fileType === "application/pdf") return "📄";
+  if (fileType.includes("spreadsheet") || fileType.includes("excel") || fileType.includes("csv")) return "📊";
+  if (fileType.includes("document") || fileType.includes("word")) return "📝";
+  if (fileType.includes("presentation") || fileType.includes("powerpoint")) return "📈";
+  if (fileType.includes("zip") || fileType.includes("rar") || fileType.includes("tar")) return "📦";
+  return "📎";
+};
+
+// Datei-Upload-Komponente
+function TaskFileUploadArea({
+  onUpload,
+}: {
+  onUpload: (files: FileList) => Promise<void>;
+}) {
+  const [isUploading, setIsUploading] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setIsUploading(true);
+      try {
+        await onUpload(e.target.files);
+      } finally {
+        setIsUploading(false);
+        e.target.value = "";
+      }
+    }
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      setIsUploading(true);
+      try {
+        await onUpload(e.dataTransfer.files);
+      } finally {
+        setIsUploading(false);
+      }
+    }
+  };
+
+  return (
+    <div
+      onDrop={handleDrop}
+      onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+      onDragLeave={(e) => { e.preventDefault(); setIsDragOver(false); }}
+      className={`relative border-2 border-dashed rounded-lg p-3 text-center transition-colors ${
+        isDragOver
+          ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+          : "border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600"
+      }`}
+    >
+      {isUploading ? (
+        <div className="flex items-center justify-center gap-2">
+          <svg className="w-4 h-4 animate-spin text-blue-600" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+          </svg>
+          <span className="text-sm text-slate-600 dark:text-slate-400">Wird hochgeladen...</span>
+        </div>
+      ) : (
+        <label className="cursor-pointer">
+          <div className="flex items-center justify-center gap-2">
+            <svg className="w-5 h-5 text-slate-400 dark:text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+            <span className="text-sm text-slate-600 dark:text-slate-400">
+              Dateien hierher ziehen oder <span className="text-blue-600 dark:text-blue-400 underline">auswählen</span>
+            </span>
+          </div>
+          <span className="text-xs text-slate-500 dark:text-slate-500">Max. 10 MB pro Datei</span>
+          <input type="file" multiple onChange={handleFileChange} className="hidden" />
+        </label>
+      )}
+    </div>
+  );
+}
 
 // Sortable Task Card Component
 function SortableTaskCard({
@@ -197,6 +298,14 @@ function TaskCardContent({ task }: { task: Task }) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
               {task.comments.length}
+            </span>
+          )}
+          {task.files && task.files.length > 0 && (
+            <span className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-0.5">
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+              </svg>
+              {task.files.length}
             </span>
           )}
           {/* Multiple Assignees */}
@@ -328,10 +437,17 @@ function TaskDetailModal({
   const [isAddingComment, setIsAddingComment] = useState(false);
   const [localComments, setLocalComments] = useState<TaskComment[]>(task.comments || []);
 
-  // Update local comments when task changes
+  // File states
+  const [localFiles, setLocalFiles] = useState<TaskFile[]>(task.files || []);
+
+  // Update local comments and files when task changes
   useEffect(() => {
     setLocalComments(task.comments || []);
   }, [task.comments]);
+
+  useEffect(() => {
+    setLocalFiles(task.files || []);
+  }, [task.files]);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -364,6 +480,48 @@ function TaskDetailModal({
       console.error("Error adding comment:", error);
     } finally {
       setIsAddingComment(false);
+    }
+  };
+
+  const handleUploadFiles = async (files: FileList) => {
+    const formData = new FormData();
+    Array.from(files).forEach((file) => formData.append("files", file));
+
+    try {
+      const response = await fetch(`/api/tasks/${task.id}/files`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Upload fehlgeschlagen");
+      }
+
+      const data = await response.json();
+      if (data.files) {
+        setLocalFiles((prev) => [...data.files, ...prev]);
+      }
+    } catch (error) {
+      console.error("Error uploading files:", error);
+      alert(`Fehler beim Hochladen: ${error instanceof Error ? error.message : "Unbekannter Fehler"}`);
+    }
+  };
+
+  const handleDeleteFile = async (fileId: string) => {
+    if (!confirm("Datei wirklich löschen?")) return;
+
+    try {
+      const response = await fetch(`/api/tasks/${task.id}/files?fileId=${fileId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) throw new Error("Fehler beim Löschen");
+
+      setLocalFiles((prev) => prev.filter((f) => f.id !== fileId));
+    } catch (error) {
+      console.error("Error deleting file:", error);
+      alert("Fehler beim Löschen der Datei");
     }
   };
 
@@ -577,6 +735,58 @@ function TaskDetailModal({
               <p className="text-slate-600 dark:text-slate-400 whitespace-pre-wrap">
                 {task.description || "Keine Beschreibung"}
               </p>
+            )}
+          </div>
+
+          {/* Files Section */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              Dateien ({localFiles.length})
+            </label>
+            
+            {/* Bestehende Dateien */}
+            {localFiles.length > 0 && (
+              <div className="space-y-2 mb-3">
+                {localFiles.map((file) => (
+                  <div
+                    key={file.id}
+                    className="flex items-center justify-between p-2 bg-slate-100 dark:bg-slate-900 rounded-lg group"
+                  >
+                    <a
+                      href={file.fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 flex-1 min-w-0 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                    >
+                      <span className="text-lg flex-shrink-0">{getFileIcon(file.fileType)}</span>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm text-slate-900 dark:text-white block truncate">
+                          {file.fileName}
+                        </span>
+                        <span className="text-xs text-slate-500 dark:text-slate-500">
+                          {formatFileSize(file.fileSize)} • {formatDate(file.createdAt)}
+                        </span>
+                      </div>
+                    </a>
+                    {canEditData && (
+                      <button
+                        onClick={() => handleDeleteFile(file.id)}
+                        className="p-1 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-2"
+                        title="Datei löschen"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Upload */}
+            {canEditData && (
+              <TaskFileUploadArea onUpload={handleUploadFiles} />
             )}
           </div>
 
@@ -846,6 +1056,16 @@ function NewTaskModal({
               onChange={(e) => setDueDate(e.target.value)}
               className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
             />
+          </div>
+
+          {/* Hinweis auf Datei-Upload */}
+          <div className="p-3 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-700">
+            <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Dateien können nach dem Erstellen im Task-Detail hochgeladen werden.
+            </div>
           </div>
         </div>
 
