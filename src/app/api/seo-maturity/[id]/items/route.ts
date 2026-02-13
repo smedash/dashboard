@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { isSuperadmin } from "@/lib/rbac";
 import { NextRequest, NextResponse } from "next/server";
 
 // POST - Neues Item zur Analyse hinzufügen
@@ -31,7 +32,7 @@ export async function POST(
       return NextResponse.json({ error: "SEO maturity not found" }, { status: 404 });
     }
 
-    if (maturity.userId !== session.user.id) {
+    if (maturity.userId !== session.user.id && !isSuperadmin(session.user.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

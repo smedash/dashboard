@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { isSuperadmin } from "@/lib/rbac";
 import { NextRequest, NextResponse } from "next/server";
 
 // GET - Einzelne SEO Reifegrad Analyse abrufen
@@ -36,7 +37,7 @@ export async function GET(
       return NextResponse.json({ error: "SEO maturity not found" }, { status: 404 });
     }
 
-    if (maturity.userId !== session.user.id) {
+    if (maturity.userId !== session.user.id && !isSuperadmin(session.user.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -74,7 +75,7 @@ export async function PATCH(
       return NextResponse.json({ error: "SEO maturity not found" }, { status: 404 });
     }
 
-    if (existing.userId !== session.user.id) {
+    if (existing.userId !== session.user.id && !isSuperadmin(session.user.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -146,7 +147,7 @@ export async function DELETE(
       return NextResponse.json({ error: "SEO maturity not found" }, { status: 404 });
     }
 
-    if (maturity.userId !== session.user.id) {
+    if (maturity.userId !== session.user.id && !isSuperadmin(session.user.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
