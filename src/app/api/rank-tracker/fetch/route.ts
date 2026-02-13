@@ -16,9 +16,8 @@ export async function POST(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const keywordId = searchParams.get("keywordId");
 
-    // Hole Tracker mit Keywords
+    // Hole Tracker mit Keywords (teamweiter Zugriff - alle User teilen sich einen Tracker)
     let tracker = await prisma.rankTracker.findFirst({
-      where: { userId: session.user.id },
       include: {
         keywords: keywordId
           ? { where: { id: keywordId } }

@@ -995,7 +995,7 @@ function TimelineView({
       </div>
 
       {/* Timeline Body */}
-      <div className="max-h-[500px] overflow-y-auto">
+      <div>
         {categories.map((category) => {
           const categoryTasks = filteredTasks.filter((t) => (t.category || "Keine Kategorie") === category);
           if (categoryTasks.length === 0) return null;

@@ -30,10 +30,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Hole oder erstelle Tracker
-    let tracker = await prisma.rankTracker.findFirst({
-      where: { userId: session.user.id },
-    });
+    // Hole oder erstelle Tracker (teamweiter Zugriff - alle User teilen sich einen Tracker)
+    let tracker = await prisma.rankTracker.findFirst();
 
     if (!tracker) {
       tracker = await prisma.rankTracker.create({

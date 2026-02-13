@@ -19,9 +19,8 @@ export async function GET(request: NextRequest) {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
-    // Hole Tracker
+    // Hole Tracker (teamweiter Zugriff - alle User teilen sich einen Tracker)
     const tracker = await prisma.rankTracker.findFirst({
-      where: { userId: session.user.id },
       include: {
         keywords: keywordId
           ? {
