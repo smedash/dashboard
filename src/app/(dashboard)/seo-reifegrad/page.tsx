@@ -313,6 +313,7 @@ export default function SEOMaturityPage() {
   const [teamFilter, setTeamFilter] = useState<string[]>([]);
   const [kvpLinksMap, setKvpLinksMap] = useState<Record<string, KVPLink[]>>({});
   const [expandedKvpItems, setExpandedKvpItems] = useState<string[]>([]);
+  const [showSelectionModal, setShowSelectionModal] = useState(false);
   
   // Ref für SunburstChart Export
   const sunburstChartRef = useRef<SunburstChartRef>(null);
@@ -397,20 +398,25 @@ export default function SEOMaturityPage() {
       }));
       setMaturities(translatedMaturities);
       if (translatedMaturities.length > 0 && !selectedMaturity) {
-        const maturity = translatedMaturities[0];
-        setSelectedMaturity(maturity);
-        // Initialisiere selectedTeams für alle Items
-        const teamsMap: Record<string, string[]> = {};
-        maturity.items.forEach((item: SEOMaturityItem) => {
-          teamsMap[item.id] = item.teams?.map((t) => t.team.id) || [];
-        });
-        setSelectedTeams(teamsMap);
+        // Modal zur Auswahl anzeigen statt automatisch das neueste zu laden
+        setShowSelectionModal(true);
       }
     } catch (error) {
       console.error("Error fetching maturities:", error);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const selectMaturity = (maturity: SEOMaturity) => {
+    setSelectedMaturity(maturity);
+    // Initialisiere selectedTeams für alle Items
+    const teamsMap: Record<string, string[]> = {};
+    maturity.items.forEach((item: SEOMaturityItem) => {
+      teamsMap[item.id] = item.teams?.map((t) => t.team.id) || [];
+    });
+    setSelectedTeams(teamsMap);
+    setShowSelectionModal(false);
   };
 
   const createNewMaturity = async () => {
@@ -856,6 +862,130 @@ export default function SEOMaturityPage() {
 
   return (
     <div className="space-y-8">
+      {/* Auswahl-Modal */}
+      {showSelectionModal && maturities.length > 0 && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div
+            className="bg-slate-800 rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col border border-slate-700 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="px-6 py-5 border-b border-slate-700">
+              <h2 className="text-xl font-bold text-white">SEO Reifegrad Analyse auswählen</h2>
+              <p className="text-sm text-slate-400 mt-1">
+                Wähle eine bestehende Analyse aus, um sie anzuzeigen und zu bearbeiten.
+              </p>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="space-y-3">
+                {maturities.map((maturity) => {
+                  const avgScore =
+                    maturity.items.length > 0
+                      ? maturity.items.reduce((sum, item) => sum + item.score, 0) / maturity.items.length
+                      : 0;
+                  const categories = new Set(maturity.items.map((item) => item.category));
+                  const createdDate = new Date(maturity.createdAt).toLocaleDateString("de-DE", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                  });
+                  const updatedDate = new Date(maturity.updatedAt).toLocaleDateString("de-DE", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                  });
+
+                  return (
+                    <button
+                      key={maturity.id}
+                      onClick={() => selectMaturity(maturity)}
+                      className="w-full text-left p-4 bg-slate-900 hover:bg-slate-750 rounded-xl border border-slate-700 hover:border-blue-500/50 transition-all duration-200 group"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-lg font-semibold text-white group-hover:text-blue-400 transition-colors">
+                            {maturity.name}
+                          </h3>
+                          {maturity.description && (
+                            <p className="text-sm text-slate-400 mt-1 line-clamp-2">
+                              {maturity.description}
+                            </p>
+                          )}
+                          <div className="flex flex-wrap items-center gap-3 mt-3 text-xs text-slate-500">
+                            <span className="flex items-center gap-1">
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                              Erstellt: {createdDate}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              Aktualisiert: {updatedDate}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                              </svg>
+                              {maturity.items.length} Punkte
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z" />
+                              </svg>
+                              {categories.size} Kategorien
+                            </span>
+                          </div>
+                        </div>
+                        {/* Durchschnittlicher Score */}
+                        <div className="flex flex-col items-center shrink-0">
+                          <div
+                            className={`w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-lg ${
+                              avgScore <= 3
+                                ? "bg-red-500"
+                                : avgScore <= 5
+                                ? "bg-orange-500"
+                                : avgScore <= 7
+                                ? "bg-blue-500"
+                                : "bg-green-500"
+                            }`}
+                          >
+                            {avgScore.toFixed(1)}
+                          </div>
+                          <span className="text-xs text-slate-500 mt-1">Ø Score</span>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-slate-700 flex items-center justify-between">
+              <p className="text-xs text-slate-500">
+                {maturities.length} {maturities.length === 1 ? "Analyse" : "Analysen"} verfügbar
+              </p>
+              <button
+                onClick={() => {
+                  setShowSelectionModal(false);
+                  setShowNewForm(true);
+                }}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Neue Analyse erstellen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h1 className="text-2xl font-bold text-white">SEO Reifegrad</h1>
         <div className="flex gap-4">
@@ -865,13 +995,7 @@ export default function SEOMaturityPage() {
               onChange={(e) => {
                 const maturity = maturities.find((m) => m.id === e.target.value);
                 if (maturity) {
-                  setSelectedMaturity(maturity);
-                  // Initialisiere selectedTeams für alle Items
-                  const teamsMap: Record<string, string[]> = {};
-                  maturity.items.forEach((item: SEOMaturityItem) => {
-                    teamsMap[item.id] = item.teams?.map((t) => t.team.id) || [];
-                  });
-                  setSelectedTeams(teamsMap);
+                  selectMaturity(maturity);
                 } else {
                   setSelectedMaturity(null);
                   setSelectedTeams({});
