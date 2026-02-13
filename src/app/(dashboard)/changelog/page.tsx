@@ -118,6 +118,12 @@ export default function ChangelogPage() {
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set());
   const [showAll, setShowAll] = useState(false);
 
+  // Live-Daten: statische JSON als Initial, dann live vom Server
+  const [commits, setCommits] = useState<Commit[]>(data.commits);
+  const [generatedAt, setGeneratedAt] = useState(data.generatedAt);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastSource, setLastSource] = useState<string>("static");
+
   // Zeiterfassung: commitHash → minutes
   const [commitTimes, setCommitTimes] = useState<Record<string, number>>({});
   const [timesLoaded, setTimesLoaded] = useState(false);
@@ -126,6 +132,24 @@ export default function ChangelogPage() {
 
   // Debounce-Timer Ref
   const saveTimerRef = useRef<Record<string, NodeJS.Timeout>>({});
+
+  // Live-Commits vom Server laden
+  const refreshCommits = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      const res = await fetch("/api/changelog/commits");
+      if (res.ok) {
+        const result = await res.json();
+        setCommits(result.commits);
+        setGeneratedAt(result.generatedAt);
+        setLastSource(result.source);
+      }
+    } catch (error) {
+      console.error("Fehler beim Aktualisieren:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, []);
 
   // Zeiten vom Server laden
   useEffect(() => {
@@ -160,7 +184,9 @@ export default function ChangelogPage() {
 
     loadTimes();
     checkRole();
-  }, []);
+    // Automatisch live Commits laden
+    refreshCommits();
+  }, [refreshCommits]);
 
   // Zeit für einen Commit holen (mit Default)
   const getMinutes = useCallback(
@@ -200,23 +226,23 @@ export default function ChangelogPage() {
     []
   );
 
-  const availableTypes = useMemo(() => getAvailableTypes(data.commits), []);
+  const availableTypes = useMemo(() => getAvailableTypes(commits), [commits]);
 
   // Gefilterte Commits
   const filteredCommits = useMemo(() => {
-    let commits = data.commits;
+    let filtered = commits;
 
     // Typ-Filter (standardmässig chore/ci/build ausblenden)
     if (selectedTypes.size > 0) {
-      commits = commits.filter((c) => selectedTypes.has(c.type));
+      filtered = filtered.filter((c) => selectedTypes.has(c.type));
     } else if (!showAll) {
-      commits = commits.filter((c) => !["chore", "ci", "build"].includes(c.type));
+      filtered = filtered.filter((c) => !["chore", "ci", "build"].includes(c.type));
     }
 
     // Suchfilter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      commits = commits.filter(
+      filtered = filtered.filter(
         (c) =>
           c.message.toLowerCase().includes(query) ||
           (c.scope && c.scope.toLowerCase().includes(query)) ||
@@ -225,8 +251,8 @@ export default function ChangelogPage() {
       );
     }
 
-    return commits;
-  }, [searchQuery, selectedTypes, showAll]);
+    return filtered;
+  }, [commits, searchQuery, selectedTypes, showAll]);
 
   // Nach Datum gruppieren
   const groupedCommits = useMemo(() => {
@@ -243,19 +269,19 @@ export default function ChangelogPage() {
 
   // Stats (inkl. Gesamtzeit)
   const stats = useMemo(() => {
-    const features = data.commits.filter((c) => c.type === "feat").length;
-    const fixes = data.commits.filter((c) => c.type === "fix").length;
-    const refactors = data.commits.filter((c) => c.type === "refactor").length;
-    const uniqueDates = new Set(data.commits.map((c) => c.date.substring(0, 10))).size;
+    const features = commits.filter((c) => c.type === "feat").length;
+    const fixes = commits.filter((c) => c.type === "fix").length;
+    const refactors = commits.filter((c) => c.type === "refactor").length;
+    const uniqueDates = new Set(commits.map((c) => c.date.substring(0, 10))).size;
 
     // Gesamtzeit: alle Commits (nicht nur gefilterte)
-    const totalMinutes = data.commits.reduce(
+    const totalMinutes = commits.reduce(
       (sum, c) => sum + (commitTimes[c.shortHash] ?? DEFAULT_MINUTES),
       0
     );
 
-    return { features, fixes, refactors, uniqueDates, totalMinutes };
-  }, [commitTimes]);
+    return { features, fixes, refactors, uniqueDates, totalMinutes, total: commits.length };
+  }, [commits, commitTimes]);
 
   // Tageszeit berechnen
   const getDayMinutes = useCallback(
@@ -283,20 +309,42 @@ export default function ChangelogPage() {
   return (
     <div className="w-full">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-          Changelog
-        </h1>
-        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-          Alle Entwicklungsschritte und Updates im Überblick. Stand:{" "}
-          {new Date(data.generatedAt).toLocaleDateString("de-DE", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-        </p>
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+            Changelog
+          </h1>
+          <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+            Alle Entwicklungsschritte und Updates im Überblick. Stand:{" "}
+            {new Date(generatedAt).toLocaleDateString("de-DE", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+            {lastSource !== "static" && (
+              <span className="ml-2 text-xs text-emerald-600 dark:text-emerald-400">
+                (Live)
+              </span>
+            )}
+          </p>
+        </div>
+        <button
+          onClick={refreshCommits}
+          disabled={isRefreshing}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-sm font-medium transition-colors shrink-0"
+        >
+          <svg
+            className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          {isRefreshing ? "Aktualisiere..." : "Aktualisieren"}
+        </button>
       </div>
 
       {/* Statistik-Cards */}
@@ -439,7 +487,7 @@ export default function ChangelogPage() {
       {/* Ergebnis-Info */}
       <div className="flex items-center justify-between mb-4">
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          {filteredCommits.length} von {data.totalCommits} Änderungen
+          {filteredCommits.length} von {stats.total} Änderungen
         </p>
       </div>
 
@@ -598,7 +646,7 @@ export default function ChangelogPage() {
       {/* Footer */}
       <div className="mt-12 mb-8 text-center">
         <p className="text-xs text-slate-400 dark:text-slate-500">
-          Basierend auf {data.totalCommits} Git-Commits &middot; Gesamtaufwand: {formatMinutes(stats.totalMinutes)}
+          Basierend auf {stats.total} Git-Commits &middot; Gesamtaufwand: {formatMinutes(stats.totalMinutes)}
         </p>
       </div>
     </div>

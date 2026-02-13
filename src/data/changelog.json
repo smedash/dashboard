@@ -1,7 +1,18 @@
 {
-  "generatedAt": "2026-02-13T13:44:49.711Z",
-  "totalCommits": 78,
+  "generatedAt": "2026-02-13T14:20:31.319Z",
+  "totalCommits": 79,
   "commits": [
+    {
+      "hash": "b400ea72db38af734de98a5cd830f54731d4e2da",
+      "shortHash": "b400ea7",
+      "author": "smedash",
+      "date": "2026-02-13 15:19:00 +0100",
+      "subject": "feat(changelog): Changelog-Seite mit Zeiterfassung pro Commit",
+      "type": "feat",
+      "typeLabel": "Feature",
+      "scope": "changelog",
+      "message": "Changelog-Seite mit Zeiterfassung pro Commit"
+    },
     {
       "hash": "0cad08c5bd629e5eed303a5e4140fb927c2da160",
       "shortHash": "0cad08c",
@@ -863,6 +874,17 @@
   ],
   "groupedByDate": {
     "2026-02-13": [
+      {
+        "hash": "b400ea72db38af734de98a5cd830f54731d4e2da",
+        "shortHash": "b400ea7",
+        "author": "smedash",
+        "date": "2026-02-13 15:19:00 +0100",
+        "subject": "feat(changelog): Changelog-Seite mit Zeiterfassung pro Commit",
+        "type": "feat",
+        "typeLabel": "Feature",
+        "scope": "changelog",
+        "message": "Changelog-Seite mit Zeiterfassung pro Commit"
+      },
       {
         "hash": "0cad08c5bd629e5eed303a5e4140fb927c2da160",
         "shortHash": "0cad08c",
