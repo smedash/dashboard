@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { sendTicketUpdateNotification } from "@/lib/resend";
 
 // POST /api/tickets/[id]/comments - Kommentar hinzufügen
 export async function POST(
@@ -24,9 +25,21 @@ export async function POST(
       );
     }
 
-    // Prüfen ob Ticket existiert
+    // Ticket mit Assignees laden
     const ticket = await prisma.ticket.findUnique({
       where: { id },
+      include: {
+        assignees: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                email: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!ticket) {
@@ -40,6 +53,48 @@ export async function POST(
         text: text.trim(),
       },
     });
+
+    // E-Mail-Benachrichtigung an Assignees und Ticket-Ersteller
+    const dashboardUrl = `${process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "https://app.smedash.com"}/tickets`;
+    const authorName = session.user.name || session.user.email || "Jemand";
+    const truncatedComment = text.trim().length > 300 
+      ? text.trim().substring(0, 300) + "..." 
+      : text.trim();
+
+    // Alle zu benachrichtigenden Emails sammeln (Assignees + Ersteller), ohne den Kommentator
+    const notifyEmails = new Set<string>();
+
+    for (const assignee of ticket.assignees) {
+      if (assignee.user.id !== session.user!.id) {
+        notifyEmails.add(assignee.user.email);
+      }
+    }
+
+    // Ticket-Ersteller auch benachrichtigen
+    if (ticket.userId !== session.user!.id) {
+      const creator = await prisma.user.findUnique({
+        where: { id: ticket.userId },
+        select: { email: true },
+      });
+      if (creator) {
+        notifyEmails.add(creator.email);
+      }
+    }
+
+    for (const email of notifyEmails) {
+      try {
+        await sendTicketUpdateNotification({
+          to: email,
+          ticketTitle: ticket.title,
+          updateType: "comment",
+          updateDetails: truncatedComment,
+          updaterName: authorName,
+          dashboardUrl,
+        });
+      } catch (emailError) {
+        console.error(`Failed to send ticket comment email to ${email}:`, emailError);
+      }
+    }
 
     return NextResponse.json({ comment }, { status: 201 });
   } catch (error) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { sendTicketAssignmentNotification } from "@/lib/resend";
 
 // GET /api/tickets - Alle Tickets abrufen
 export async function GET() {
@@ -16,6 +17,17 @@ export async function GET() {
           select: {
             name: true,
             email: true,
+          },
+        },
+        assignees: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
           },
         },
         comments: {
@@ -48,7 +60,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { title, description, type, priority } = body;
+    const { title, description, type, priority, assigneeIds } = body;
 
     if (!title || !description || !type) {
       return NextResponse.json(
@@ -72,6 +84,13 @@ export async function POST(request: NextRequest) {
         type,
         priority: priority || "medium",
         status: "open",
+        ...(assigneeIds && assigneeIds.length > 0 && {
+          assignees: {
+            create: assigneeIds.map((userId: string) => ({
+              userId,
+            })),
+          },
+        }),
       },
       include: {
         user: {
@@ -80,8 +99,48 @@ export async function POST(request: NextRequest) {
             email: true,
           },
         },
+        assignees: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
+        },
+        comments: {
+          orderBy: { createdAt: "asc" },
+        },
       },
     });
+
+    // E-Mail-Benachrichtigungen an Assignees senden (async, nicht blockierend)
+    if (assigneeIds && assigneeIds.length > 0) {
+      const dashboardUrl = `${process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "https://app.smedash.com"}/tickets`;
+      const creatorName = session.user.name || session.user.email || "Jemand";
+
+      // Nur an andere User senden, nicht an den Ersteller selbst
+      const assigneesToNotify = ticket.assignees.filter(
+        (a) => a.user.id !== session.user!.id
+      );
+
+      for (const assignee of assigneesToNotify) {
+        try {
+          await sendTicketAssignmentNotification({
+            to: assignee.user.email,
+            ticketTitle: title,
+            ticketType: type,
+            priority: priority || "medium",
+            creatorName,
+            dashboardUrl,
+          });
+        } catch (emailError) {
+          console.error(`Failed to send ticket assignment email to ${assignee.user.email}:`, emailError);
+        }
+      }
+    }
 
     return NextResponse.json({ ticket }, { status: 201 });
   } catch (error) {

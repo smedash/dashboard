@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { sendTicketUpdateNotification, sendTicketAssignmentNotification } from "@/lib/resend";
+
+const statusLabels: Record<string, string> = {
+  open: "Offen",
+  in_progress: "In Bearbeitung",
+  closed: "Geschlossen",
+};
 
 // GET /api/tickets/[id] - Einzelnes Ticket abrufen
 export async function GET(
@@ -21,6 +28,17 @@ export async function GET(
           select: {
             name: true,
             email: true,
+          },
+        },
+        assignees: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
           },
         },
         comments: {
@@ -56,11 +74,24 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await request.json();
-    const { title, description, type, status, priority } = body;
+    const { title, description, type, status, priority, assigneeIds } = body;
 
     // Prüfen ob Ticket existiert
     const existingTicket = await prisma.ticket.findUnique({
       where: { id },
+      include: {
+        assignees: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!existingTicket) {
@@ -89,6 +120,59 @@ export async function PATCH(
       );
     }
 
+    // Assignees aktualisieren wenn übergeben
+    if (assigneeIds !== undefined) {
+      const existingAssigneeIds = existingTicket.assignees.map((a) => a.userId);
+      const toAdd = assigneeIds.filter((uid: string) => !existingAssigneeIds.includes(uid));
+      const toRemove = existingAssigneeIds.filter((uid: string) => !assigneeIds.includes(uid));
+
+      if (toRemove.length > 0) {
+        await prisma.ticketAssignee.deleteMany({
+          where: {
+            ticketId: id,
+            userId: { in: toRemove },
+          },
+        });
+      }
+
+      if (toAdd.length > 0) {
+        await prisma.ticketAssignee.createMany({
+          data: toAdd.map((userId: string) => ({
+            ticketId: id,
+            userId,
+          })),
+        });
+      }
+
+      // Benachrichtigung an neu hinzugefügte Assignees
+      if (toAdd.length > 0) {
+        const dashboardUrl = `${process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "https://app.smedash.com"}/tickets`;
+        const creatorName = session.user.name || session.user.email || "Jemand";
+
+        const newAssignees = await prisma.user.findMany({
+          where: { id: { in: toAdd } },
+          select: { id: true, email: true },
+        });
+
+        for (const assignee of newAssignees) {
+          if (assignee.id === session.user!.id) continue; // Nicht an sich selbst senden
+          try {
+            await sendTicketAssignmentNotification({
+              to: assignee.email,
+              ticketTitle: existingTicket.title,
+              ticketType: existingTicket.type,
+              priority: existingTicket.priority,
+              creatorName,
+              dashboardUrl,
+            });
+          } catch (emailError) {
+            console.error(`Failed to send ticket assignment email to ${assignee.email}:`, emailError);
+          }
+        }
+      }
+    }
+
+    // Ticket-Felder aktualisieren
     const ticket = await prisma.ticket.update({
       where: { id },
       data: {
@@ -105,11 +189,76 @@ export async function PATCH(
             email: true,
           },
         },
+        assignees: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
+        },
         comments: {
           orderBy: { createdAt: "asc" },
         },
       },
     });
+
+    // Update-Benachrichtigung an alle Assignees senden (bei Status-/Feld-Änderungen)
+    if (status || title || description || type || priority) {
+      const dashboardUrl = `${process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "https://app.smedash.com"}/tickets`;
+      const updaterName = session.user.name || session.user.email || "Jemand";
+
+      // Bestimme Update-Details
+      let updateType = "general";
+      let updateDetails = "Das Ticket wurde aktualisiert.";
+
+      if (status && status !== existingTicket.status) {
+        updateType = "status";
+        const oldLabel = statusLabels[existingTicket.status] || existingTicket.status;
+        const newLabel = statusLabels[status] || status;
+        updateDetails = `Status geändert: ${oldLabel} → ${newLabel}`;
+      }
+
+      // An alle Assignees senden, die nicht der aktuelle User sind
+      const assigneesToNotify = ticket.assignees.filter(
+        (a) => a.user.id !== session.user!.id
+      );
+
+      // Auch den Ticket-Ersteller benachrichtigen, wenn er nicht der Updater ist
+      const shouldNotifyCreator = existingTicket.userId !== session.user!.id;
+      
+      const notifyEmails = new Set<string>();
+      for (const a of assigneesToNotify) {
+        notifyEmails.add(a.user.email);
+      }
+      if (shouldNotifyCreator) {
+        const creator = await prisma.user.findUnique({
+          where: { id: existingTicket.userId },
+          select: { email: true },
+        });
+        if (creator) {
+          notifyEmails.add(creator.email);
+        }
+      }
+
+      for (const email of notifyEmails) {
+        try {
+          await sendTicketUpdateNotification({
+            to: email,
+            ticketTitle: ticket.title,
+            updateType,
+            updateDetails,
+            updaterName,
+            dashboardUrl,
+          });
+        } catch (emailError) {
+          console.error(`Failed to send ticket update email to ${email}:`, emailError);
+        }
+      }
+    }
 
     return NextResponse.json({ ticket });
   } catch (error) {

@@ -12,6 +12,15 @@ interface TicketComment {
   createdAt: string;
 }
 
+interface TicketAssignee {
+  id: string;
+  user: {
+    id: string;
+    name: string | null;
+    email: string;
+  };
+}
+
 interface Ticket {
   id: string;
   title: string;
@@ -23,15 +32,23 @@ interface Ticket {
     name: string | null;
     email: string;
   };
+  assignees: TicketAssignee[];
   comments: TicketComment[];
   createdAt: string;
   updatedAt: string;
+}
+
+interface UserOption {
+  id: string;
+  name: string | null;
+  email: string;
 }
 
 export default function TicketsPage() {
   const { data: session } = useSession();
   const canEditData = canEdit(session?.user?.role);
   const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [users, setUsers] = useState<UserOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showNewForm, setShowNewForm] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
@@ -43,14 +60,21 @@ export default function TicketsPage() {
   const [newDescription, setNewDescription] = useState("");
   const [newType, setNewType] = useState<"bug" | "feature">("feature");
   const [newPriority, setNewPriority] = useState<"low" | "medium" | "high">("medium");
+  const [newAssigneeIds, setNewAssigneeIds] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Comment state
   const [newComment, setNewComment] = useState("");
   const [isAddingComment, setIsAddingComment] = useState(false);
 
+  // Assignee edit state (für Detail-View)
+  const [isEditingAssignees, setIsEditingAssignees] = useState(false);
+  const [editAssigneeIds, setEditAssigneeIds] = useState<string[]>([]);
+  const [isSavingAssignees, setIsSavingAssignees] = useState(false);
+
   useEffect(() => {
     fetchTickets();
+    fetchUsers();
   }, []);
 
   const fetchTickets = async () => {
@@ -63,6 +87,16 @@ export default function TicketsPage() {
       console.error("Error fetching tickets:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      const response = await fetch("/api/users");
+      const data = await response.json();
+      setUsers(data.users || []);
+    } catch (error) {
+      console.error("Error fetching users:", error);
     }
   };
 
@@ -79,6 +113,7 @@ export default function TicketsPage() {
           description: newDescription.trim(),
           type: newType,
           priority: newPriority,
+          assigneeIds: newAssigneeIds,
         }),
       });
 
@@ -90,6 +125,7 @@ export default function TicketsPage() {
         setNewDescription("");
         setNewType("feature");
         setNewPriority("medium");
+        setNewAssigneeIds([]);
       }
     } catch (error) {
       console.error("Error creating ticket:", error);
@@ -116,6 +152,30 @@ export default function TicketsPage() {
       }
     } catch (error) {
       console.error("Error updating ticket:", error);
+    }
+  };
+
+  const updateTicketAssignees = async (ticketId: string, assigneeIds: string[]) => {
+    try {
+      setIsSavingAssignees(true);
+      const response = await fetch(`/api/tickets/${ticketId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assigneeIds }),
+      });
+
+      const data = await response.json();
+      if (data.ticket) {
+        setTickets(tickets.map((t) => (t.id === ticketId ? data.ticket : t)));
+        if (selectedTicket?.id === ticketId) {
+          setSelectedTicket(data.ticket);
+        }
+        setIsEditingAssignees(false);
+      }
+    } catch (error) {
+      console.error("Error updating assignees:", error);
+    } finally {
+      setIsSavingAssignees(false);
     }
   };
 
@@ -167,7 +227,7 @@ export default function TicketsPage() {
   };
 
   const getTypeLabel = (type: string) => {
-    return type === "bug" ? "🐛 Bug" : "✨ Feature";
+    return type === "bug" ? "Bug" : "Feature";
   };
 
   const getTypeColor = (type: string) => {
@@ -226,6 +286,18 @@ export default function TicketsPage() {
       default:
         return "text-slate-400";
     }
+  };
+
+  const toggleAssignee = (userId: string, currentIds: string[], setIds: (ids: string[]) => void) => {
+    if (currentIds.includes(userId)) {
+      setIds(currentIds.filter((id) => id !== userId));
+    } else {
+      setIds([...currentIds, userId]);
+    }
+  };
+
+  const getUserDisplayName = (user: { name: string | null; email: string }) => {
+    return user.name || user.email;
   };
 
   const filteredTickets = tickets.filter((ticket) => {
@@ -341,8 +413,8 @@ export default function TicketsPage() {
                   onChange={(e) => setNewType(e.target.value as "bug" | "feature")}
                   className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
                 >
-                  <option value="feature">✨ Feature-Wunsch</option>
-                  <option value="bug">🐛 Bug-Report</option>
+                  <option value="feature">Feature-Wunsch</option>
+                  <option value="bug">Bug-Report</option>
                 </select>
               </div>
               <div>
@@ -384,6 +456,69 @@ export default function TicketsPage() {
                 className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
               />
             </div>
+
+            {/* Assignee Multi-Select */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Zuweisen an
+              </label>
+              <div className="border border-slate-300 dark:border-slate-600 rounded-lg overflow-hidden">
+                {/* Ausgewählte Assignees als Tags */}
+                {newAssigneeIds.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 p-2 border-b border-slate-200 dark:border-slate-700">
+                    {newAssigneeIds.map((uid) => {
+                      const user = users.find((u) => u.id === uid);
+                      if (!user) return null;
+                      return (
+                        <span
+                          key={uid}
+                          className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md text-sm"
+                        >
+                          {getUserDisplayName(user)}
+                          <button
+                            type="button"
+                            onClick={() => toggleAssignee(uid, newAssigneeIds, setNewAssigneeIds)}
+                            className="text-blue-500 hover:text-blue-700 dark:hover:text-blue-200"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+                {/* User-Liste */}
+                <div className="max-h-40 overflow-y-auto">
+                  {users.map((user) => (
+                    <label
+                      key={user.id}
+                      className="flex items-center gap-3 px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer transition-colors"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={newAssigneeIds.includes(user.id)}
+                        onChange={() => toggleAssignee(user.id, newAssigneeIds, setNewAssigneeIds)}
+                        className="rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-slate-900 dark:text-white truncate">
+                          {user.name || "—"}
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                          {user.email}
+                        </p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Zugewiesene Personen werden per E-Mail benachrichtigt
+              </p>
+            </div>
+
             <div className="flex gap-2">
               <button
                 onClick={createTicket}
@@ -397,6 +532,7 @@ export default function TicketsPage() {
                   setShowNewForm(false);
                   setNewTitle("");
                   setNewDescription("");
+                  setNewAssigneeIds([]);
                 }}
                 className="px-4 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-white rounded-lg transition-colors"
               >
@@ -419,8 +555,8 @@ export default function TicketsPage() {
             className="px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white text-sm"
           >
             <option value="all">Alle</option>
-            <option value="bug">🐛 Bugs</option>
-            <option value="feature">✨ Features</option>
+            <option value="bug">Bugs</option>
+            <option value="feature">Features</option>
           </select>
         </div>
         <div>
@@ -456,7 +592,10 @@ export default function TicketsPage() {
             filteredTickets.map((ticket) => (
               <div
                 key={ticket.id}
-                onClick={() => setSelectedTicket(ticket)}
+                onClick={() => {
+                  setSelectedTicket(ticket);
+                  setIsEditingAssignees(false);
+                }}
                 className={`bg-white dark:bg-slate-800 rounded-xl p-4 border cursor-pointer transition-all ${
                   selectedTicket?.id === ticket.id
                     ? "border-blue-500 ring-2 ring-blue-500/20"
@@ -489,15 +628,31 @@ export default function TicketsPage() {
                     </p>
                     <div className="flex items-center gap-3 mt-2 text-xs text-slate-500 dark:text-slate-500">
                       <span>{ticket.user.name || ticket.user.email}</span>
-                      <span>•</span>
+                      <span>·</span>
                       <span>{formatDate(ticket.createdAt)}</span>
                       {ticket.comments && ticket.comments.length > 0 && (
                         <>
-                          <span>•</span>
+                          <span>·</span>
                           <span>{ticket.comments.length} Kommentare</span>
                         </>
                       )}
                     </div>
+                    {/* Assignees Badges in der Liste */}
+                    {ticket.assignees && ticket.assignees.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {ticket.assignees.map((assignee) => (
+                          <span
+                            key={assignee.id}
+                            className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded text-xs"
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                            {assignee.user.name || assignee.user.email}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <span className={`text-sm font-medium ${getPriorityColor(ticket.priority)}`}>
                     {getPriorityLabel(ticket.priority)}
@@ -569,6 +724,121 @@ export default function TicketsPage() {
                   <option value="closed">Geschlossen</option>
                 </select>
               </div>
+            </div>
+
+            {/* Assignees Section */}
+            <div className="p-6 border-b border-slate-200 dark:border-slate-700">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Zugewiesen an
+                </h3>
+                {canEditData && !isEditingAssignees && (
+                  <button
+                    onClick={() => {
+                      setEditAssigneeIds(selectedTicket.assignees.map((a) => a.user.id));
+                      setIsEditingAssignees(true);
+                    }}
+                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                  >
+                    Bearbeiten
+                  </button>
+                )}
+              </div>
+
+              {isEditingAssignees ? (
+                <div>
+                  <div className="border border-slate-300 dark:border-slate-600 rounded-lg overflow-hidden">
+                    {/* Ausgewählte Assignees als Tags */}
+                    {editAssigneeIds.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 p-2 border-b border-slate-200 dark:border-slate-700">
+                        {editAssigneeIds.map((uid) => {
+                          const user = users.find((u) => u.id === uid);
+                          if (!user) return null;
+                          return (
+                            <span
+                              key={uid}
+                              className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md text-sm"
+                            >
+                              {getUserDisplayName(user)}
+                              <button
+                                type="button"
+                                onClick={() => toggleAssignee(uid, editAssigneeIds, setEditAssigneeIds)}
+                                className="text-blue-500 hover:text-blue-700 dark:hover:text-blue-200"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+                    <div className="max-h-40 overflow-y-auto">
+                      {users.map((user) => (
+                        <label
+                          key={user.id}
+                          className="flex items-center gap-3 px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer transition-colors"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={editAssigneeIds.includes(user.id)}
+                            onChange={() => toggleAssignee(user.id, editAssigneeIds, setEditAssigneeIds)}
+                            className="rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-slate-900 dark:text-white truncate">
+                              {user.name || "—"}
+                            </p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                              {user.email}
+                            </p>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      onClick={() => updateTicketAssignees(selectedTicket.id, editAssigneeIds)}
+                      disabled={isSavingAssignees}
+                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 text-white text-sm rounded-lg transition-colors"
+                    >
+                      {isSavingAssignees ? "Speichere..." : "Speichern"}
+                    </button>
+                    <button
+                      onClick={() => setIsEditingAssignees(false)}
+                      className="px-3 py-1.5 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-white text-sm rounded-lg transition-colors"
+                    >
+                      Abbrechen
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  {selectedTicket.assignees && selectedTicket.assignees.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {selectedTicket.assignees.map((assignee) => (
+                        <div
+                          key={assignee.id}
+                          className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-700 rounded-lg"
+                        >
+                          <div className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center text-xs font-medium">
+                            {(assignee.user.name || assignee.user.email).charAt(0).toUpperCase()}
+                          </div>
+                          <span className="text-sm text-slate-700 dark:text-slate-300">
+                            {assignee.user.name || assignee.user.email}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-500 dark:text-slate-400 italic">
+                      Niemand zugewiesen
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Beschreibung */}

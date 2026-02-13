@@ -28,6 +28,7 @@ model User {
   kvpUrls       KVPUrl[]
   kvpAssignments KVPAssignee[] // KVPs zu denen der User zugewiesen ist
   tickets       Ticket[]
+  ticketAssignments TicketAssignee[] @relation("TicketAssignee") // Tickets die dem User zugewiesen sind
   briefingsRequested Briefing[] @relation("BriefingRequester") // Briefings die der User bestellt hat
   briefingsAssigned  Briefing[] @relation("BriefingAssignee")  // Briefings die der User bearbeitet
   tasksCreated  Task[]         @relation("TaskCreator") // Tasks die der User erstellt hat
@@ -326,12 +327,27 @@ model Ticket {
   status      String         @default("open") // "open", "in_progress", "closed"
   priority    String         @default("medium") // "low", "medium", "high"
   comments    TicketComment[]
+  assignees   TicketAssignee[]
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
   @@index([userId])
   @@index([type])
   @@index([status])
+}
+
+// Ticket Zuweisungen (many-to-many)
+model TicketAssignee {
+  id        String   @id @default(cuid())
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation("TicketAssignee", fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([ticketId, userId])
+  @@index([ticketId])
+  @@index([userId])
 }
 
 // Ticket Kommentare
@@ -491,6 +507,17 @@ model TaskFile {
   createdAt DateTime @default(now())
 
   @@index([taskId])
+}
+
+// Changelog Zeiterfassung - Minuten pro Commit
+model ChangelogTime {
+  id         String   @id @default(cuid())
+  commitHash String   @unique // Git Commit Hash (short oder full)
+  minutes    Int      @default(30) // Aufwand in Minuten
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([commitHash])
 }
 
 // Linkprofil - Gespeicherte Backlink-Daten von DataForSEO
