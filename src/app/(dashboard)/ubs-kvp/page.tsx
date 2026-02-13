@@ -2319,12 +2319,13 @@ function FileUploadArea({
                 Dateien hierher ziehen oder <span className="text-blue-600 dark:text-blue-400 underline">auswählen</span>
               </span>
               <span className="text-xs text-slate-500 dark:text-slate-500">
-                Max. 10 MB pro Datei
+                Max. 10 MB · PDF, DOCX, XLSX, PPTX, PNG, JPG, GIF, WebP
               </span>
             </div>
             <input
               type="file"
               multiple
+              accept=".pdf,.docx,.xlsx,.pptx,.png,.jpg,.jpeg,.gif,.webp"
               onChange={handleFileChange}
               className="hidden"
             />

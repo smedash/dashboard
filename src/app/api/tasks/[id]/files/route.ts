@@ -84,12 +84,30 @@ export async function POST(
       );
     }
 
+    const ALLOWED_TYPES = [
+      "application/pdf",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // .docx
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // .xlsx
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation", // .pptx
+      "image/png",
+      "image/jpeg",
+      "image/gif",
+      "image/webp",
+    ];
+    const ALLOWED_EXTENSIONS = [".pdf", ".docx", ".xlsx", ".pptx", ".png", ".jpg", ".jpeg", ".gif", ".webp"];
+
     const uploadedFiles = [];
 
     for (const file of files) {
       // Max 10MB pro Datei
       if (file.size > 10 * 1024 * 1024) {
-        continue; // Überspringe zu große Dateien
+        continue;
+      }
+
+      // Dateityp prüfen (MIME-Type + Dateiendung)
+      const ext = "." + file.name.split(".").pop()?.toLowerCase();
+      if (!ALLOWED_TYPES.includes(file.type) && !ALLOWED_EXTENSIONS.includes(ext)) {
+        continue;
       }
 
       // Upload zu Vercel Blob

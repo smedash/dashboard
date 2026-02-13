@@ -191,8 +191,8 @@ function TaskFileUploadArea({
               Dateien hierher ziehen oder <span className="text-blue-600 dark:text-blue-400 underline">auswählen</span>
             </span>
           </div>
-          <span className="text-xs text-slate-500 dark:text-slate-500">Max. 10 MB pro Datei</span>
-          <input type="file" multiple onChange={handleFileChange} className="hidden" />
+          <span className="text-xs text-slate-500 dark:text-slate-500">Max. 10 MB · PDF, DOCX, XLSX, PPTX, PNG, JPG, GIF, WebP</span>
+          <input type="file" multiple accept=".pdf,.docx,.xlsx,.pptx,.png,.jpg,.jpeg,.gif,.webp" onChange={handleFileChange} className="hidden" />
         </label>
       )}
     </div>
