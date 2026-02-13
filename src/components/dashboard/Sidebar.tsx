@@ -315,7 +315,6 @@ function NavigationItems({
 export function Sidebar() {
   const pathname = usePathname();
   const isTasksActive = pathname === "/tasks";
-  const isChangelogActive = pathname === "/changelog";
   const isSuperAgentActive = pathname === "/superagent";
   const isSEOHelperActive = pathname.startsWith("/seo-helper");
   
@@ -435,23 +434,6 @@ export function Sidebar() {
             />
           </div>
           
-          {/* Changelog */}
-          <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
-            <Link
-              href="/changelog"
-              className={`group flex gap-x-3 rounded-lg p-3 text-sm font-medium transition-all duration-200 ${
-                isChangelogActive
-                  ? "bg-blue-600 text-white"
-                  : "text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700"
-              }`}
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-              </svg>
-              Changelog
-            </Link>
-          </div>
-
           {/* KI & Tools - ganz unten */}
           <div className="mt-auto pt-4 border-t border-slate-200 dark:border-slate-700 space-y-1">
             <Link
