@@ -745,7 +745,7 @@ function TaskDetailModal({
             </label>
             
             {/* Bestehende Dateien */}
-            {localFiles.length > 0 && (
+            {localFiles.length > 0 ? (
               <div className="space-y-2 mb-3">
                 {localFiles.map((file) => (
                   <div
@@ -768,7 +768,7 @@ function TaskDetailModal({
                         </span>
                       </div>
                     </a>
-                    {canEditData && (
+                    {isEditing && (
                       <button
                         onClick={() => handleDeleteFile(file.id)}
                         className="p-1 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-2"
@@ -782,10 +782,12 @@ function TaskDetailModal({
                   </div>
                 ))}
               </div>
-            )}
+            ) : !isEditing ? (
+              <p className="text-sm text-slate-500 dark:text-slate-400">Keine Dateien</p>
+            ) : null}
 
-            {/* Upload */}
-            {canEditData && (
+            {/* Upload - nur im Bearbeitungsmodus */}
+            {isEditing && (
               <TaskFileUploadArea onUpload={handleUploadFiles} />
             )}
           </div>

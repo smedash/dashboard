@@ -95,6 +95,7 @@ export async function POST(
       // Upload zu Vercel Blob
       const blob = await put(`tasks/${id}/${file.name}`, file, {
         access: "public",
+        addRandomSuffix: true,
       });
 
       // Speichere Referenz in der Datenbank
