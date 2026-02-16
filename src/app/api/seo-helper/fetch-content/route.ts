@@ -39,7 +39,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const html = await response.text();
+    let html: string;
+    try {
+      html = await response.text();
+      console.log(`[fetch-content] HTML length: ${html.length} chars`);
+      
+      // Sanity check: if the HTML starts with binary-looking characters, it's likely still compressed
+      if (html.length > 0 && html.charCodeAt(0) > 127 && !html.includes("<")) {
+        console.error("[fetch-content] Response appears to be binary/compressed, not valid HTML");
+        return NextResponse.json(
+          { error: "Die Antwort der Website konnte nicht als Text gelesen werden. Möglicherweise ein Encoding-Problem." },
+          { status: 500 }
+        );
+      }
+    } catch (textError) {
+      console.error("[fetch-content] Error reading response text:", textError);
+      return NextResponse.json(
+        { error: "Fehler beim Lesen der Antwort. Die Website hat möglicherweise ein ungewöhnliches Encoding." },
+        { status: 500 }
+      );
+    }
 
     // Extract text content from HTML
     const content = extractTextContent(html);

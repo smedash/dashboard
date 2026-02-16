@@ -77,23 +77,39 @@ export async function proxyFetch(
         });
 
         stream.on("end", () => {
-          const body = Buffer.concat(chunks);
+          let body = Buffer.concat(chunks);
 
-          // Create a Response-like object
+          // Auto-detect gzip compression by checking magic bytes (0x1f, 0x8b)
+          // Some proxies strip the content-encoding header but still send compressed content
+          if (body.length >= 2 && body[0] === 0x1f && body[1] === 0x8b) {
+            console.log(`[proxyFetch] Detected gzip magic bytes despite no content-encoding header, decompressing...`);
+            try {
+              body = zlib.gunzipSync(body);
+              console.log(`[proxyFetch] Decompressed successfully, size: ${body.length} bytes`);
+            } catch (e) {
+              console.error(`[proxyFetch] Gzip decompression failed:`, e);
+            }
+          }
+
+          console.log(`[proxyFetch] Final body size: ${body.length} bytes`);
+
+          // Clean up headers - remove encoding/transfer headers since we handle decompression ourselves
+          // This prevents the Response object from trying to re-decompress or misinterpreting the body
+          const cleanHeaders: Record<string, string> = {};
+          for (const [key, value] of Object.entries(res.headers)) {
+            const lowerKey = key.toLowerCase();
+            if (
+              value &&
+              !["content-encoding", "transfer-encoding", "content-length"].includes(lowerKey)
+            ) {
+              cleanHeaders[key] = Array.isArray(value) ? value.join(", ") : value;
+            }
+          }
+
           const response = new Response(body, {
             status: res.statusCode || 500,
             statusText: res.statusMessage || "",
-            headers: new Headers(
-              Object.entries(res.headers).reduce(
-                (acc, [key, value]) => {
-                  if (value) {
-                    acc[key] = Array.isArray(value) ? value.join(", ") : value;
-                  }
-                  return acc;
-                },
-                {} as Record<string, string>
-              )
-            ),
+            headers: new Headers(cleanHeaders),
           });
 
           resolve(response);
