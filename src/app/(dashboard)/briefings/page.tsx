@@ -67,6 +67,372 @@ interface Briefing {
 
 type BriefingType = "new_content" | "edit_content" | "lexicon";
 
+// Status-Konfiguration für Timeline
+const BRIEFING_STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string; dotColor: string }> = {
+  ordered: { label: "Bestellt", color: "text-blue-600 dark:text-blue-400", bgColor: "bg-blue-100 dark:bg-blue-900/30", dotColor: "bg-blue-500" },
+  in_progress: { label: "In Bearbeitung", color: "text-yellow-600 dark:text-yellow-400", bgColor: "bg-yellow-100 dark:bg-yellow-900/30", dotColor: "bg-yellow-500" },
+  in_review: { label: "In Prüfung", color: "text-purple-600 dark:text-purple-400", bgColor: "bg-purple-100 dark:bg-purple-900/30", dotColor: "bg-purple-500" },
+  completed: { label: "Fertig", color: "text-green-600 dark:text-green-400", bgColor: "bg-green-100 dark:bg-green-900/30", dotColor: "bg-green-500" },
+};
+
+const BRIEFING_TYPE_CONFIG: Record<string, { label: string; icon: string; color: string }> = {
+  new_content: { label: "Neu", icon: "+", color: "text-emerald-600 dark:text-emerald-400" },
+  edit_content: { label: "Edit", icon: "~", color: "text-orange-600 dark:text-orange-400" },
+  lexicon: { label: "Lex", icon: "B", color: "text-purple-600 dark:text-purple-400" },
+};
+
+const TIMELINE_CATEGORY_COLORS: Record<string, { bg: string; border: string; text: string; bar: string }> = {
+  "Mortgages": { bg: "bg-blue-50 dark:bg-blue-900/20", border: "border-l-blue-500", text: "text-blue-700 dark:text-blue-300", bar: "bg-blue-400/80 dark:bg-blue-500/60" },
+  "Accounts&Cards": { bg: "bg-green-50 dark:bg-green-900/20", border: "border-l-green-500", text: "text-green-700 dark:text-green-300", bar: "bg-green-400/80 dark:bg-green-500/60" },
+  "Investing": { bg: "bg-purple-50 dark:bg-purple-900/20", border: "border-l-purple-500", text: "text-purple-700 dark:text-purple-300", bar: "bg-purple-400/80 dark:bg-purple-500/60" },
+  "Pension": { bg: "bg-orange-50 dark:bg-orange-900/20", border: "border-l-orange-500", text: "text-orange-700 dark:text-orange-300", bar: "bg-orange-400/80 dark:bg-orange-500/60" },
+  "Digital Banking": { bg: "bg-cyan-50 dark:bg-cyan-900/20", border: "border-l-cyan-500", text: "text-cyan-700 dark:text-cyan-300", bar: "bg-cyan-400/80 dark:bg-cyan-500/60" },
+};
+
+const DEFAULT_CATEGORY_COLORS = { bg: "bg-slate-50 dark:bg-slate-800/50", border: "border-l-slate-400", text: "text-slate-700 dark:text-slate-300", bar: "bg-slate-400/80 dark:bg-slate-500/60" };
+
+function getWeekNumber(date: Date): number {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+}
+
+function BriefingTimelineView({
+  briefings,
+  onBriefingClick,
+  filterStatus,
+  filterCategory,
+}: {
+  briefings: Briefing[];
+  onBriefingClick: (briefing: Briefing) => void;
+  filterStatus: string;
+  filterCategory: string;
+}) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Zeitraum berechnen: 2 Wochen Vergangenheit bis 10 Wochen Zukunft
+  const startDate = new Date(today);
+  startDate.setDate(startDate.getDate() - 14);
+  const endDate = new Date(today);
+  endDate.setDate(endDate.getDate() + 70);
+
+  // Wochen generieren
+  const weeks: { start: Date; end: Date; label: string; isCurrentWeek: boolean }[] = [];
+  const weekCursor = new Date(startDate);
+  weekCursor.setDate(weekCursor.getDate() - weekCursor.getDay() + 1); // Auf Montag setzen
+
+  while (weekCursor < endDate) {
+    const weekEnd = new Date(weekCursor);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+    const isCurrentWeek = today >= weekCursor && today <= weekEnd;
+
+    weeks.push({
+      start: new Date(weekCursor),
+      end: weekEnd,
+      label: `KW ${getWeekNumber(weekCursor)}`,
+      isCurrentWeek,
+    });
+
+    weekCursor.setDate(weekCursor.getDate() + 7);
+  }
+
+  const totalMs = endDate.getTime() - startDate.getTime();
+
+  // Position auf der Timeline in Prozent
+  const getPositionPercent = (date: Date) => {
+    return Math.max(0, Math.min(100, ((date.getTime() - startDate.getTime()) / totalMs) * 100));
+  };
+
+  // Heute-Position
+  const todayPercent = getPositionPercent(today);
+
+  // Briefings nach Status-Workflow sortieren
+  const statusOrder: Record<string, number> = { ordered: 0, in_progress: 1, in_review: 2, completed: 3 };
+
+  const sortedBriefings = [...briefings].sort((a, b) => {
+    // Zuerst nach Status
+    const statusDiff = (statusOrder[a.status] ?? 99) - (statusOrder[b.status] ?? 99);
+    if (statusDiff !== 0) return statusDiff;
+    // Dann nach Deadline (früheste zuerst)
+    if (a.deadline && b.deadline) return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+    if (a.deadline) return -1;
+    if (b.deadline) return 1;
+    // Dann nach Erstelldatum
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+
+  // Gruppierung nach Status
+  const groupedByStatus = sortedBriefings.reduce((acc, b) => {
+    if (!acc[b.status]) acc[b.status] = [];
+    acc[b.status].push(b);
+    return acc;
+  }, {} as Record<string, Briefing[]>);
+
+  const statusKeys = ["ordered", "in_progress", "in_review", "completed"];
+  const activeStatuses = statusKeys.filter((s) => groupedByStatus[s]?.length);
+
+  if (briefings.length === 0) {
+    return (
+      <div className="bg-white dark:bg-slate-800 rounded-xl p-8 text-center border border-slate-200 dark:border-slate-700">
+        <svg className="w-16 h-16 mx-auto text-slate-300 dark:text-slate-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+        <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">
+          Keine Briefings vorhanden
+        </h3>
+        <p className="text-slate-500 dark:text-slate-400">
+          Erstelle ein neues Briefing, um es in der Timeline zu sehen.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+      {/* Timeline Header */}
+      <div className="border-b border-slate-200 dark:border-slate-700 sticky top-0 z-20 bg-white dark:bg-slate-800">
+        <div className="flex">
+          {/* Linke Spalte Header */}
+          <div className="w-64 flex-shrink-0 p-3 border-r border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Briefing</span>
+          </div>
+          {/* Wochen Header */}
+          <div className="flex-1 flex relative overflow-hidden">
+            {weeks.map((week, idx) => (
+              <div
+                key={idx}
+                className={`flex-1 min-w-[80px] p-2 text-center border-r border-slate-200 dark:border-slate-700 last:border-r-0 ${
+                  week.isCurrentWeek ? "bg-blue-50/50 dark:bg-blue-900/10" : ""
+                }`}
+              >
+                <span className={`text-xs font-semibold ${week.isCurrentWeek ? "text-blue-600 dark:text-blue-400" : "text-slate-600 dark:text-slate-400"}`}>
+                  {week.label}
+                </span>
+                <div className="text-xs text-slate-400 dark:text-slate-500">
+                  {week.start.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Timeline Body */}
+      <div className="overflow-x-auto">
+        {activeStatuses.map((statusKey) => {
+          const statusConfig = BRIEFING_STATUS_CONFIG[statusKey];
+          const items = groupedByStatus[statusKey];
+          if (!items || items.length === 0) return null;
+
+          return (
+            <div key={statusKey}>
+              {/* Status-Gruppen-Header */}
+              <div className="flex border-b border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-900/30">
+                <div className="w-64 flex-shrink-0 px-3 py-2 border-r border-slate-200 dark:border-slate-700 flex items-center gap-2">
+                  <span className={`w-2.5 h-2.5 rounded-full ${statusConfig.dotColor}`}></span>
+                  <span className={`text-sm font-semibold ${statusConfig.color}`}>{statusConfig.label}</span>
+                  <span className="text-xs text-slate-400 dark:text-slate-500 bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded-full">
+                    {items.length}
+                  </span>
+                </div>
+                <div className="flex-1 relative min-h-[32px]">
+                  {/* Heute-Linie im Header */}
+                  <div
+                    className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-10"
+                    style={{ left: `${todayPercent}%` }}
+                  />
+                  {/* Wochen-Grid im Header */}
+                  <div className="absolute inset-0 flex">
+                    {weeks.map((week, idx) => (
+                      <div key={idx} className={`flex-1 min-w-[80px] border-r border-slate-100 dark:border-slate-800 last:border-r-0 ${
+                        week.isCurrentWeek ? "bg-blue-50/30 dark:bg-blue-900/5" : ""
+                      }`} />
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Briefing-Zeilen */}
+              {items.map((briefing) => {
+                const created = new Date(briefing.createdAt);
+                const deadline = briefing.deadline ? new Date(briefing.deadline) : null;
+                const isOverdue = deadline && deadline < today && briefing.status !== "completed";
+                const catColors = TIMELINE_CATEGORY_COLORS[briefing.category || ""] || DEFAULT_CATEGORY_COLORS;
+                const typeConfig = BRIEFING_TYPE_CONFIG[briefing.briefingType] || { label: "?", icon: "?", color: "text-slate-500" };
+
+                // Balken: von createdAt bis deadline
+                const barStart = getPositionPercent(created);
+                const barEnd = deadline ? getPositionPercent(deadline) : barStart + 3;
+                const barWidth = Math.max(2.5, barEnd - barStart);
+
+                // Status-Fortschrittsanzeige innerhalb des Balkens
+                const progressPercent = briefing.status === "completed" ? 100
+                  : briefing.status === "in_review" ? 80
+                  : briefing.status === "in_progress" ? 40
+                  : 10;
+
+                return (
+                  <div
+                    key={briefing.id}
+                    className="flex border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-900/20 transition-colors group"
+                  >
+                    {/* Linke Info-Spalte */}
+                    <div
+                      className={`w-64 flex-shrink-0 p-2.5 border-r border-slate-200 dark:border-slate-700 cursor-pointer border-l-4 ${catColors.border}`}
+                      onClick={() => onBriefingClick(briefing)}
+                    >
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span className="text-xs text-slate-400 dark:text-slate-500">#{briefing.briefingNumber}</span>
+                        <span className={`text-xs font-medium ${typeConfig.color}`}>{typeConfig.label}</span>
+                        {briefing.category && (
+                          <span className={`text-xs px-1 py-0.5 rounded ${catColors.bg} ${catColors.text}`}>
+                            {briefing.category}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm font-medium text-slate-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                        {briefing.title}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                          {briefing.requester.name || briefing.requester.email}
+                        </span>
+                        {briefing.assignee && (
+                          <>
+                            <svg className="w-3 h-3 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                            </svg>
+                            <span className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                              {briefing.assignee.name || briefing.assignee.email}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                      {isOverdue && (
+                        <div className="flex items-center gap-1 mt-1">
+                          <svg className="w-3 h-3 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                          </svg>
+                          <span className="text-xs text-red-500 font-medium">Überfällig</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Timeline-Bereich */}
+                    <div className="flex-1 relative py-2 min-h-[60px]">
+                      {/* Heute-Linie */}
+                      <div
+                        className="absolute top-0 bottom-0 w-0.5 bg-red-500/30 z-[1]"
+                        style={{ left: `${todayPercent}%` }}
+                      />
+                      {/* Wochen-Grid */}
+                      <div className="absolute inset-0 flex">
+                        {weeks.map((week, idx) => (
+                          <div key={idx} className={`flex-1 min-w-[80px] border-r border-slate-100 dark:border-slate-800 last:border-r-0 ${
+                            week.isCurrentWeek ? "bg-blue-50/20 dark:bg-blue-900/5" : ""
+                          }`} />
+                        ))}
+                      </div>
+
+                      {/* Briefing-Balken */}
+                      <div
+                        className={`absolute top-2.5 cursor-pointer rounded-md overflow-hidden transition-all hover:shadow-md z-[2] group/bar ${
+                          isOverdue ? "ring-2 ring-red-400/50" : ""
+                        }`}
+                        style={{
+                          left: `${barStart}%`,
+                          width: `${barWidth}%`,
+                          minWidth: "70px",
+                          height: "calc(100% - 20px)",
+                        }}
+                        onClick={() => onBriefingClick(briefing)}
+                        title={`${briefing.title}\nErstellt: ${created.toLocaleDateString("de-DE")}${deadline ? `\nDeadline: ${deadline.toLocaleDateString("de-DE")}` : ""}\nStatus: ${statusConfig.label}`}
+                      >
+                        {/* Hintergrund-Balken */}
+                        <div className={`absolute inset-0 ${catColors.bar} opacity-30`} />
+                        {/* Fortschritts-Balken */}
+                        <div
+                          className={`absolute inset-y-0 left-0 ${catColors.bar} transition-all`}
+                          style={{ width: `${progressPercent}%` }}
+                        />
+                        {/* Inhalt des Balkens */}
+                        <div className="relative h-full flex items-center px-2 gap-1.5 overflow-hidden">
+                          <span className="text-xs font-medium text-white truncate drop-shadow-sm">
+                            {briefing.title}
+                          </span>
+                          {deadline && (
+                            <span className={`text-xs shrink-0 px-1 py-0.5 rounded ${
+                              isOverdue
+                                ? "bg-red-600 text-white"
+                                : "bg-white/20 text-white"
+                            }`}>
+                              {deadline.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Erstelldatum-Marker */}
+                      <div
+                        className="absolute bottom-1 z-[3]"
+                        style={{ left: `${barStart}%` }}
+                      >
+                        <div className="w-1.5 h-1.5 rounded-full bg-slate-400 dark:bg-slate-500" title={`Erstellt: ${created.toLocaleDateString("de-DE")}`} />
+                      </div>
+
+                      {/* Deadline-Marker */}
+                      {deadline && (
+                        <div
+                          className="absolute bottom-1 z-[3]"
+                          style={{ left: `${getPositionPercent(deadline)}%` }}
+                        >
+                          <div className={`w-1.5 h-1.5 rounded-full ${isOverdue ? "bg-red-500" : "bg-green-500"}`} title={`Deadline: ${deadline.toLocaleDateString("de-DE")}`} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Legende */}
+      <div className="p-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs">
+          <span className="font-medium text-slate-600 dark:text-slate-400">Status:</span>
+          {statusKeys.map((key) => {
+            const cfg = BRIEFING_STATUS_CONFIG[key];
+            return (
+              <div key={key} className="flex items-center gap-1.5">
+                <span className={`w-2.5 h-2.5 rounded-full ${cfg.dotColor}`} />
+                <span className="text-slate-600 dark:text-slate-400">{cfg.label}</span>
+              </div>
+            );
+          })}
+          <span className="w-px h-4 bg-slate-300 dark:bg-slate-600 mx-1" />
+          <span className="font-medium text-slate-600 dark:text-slate-400">Kategorien:</span>
+          {Object.entries(TIMELINE_CATEGORY_COLORS).map(([cat, colors]) => (
+            <div key={cat} className="flex items-center gap-1.5">
+              <div className={`w-3 h-2 rounded-sm ${colors.bar}`} />
+              <span className="text-slate-600 dark:text-slate-400">{cat}</span>
+            </div>
+          ))}
+          <span className="w-px h-4 bg-slate-300 dark:bg-slate-600 mx-1" />
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-0.5 bg-red-500" />
+            <span className="text-slate-600 dark:text-slate-400">Heute</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function BriefingsPage() {
   const { data: session } = useSession();
   const canEditData = canEdit(session?.user?.role);
@@ -104,6 +470,8 @@ export default function BriefingsPage() {
   const [newLexiconRelated, setNewLexiconRelated] = useState("");
   // Filter
   const [filterCategory, setFilterCategory] = useState<string>("all");
+  // View Mode
+  const [viewMode, setViewMode] = useState<"list" | "timeline">("list");
 
   useEffect(() => {
     fetchBriefings();
@@ -807,10 +1175,43 @@ export default function BriefingsPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Briefings</h1>
           <p className="text-slate-600 dark:text-slate-400 mt-1">
-            {isAdmin ? "Alle Briefing-Bestellungen verwalten" : "SEO Content Briefings bestellen"}
+            {viewMode === "timeline"
+              ? "Zeitliche Übersicht aller Briefings"
+              : isAdmin
+              ? "Alle Briefing-Bestellungen verwalten"
+              : "SEO Content Briefings bestellen"}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-3">
+          {/* View Switcher */}
+          <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
+            <button
+              onClick={() => setViewMode("list")}
+              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center gap-2 ${
+                viewMode === "list"
+                  ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+              </svg>
+              Liste
+            </button>
+            <button
+              onClick={() => setViewMode("timeline")}
+              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center gap-2 ${
+                viewMode === "timeline"
+                  ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              Timeline
+            </button>
+          </div>
           <a
             href="/briefing-vorlage.docx"
             download
@@ -1276,7 +1677,18 @@ export default function BriefingsPage() {
         )}
       </div>
 
+      {/* Timeline View */}
+      {viewMode === "timeline" && (
+        <BriefingTimelineView
+          briefings={filteredBriefings}
+          onBriefingClick={setSelectedBriefing}
+          filterStatus={filterStatus}
+          filterCategory={filterCategory}
+        />
+      )}
+
       {/* Briefings Liste und Detail */}
+      {viewMode === "list" && (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Briefings Liste */}
         <div className="space-y-3">
@@ -2214,6 +2626,135 @@ export default function BriefingsPage() {
           </div>
         )}
       </div>
+      )}
+
+      {/* Detail-Modal bei Timeline-Ansicht */}
+      {viewMode === "timeline" && selectedBriefing && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedBriefing(null)}>
+          <div
+            className="bg-white dark:bg-slate-800 rounded-xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex items-start justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-2 flex-wrap">
+                  <span className="text-sm text-slate-500 dark:text-slate-400">#{selectedBriefing.briefingNumber}</span>
+                  <span className={`px-2 py-0.5 text-xs rounded-full border ${
+                    selectedBriefing.briefingType === "new_content" ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                    : selectedBriefing.briefingType === "edit_content" ? "bg-orange-500/20 text-orange-400 border-orange-500/30"
+                    : "bg-purple-500/20 text-purple-400 border-purple-500/30"
+                  }`}>
+                    {selectedBriefing.briefingType === "new_content" ? "Neuer Content" : selectedBriefing.briefingType === "edit_content" ? "Content überarbeiten" : "Lexikon Content"}
+                  </span>
+                  <span className={`px-2 py-0.5 text-xs rounded-full ${BRIEFING_STATUS_CONFIG[selectedBriefing.status]?.bgColor} ${BRIEFING_STATUS_CONFIG[selectedBriefing.status]?.color}`}>
+                    {BRIEFING_STATUS_CONFIG[selectedBriefing.status]?.label}
+                  </span>
+                </div>
+                <h2 className="text-xl font-semibold text-slate-900 dark:text-white">{selectedBriefing.title}</h2>
+              </div>
+              <button
+                onClick={() => setSelectedBriefing(null)}
+                className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors flex-shrink-0"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {/* Metadaten */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">Bestellt von</span>
+                  <p className="text-sm text-slate-900 dark:text-white mt-0.5">{selectedBriefing.requester.name || selectedBriefing.requester.email}</p>
+                </div>
+                <div>
+                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">Zugewiesen an</span>
+                  <p className="text-sm text-slate-900 dark:text-white mt-0.5">
+                    {selectedBriefing.assignee ? (selectedBriefing.assignee.name || selectedBriefing.assignee.email) : "Noch nicht zugewiesen"}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">Erstellt am</span>
+                  <p className="text-sm text-slate-900 dark:text-white mt-0.5">{formatDate(selectedBriefing.createdAt)}</p>
+                </div>
+                <div>
+                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">Deadline</span>
+                  <p className={`text-sm mt-0.5 ${
+                    selectedBriefing.deadline && new Date(selectedBriefing.deadline) < new Date() && selectedBriefing.status !== "completed"
+                      ? "text-red-500 font-medium"
+                      : "text-slate-900 dark:text-white"
+                  }`}>
+                    {selectedBriefing.deadline ? formatDate(selectedBriefing.deadline) : "Keine Deadline"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Kategorie & Typ Details */}
+              <div className="grid grid-cols-2 gap-4">
+                {selectedBriefing.category && (
+                  <div>
+                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">Kategorie</span>
+                    <p className="text-sm text-slate-900 dark:text-white mt-0.5">{selectedBriefing.category}</p>
+                  </div>
+                )}
+                {selectedBriefing.focusKeyword && (
+                  <div>
+                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">Fokus-Keyword</span>
+                    <p className="text-sm text-slate-900 dark:text-white mt-0.5">{selectedBriefing.focusKeyword}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* URL */}
+              {selectedBriefing.url && (
+                <div>
+                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">URL</span>
+                  <a href={selectedBriefing.url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 dark:text-blue-400 hover:underline block mt-0.5 truncate">
+                    {selectedBriefing.url}
+                  </a>
+                </div>
+              )}
+
+              {/* Zielgruppe & Ziele */}
+              {selectedBriefing.targetAudience && (
+                <div>
+                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">Zielgruppe</span>
+                  <p className="text-sm text-slate-900 dark:text-white mt-0.5 whitespace-pre-wrap">{selectedBriefing.targetAudience}</p>
+                </div>
+              )}
+              {selectedBriefing.goals && (
+                <div>
+                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">Ziele / KPIs</span>
+                  <p className="text-sm text-slate-900 dark:text-white mt-0.5 whitespace-pre-wrap">{selectedBriefing.goals}</p>
+                </div>
+              )}
+              {selectedBriefing.notes && (
+                <div>
+                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">Notizen</span>
+                  <p className="text-sm text-slate-900 dark:text-white mt-0.5 whitespace-pre-wrap">{selectedBriefing.notes}</p>
+                </div>
+              )}
+
+              {/* Zur vollen Ansicht wechseln */}
+              <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
+                <button
+                  onClick={() => setViewMode("list")}
+                  className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                  Vollständige Detailansicht öffnen
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
