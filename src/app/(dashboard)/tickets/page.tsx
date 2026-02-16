@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { canEdit } from "@/lib/rbac";
 import { StatCard } from "@/components/ui/StatCard";
@@ -63,6 +63,9 @@ export default function TicketsPage() {
   const [newAssigneeIds, setNewAssigneeIds] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Detail ref for scroll behavior
+  const detailRef = useRef<HTMLDivElement>(null);
+
   // Comment state
   const [newComment, setNewComment] = useState("");
   const [isAddingComment, setIsAddingComment] = useState(false);
@@ -76,6 +79,12 @@ export default function TicketsPage() {
     fetchTickets();
     fetchUsers();
   }, []);
+
+  useEffect(() => {
+    if (selectedTicket && detailRef.current) {
+      detailRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [selectedTicket?.id]);
 
   const fetchTickets = async () => {
     try {
@@ -665,7 +674,9 @@ export default function TicketsPage() {
 
         {/* Ticket Detail */}
         {selectedTicket && (
-          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+          <div>
+            <div ref={detailRef} className="scroll-mt-6" />
+            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
             <div className="p-6 border-b border-slate-200 dark:border-slate-700">
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -893,6 +904,7 @@ export default function TicketsPage() {
                 </button>
               </div>
             </div>
+          </div>
           </div>
         )}
       </div>
