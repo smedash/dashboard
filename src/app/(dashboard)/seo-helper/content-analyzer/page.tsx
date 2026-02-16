@@ -523,7 +523,21 @@ ${keyword ? `- Keyword-Dichte: ${analysis.keywordDensity.toFixed(2)}%` : ""}`;
 
               {/* Readability */}
               <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
-                <h3 className="font-semibold text-slate-900 dark:text-white mb-4">Lesbarkeit</h3>
+                <div className="flex items-center gap-2 mb-4">
+                  <h3 className="font-semibold text-slate-900 dark:text-white">Lesbarkeit</h3>
+                  <div className="relative group">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 cursor-help transition-colors">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0ZM8.94 6.94a.75.75 0 1 1-1.061-1.061 3.75 3.75 0 1 1 0 5.304.75.75 0 0 1 1.06-1.06 2.25 2.25 0 1 0 0-3.183ZM10 15a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clipRule="evenodd" />
+                    </svg>
+                    <div className="invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-64 bg-slate-900 dark:bg-slate-700 text-white text-xs rounded-lg px-3 py-2 shadow-lg z-50">
+                      <p className="mb-1">Berechnung nach dem <strong>Flesch-Reading-Ease</strong>-Index, angepasst für deutsche Texte.</p>
+                      <a href="https://simple.wikipedia.org/wiki/Flesch_Reading_Ease" target="_blank" rel="noopener noreferrer" className="text-blue-300 hover:text-blue-200 underline">
+                        Mehr erfahren →
+                      </a>
+                      <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-x-[6px] border-x-transparent border-t-[6px] border-t-slate-900 dark:border-t-slate-700" />
+                    </div>
+                  </div>
+                </div>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-slate-600 dark:text-slate-400">Score</span>
