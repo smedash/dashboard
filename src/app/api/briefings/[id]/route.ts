@@ -185,7 +185,7 @@ export async function PATCH(
     // E-Mail an Besteller senden wenn Status auf "completed" geändert wurde
     if (statusChangedToCompleted) {
       try {
-        const baseUrl = process.env.NEXTAUTH_URL || "https://sme-dashboard.vercel.app";
+        const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "";
         const dashboardUrl = `${baseUrl}/briefings`;
 
         await sendBriefingCompletedNotification({

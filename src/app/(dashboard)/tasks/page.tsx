@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { canEdit } from "@/lib/rbac";
+import { getAuthenticatedBlobUrl } from "@/lib/blob-url";
 import {
   DndContext,
   DragEndEvent,
@@ -753,7 +754,7 @@ function TaskDetailModal({
                     className="flex items-center justify-between p-2 bg-slate-100 dark:bg-slate-900 rounded-lg group"
                   >
                     <a
-                      href={file.fileUrl}
+                      href={getAuthenticatedBlobUrl(file.fileUrl)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-2 flex-1 min-w-0 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"

@@ -63,7 +63,7 @@ const docSections: DocSection[] = [
       },
       {
         title: "Zeitraum wählen",
-        body: "Mit dem Perioden-Selektor oben rechts kannst du den Auswertungszeitraum ändern: 7 Tage, 28 Tage, 3 Monate, 6 Monate oder 12 Monate. Die Vergleichswerte beziehen sich immer auf den gleich langen Zeitraum davor.",
+        body: "Mit dem Perioden-Selektor oben rechts kannst du den Auswertungszeitraum ändern: 7 Tage, 28 Tage, 3 Monate, 6 Monate oder 8 Monate. Die Vergleichswerte beziehen sich immer auf den gleich langen Zeitraum davor. Der maximale Zeitraum ist auf 8 Monate begrenzt, da die Google Search Console nur 16 Monate Daten bereitstellt und so ein vollständiger Vergleich mit dem vorherigen Zeitraum gewährleistet ist.",
       },
       {
         title: "Charts & Geräteverteilung",

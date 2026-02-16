@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { StatCard } from "@/components/ui/StatCard";
 import { BarChart, LineChart, PieChart } from "@/components/charts";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 const KEYWORD_CATEGORIES = [
   "Mortgages",
@@ -558,7 +559,7 @@ export default function RankingReportPage() {
                         listText = listText.replace(/\*(.*?)\*/g, "<em class='italic'>$1</em>");
                         listText = listText.replace(/\*(?![*<])/g, "");
                         return (
-                          <div key={i} className="ml-4 mb-2" dangerouslySetInnerHTML={{ __html: `<span class="text-slate-400">•</span> ${listText}` }} />
+                          <div key={i} className="ml-4 mb-2" dangerouslySetInnerHTML={{ __html: sanitizeHtml(`<span class="text-slate-400">•</span> ${listText}`) }} />
                         );
                       }
                       if (line.trim()) {
@@ -566,7 +567,7 @@ export default function RankingReportPage() {
                         text = text.replace(/\*\*(.*?)\*\*/g, "<strong class='font-bold text-slate-900 dark:text-white'>$1</strong>");
                         text = text.replace(/\*(.*?)\*/g, "<em class='italic'>$1</em>");
                         text = text.replace(/\*(?![*<])/g, "");
-                        return <p key={i} className="mb-3" dangerouslySetInnerHTML={{ __html: text }} />;
+                        return <p key={i} className="mb-3" dangerouslySetInnerHTML={{ __html: sanitizeHtml(text) }} />;
                       }
                       return <br key={i} />;
                     })}

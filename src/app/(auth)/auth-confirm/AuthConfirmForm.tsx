@@ -40,7 +40,11 @@ function AuthConfirmContent() {
 
   const token = searchParams.get("token");
   const email = searchParams.get("email");
-  const callbackUrl = searchParams.get("callbackUrl") || "/";
+  const rawCallbackUrl = searchParams.get("callbackUrl") || "/";
+  // Nur relative Pfade erlauben, um Open-Redirect-Angriffe zu verhindern
+  const callbackUrl = rawCallbackUrl.startsWith("/") && !rawCallbackUrl.startsWith("//")
+    ? rawCallbackUrl
+    : "/";
 
   // Prüfe ob alle Parameter vorhanden sind
   useEffect(() => {

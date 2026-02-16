@@ -146,7 +146,7 @@ export async function PATCH(
 
       // Benachrichtigung an neu hinzugefügte Assignees
       if (toAdd.length > 0) {
-        const dashboardUrl = `${process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "https://app.smedash.com"}/tickets`;
+        const dashboardUrl = `${process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || ""}/tickets`;
         const creatorName = session.user.name || session.user.email || "Jemand";
 
         const newAssignees = await prisma.user.findMany({
@@ -208,7 +208,7 @@ export async function PATCH(
 
     // Update-Benachrichtigung an alle Assignees senden (bei Status-/Feld-Änderungen)
     if (status || title || description || type || priority) {
-      const dashboardUrl = `${process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "https://app.smedash.com"}/tickets`;
+      const dashboardUrl = `${process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || ""}/tickets`;
       const updaterName = session.user.name || session.user.email || "Jemand";
 
       // Bestimme Update-Details

@@ -1,9 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { aiRateLimiter } from "@/lib/rate-limit";
 import OpenAI from "openai";
 import { proxyFetch, DEFAULT_SCRAPE_HEADERS } from "@/lib/proxy-fetch";
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { success, remaining, resetIn } = aiRateLimiter.check(session.user.id);
+    if (!success) {
+      return NextResponse.json(
+        { error: `Rate limit erreicht. Bitte warte ${resetIn} Sekunden.` },
+        { status: 429, headers: { "Retry-After": String(resetIn), "X-RateLimit-Remaining": "0" } }
+      );
+    }
+
     const { url, content, language = "de" } = await request.json();
 
     // Either URL or content must be provided

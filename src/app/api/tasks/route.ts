@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
     // E-Mail-Benachrichtigung an alle Assignees senden
     if (assigneeIds?.length > 0) {
       try {
-        const baseUrl = process.env.NEXTAUTH_URL || "https://sme-dashboard.vercel.app";
+        const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "";
         const dashboardUrl = `${baseUrl}/tasks`;
         const creatorName = session.user.name || session.user.email || "Unbekannt";
 

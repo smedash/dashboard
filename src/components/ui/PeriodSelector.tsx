@@ -10,7 +10,7 @@ const periods = [
   { value: "28d", label: "28 Tage" },
   { value: "3m", label: "3 Monate" },
   { value: "6m", label: "6 Monate" },
-  { value: "12m", label: "12 Monate" },
+  { value: "8m", label: "8 Monate" },
 ];
 
 export function PeriodSelector({ value, onChange }: PeriodSelectorProps) {

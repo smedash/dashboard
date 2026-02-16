@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
 
     // E-Mail-Benachrichtigungen an Assignees senden (async, nicht blockierend)
     if (assigneeIds && assigneeIds.length > 0) {
-      const dashboardUrl = `${process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "https://app.smedash.com"}/tickets`;
+      const dashboardUrl = `${process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || ""}/tickets`;
       const creatorName = session.user.name || session.user.email || "Jemand";
 
       // Nur an andere User senden, nicht an den Ersteller selbst

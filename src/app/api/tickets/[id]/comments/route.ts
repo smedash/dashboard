@@ -55,7 +55,7 @@ export async function POST(
     });
 
     // E-Mail-Benachrichtigung an Assignees und Ticket-Ersteller
-    const dashboardUrl = `${process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "https://app.smedash.com"}/tickets`;
+    const dashboardUrl = `${process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || ""}/tickets`;
     const authorName = session.user.name || session.user.email || "Jemand";
     const truncatedComment = text.trim().length > 300 
       ? text.trim().substring(0, 300) + "..." 

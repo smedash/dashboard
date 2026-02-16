@@ -1,7 +1,62 @@
 {
-  "generatedAt": "2026-02-13T14:29:46.859Z",
-  "totalCommits": 81,
+  "generatedAt": "2026-02-16T12:20:20.449Z",
+  "totalCommits": 86,
   "commits": [
+    {
+      "hash": "c1d5b27d309acfb8af028332565130df9bd916fb",
+      "shortHash": "c1d5b27",
+      "author": "smedash",
+      "date": "2026-02-16 10:27:49 +0100",
+      "subject": "feat(docs): Dokumentationsseite mit Suchfunktion und Schnellstart-Anleitung",
+      "type": "feat",
+      "typeLabel": "Feature",
+      "scope": "docs",
+      "message": "Dokumentationsseite mit Suchfunktion und Schnellstart-Anleitung"
+    },
+    {
+      "hash": "0dc668de092bf546e7d5754b9747384ce9d9f76d",
+      "shortHash": "0dc668d",
+      "author": "smedash",
+      "date": "2026-02-16 10:15:29 +0100",
+      "subject": "fix(content-analyzer): Gzip-Auto-Erkennung für Proxy-Responses ohne content-encoding Header",
+      "type": "fix",
+      "typeLabel": "Bugfix",
+      "scope": "content-analyzer",
+      "message": "Gzip-Auto-Erkennung für Proxy-Responses ohne content-encoding Header"
+    },
+    {
+      "hash": "83c5ac3f7fede8151d2c8b4e98c29a2be5d0c88e",
+      "shortHash": "83c5ac3",
+      "author": "smedash",
+      "date": "2026-02-16 10:07:32 +0100",
+      "subject": "feat(briefings): Timeline-Ansicht für transparente Auftragsübersicht",
+      "type": "feat",
+      "typeLabel": "Feature",
+      "scope": "briefings",
+      "message": "Timeline-Ansicht für transparente Auftragsübersicht"
+    },
+    {
+      "hash": "d3749aad770c1ebf3c61e28a7e325d84f96c9c8d",
+      "shortHash": "d3749aa",
+      "author": "smedash",
+      "date": "2026-02-13 15:39:29 +0100",
+      "subject": "fix(changelog): Aktive-Tage-Card aus Statistik-Bereich entfernen",
+      "type": "fix",
+      "typeLabel": "Bugfix",
+      "scope": "changelog",
+      "message": "Aktive-Tage-Card aus Statistik-Bereich entfernen"
+    },
+    {
+      "hash": "2b0cfdccf796e3c5d66db3c4ca0132a64e230a09",
+      "shortHash": "2b0cfdc",
+      "author": "smedash",
+      "date": "2026-02-13 15:33:31 +0100",
+      "subject": "fix(changelog): Commit-Typen normalisieren und Autor vereinheitlichen",
+      "type": "fix",
+      "typeLabel": "Bugfix",
+      "scope": "changelog",
+      "message": "Commit-Typen normalisieren und Autor vereinheitlichen"
+    },
     {
       "hash": "05e10d3d5e8b7a5481efcfaf8b504c7ac015895f",
       "shortHash": "05e10d3",
@@ -895,7 +950,64 @@
     }
   ],
   "groupedByDate": {
+    "2026-02-16": [
+      {
+        "hash": "c1d5b27d309acfb8af028332565130df9bd916fb",
+        "shortHash": "c1d5b27",
+        "author": "smedash",
+        "date": "2026-02-16 10:27:49 +0100",
+        "subject": "feat(docs): Dokumentationsseite mit Suchfunktion und Schnellstart-Anleitung",
+        "type": "feat",
+        "typeLabel": "Feature",
+        "scope": "docs",
+        "message": "Dokumentationsseite mit Suchfunktion und Schnellstart-Anleitung"
+      },
+      {
+        "hash": "0dc668de092bf546e7d5754b9747384ce9d9f76d",
+        "shortHash": "0dc668d",
+        "author": "smedash",
+        "date": "2026-02-16 10:15:29 +0100",
+        "subject": "fix(content-analyzer): Gzip-Auto-Erkennung für Proxy-Responses ohne content-encoding Header",
+        "type": "fix",
+        "typeLabel": "Bugfix",
+        "scope": "content-analyzer",
+        "message": "Gzip-Auto-Erkennung für Proxy-Responses ohne content-encoding Header"
+      },
+      {
+        "hash": "83c5ac3f7fede8151d2c8b4e98c29a2be5d0c88e",
+        "shortHash": "83c5ac3",
+        "author": "smedash",
+        "date": "2026-02-16 10:07:32 +0100",
+        "subject": "feat(briefings): Timeline-Ansicht für transparente Auftragsübersicht",
+        "type": "feat",
+        "typeLabel": "Feature",
+        "scope": "briefings",
+        "message": "Timeline-Ansicht für transparente Auftragsübersicht"
+      }
+    ],
     "2026-02-13": [
+      {
+        "hash": "d3749aad770c1ebf3c61e28a7e325d84f96c9c8d",
+        "shortHash": "d3749aa",
+        "author": "smedash",
+        "date": "2026-02-13 15:39:29 +0100",
+        "subject": "fix(changelog): Aktive-Tage-Card aus Statistik-Bereich entfernen",
+        "type": "fix",
+        "typeLabel": "Bugfix",
+        "scope": "changelog",
+        "message": "Aktive-Tage-Card aus Statistik-Bereich entfernen"
+      },
+      {
+        "hash": "2b0cfdccf796e3c5d66db3c4ca0132a64e230a09",
+        "shortHash": "2b0cfdc",
+        "author": "smedash",
+        "date": "2026-02-13 15:33:31 +0100",
+        "subject": "fix(changelog): Commit-Typen normalisieren und Autor vereinheitlichen",
+        "type": "fix",
+        "typeLabel": "Bugfix",
+        "scope": "changelog",
+        "message": "Commit-Typen normalisieren und Autor vereinheitlichen"
+      },
       {
         "hash": "05e10d3d5e8b7a5481efcfaf8b504c7ac015895f",
         "shortHash": "05e10d3",

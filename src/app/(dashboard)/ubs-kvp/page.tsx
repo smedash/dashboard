@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
+import { getAuthenticatedBlobUrl } from "@/lib/blob-url";
 import { PieChart } from "@/components/charts";
 import { canEdit } from "@/lib/rbac";
 
@@ -1270,7 +1271,7 @@ export default function UBSKVPPage() {
                                 className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-900 rounded-lg group"
                               >
                                 <a
-                                  href={file.fileUrl}
+                                  href={getAuthenticatedBlobUrl(file.fileUrl)}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="flex items-center gap-2 flex-1 min-w-0 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
@@ -2151,7 +2152,7 @@ function EditUrlForm({
                 className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-900 rounded-lg group"
               >
                 <a
-                  href={file.fileUrl}
+                  href={getAuthenticatedBlobUrl(file.fileUrl)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 flex-1 min-w-0 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"

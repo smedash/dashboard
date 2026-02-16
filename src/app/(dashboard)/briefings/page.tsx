@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { canEdit, hasFullAdminRights, isAgentur } from "@/lib/rbac";
+import { getAuthenticatedBlobUrl } from "@/lib/blob-url";
 import { StatCard } from "@/components/ui/StatCard";
 import { jsPDF } from "jspdf";
 
@@ -957,7 +958,7 @@ export default function BriefingsPage() {
       
       // Bild laden und einfügen
       try {
-        const imgResponse = await fetch(briefing.diagramUrl);
+        const imgResponse = await fetch(getAuthenticatedBlobUrl(briefing.diagramUrl));
         const imgBlob = await imgResponse.blob();
         const imgBase64 = await new Promise<string>((resolve) => {
           const reader = new FileReader();
@@ -999,7 +1000,7 @@ export default function BriefingsPage() {
         doc.setFontSize(7);
         doc.setFont("helvetica", "normal");
         doc.setTextColor(59, 130, 246);
-        doc.textWithLink("Schaubild in voller Auflösung ansehen", cardMargin + cardPadding, y, { url: briefing.diagramUrl });
+        doc.textWithLink("Schaubild in voller Auflösung ansehen", cardMargin + cardPadding, y, { url: getAuthenticatedBlobUrl(briefing.diagramUrl) });
         y += cardPadding + 4;
       } catch (imgError) {
         console.error("Fehler beim Laden des Diagramms für PDF:", imgError);
@@ -2393,9 +2394,9 @@ export default function BriefingsPage() {
                       </div>
                       {selectedBriefing.diagramUrl ? (
                         <div className="space-y-2">
-                          <a href={selectedBriefing.diagramUrl} target="_blank" rel="noopener noreferrer" className="block">
+                          <a href={getAuthenticatedBlobUrl(selectedBriefing.diagramUrl)} target="_blank" rel="noopener noreferrer" className="block">
                             <img 
-                              src={selectedBriefing.diagramUrl} 
+                              src={getAuthenticatedBlobUrl(selectedBriefing.diagramUrl)} 
                               alt="Grafische Darstellung" 
                               className="w-full rounded-lg border border-slate-200 dark:border-slate-700 hover:opacity-90 transition-opacity cursor-pointer"
                             />
@@ -2597,9 +2598,9 @@ export default function BriefingsPage() {
                           </svg>
                           Grafische Darstellung:
                         </span>
-                        <a href={selectedBriefing.diagramUrl} target="_blank" rel="noopener noreferrer" className="block">
+                        <a href={getAuthenticatedBlobUrl(selectedBriefing.diagramUrl)} target="_blank" rel="noopener noreferrer" className="block">
                           <img 
-                            src={selectedBriefing.diagramUrl} 
+                            src={getAuthenticatedBlobUrl(selectedBriefing.diagramUrl)} 
                             alt="Grafische Darstellung" 
                             className="w-full rounded-lg border border-slate-200 dark:border-slate-700 hover:opacity-90 transition-opacity cursor-pointer"
                           />

@@ -159,7 +159,7 @@ export async function POST(request: Request) {
         select: { email: true },
       });
 
-      const baseUrl = process.env.NEXTAUTH_URL || "https://sme-dashboard.vercel.app";
+      const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "";
       const dashboardUrl = `${baseUrl}/briefings`;
 
       for (const agenturUser of agenturUsers) {

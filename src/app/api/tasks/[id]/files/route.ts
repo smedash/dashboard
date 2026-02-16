@@ -104,9 +104,9 @@ export async function POST(
         continue;
       }
 
-      // Dateityp prüfen (MIME-Type + Dateiendung)
+      // Dateityp prüfen (MIME-Type UND Dateiendung müssen übereinstimmen)
       const ext = "." + file.name.split(".").pop()?.toLowerCase();
-      if (!ALLOWED_TYPES.includes(file.type) && !ALLOWED_EXTENSIONS.includes(ext)) {
+      if (!ALLOWED_TYPES.includes(file.type) || !ALLOWED_EXTENSIONS.includes(ext)) {
         continue;
       }
 

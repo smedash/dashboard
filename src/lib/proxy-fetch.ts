@@ -26,7 +26,7 @@ export async function proxyFetch(
 
   // If proxy is configured, use proxy-agent
   if (proxyUrl) {
-    console.log(`[proxyFetch] Using proxy: ${proxyUrl.substring(0, 30)}...`);
+    console.log(`[proxyFetch] Using proxy (configured)`);
     return new Promise((resolve, reject) => {
       const parsedUrl = new URL(url);
       const isHttps = parsedUrl.protocol === "https:";

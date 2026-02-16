@@ -1,28 +1,28 @@
-import * as XLSX from "xlsx";
-import * as fs from "fs";
+import ExcelJS from "exceljs";
 import * as path from "path";
 
 const excelFile = path.join(process.cwd(), "public", "seo-checkliste.xlsx");
 
 try {
-  const workbook = XLSX.readFile(excelFile);
-  const sheetName = workbook.SheetNames[0];
-  const worksheet = workbook.Sheets[sheetName];
-  const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.readFile(excelFile);
+  const worksheet = workbook.worksheets[0];
+  const data: any[][] = [];
+  worksheet.eachRow((row) => {
+    data.push(row.values as any[]);
+  });
 
   console.log("Excel Daten:");
   console.log(JSON.stringify(data, null, 2));
 
-  // Versuche die Struktur zu verstehen
   const items: Array<{ category: string; title: string; description?: string }> = [];
 
-  // Erste Zeile könnte Header sein
   for (let i = 1; i < data.length; i++) {
-    const row = data[i] as any[];
+    const row = data[i];
     if (row && row.length > 0) {
-      const category = row[0]?.toString().trim() || "";
-      const title = row[1]?.toString().trim() || "";
-      const description = row[2]?.toString().trim() || "";
+      const category = row[1]?.toString().trim() || "";
+      const title = row[2]?.toString().trim() || "";
+      const description = row[3]?.toString().trim() || "";
 
       if (category && title) {
         items.push({

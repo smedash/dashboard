@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { apiRateLimiter } from "@/lib/rate-limit";
 
 const DATAFORSEO_API_URL = "https://api.dataforseo.com/v3";
 
@@ -32,6 +34,19 @@ interface SerpItem {
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { success, remaining, resetIn } = apiRateLimiter.check(session.user.id);
+    if (!success) {
+      return NextResponse.json(
+        { error: `Rate limit erreicht. Bitte warte ${resetIn} Sekunden.` },
+        { status: 429, headers: { "Retry-After": String(resetIn), "X-RateLimit-Remaining": "0" } }
+      );
+    }
+
     const { keyword } = await request.json();
 
     if (!keyword || typeof keyword !== "string" || !keyword.trim()) {

@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
 export async function GET(
   request: NextRequest,
@@ -17,7 +17,7 @@ export async function GET(
     const { id } = await params;
     const searchParams = request.nextUrl.searchParams;
     const format = searchParams.get("format") || "csv";
-    const dimension = searchParams.get("dimension"); // optional filter
+    const dimension = searchParams.get("dimension");
 
     const snapshot = await prisma.snapshot.findUnique({
       where: { id },
@@ -38,7 +38,6 @@ export async function GET(
       return NextResponse.json({ error: "Snapshot not found" }, { status: 404 });
     }
 
-    // Prepare data for export
     const exportData = snapshot.data.map((row) => ({
       Dimension: row.dimension,
       Wert: row.key,
@@ -61,23 +60,37 @@ export async function GET(
       }
 
       case "xlsx": {
-        const worksheet = XLSX.utils.json_to_sheet(exportData);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Daten");
+        const workbook = new ExcelJS.Workbook();
 
-        // Add metadata sheet
-        const metadata = [
-          { Feld: "Snapshot Name", Wert: snapshot.name },
-          { Feld: "Property", Wert: snapshot.property.siteUrl },
-          { Feld: "Zeitraum", Wert: `${snapshot.startDate.toISOString().split("T")[0]} - ${snapshot.endDate.toISOString().split("T")[0]}` },
-          { Feld: "Erstellt am", Wert: snapshot.createdAt.toISOString().split("T")[0] },
-          { Feld: "Gesamt Klicks", Wert: (snapshot.totals as Record<string, number>).clicks },
-          { Feld: "Gesamt Impressionen", Wert: (snapshot.totals as Record<string, number>).impressions },
+        // Daten-Sheet
+        const dataSheet = workbook.addWorksheet("Daten");
+        dataSheet.columns = [
+          { header: "Dimension", key: "Dimension", width: 15 },
+          { header: "Wert", key: "Wert", width: 40 },
+          { header: "Klicks", key: "Klicks", width: 12 },
+          { header: "Impressionen", key: "Impressionen", width: 15 },
+          { header: "CTR", key: "CTR", width: 10 },
+          { header: "Position", key: "Position", width: 10 },
         ];
-        const metaSheet = XLSX.utils.json_to_sheet(metadata);
-        XLSX.utils.book_append_sheet(workbook, metaSheet, "Info");
+        exportData.forEach((row) => dataSheet.addRow(row));
 
-        const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
+        // Info-Sheet
+        const infoSheet = workbook.addWorksheet("Info");
+        infoSheet.columns = [
+          { header: "Feld", key: "Feld", width: 25 },
+          { header: "Wert", key: "Wert", width: 50 },
+        ];
+        infoSheet.addRow({ Feld: "Snapshot Name", Wert: snapshot.name });
+        infoSheet.addRow({ Feld: "Property", Wert: snapshot.property.siteUrl });
+        infoSheet.addRow({
+          Feld: "Zeitraum",
+          Wert: `${snapshot.startDate.toISOString().split("T")[0]} - ${snapshot.endDate.toISOString().split("T")[0]}`,
+        });
+        infoSheet.addRow({ Feld: "Erstellt am", Wert: snapshot.createdAt.toISOString().split("T")[0] });
+        infoSheet.addRow({ Feld: "Gesamt Klicks", Wert: (snapshot.totals as Record<string, number>).clicks });
+        infoSheet.addRow({ Feld: "Gesamt Impressionen", Wert: (snapshot.totals as Record<string, number>).impressions });
+
+        const buffer = await workbook.xlsx.writeBuffer();
 
         return new NextResponse(buffer, {
           headers: {
@@ -89,7 +102,6 @@ export async function GET(
 
       case "csv":
       default: {
-        // Create CSV
         const headers = ["Dimension", "Wert", "Klicks", "Impressionen", "CTR", "Position"];
         const csvRows = [
           headers.join(";"),
@@ -122,5 +134,3 @@ export async function GET(
     );
   }
 }
-
-
