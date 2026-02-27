@@ -79,6 +79,7 @@ export default function RankTrackerPage() {
   const [searchText, setSearchText] = useState<string>("");
   const [urlFilter, setUrlFilter] = useState<string>("");
   const [refreshingKeywordId, setRefreshingKeywordId] = useState<string | null>(null);
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [isFetchingVolume, setIsFetchingVolume] = useState(false);
   const itemsPerPage = 25;
@@ -226,6 +227,37 @@ export default function RankTrackerPage() {
     } else {
       setSelectedKeyword(keywordId);
       fetchHistoricalRankings(keywordId);
+    }
+  }
+
+  async function handleUpdateCategory(id: string, category: string | null) {
+    try {
+      const response = await fetch(`/api/rank-tracker/keywords/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        alert(error.error || "Fehler beim Aktualisieren der Kategorie");
+        return;
+      }
+
+      setTracker((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          keywords: prev.keywords.map((kw) =>
+            kw.id === id ? { ...kw, category } : kw
+          ),
+        };
+      });
+    } catch (error) {
+      console.error("Error updating category:", error);
+      alert("Fehler beim Aktualisieren der Kategorie");
+    } finally {
+      setEditingCategoryId(null);
     }
   }
 
@@ -702,11 +734,46 @@ export default function RankTrackerPage() {
                   key: "category",
                   header: "Kategorie",
                   sortable: true,
-                  render: (value) => {
-                    if (!value) {
-                      return <span className="text-slate-500 dark:text-slate-500">-</span>;
+                  render: (value, row) => {
+                    const isEditing = editingCategoryId === row.id;
+
+                    if (isEditing && canEditData) {
+                      return (
+                        <select
+                          autoFocus
+                          defaultValue={(value as string) || ""}
+                          onChange={(e) => {
+                            handleUpdateCategory(
+                              row.id as string,
+                              e.target.value || null
+                            );
+                          }}
+                          onBlur={() => setEditingCategoryId(null)}
+                          className="px-2 py-1 bg-white dark:bg-slate-700 border border-blue-500 rounded text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[140px]"
+                        >
+                          <option value="">Keine Kategorie</option>
+                          {KEYWORD_CATEGORIES.map((cat) => (
+                            <option key={cat} value={cat}>
+                              {cat}
+                            </option>
+                          ))}
+                        </select>
+                      );
                     }
-                    return <span className="text-slate-700 dark:text-slate-300">{value as string}</span>;
+
+                    return (
+                      <span
+                        onClick={() => canEditData && setEditingCategoryId(row.id as string)}
+                        className={`${canEditData ? "cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 px-2 py-1 -mx-2 -my-1 rounded transition-colors" : ""} ${
+                          value
+                            ? "text-slate-700 dark:text-slate-300"
+                            : "text-slate-400 dark:text-slate-500 italic"
+                        }`}
+                        title={canEditData ? "Klicken zum Bearbeiten" : undefined}
+                      >
+                        {(value as string) || "–"}
+                      </span>
+                    );
                   },
                 },
                 {
