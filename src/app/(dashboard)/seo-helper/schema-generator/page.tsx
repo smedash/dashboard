@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 
-type SchemaType = "faq" | "howto" | "article" | "product" | "localbusiness" | "breadcrumb" | "financialproduct" | "bank" | "definedterm";
+type SchemaType = "faq" | "howto" | "article" | "product" | "localbusiness" | "breadcrumb" | "financialproduct" | "bank" | "definedterm" | "collectionpage";
 
 interface FAQItem {
   question: string;
@@ -13,6 +13,12 @@ interface FAQItem {
 interface HowToStep {
   name: string;
   text: string;
+}
+
+interface CollectionItem {
+  name: string;
+  url: string;
+  description: string;
 }
 
 export default function SchemaGeneratorPage() {
@@ -89,6 +95,14 @@ export default function SchemaGeneratorPage() {
   const [termSetName, setTermSetName] = useState("");
   const [termSetUrl, setTermSetUrl] = useState("");
 
+  // CollectionPage State
+  const [collectionName, setCollectionName] = useState("");
+  const [collectionDescription, setCollectionDescription] = useState("");
+  const [collectionUrl, setCollectionUrl] = useState("");
+  const [collectionItems, setCollectionItems] = useState<CollectionItem[]>([
+    { name: "", url: "", description: "" },
+  ]);
+
   const schemaTypes: { value: SchemaType; label: string; description: string }[] = [
     { value: "faq", label: "FAQ", description: "Häufig gestellte Fragen" },
     { value: "howto", label: "HowTo", description: "Schritt-für-Schritt Anleitungen" },
@@ -99,6 +113,7 @@ export default function SchemaGeneratorPage() {
     { value: "financialproduct", label: "FinancialProduct", description: "Finanzprodukte & Services" },
     { value: "bank", label: "Bank", description: "Banken & Kreditinstitute" },
     { value: "definedterm", label: "DefinedTerm", description: "Glossar & Definitionen" },
+    { value: "collectionpage", label: "CollectionPage", description: "Übersichts- & Kategorieseiten" },
   ];
 
   const generateSchema = () => {
@@ -254,6 +269,30 @@ export default function SchemaGeneratorPage() {
           } : termSetName ? { "inDefinedTermSet": termSetName } : {})
         };
         break;
+
+      case "collectionpage": {
+        const filteredItems = collectionItems.filter(item => item.name && item.url);
+        schema = {
+          "@context": "https://schema.org",
+          "@type": "CollectionPage",
+          "name": collectionName,
+          ...(collectionDescription && { "description": collectionDescription }),
+          ...(collectionUrl && { "url": collectionUrl }),
+          ...(filteredItems.length > 0 && {
+            "mainEntity": {
+              "@type": "ItemList",
+              "itemListElement": filteredItems.map((item, index) => ({
+                "@type": "ListItem",
+                "position": index + 1,
+                "name": item.name,
+                "url": item.url,
+                ...(item.description && { "description": item.description })
+              }))
+            }
+          })
+        };
+        break;
+      }
     }
 
     setGeneratedSchema(JSON.stringify(schema, null, 2));
@@ -287,6 +326,14 @@ export default function SchemaGeneratorPage() {
 
   const removeBreadcrumb = (index: number) => {
     setBreadcrumbs(breadcrumbs.filter((_, i) => i !== index));
+  };
+
+  const addCollectionItem = () => {
+    setCollectionItems([...collectionItems, { name: "", url: "", description: "" }]);
+  };
+
+  const removeCollectionItem = (index: number) => {
+    setCollectionItems(collectionItems.filter((_, i) => i !== index));
   };
 
   return (
@@ -618,6 +665,76 @@ export default function SchemaGeneratorPage() {
                   <input type="text" placeholder="Name des Glossars (z.B. Finanzlexikon)" value={termSetName} onChange={(e) => setTermSetName(e.target.value)} className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white" />
                   <input type="url" placeholder="URL des Glossars" value={termSetUrl} onChange={(e) => setTermSetUrl(e.target.value)} className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white" />
                 </div>
+              </div>
+            )}
+
+            {/* CollectionPage Form */}
+            {schemaType === "collectionpage" && (
+              <div className="space-y-4">
+                <input type="text" placeholder="Seitenname (z.B. Hypotheken-Übersicht)" value={collectionName} onChange={(e) => setCollectionName(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
+                <textarea placeholder="Seitenbeschreibung (optional)" value={collectionDescription} onChange={(e) => setCollectionDescription(e.target.value)} rows={2} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white resize-none" />
+                <input type="url" placeholder="Seiten-URL (optional)" value={collectionUrl} onChange={(e) => setCollectionUrl(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
+
+                <div className="pt-2">
+                  <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Einträge der Sammlung</span>
+                </div>
+
+                {collectionItems.map((item, index) => (
+                  <div key={index} className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                        Eintrag {index + 1}
+                      </span>
+                      {collectionItems.length > 1 && (
+                        <button
+                          onClick={() => removeCollectionItem(index)}
+                          className="text-red-500 hover:text-red-700 text-sm"
+                        >
+                          Entfernen
+                        </button>
+                      )}
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Name (z.B. Festhypothek)"
+                      value={item.name}
+                      onChange={(e) => {
+                        const newItems = [...collectionItems];
+                        newItems[index].name = e.target.value;
+                        setCollectionItems(newItems);
+                      }}
+                      className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                    />
+                    <input
+                      type="url"
+                      placeholder="URL des Eintrags"
+                      value={item.url}
+                      onChange={(e) => {
+                        const newItems = [...collectionItems];
+                        newItems[index].url = e.target.value;
+                        setCollectionItems(newItems);
+                      }}
+                      className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Beschreibung (optional)"
+                      value={item.description}
+                      onChange={(e) => {
+                        const newItems = [...collectionItems];
+                        newItems[index].description = e.target.value;
+                        setCollectionItems(newItems);
+                      }}
+                      className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                    />
+                  </div>
+                ))}
+                <button
+                  onClick={addCollectionItem}
+                  className="w-full py-2 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl text-slate-500 hover:border-pink-500 hover:text-pink-500 transition-colors"
+                >
+                  + Weiteren Eintrag hinzufügen
+                </button>
               </div>
             )}
 
