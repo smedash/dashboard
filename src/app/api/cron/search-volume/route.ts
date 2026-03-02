@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 // Wird monatlich am 5. Tag um 01:00 Uhr aufgerufen (konfiguriert in vercel.json)
 // Geschützt durch CRON_SECRET
 
-export const maxDuration = 300; // 5 Minuten Timeout für den Cron-Job
+export const maxDuration = 600; // 10 Minuten Timeout für den Cron-Job (Pro Plan: max 800s)
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
