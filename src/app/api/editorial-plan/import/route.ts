@@ -7,6 +7,35 @@ import * as XLSX from "xlsx";
 const VALID_CATEGORIES = ["Mortgages", "Accounts&Cards", "Investing", "Pension", "Digital Banking"];
 const VALID_LOCATIONS = ["Guide", "Insights"];
 
+const CATEGORY_ALIASES: Record<string, string> = {
+  "investments": "Investing",
+  "investment": "Investing",
+  "invest": "Investing",
+  "mortgage": "Mortgages",
+  "hypotheken": "Mortgages",
+  "hypothek": "Mortgages",
+  "accounts": "Accounts&Cards",
+  "cards": "Accounts&Cards",
+  "konto": "Accounts&Cards",
+  "konten": "Accounts&Cards",
+  "karten": "Accounts&Cards",
+  "vorsorge": "Pension",
+  "pensions": "Pension",
+  "rente": "Pension",
+  "digital": "Digital Banking",
+  "banking": "Digital Banking",
+};
+
+function normalizeCategory(raw: string | undefined): string | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (VALID_CATEGORIES.includes(trimmed)) return trimmed;
+  const lower = trimmed.toLowerCase();
+  const exact = VALID_CATEGORIES.find((c) => c.toLowerCase() === lower);
+  if (exact) return exact;
+  return CATEGORY_ALIASES[lower] || null;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
@@ -89,7 +118,7 @@ export async function POST(request: NextRequest) {
             metaDescription: headerMap.metaDescription ? row[headerMap.metaDescription]?.toString().trim() || null : null,
             h1: headerMap.h1 ? row[headerMap.h1]?.toString().trim() || null : null,
             schemaMarkup: headerMap.schemaMarkup ? row[headerMap.schemaMarkup]?.toString().trim() || null : null,
-            category: category && VALID_CATEGORIES.includes(category) ? category : null,
+            category: normalizeCategory(category),
             location: location && VALID_LOCATIONS.includes(location) ? location : null,
             status: "idea",
             plannedDate,

@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { title, description, url, category, status, plannedDate, metaDescription, h1, schemaMarkup, location } = body;
+    const { title, description, url, category, status, plannedDate, metaDescription, h1, schemaMarkup, location, journeyPhase } = body;
 
     if (!title?.trim()) {
       return NextResponse.json({ error: "Title is required" }, { status: 400 });
@@ -59,6 +59,7 @@ export async function POST(request: NextRequest) {
         h1: h1?.trim() || null,
         schemaMarkup: schemaMarkup?.trim() || null,
         location: location || null,
+        journeyPhase: journeyPhase || null,
         creatorId: session.user.id,
       },
       include: {
@@ -87,30 +88,32 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { id, title, description, url, category, status, plannedDate, metaDescription, h1, schemaMarkup, location } = body;
+    const { id, title, description, url, category, status, plannedDate, metaDescription, h1, schemaMarkup, location, journeyPhase } = body;
 
     if (!id) {
       return NextResponse.json({ error: "ID is required" }, { status: 400 });
     }
 
-    if (!title?.trim()) {
+    if (title !== undefined && !title?.trim()) {
       return NextResponse.json({ error: "Title is required" }, { status: 400 });
     }
 
+    const updateData: Record<string, unknown> = {};
+    if (title !== undefined) updateData.title = title.trim();
+    if (description !== undefined) updateData.description = description?.trim() || null;
+    if (url !== undefined) updateData.url = url?.trim() || null;
+    if (category !== undefined) updateData.category = category || null;
+    if (status !== undefined) updateData.status = status || "idea";
+    if (plannedDate !== undefined) updateData.plannedDate = plannedDate ? new Date(plannedDate) : null;
+    if (metaDescription !== undefined) updateData.metaDescription = metaDescription?.trim() || null;
+    if (h1 !== undefined) updateData.h1 = h1?.trim() || null;
+    if (schemaMarkup !== undefined) updateData.schemaMarkup = schemaMarkup?.trim() || null;
+    if (location !== undefined) updateData.location = location || null;
+    if (journeyPhase !== undefined) updateData.journeyPhase = journeyPhase || null;
+
     const article = await prisma.editorialPlanArticle.update({
       where: { id },
-      data: {
-        title: title.trim(),
-        description: description?.trim() || null,
-        url: url?.trim() || null,
-        category: category || null,
-        status: status || "idea",
-        plannedDate: plannedDate ? new Date(plannedDate) : null,
-        metaDescription: metaDescription?.trim() || null,
-        h1: h1?.trim() || null,
-        schemaMarkup: schemaMarkup?.trim() || null,
-        location: location || null,
-      },
+      data: updateData,
       include: {
         creator: {
           select: { id: true, name: true, email: true },
