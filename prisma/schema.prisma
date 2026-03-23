@@ -33,6 +33,7 @@ model User {
   briefingsAssigned  Briefing[] @relation("BriefingAssignee")  // Briefings die der User bearbeitet
   tasksCreated  Task[]         @relation("TaskCreator") // Tasks die der User erstellt hat
   taskAssignments TaskAssignee[] @relation("TaskAssignee") // Tasks die dem User zugewiesen sind
+  editorialArticles EditorialPlanArticle[] @relation("EditorialPlanCreator") // Redaktionsplan-Artikel
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
@@ -507,6 +508,30 @@ model TaskFile {
   createdAt DateTime @default(now())
 
   @@index([taskId])
+}
+
+// Redaktionsplan - Artikelplanung
+model EditorialPlanArticle {
+  id          String   @id @default(cuid())
+  title       String
+  description String?  @db.Text
+  url         String?  @db.Text
+  category    String?  // Kategorie: Mortgages, Accounts&Cards, Investing, Pension, Digital Banking
+  status      String   @default("idea") // idea, planned, in_progress, in_review, published
+  plannedDate DateTime?
+  metaDescription String? @db.Text
+  h1          String?
+  schemaMarkup String?  @db.Text // schema.org JSON-LD Markup
+  location    String?  // Location: Guide, Insights
+  creatorId   String
+  creator     User     @relation("EditorialPlanCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([creatorId])
+  @@index([status])
+  @@index([category])
+  @@index([plannedDate])
 }
 
 // Changelog Zeiterfassung - Minuten pro Commit
