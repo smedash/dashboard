@@ -129,6 +129,8 @@ const CATEGORIES = [
   "Digital Banking",
 ] as const;
 
+const LOCATIONS = ["Guide", "Insights"] as const;
+
 const CATEGORY_COLORS: Record<string, string> = {
   "Mortgages": "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
   "Accounts&Cards": "bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-300",
@@ -160,10 +162,11 @@ export default function CustomerJourneyPage() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterCategory, setFilterCategory] = useState<string>("");
+  const [filterLocation, setFilterLocation] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [expandedPhases, setExpandedPhases] = useState<Set<string>>(
-    new Set(JOURNEY_PHASES.map((p) => p.id))
+    new Set()
   );
   const [showUnassigned, setShowUnassigned] = useState(true);
 
@@ -174,6 +177,14 @@ export default function CustomerJourneyPage() {
     results: Array<{ id: string; phase: string; confidence: string; reason: string }>;
   } | null>(null);
   const [classifyMode, setClassifyMode] = useState<"unassigned" | "all">("unassigned");
+
+  const [suggestPhase, setSuggestPhase] = useState<string | null>(null);
+  const [suggestCategory, setSuggestCategory] = useState<string>("");
+  const [suggesting, setSuggesting] = useState(false);
+  const [suggestions, setSuggestions] = useState<Array<{ title: string; reason: string }> | null>(null);
+  const [suggestMeta, setSuggestMeta] = useState<{ phase: string; category: string; existingCount: number } | null>(null);
+  const [savedSuggestions, setSavedSuggestions] = useState<Set<number>>(new Set());
+  const [savingIndex, setSavingIndex] = useState<number | null>(null);
 
   const fetchArticles = useCallback(async () => {
     try {
@@ -237,8 +248,76 @@ export default function CustomerJourneyPage() {
     }
   };
 
+  const openSuggestDialog = (phaseId: string) => {
+    setSuggestPhase(phaseId);
+    setSuggestCategory("");
+    setSuggestions(null);
+    setSuggestMeta(null);
+    setSavedSuggestions(new Set());
+  };
+
+  const closeSuggestDialog = () => {
+    setSuggestPhase(null);
+    setSuggestCategory("");
+    setSuggestions(null);
+    setSuggestMeta(null);
+    setSavedSuggestions(new Set());
+    setSavingIndex(null);
+  };
+
+  const fetchSuggestions = async () => {
+    if (!suggestPhase || !suggestCategory) return;
+    setSuggesting(true);
+    setSuggestions(null);
+    setSavedSuggestions(new Set());
+    try {
+      const res = await fetch("/api/editorial-plan/suggest-titles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phase: suggestPhase, category: suggestCategory }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSuggestions(data.suggestions);
+        setSuggestMeta({ phase: data.phase, category: data.category, existingCount: data.existingCount });
+      } else {
+        console.error("Error fetching suggestions");
+      }
+    } catch (error) {
+      console.error("Error fetching suggestions:", error);
+    } finally {
+      setSuggesting(false);
+    }
+  };
+
+  const saveSuggestion = async (index: number, title: string) => {
+    if (!suggestPhase || !suggestCategory) return;
+    setSavingIndex(index);
+    try {
+      const res = await fetch("/api/editorial-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          category: suggestCategory,
+          journeyPhase: suggestPhase,
+          status: "idea",
+        }),
+      });
+      if (res.ok) {
+        setSavedSuggestions((prev) => new Set(prev).add(index));
+        await fetchArticles();
+      }
+    } catch (error) {
+      console.error("Error saving suggestion:", error);
+    } finally {
+      setSavingIndex(null);
+    }
+  };
+
   const filteredArticles = articles.filter((a) => {
     if (filterCategory && a.category !== filterCategory) return false;
+    if (filterLocation && a.location !== filterLocation) return false;
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       if (
@@ -439,6 +518,16 @@ export default function CustomerJourneyPage() {
             <option key={c} value={c}>{c}</option>
           ))}
         </select>
+        <select
+          value={filterLocation}
+          onChange={(e) => setFilterLocation(e.target.value)}
+          className="px-3 py-1.5 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+        >
+          <option value="">Alle Locations</option>
+          {LOCATIONS.map((l) => (
+            <option key={l} value={l}>{l}</option>
+          ))}
+        </select>
       </div>
 
       {/* Funnel Overview */}
@@ -611,6 +700,21 @@ export default function CustomerJourneyPage() {
                   <span className={`inline-flex items-center justify-center px-3 py-1 rounded-full text-sm font-bold ${phase.badgeColor}`}>
                     {phaseArticles.length}
                   </span>
+                  {userCanEdit && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openSuggestDialog(phase.id);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-purple-50 text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50 transition-colors"
+                      title="Neue Titelvorschläge von der KI generieren"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
+                      </svg>
+                      Neue Titelvorschläge
+                    </button>
+                  )}
                   <svg
                     className={`w-5 h-5 text-slate-400 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}
                     fill="none"
@@ -649,6 +753,200 @@ export default function CustomerJourneyPage() {
           );
         })}
       </div>
+
+      {/* Suggest Titles Modal */}
+      {suggestPhase && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className={`bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 mx-4 p-6 flex flex-col ${suggestions ? "w-full max-w-2xl max-h-[85vh]" : "w-full max-w-md"}`}>
+            {/* Header */}
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <div className="flex items-center gap-3">
+                <div className={`flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br ${JOURNEY_PHASES.find((p) => p.id === suggestPhase)?.color} text-white shrink-0`}>
+                  {JOURNEY_PHASES.find((p) => p.id === suggestPhase)?.icon}
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                    Neue Titelvorschläge
+                  </h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    {JOURNEY_PHASES.find((p) => p.id === suggestPhase)?.label} – {JOURNEY_PHASES.find((p) => p.id === suggestPhase)?.sublabel}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={closeSuggestDialog}
+                className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors shrink-0"
+              >
+                <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Step 1: Category Selection */}
+            {!suggestions && !suggesting && (
+              <>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                  Für welche Kategorie möchtest du neue Titelvorschläge? Die KI gleicht dann mit den bestehenden Titeln dieser Kategorie ab.
+                </p>
+                <div className="space-y-2 mb-6">
+                  {CATEGORIES.map((cat) => {
+                    const count = articles.filter(
+                      (a) => a.category === cat && a.journeyPhase === suggestPhase
+                    ).length;
+                    return (
+                      <button
+                        key={cat}
+                        onClick={() => setSuggestCategory(cat)}
+                        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all text-left ${
+                          suggestCategory === cat
+                            ? "border-purple-400 bg-purple-50 dark:bg-purple-900/30 ring-2 ring-purple-400/30"
+                            : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700/30"
+                        }`}
+                      >
+                        <span className="flex items-center gap-2">
+                          <span className={`inline-block w-2.5 h-2.5 rounded-full ${CATEGORY_BAR_COLORS[cat]}`} />
+                          <span className="text-sm font-medium text-slate-900 dark:text-white">{cat}</span>
+                        </span>
+                        <span className="text-xs text-slate-400 dark:text-slate-500">
+                          {count} Artikel in Phase
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={closeSuggestDialog}
+                    className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors"
+                  >
+                    Abbrechen
+                  </button>
+                  <button
+                    onClick={fetchSuggestions}
+                    disabled={!suggestCategory}
+                    className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-purple-600 text-white hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Vorschläge generieren
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* Loading State */}
+            {suggesting && (
+              <div className="flex flex-col items-center justify-center py-12 gap-3">
+                <svg className="w-8 h-8 animate-spin text-purple-600" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                  Claude generiert Titelvorschläge für <span className="font-bold text-purple-600 dark:text-purple-400">{suggestCategory}</span>...
+                </p>
+                <p className="text-xs text-slate-400">Das kann einige Sekunden dauern</p>
+              </div>
+            )}
+
+            {/* Step 2: Suggestions List */}
+            {suggestions && suggestMeta && (
+              <>
+                <div className="flex items-center gap-2 mb-3 px-1">
+                  <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${CATEGORY_COLORS[suggestMeta.category] || "bg-slate-100 text-slate-700"}`}>
+                    {suggestMeta.category}
+                  </span>
+                  <span className="text-xs text-slate-400 dark:text-slate-500">
+                    · {suggestMeta.existingCount} bestehende Artikel abgeglichen · {suggestions.length} Vorschläge
+                  </span>
+                  {savedSuggestions.size > 0 && (
+                    <span className="text-xs font-medium text-green-600 dark:text-green-400 ml-auto">
+                      {savedSuggestions.size} gespeichert
+                    </span>
+                  )}
+                </div>
+                <div className="overflow-y-auto flex-1 -mx-6 px-6 divide-y divide-slate-100 dark:divide-slate-700/50 border-t border-b border-slate-100 dark:border-slate-700/50">
+                  {suggestions.map((s, i) => {
+                    const isSaved = savedSuggestions.has(i);
+                    const isSaving = savingIndex === i;
+                    return (
+                      <div key={i} className="flex items-start gap-3 py-3">
+                        <span className="text-xs font-bold text-purple-400 dark:text-purple-500 mt-1 shrink-0 w-5 text-right">
+                          {i + 1}.
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-slate-900 dark:text-white">
+                            {s.title}
+                          </p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                            {s.reason}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => saveSuggestion(i, s.title)}
+                          disabled={isSaved || isSaving}
+                          className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors mt-0.5 ${
+                            isSaved
+                              ? "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 cursor-default"
+                              : isSaving
+                                ? "bg-purple-50 text-purple-500 dark:bg-purple-900/30 cursor-wait"
+                                : "bg-slate-100 text-slate-700 hover:bg-purple-50 hover:text-purple-700 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-purple-900/30 dark:hover:text-purple-300"
+                          }`}
+                          title={isSaved ? "Bereits gespeichert" : "In Redaktionsplan speichern"}
+                        >
+                          {isSaved ? (
+                            <>
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                              Gespeichert
+                            </>
+                          ) : isSaving ? (
+                            <>
+                              <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                              </svg>
+                              Speichere...
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                              </svg>
+                              Speichern
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="flex items-center gap-3 mt-4">
+                  <button
+                    onClick={() => {
+                      setSuggestions(null);
+                      setSuggestMeta(null);
+                      setSuggestCategory("");
+                      setSavedSuggestions(new Set());
+                    }}
+                    className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                    Andere Kategorie
+                  </button>
+                  <button
+                    onClick={closeSuggestDialog}
+                    className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 transition-colors"
+                  >
+                    Fertig
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Unassigned Articles */}
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">

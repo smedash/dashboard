@@ -95,6 +95,8 @@ export default function RedaktionsplanPage() {
   const [viewMode, setViewMode] = useState<"calendar" | "list">("calendar");
   const [filterCategory, setFilterCategory] = useState<string>("");
   const [filterStatus, setFilterStatus] = useState<string>("");
+  const [filterLocation, setFilterLocation] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState<string>("");
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ imported: number; skipped: number; total: number; errors: string[] } | null>(null);
 
@@ -198,6 +200,13 @@ export default function RedaktionsplanPage() {
   const filteredArticles = articles.filter((a) => {
     if (filterCategory && a.category !== filterCategory) return false;
     if (filterStatus && a.status !== filterStatus) return false;
+    if (filterLocation && a.location !== filterLocation) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      const matchesTitle = a.title.toLowerCase().includes(q);
+      const matchesMeta = a.metaDescription?.toLowerCase().includes(q);
+      if (!matchesTitle && !matchesMeta) return false;
+    }
     return true;
   });
 
@@ -355,6 +364,28 @@ export default function RedaktionsplanPage() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
+        <div className="relative">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Titel oder Meta-Description suchen..."
+            className="pl-9 pr-3 py-1.5 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 w-72 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700"
+            >
+              <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
         <select
           value={filterCategory}
           onChange={(e) => setFilterCategory(e.target.value)}
@@ -373,6 +404,16 @@ export default function RedaktionsplanPage() {
           <option value="">Alle Status</option>
           {STATUSES.map((s) => (
             <option key={s.id} value={s.id}>{s.label}</option>
+          ))}
+        </select>
+        <select
+          value={filterLocation}
+          onChange={(e) => setFilterLocation(e.target.value)}
+          className="px-3 py-1.5 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+        >
+          <option value="">Alle Locations</option>
+          {LOCATIONS.map((l) => (
+            <option key={l} value={l}>{l}</option>
           ))}
         </select>
         {/* Status Legend */}
@@ -517,7 +558,7 @@ export default function RedaktionsplanPage() {
           {unscheduledArticles.length > 0 && (
             <div className="border-t border-slate-200 dark:border-slate-700 px-6 py-4">
               <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
-                Ohne Datum ({unscheduledArticles.length})
+                Content-Ideen ({unscheduledArticles.length})
               </h3>
               <div className="flex flex-wrap gap-2">
                 {unscheduledArticles.map((article) => {
