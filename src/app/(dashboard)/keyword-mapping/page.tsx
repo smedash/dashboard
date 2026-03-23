@@ -75,6 +75,7 @@ export default function KeywordMappingPage() {
   const [activeTab, setActiveTab] = useState<TabId>("mapping");
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [locationFilter, setLocationFilter] = useState<string>("all");
   const [overlapFilter, setOverlapFilter] = useState<"all" | "with-overlaps">("all");
   const [keywordSearch, setKeywordSearch] = useState("");
   const [selectedCloudKeyword, setSelectedCloudKeyword] = useState<string | null>(null);
@@ -143,7 +144,7 @@ export default function KeywordMappingPage() {
 
   const getOverlapsForArticle = (articleId: string): OverlapGroup[] => {
     if (!analysisData) return [];
-    return analysisData.overlaps.filter((o) => o.articles.some((a) => a.id === articleId));
+    return filteredOverlaps.filter((o) => o.articles.some((a) => a.id === articleId));
   };
 
   const eligibleArticles = articles.filter(
@@ -161,30 +162,57 @@ export default function KeywordMappingPage() {
       );
 
     const matchesCategory = categoryFilter === "all" || a.category === categoryFilter;
+    const matchesLocation = locationFilter === "all" || a.location === locationFilter;
 
     const matchesOverlap =
       overlapFilter === "all" || getOverlapsForArticle(a.id).length > 0;
 
-    return matchesSearch && matchesCategory && matchesOverlap;
+    return matchesSearch && matchesCategory && matchesLocation && matchesOverlap;
   });
 
   const categories = [...new Set(articles.map((a) => a.category).filter(Boolean))] as string[];
 
-  const totalOverlaps = analysisData?.overlaps.length ?? 0;
-  const criticalOverlaps = analysisData?.overlaps.filter((o) => o.articles.length >= 3).length ?? 0;
+  const filteredArticleIds = useMemo(() => {
+    if (categoryFilter === "all" && locationFilter === "all") return null;
+    return new Set(
+      articles
+        .filter((a) => (categoryFilter === "all" || a.category === categoryFilter) &&
+                       (locationFilter === "all" || a.location === locationFilter))
+        .map((a) => a.id)
+    );
+  }, [articles, categoryFilter, locationFilter]);
+
+  const filteredOverlaps = useMemo(() => {
+    if (!analysisData) return [];
+    if (!filteredArticleIds) return analysisData.overlaps;
+    return analysisData.overlaps
+      .map((o) => ({
+        ...o,
+        articles: o.articles.filter((a) => filteredArticleIds.has(a.id)),
+      }))
+      .filter((o) => o.articles.length > 1);
+  }, [analysisData, filteredArticleIds]);
+
+  const totalOverlaps = filteredOverlaps.length;
+  const criticalOverlaps = filteredOverlaps.filter((o) => o.articles.length >= 3).length;
 
   const locationOverlaps = useMemo(() => {
-    if (!analysisData) return [];
-    return analysisData.overlaps.filter((o) => {
+    return filteredOverlaps.filter((o) => {
       const locations = new Set(o.articles.map((a) => a.location).filter(Boolean));
       return locations.has("Guide") && locations.has("Insights");
     });
-  }, [analysisData]);
+  }, [filteredOverlaps]);
+
+  const filteredResults = useMemo(() => {
+    if (!analysisData) return [];
+    if (!filteredArticleIds) return analysisData.results;
+    return analysisData.results.filter((r) => filteredArticleIds.has(r.id));
+  }, [analysisData, filteredArticleIds]);
 
   const keywordStats = useMemo(() => {
     if (!analysisData) return { unique: [], counts: new Map<string, number>() };
     const counts = new Map<string, number>();
-    for (const r of analysisData.results) {
+    for (const r of filteredResults) {
       for (const kw of r.focusKeywords) {
         const normalized = kw.toLowerCase().trim();
         counts.set(normalized, (counts.get(normalized) || 0) + 1);
@@ -194,7 +222,7 @@ export default function KeywordMappingPage() {
       .map(([keyword, count]) => ({ keyword, count }))
       .sort((a, b) => b.count - a.count || a.keyword.localeCompare(b.keyword));
     return { unique, counts };
-  }, [analysisData]);
+  }, [analysisData, filteredResults]);
 
   const filteredKeywords = useMemo(() => {
     if (!keywordSearch) return keywordStats.unique;
@@ -214,14 +242,14 @@ export default function KeywordMappingPage() {
 
   const selectedCloudArticles = useMemo(() => {
     if (!selectedCloudKeyword || !analysisData) return [];
-    return analysisData.results
+    return filteredResults
       .filter((r) => r.focusKeywords.some((kw) => kw.toLowerCase().trim() === selectedCloudKeyword))
       .map((r) => {
         const article = articles.find((a) => a.id === r.id);
         return article ? { id: article.id, title: article.title, url: article.url } : null;
       })
       .filter(Boolean) as Array<{ id: string; title: string; url: string | null }>;
-  }, [selectedCloudKeyword, analysisData, articles]);
+  }, [selectedCloudKeyword, analysisData, filteredResults, articles]);
 
   if (loading) {
     return (
@@ -287,7 +315,7 @@ export default function KeywordMappingPage() {
       {analysisData && (
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
           <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
-            <div className="text-2xl font-bold text-slate-900 dark:text-white">{analysisData.analyzed}</div>
+            <div className="text-2xl font-bold text-slate-900 dark:text-white">{filteredResults.length}</div>
             <div className="text-sm text-slate-500 dark:text-slate-400">Artikel analysiert</div>
           </div>
           <button
@@ -387,42 +415,51 @@ export default function KeywordMappingPage() {
         </div>
       )}
 
-      {/* Filters (for mapping + keywords tabs) */}
-      {analysisData && (activeTab === "mapping" || activeTab === "keywords") && (
+      {/* Filters */}
+      {analysisData && (
         <div className="flex flex-wrap gap-3">
-          <div className="relative flex-1 min-w-[200px]">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input
-              type="text"
-              placeholder={activeTab === "keywords" ? "Keyword suchen..." : "Suche nach Titel, URL oder Keyword..."}
-              value={activeTab === "keywords" ? keywordSearch : searchTerm}
-              onChange={(e) => activeTab === "keywords" ? setKeywordSearch(e.target.value) : setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
+          {(activeTab === "mapping" || activeTab === "keywords") && (
+            <div className="relative flex-1 min-w-[200px]">
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                type="text"
+                placeholder={activeTab === "keywords" ? "Keyword suchen..." : "Suche nach Titel, URL oder Keyword..."}
+                value={activeTab === "keywords" ? keywordSearch : searchTerm}
+                onChange={(e) => activeTab === "keywords" ? setKeywordSearch(e.target.value) : setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+          )}
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="all">Alle Kategorien</option>
+            {categories.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+          <select
+            value={locationFilter}
+            onChange={(e) => setLocationFilter(e.target.value)}
+            className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="all">Alle Locations</option>
+            <option value="Guide">Guide</option>
+            <option value="Insights">Insights</option>
+          </select>
           {activeTab === "mapping" && (
-            <>
-              <select
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="all">Alle Kategorien</option>
-                {categories.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-              <select
-                value={overlapFilter}
-                onChange={(e) => setOverlapFilter(e.target.value as "all" | "with-overlaps")}
-                className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="all">Alle Artikel</option>
-                <option value="with-overlaps">Nur mit Überlappungen</option>
-              </select>
-            </>
+            <select
+              value={overlapFilter}
+              onChange={(e) => setOverlapFilter(e.target.value as "all" | "with-overlaps")}
+              className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">Alle Artikel</option>
+              <option value="with-overlaps">Nur mit Überlappungen</option>
+            </select>
           )}
         </div>
       )}
@@ -509,7 +546,7 @@ export default function KeywordMappingPage() {
                         {result ? (
                           <div className="flex flex-wrap gap-1.5">
                             {result.focusKeywords.map((kw) => {
-                              const isOverlapping = analysisData.overlaps.some(
+                              const isOverlapping = filteredOverlaps.some(
                                 (o) => o.keyword === kw
                               );
                               return (
@@ -585,7 +622,7 @@ export default function KeywordMappingPage() {
       {/* Overlaps Tab */}
       {activeTab === "overlaps" && analysisData && (
         <div className="space-y-4">
-          {analysisData.overlaps.length === 0 ? (
+          {filteredOverlaps.length === 0 ? (
             <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-8 text-center">
               <svg className="w-12 h-12 mx-auto text-green-500 dark:text-green-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -596,7 +633,7 @@ export default function KeywordMappingPage() {
               </p>
             </div>
           ) : (
-            analysisData.overlaps.map((overlap) => (
+            filteredOverlaps.map((overlap) => (
               <div
                 key={overlap.keyword}
                 className={`rounded-xl border p-5 ${getSeverityColor(overlap.articles.length)}`}
@@ -783,7 +820,7 @@ export default function KeywordMappingPage() {
               <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                 {filteredKeywords.map((kw, idx) => {
                   const isOverlap = kw.count > 1;
-                  const matchingArticles = analysisData.results
+                  const matchingArticles = filteredResults
                     .filter((r) => r.focusKeywords.some((fk) => fk.toLowerCase().trim() === kw.keyword))
                     .map((r) => {
                       const a = articles.find((art) => art.id === r.id);
@@ -841,12 +878,12 @@ export default function KeywordMappingPage() {
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        <div className="space-y-1 max-w-sm">
+                        <div className="space-y-1">
                           {matchingArticles.map((a) => (
-                            <div key={a.id} className="text-xs text-slate-600 dark:text-slate-400 truncate" title={a.title}>
-                              {a.title}
+                            <div key={a.id} className="text-xs text-slate-600 dark:text-slate-400">
+                              <div className="font-medium text-slate-700 dark:text-slate-300">{a.title}</div>
                               {a.url && (
-                                <span className="text-blue-500 dark:text-blue-400 ml-1">({a.url})</span>
+                                <a href={a.url} target="_blank" rel="noopener noreferrer" className="text-blue-500 dark:text-blue-400 hover:underline break-all">{a.url}</a>
                               )}
                             </div>
                           ))}
