@@ -616,3 +616,26 @@ model ReferringDomain {
   @@index([profileId])
   @@index([rank])
 }
+
+// Keyword Mapping - Analyse-Durchlauf
+model KeywordMappingRun {
+  id        String   @id @default(cuid())
+  analyzed  Int      @default(0)
+  total     Int      @default(0)
+  results   KeywordMappingResult[]
+  createdAt DateTime @default(now())
+}
+
+// Keyword Mapping - Einzelergebnis pro Artikel
+model KeywordMappingResult {
+  id            String            @id @default(cuid())
+  runId         String
+  run           KeywordMappingRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  articleId     String
+  focusKeywords String            @db.Text // JSON array: ["keyword1", "keyword2"]
+  reasoning     String?
+  createdAt     DateTime          @default(now())
+
+  @@index([runId])
+  @@index([articleId])
+}
