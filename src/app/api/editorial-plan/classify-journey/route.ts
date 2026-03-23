@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
 
     const articles = await prisma.editorialPlanArticle.findMany({
       where,
-      select: { id: true, title: true, category: true, description: true, url: true },
+      select: { id: true, title: true, category: true, description: true, url: true, metaDescription: true, h1: true },
       orderBy: { createdAt: "asc" },
     });
 
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
     }
 
     const BATCH_SIZE = 50;
-    const allResults: Array<{ id: string; phase: string; confidence: string; reason: string }> = [];
+    const allResults: Array<{ id: string; phase: string; confidence: number; reason: string }> = [];
 
     for (let i = 0; i < articles.length; i += BATCH_SIZE) {
       const batch = articles.slice(i, i + BATCH_SIZE);
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
       const articleList = batch
         .map(
           (a, idx) =>
-            `${idx + 1}. [ID: ${a.id}] Titel: "${a.title}"${a.category ? ` | Kategorie: ${a.category}` : ""}${a.description ? ` | Beschreibung: ${a.description.substring(0, 150)}` : ""}${a.url ? ` | URL: ${a.url}` : ""}`
+            `${idx + 1}. [ID: ${a.id}] Titel: "${a.title}"${a.category ? ` | Kategorie: ${a.category}` : ""}${a.h1 ? ` | H1: ${a.h1}` : ""}${a.metaDescription ? ` | Meta-Description: ${a.metaDescription.substring(0, 200)}` : ""}${a.description ? ` | Beschreibung: ${a.description.substring(0, 150)}` : ""}${a.url ? ` | URL: ${a.url}` : ""}`
         )
         .join("\n");
 
@@ -94,9 +94,15 @@ Klassifiziere die folgenden Artikel in die passende Customer Journey Phase. Ber�
 Artikel:
 ${articleList}
 
+Wichtig: Viele Themen liegen an der Grenze zwischen zwei Phasen. Gib deshalb einen numerischen Konfidenz-Score (0-100) an, der widerspiegelt, wie eindeutig die Zuordnung ist:
+- 85-100: Sehr eindeutig, passt klar in eine Phase
+- 65-84: Ziemlich klar, aber mit leichten Überschneidungen zu einer Nachbarphase
+- 45-64: Grenzfall, könnte auch in eine andere Phase passen
+- 0-44: Sehr unklar, fast willkürliche Zuordnung
+
 Antworte NUR mit einem JSON-Array im folgenden Format (keine weiteren Erklärungen):
 [
-  {"id": "...", "phase": "awareness|orientation|planning|product_search|closing", "confidence": "high|medium|low", "reason": "Kurze Begründung (max 10 Wörter)"}
+  {"id": "...", "phase": "awareness|orientation|planning|product_search|closing", "confidence": 75, "reason": "Kurze Begründung (max 10 Wörter)"}
 ]`,
           },
         ],
@@ -112,7 +118,7 @@ Antworte NUR mit einem JSON-Array im folgenden Format (keine weiteren Erklärung
         const results = JSON.parse(jsonMatch[0]) as Array<{
           id: string;
           phase: string;
-          confidence: string;
+          confidence: number;
           reason: string;
         }>;
 
@@ -124,12 +130,17 @@ Antworte NUR mit einem JSON-Array im folgenden Format (keine weiteren Erklärung
           const articleExists = batch.find((a) => a.id === result.id);
           if (!articleExists) continue;
 
+          const confidenceScore = Math.max(0, Math.min(100, Math.round(Number(result.confidence) || 0)));
+
           await prisma.editorialPlanArticle.update({
             where: { id: result.id },
-            data: { journeyPhase: result.phase },
+            data: {
+              journeyPhase: result.phase,
+              journeyConfidence: confidenceScore,
+            },
           });
 
-          allResults.push(result);
+          allResults.push({ ...result, confidence: confidenceScore });
         }
       } catch {
         console.error("Failed to parse Claude response for batch", i / BATCH_SIZE);

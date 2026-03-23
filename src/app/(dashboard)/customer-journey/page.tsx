@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { canEdit } from "@/lib/rbac";
 
@@ -23,6 +23,7 @@ interface Article {
   schemaMarkup: string | null;
   location: string | null;
   journeyPhase: string | null;
+  journeyConfidence: number | null;
   creator: ArticleUser;
   createdAt: string;
   updatedAt: string;
@@ -174,7 +175,7 @@ export default function CustomerJourneyPage() {
   const [classifyResult, setClassifyResult] = useState<{
     classified: number;
     total: number;
-    results: Array<{ id: string; phase: string; confidence: string; reason: string }>;
+    results: Array<{ id: string; phase: string; confidence: number; reason: string }>;
   } | null>(null);
   const [classifyMode, setClassifyMode] = useState<"unassigned" | "all">("unassigned");
 
@@ -185,6 +186,25 @@ export default function CustomerJourneyPage() {
   const [suggestMeta, setSuggestMeta] = useState<{ phase: string; category: string; existingCount: number } | null>(null);
   const [savedSuggestions, setSavedSuggestions] = useState<Set<number>>(new Set());
   const [savingIndex, setSavingIndex] = useState<number | null>(null);
+  const [loadingMsgIndex, setLoadingMsgIndex] = useState(0);
+  const loadingInterval = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (suggesting) {
+      setLoadingMsgIndex(0);
+      loadingInterval.current = setInterval(() => {
+        setLoadingMsgIndex((prev) => (prev + 1) % 5);
+      }, 3000);
+    } else {
+      if (loadingInterval.current) {
+        clearInterval(loadingInterval.current);
+        loadingInterval.current = null;
+      }
+    }
+    return () => {
+      if (loadingInterval.current) clearInterval(loadingInterval.current);
+    };
+  }, [suggesting]);
 
   const fetchArticles = useCallback(async () => {
     try {
@@ -449,6 +469,13 @@ export default function CustomerJourneyPage() {
                   <div className="mt-2 space-y-1">
                     {classifyResult.results.slice(0, 10).map((r) => {
                       const phase = JOURNEY_PHASES.find((p) => p.id === r.phase);
+                      const confColor = r.confidence >= 85
+                        ? "text-green-600 dark:text-green-400"
+                        : r.confidence >= 65
+                          ? "text-blue-600 dark:text-blue-400"
+                          : r.confidence >= 45
+                            ? "text-amber-600 dark:text-amber-400"
+                            : "text-red-600 dark:text-red-400";
                       return (
                         <div key={r.id} className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
                           <span className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium ${phase?.badgeColor || "bg-slate-100 text-slate-600"}`}>
@@ -457,8 +484,11 @@ export default function CustomerJourneyPage() {
                           <span className="truncate max-w-xs">
                             {articles.find((a) => a.id === r.id)?.title || r.id}
                           </span>
+                          <span className={`font-semibold tabular-nums shrink-0 ${confColor}`}>
+                            {r.confidence}%
+                          </span>
                           <span className="text-slate-400 shrink-0">
-                            ({r.confidence}) {r.reason}
+                            {r.reason}
                           </span>
                         </div>
                       );
@@ -674,7 +704,7 @@ export default function CustomerJourneyPage() {
           return (
             <div
               key={phase.id}
-              className={`bg-white dark:bg-slate-800 rounded-xl border ${phase.borderColor} overflow-hidden`}
+              className={`bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden`}
             >
               <button
                 onClick={() => togglePhase(phase.id)}
@@ -701,19 +731,28 @@ export default function CustomerJourneyPage() {
                     {phaseArticles.length}
                   </span>
                   {userCanEdit && (
-                    <button
+                    <div
+                      role="button"
+                      tabIndex={0}
                       onClick={(e) => {
                         e.stopPropagation();
                         openSuggestDialog(phase.id);
                       }}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-purple-50 text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50 transition-colors"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          openSuggestDialog(phase.id);
+                        }
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-purple-50 text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50 transition-colors cursor-pointer"
                       title="Neue Titelvorschläge von der KI generieren"
                     >
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
                       </svg>
                       Neue Titelvorschläge
-                    </button>
+                    </div>
                   )}
                   <svg
                     className={`w-5 h-5 text-slate-400 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}
@@ -835,15 +874,20 @@ export default function CustomerJourneyPage() {
 
             {/* Loading State */}
             {suggesting && (
-              <div className="flex flex-col items-center justify-center py-12 gap-3">
+              <div className="flex flex-col items-center justify-center py-12 gap-4">
                 <svg className="w-8 h-8 animate-spin text-purple-600" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
-                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                  Claude generiert Titelvorschläge für <span className="font-bold text-purple-600 dark:text-purple-400">{suggestCategory}</span>...
+                <p className="text-sm font-medium text-slate-600 dark:text-slate-400 text-center transition-opacity duration-500">
+                  {[
+                    <>Neue Vorschläge für <span className="font-bold text-purple-600 dark:text-purple-400">{suggestCategory}</span> in <span className="font-bold text-purple-600 dark:text-purple-400">{JOURNEY_PHASES.find((p) => p.id === suggestPhase)?.label}</span> werden recherchiert...</>,
+                    "Abgleich mit Topic-Map und existierenden Themen...",
+                    "Starte Keyword-Research...",
+                    "Übermittlung der Ergebnisse an Claude...",
+                    "Warten auf Feedback...",
+                  ][loadingMsgIndex]}
                 </p>
-                <p className="text-xs text-slate-400">Das kann einige Sekunden dauern</p>
               </div>
             )}
 
@@ -1049,6 +1093,9 @@ function ArticleRow({
           <span className="inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400 shrink-0">
             {STATUSES[article.status] || article.status}
           </span>
+          {article.journeyPhase && article.journeyConfidence != null && (
+            <ConfidenceBadge confidence={article.journeyConfidence} />
+          )}
         </div>
         {article.url && (
           <a
@@ -1083,5 +1130,37 @@ function ArticleRow({
         )
       )}
     </div>
+  );
+}
+
+function ConfidenceBadge({ confidence }: { confidence: number }) {
+  const color =
+    confidence >= 85
+      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+      : confidence >= 65
+        ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+        : confidence >= 45
+          ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+          : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
+
+  const label =
+    confidence >= 85
+      ? "Sehr sicher"
+      : confidence >= 65
+        ? "Sicher"
+        : confidence >= 45
+          ? "Grenzfall"
+          : "Unsicher";
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold tabular-nums shrink-0 ${color}`}
+      title={`KI-Konfidenz: ${confidence}% – ${label}`}
+    >
+      <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+      </svg>
+      {confidence}%
+    </span>
   );
 }

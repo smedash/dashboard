@@ -524,6 +524,7 @@ model EditorialPlanArticle {
   schemaMarkup String?  @db.Text // schema.org JSON-LD Markup
   location    String?  // Location: Guide, Insights
   journeyPhase String? // Customer Journey Phase: awareness, orientation, planning, product_search, closing
+  journeyConfidence Int? // KI-Konfidenz-Score 0-100 für die Journey-Phase-Zuordnung
   creatorId   String
   creator     User     @relation("EditorialPlanCreator", fields: [creatorId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())

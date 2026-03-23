@@ -109,7 +109,10 @@ export async function PUT(request: NextRequest) {
     if (h1 !== undefined) updateData.h1 = h1?.trim() || null;
     if (schemaMarkup !== undefined) updateData.schemaMarkup = schemaMarkup?.trim() || null;
     if (location !== undefined) updateData.location = location || null;
-    if (journeyPhase !== undefined) updateData.journeyPhase = journeyPhase || null;
+    if (journeyPhase !== undefined) {
+      updateData.journeyPhase = journeyPhase || null;
+      updateData.journeyConfidence = null;
+    }
 
     const article = await prisma.editorialPlanArticle.update({
       where: { id },
