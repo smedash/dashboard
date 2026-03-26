@@ -431,6 +431,9 @@ model Briefing {
   // Grafische Darstellung - KI-generiertes Schaubild basierend auf bodyContent
   diagramUrl        String?  @db.Text // URL zum generierten Diagramm in Vercel Blob
   
+  // Hochgeladene Dateien (PDFs, Recherchen etc.)
+  files             BriefingFile[]
+  
   // Deadline - automatisch 10 Tage nach Bestellung, änderbar durch Agentur
   deadline          DateTime?
   
@@ -442,6 +445,20 @@ model Briefing {
   @@index([status])
   @@index([briefingType])
   @@index([category])
+}
+
+// Briefing Dateien - Hochgeladene Dateien via Vercel Blob
+model BriefingFile {
+  id         String   @id @default(cuid())
+  briefingId String
+  briefing   Briefing @relation(fields: [briefingId], references: [id], onDelete: Cascade)
+  fileName   String
+  fileUrl    String   @db.Text
+  fileSize   Int
+  fileType   String
+  createdAt  DateTime @default(now())
+
+  @@index([briefingId])
 }
 
 // Task Management - Kanban Board

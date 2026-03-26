@@ -42,6 +42,9 @@ export async function GET(
             email: true,
           },
         },
+        files: {
+          orderBy: { createdAt: "desc" },
+        },
       },
     });
 
@@ -178,6 +181,9 @@ export async function PATCH(
             name: true,
             email: true,
           },
+        },
+        files: {
+          orderBy: { createdAt: "desc" },
         },
       },
     });

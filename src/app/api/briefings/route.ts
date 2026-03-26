@@ -42,6 +42,9 @@ export async function GET() {
             email: true,
           },
         },
+        files: {
+          orderBy: { createdAt: "desc" },
+        },
       },
       orderBy: { createdAt: "desc" },
     });
@@ -149,6 +152,7 @@ export async function POST(request: Request) {
             email: true,
           },
         },
+        files: true,
       },
     });
 

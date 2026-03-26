@@ -57,6 +57,8 @@ interface Briefing {
   lexiconRelated: string | null;
   // Grafische Darstellung
   diagramUrl: string | null;
+  // Dateien
+  files: BriefingFileType[];
   // Deadline
   deadline: string | null;
   status: "ordered" | "in_progress" | "in_review" | "completed";
@@ -64,6 +66,16 @@ interface Briefing {
   assignee: { id: string; name: string | null; email: string } | null;
   createdAt: string;
   updatedAt: string;
+}
+
+interface BriefingFileType {
+  id: string;
+  briefingId: string;
+  fileName: string;
+  fileUrl: string;
+  fileSize: number;
+  fileType: string;
+  createdAt: string;
 }
 
 type BriefingType = "new_content" | "edit_content" | "lexicon";
@@ -469,6 +481,8 @@ export default function BriefingsPage() {
   const [newLexiconDefinition, setNewLexiconDefinition] = useState("");
   const [newLexiconSynonyms, setNewLexiconSynonyms] = useState("");
   const [newLexiconRelated, setNewLexiconRelated] = useState("");
+  // Dateien beim Erstellen
+  const [newFiles, setNewFiles] = useState<File[]>([]);
   // Filter
   const [filterCategory, setFilterCategory] = useState<string>("all");
   // View Mode
@@ -529,7 +543,30 @@ export default function BriefingsPage() {
 
       const data = await response.json();
       if (data.briefing) {
-        setBriefings([data.briefing, ...briefings]);
+        let createdBriefing = data.briefing;
+
+        if (newFiles.length > 0) {
+          const formData = new FormData();
+          newFiles.forEach((file) => formData.append("files", file));
+          try {
+            const uploadRes = await fetch(`/api/briefings/${createdBriefing.id}/files`, {
+              method: "POST",
+              body: formData,
+            });
+            const uploadData = await uploadRes.json();
+            if (uploadData.files) {
+              createdBriefing = { ...createdBriefing, files: uploadData.files };
+            }
+          } catch (uploadError) {
+            console.error("Error uploading files:", uploadError);
+          }
+        }
+
+        if (!createdBriefing.files) {
+          createdBriefing.files = [];
+        }
+
+        setBriefings([createdBriefing, ...briefings]);
         resetForm();
         setShowNewForm(false);
       } else {
@@ -561,6 +598,7 @@ export default function BriefingsPage() {
     setNewLexiconDefinition("");
     setNewLexiconSynonyms("");
     setNewLexiconRelated("");
+    setNewFiles([]);
   };
 
   const updateBriefing = async (briefingId: string, updates: Partial<Briefing>) => {
@@ -1605,6 +1643,73 @@ export default function BriefingsPage() {
               </div>
             )}
 
+            {/* Dateien hochladen */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Dateien anhängen (PDFs, Recherchen, Bilder)
+              </label>
+              <div
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (e.dataTransfer.files) {
+                    setNewFiles((prev) => [...prev, ...Array.from(e.dataTransfer.files)]);
+                  }
+                }}
+                onDragOver={(e) => e.preventDefault()}
+                className="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600 rounded-lg p-4 text-center transition-colors"
+              >
+                <label className="cursor-pointer">
+                  <div className="flex flex-col items-center gap-1">
+                    <svg className="w-6 h-6 text-slate-400 dark:text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    <span className="text-sm text-slate-600 dark:text-slate-400">
+                      Dateien hierher ziehen oder <span className="text-blue-600 dark:text-blue-400 underline">auswählen</span>
+                    </span>
+                    <span className="text-xs text-slate-500 dark:text-slate-500">
+                      Max. 10 MB · PDF, DOCX, XLSX, PPTX, PNG, JPG, GIF, WebP
+                    </span>
+                  </div>
+                  <input
+                    type="file"
+                    multiple
+                    accept=".pdf,.docx,.xlsx,.pptx,.png,.jpg,.jpeg,.gif,.webp"
+                    onChange={(e) => {
+                      if (e.target.files) {
+                        setNewFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
+                        e.target.value = "";
+                      }
+                    }}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+              {newFiles.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  {newFiles.map((file, idx) => (
+                    <div key={idx} className="flex items-center justify-between text-sm bg-slate-50 dark:bg-slate-900 rounded-lg px-3 py-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                        </svg>
+                        <span className="truncate text-slate-700 dark:text-slate-300">{file.name}</span>
+                        <span className="text-xs text-slate-500 flex-shrink-0">({(file.size / 1024).toFixed(0)} KB)</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setNewFiles((prev) => prev.filter((_, i) => i !== idx))}
+                        className="text-red-500 hover:text-red-700 flex-shrink-0 ml-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div className="flex gap-2 pt-4 border-t border-slate-200 dark:border-slate-700">
               <button
                 onClick={createBriefing}
@@ -2516,6 +2621,122 @@ export default function BriefingsPage() {
                       />
                     </div>
 
+                    {/* Angehängte Dateien */}
+                    <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+                      <h4 className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                        </svg>
+                        Angehängte Dateien
+                      </h4>
+                      {selectedBriefing.files && selectedBriefing.files.length > 0 ? (
+                        <div className="space-y-1 mb-3">
+                          {selectedBriefing.files.map((file) => (
+                            <div key={file.id} className="flex items-center justify-between text-sm bg-slate-50 dark:bg-slate-900 rounded-lg px-3 py-2">
+                              <a
+                                href={file.fileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 min-w-0 text-blue-600 dark:text-blue-400 hover:underline"
+                              >
+                                <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                <span className="truncate">{file.fileName}</span>
+                                <span className="text-xs text-slate-500 flex-shrink-0">({(file.fileSize / 1024).toFixed(0)} KB)</span>
+                              </a>
+                              {canEditData && (
+                                <button
+                                  onClick={async () => {
+                                    if (!confirm("Datei wirklich löschen?")) return;
+                                    try {
+                                      await fetch(`/api/briefings/${selectedBriefing.id}/files?fileId=${file.id}`, { method: "DELETE" });
+                                      const updatedFiles = selectedBriefing.files.filter((f) => f.id !== file.id);
+                                      setSelectedBriefing({ ...selectedBriefing, files: updatedFiles });
+                                      setBriefings((prev) =>
+                                        prev.map((b) => (b.id === selectedBriefing.id ? { ...b, files: updatedFiles } : b))
+                                      );
+                                    } catch (err) {
+                                      console.error("Error deleting file:", err);
+                                    }
+                                  }}
+                                  className="text-red-500 hover:text-red-700 flex-shrink-0 ml-2"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">Keine Dateien angehängt</p>
+                      )}
+                      {canEditData && (
+                        <div
+                          onDrop={async (e) => {
+                            e.preventDefault();
+                            if (!e.dataTransfer.files?.length) return;
+                            const formData = new FormData();
+                            Array.from(e.dataTransfer.files).forEach((f) => formData.append("files", f));
+                            try {
+                              const res = await fetch(`/api/briefings/${selectedBriefing.id}/files`, { method: "POST", body: formData });
+                              const data = await res.json();
+                              if (data.files) {
+                                const updatedFiles = [...(selectedBriefing.files || []), ...data.files];
+                                setSelectedBriefing({ ...selectedBriefing, files: updatedFiles });
+                                setBriefings((prev) =>
+                                  prev.map((b) => (b.id === selectedBriefing.id ? { ...b, files: updatedFiles } : b))
+                                );
+                              }
+                            } catch (err) {
+                              console.error("Error uploading files:", err);
+                            }
+                          }}
+                          onDragOver={(e) => e.preventDefault()}
+                          className="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600 rounded-lg p-3 text-center transition-colors"
+                        >
+                          <label className="cursor-pointer">
+                            <div className="flex flex-col items-center gap-1">
+                              <svg className="w-5 h-5 text-slate-400 dark:text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                              </svg>
+                              <span className="text-xs text-slate-600 dark:text-slate-400">
+                                Dateien hierher ziehen oder <span className="text-blue-600 dark:text-blue-400 underline">auswählen</span>
+                              </span>
+                              <span className="text-xs text-slate-500">Max. 10 MB · PDF, DOCX, XLSX, PPTX, PNG, JPG, GIF, WebP</span>
+                            </div>
+                            <input
+                              type="file"
+                              multiple
+                              accept=".pdf,.docx,.xlsx,.pptx,.png,.jpg,.jpeg,.gif,.webp"
+                              onChange={async (e) => {
+                                if (!e.target.files?.length) return;
+                                const formData = new FormData();
+                                Array.from(e.target.files).forEach((f) => formData.append("files", f));
+                                e.target.value = "";
+                                try {
+                                  const res = await fetch(`/api/briefings/${selectedBriefing.id}/files`, { method: "POST", body: formData });
+                                  const data = await res.json();
+                                  if (data.files) {
+                                    const updatedFiles = [...(selectedBriefing.files || []), ...data.files];
+                                    setSelectedBriefing({ ...selectedBriefing, files: updatedFiles });
+                                    setBriefings((prev) =>
+                                      prev.map((b) => (b.id === selectedBriefing.id ? { ...b, files: updatedFiles } : b))
+                                    );
+                                  }
+                                } catch (err) {
+                                  console.error("Error uploading files:", err);
+                                }
+                              }}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
+                      )}
+                    </div>
+
                     {/* Mehrsprachigkeit */}
                     <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
                       <h4 className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-3">Weitere Sprachen</h4>
@@ -2618,6 +2839,33 @@ export default function BriefingsPage() {
                       <div>
                         <span className="text-slate-500 dark:text-slate-400">Bemerkungen:</span>
                         <p className="text-slate-900 dark:text-white whitespace-pre-wrap">{selectedBriefing.notes}</p>
+                      </div>
+                    )}
+                    {selectedBriefing.files && selectedBriefing.files.length > 0 && (
+                      <div>
+                        <span className="text-slate-500 dark:text-slate-400 flex items-center gap-2 mb-2">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                          </svg>
+                          Angehängte Dateien:
+                        </span>
+                        <div className="space-y-1">
+                          {selectedBriefing.files.map((file) => (
+                            <a
+                              key={file.id}
+                              href={file.fileUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400 hover:underline bg-slate-50 dark:bg-slate-900 rounded-lg px-3 py-2"
+                            >
+                              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                              <span className="truncate">{file.fileName}</span>
+                              <span className="text-xs text-slate-500 flex-shrink-0">({(file.fileSize / 1024).toFixed(0)} KB)</span>
+                            </a>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>
