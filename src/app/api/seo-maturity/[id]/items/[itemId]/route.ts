@@ -80,3 +80,43 @@ export async function PATCH(
     );
   }
 }
+
+// DELETE - Einzelnes Item löschen
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string; itemId: string }> }
+) {
+  try {
+    const session = await auth();
+
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id, itemId } = await params;
+
+    const maturity = await prisma.sEOMaturity.findUnique({
+      where: { id },
+    });
+
+    if (!maturity) {
+      return NextResponse.json({ error: "SEO maturity not found" }, { status: 404 });
+    }
+
+    if (maturity.userId !== session.user.id && !isSuperadmin(session.user.role)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    await prisma.sEOMaturityItem.delete({
+      where: { id: itemId },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Error deleting SEO maturity item:", error);
+    return NextResponse.json(
+      { error: "Failed to delete SEO maturity item" },
+      { status: 500 }
+    );
+  }
+}

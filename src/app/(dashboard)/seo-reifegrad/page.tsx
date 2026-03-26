@@ -314,6 +314,12 @@ export default function SEOMaturityPage() {
   const [kvpLinksMap, setKvpLinksMap] = useState<Record<string, KVPLink[]>>({});
   const [expandedKvpItems, setExpandedKvpItems] = useState<string[]>([]);
   const [showSelectionModal, setShowSelectionModal] = useState(false);
+  const [editingItem, setEditingItem] = useState<string | null>(null);
+  const [editItemTitle, setEditItemTitle] = useState("");
+  const [editItemCategory, setEditItemCategory] = useState("");
+  const [editItemCategoryInput, setEditItemCategoryInput] = useState("");
+  const [isDeletingItem, setIsDeletingItem] = useState<string | null>(null);
+  const [confirmDeleteItem, setConfirmDeleteItem] = useState<string | null>(null);
   
   // Ref für SunburstChart Export
   const sunburstChartRef = useRef<SunburstChartRef>(null);
@@ -660,6 +666,85 @@ export default function SEOMaturityPage() {
       alert("Fehler beim Hinzufügen des Punktes");
     } finally {
       setIsAddingItem(false);
+    }
+  };
+
+  const startEditingItem = (item: SEOMaturityItem) => {
+    setEditingItem(item.id);
+    setEditItemTitle(item.title);
+    setEditItemCategory(item.category);
+    setEditItemCategoryInput("");
+  };
+
+  const cancelEditingItem = () => {
+    setEditingItem(null);
+    setEditItemTitle("");
+    setEditItemCategory("");
+    setEditItemCategoryInput("");
+  };
+
+  const saveItemEdit = async (itemId: string) => {
+    if (!selectedMaturity || !editItemTitle.trim()) return;
+
+    const finalCategory = editItemCategory === "__new__"
+      ? (editItemCategoryInput.trim() || "Allgemein")
+      : editItemCategory;
+
+    try {
+      const response = await fetch(
+        `/api/seo-maturity/${selectedMaturity.id}/items/${itemId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: editItemTitle.trim(),
+            category: finalCategory,
+          }),
+        }
+      );
+
+      const data = await response.json();
+      if (data.item) {
+        const updatedItems = selectedMaturity.items.map((item) =>
+          item.id === itemId
+            ? { ...item, title: data.item.title, category: data.item.category }
+            : item
+        );
+        setSelectedMaturity({ ...selectedMaturity, items: updatedItems });
+        cancelEditingItem();
+      }
+    } catch (error) {
+      console.error("Error updating item:", error);
+      alert("Fehler beim Speichern der Änderungen");
+    }
+  };
+
+  const deleteItem = async (itemId: string) => {
+    if (!selectedMaturity) return;
+
+    try {
+      setIsDeletingItem(itemId);
+      const response = await fetch(
+        `/api/seo-maturity/${selectedMaturity.id}/items/${itemId}`,
+        { method: "DELETE" }
+      );
+
+      if (response.ok) {
+        const updatedItems = selectedMaturity.items.filter((item) => item.id !== itemId);
+        setSelectedMaturity({ ...selectedMaturity, items: updatedItems });
+        const { [itemId]: _, ...restTeams } = selectedTeams;
+        setSelectedTeams(restTeams);
+        const { [itemId]: __, ...restKvp } = kvpLinksMap;
+        setKvpLinksMap(restKvp);
+        setConfirmDeleteItem(null);
+      } else {
+        alert("Fehler beim Löschen des Punktes");
+      }
+    } catch (error) {
+      console.error("Error deleting item:", error);
+      alert("Fehler beim Löschen des Punktes");
+    } finally {
+      setIsDeletingItem(null);
     }
   };
 
@@ -1457,6 +1542,65 @@ export default function SEOMaturityPage() {
                             className="flex items-start gap-4 p-4 bg-slate-900 rounded-lg border border-slate-700"
                           >
                             <div className="flex-1">
+                              {editingItem === item.id ? (
+                                <div className="space-y-3 mb-2">
+                                  <div>
+                                    <label className="block text-xs font-medium text-slate-400 mb-1">Titel</label>
+                                    <input
+                                      type="text"
+                                      value={editItemTitle}
+                                      onChange={(e) => setEditItemTitle(e.target.value)}
+                                      className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                      autoFocus
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") saveItemEdit(item.id);
+                                        if (e.key === "Escape") cancelEditingItem();
+                                      }}
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-medium text-slate-400 mb-1">Kategorie</label>
+                                    <select
+                                      value={editItemCategory}
+                                      onChange={(e) => {
+                                        setEditItemCategory(e.target.value);
+                                        if (e.target.value !== "__new__") setEditItemCategoryInput("");
+                                      }}
+                                      className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white text-sm"
+                                    >
+                                      {getAvailableCategories().map((cat) => (
+                                        <option key={cat} value={cat}>{cat}</option>
+                                      ))}
+                                      <option value="__new__">Neue Kategorie erstellen</option>
+                                    </select>
+                                    {editItemCategory === "__new__" && (
+                                      <input
+                                        type="text"
+                                        value={editItemCategoryInput}
+                                        onChange={(e) => setEditItemCategoryInput(e.target.value)}
+                                        placeholder="Neue Kategorie eingeben..."
+                                        className="w-full mt-2 px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white text-sm"
+                                      />
+                                    )}
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <button
+                                      onClick={() => saveItemEdit(item.id)}
+                                      disabled={!editItemTitle.trim() || (editItemCategory === "__new__" && !editItemCategoryInput.trim())}
+                                      className="px-3 py-1.5 bg-green-600 hover:bg-green-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white text-sm rounded transition-colors"
+                                    >
+                                      Speichern
+                                    </button>
+                                    <button
+                                      onClick={cancelEditingItem}
+                                      className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded transition-colors"
+                                    >
+                                      Abbrechen
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <>
                               <div className="flex items-center gap-2 mb-2">
                                 <h5 className="font-medium text-white">{item.title}</h5>
                                 <div className="relative">
@@ -1509,7 +1653,45 @@ export default function SEOMaturityPage() {
                                     </div>
                                   )}
                                 </div>
+                                    <button
+                                      onClick={() => startEditingItem(item)}
+                                      className="text-slate-500 hover:text-blue-400 transition-colors ml-1"
+                                      title="Punkt bearbeiten"
+                                    >
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                      </svg>
+                                    </button>
+                                    {confirmDeleteItem === item.id ? (
+                                      <div className="flex items-center gap-1 ml-1">
+                                        <button
+                                          onClick={() => deleteItem(item.id)}
+                                          disabled={isDeletingItem === item.id}
+                                          className="px-2 py-0.5 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors"
+                                        >
+                                          {isDeletingItem === item.id ? "..." : "Ja, löschen"}
+                                        </button>
+                                        <button
+                                          onClick={() => setConfirmDeleteItem(null)}
+                                          className="px-2 py-0.5 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded transition-colors"
+                                        >
+                                          Nein
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <button
+                                        onClick={() => setConfirmDeleteItem(item.id)}
+                                        className="text-slate-500 hover:text-red-400 transition-colors ml-1"
+                                        title="Punkt löschen"
+                                      >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                      </button>
+                                    )}
                               </div>
+                                </>
+                              )}
                               {editingDescription === item.id ? (
                                 <div className="space-y-2">
                                   <textarea
