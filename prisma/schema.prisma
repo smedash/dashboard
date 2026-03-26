@@ -134,6 +134,7 @@ model SEOMaturity {
   name        String // Name der Analyse (z.B. "Q1 2024")
   description String?
   items       SEOMaturityItem[]
+  changeLogs  SEOMaturityChangeLog[]
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
 
@@ -180,6 +181,25 @@ model SEOMaturityItemTeam {
   @@unique([itemId, teamId])
   @@index([itemId])
   @@index([teamId])
+}
+
+// SEO Reifegrad ChangeLog - Protokolliert alle Änderungen an Items
+model SEOMaturityChangeLog {
+  id           String      @id @default(cuid())
+  maturityId   String
+  maturity     SEOMaturity @relation(fields: [maturityId], references: [id], onDelete: Cascade)
+  itemId       String?     // null bei gelöschten Items
+  action       String      // "create" | "update" | "delete"
+  field        String?     // Welches Feld geändert wurde (score, title, category, priority, description, teams)
+  oldValue     String?     @db.Text
+  newValue     String?     @db.Text
+  itemTitle    String?     // Titel des Items zum Zeitpunkt der Änderung (für gelöschte Items nachvollziehbar)
+  itemCategory String?     // Kategorie des Items zum Zeitpunkt der Änderung
+  userId       String
+  createdAt    DateTime    @default(now())
+
+  @@index([maturityId, createdAt])
+  @@index([itemId])
 }
 
 // Rank Tracker Model

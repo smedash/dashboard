@@ -77,6 +77,21 @@ export async function POST(
       },
     });
 
+    // ChangeLog für neues Item
+    await prisma.sEOMaturityChangeLog.create({
+      data: {
+        maturityId: id,
+        itemId: newItem.id,
+        action: "create",
+        field: null,
+        oldValue: null,
+        newValue: JSON.stringify({ title: newItem.title, category: newItem.category, score: newItem.score }),
+        itemTitle: newItem.title,
+        itemCategory: newItem.category,
+        userId: session.user.id,
+      },
+    });
+
     return NextResponse.json({ item: newItem });
   } catch (error) {
     console.error("Error creating SEO maturity item:", error);

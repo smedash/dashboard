@@ -45,6 +45,46 @@ interface SEOMaturity {
   updatedAt: string;
 }
 
+interface ChangeLogEntry {
+  id: string;
+  maturityId: string;
+  itemId: string | null;
+  action: "create" | "update" | "delete";
+  field: string | null;
+  oldValue: string | null;
+  newValue: string | null;
+  itemTitle: string | null;
+  itemCategory: string | null;
+  userId: string;
+  createdAt: string;
+}
+
+interface ComparisonDiff {
+  category: string;
+  title: string;
+  type: "added" | "removed" | "changed" | "unchanged";
+  baseScore?: number;
+  targetScore?: number;
+  scoreDiff?: number;
+  basePriority?: string | null;
+  targetPriority?: string | null;
+  baseTeams?: string[];
+  targetTeams?: string[];
+}
+
+interface ComparisonResult {
+  base: { id: string; name: string; itemCount: number; avgScore: number };
+  target: { id: string; name: string; itemCount: number; avgScore: number };
+  differences: ComparisonDiff[];
+  summary: {
+    added: number;
+    removed: number;
+    changed: number;
+    unchanged: number;
+    avgScoreDiff: number;
+  };
+}
+
 // Standard SEO Checkliste - aus seo-checkliste.xlsx
 const DEFAULT_SEO_ITEMS = [
   // Das Fundament
@@ -320,6 +360,16 @@ export default function SEOMaturityPage() {
   const [editItemCategoryInput, setEditItemCategoryInput] = useState("");
   const [isDeletingItem, setIsDeletingItem] = useState<string | null>(null);
   const [confirmDeleteItem, setConfirmDeleteItem] = useState<string | null>(null);
+  const [changeLog, setChangeLog] = useState<ChangeLogEntry[]>([]);
+  const [changeLogTotal, setChangeLogTotal] = useState(0);
+  const [isLoadingChangeLog, setIsLoadingChangeLog] = useState(false);
+  const [showChangeLog, setShowChangeLog] = useState(false);
+  const [compareBaseId, setCompareBaseId] = useState<string>("");
+  const [compareTargetId, setCompareTargetId] = useState<string>("");
+  const [comparisonResult, setComparisonResult] = useState<ComparisonResult | null>(null);
+  const [isComparing, setIsComparing] = useState(false);
+  const [showComparison, setShowComparison] = useState(false);
+  const [compareFilterType, setCompareFilterType] = useState<string>("all");
   
   // Ref für SunburstChart Export
   const sunburstChartRef = useRef<SunburstChartRef>(null);
@@ -746,6 +796,98 @@ export default function SEOMaturityPage() {
     } finally {
       setIsDeletingItem(null);
     }
+  };
+
+  const fetchChangeLog = async (maturityId: string) => {
+    try {
+      setIsLoadingChangeLog(true);
+      const response = await fetch(`/api/seo-maturity/${maturityId}/changelog?limit=200`);
+      const data = await response.json();
+      setChangeLog(data.logs || []);
+      setChangeLogTotal(data.total || 0);
+    } catch (error) {
+      console.error("Error fetching changelog:", error);
+    } finally {
+      setIsLoadingChangeLog(false);
+    }
+  };
+
+  const runComparison = async () => {
+    if (!compareBaseId || !compareTargetId) return;
+
+    try {
+      setIsComparing(true);
+      const response = await fetch(
+        `/api/seo-maturity/compare?base=${compareBaseId}&target=${compareTargetId}`
+      );
+      const data = await response.json();
+      if (data.differences) {
+        setComparisonResult(data);
+      } else {
+        alert("Fehler beim Vergleich");
+      }
+    } catch (error) {
+      console.error("Error comparing:", error);
+      alert("Fehler beim Vergleich der Analysen");
+    } finally {
+      setIsComparing(false);
+    }
+  };
+
+  const getFieldLabel = (field: string | null): string => {
+    const labels: Record<string, string> = {
+      score: "Reifegrad",
+      title: "Titel",
+      category: "Kategorie",
+      priority: "Priorität",
+      description: "Beschreibung",
+      teams: "Teams",
+    };
+    return field ? labels[field] || field : "";
+  };
+
+  const getActionLabel = (action: string): string => {
+    switch (action) {
+      case "create": return "Hinzugefügt";
+      case "update": return "Geändert";
+      case "delete": return "Gelöscht";
+      default: return action;
+    }
+  };
+
+  const getActionColor = (action: string): string => {
+    switch (action) {
+      case "create": return "text-green-400";
+      case "update": return "text-blue-400";
+      case "delete": return "text-red-400";
+      default: return "text-slate-400";
+    }
+  };
+
+  const formatChangeLogDate = (dateStr: string): string => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString("de-DE", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  // ChangeLog-Einträge nach Datum gruppieren
+  const groupChangeLogByDate = (logs: ChangeLogEntry[]) => {
+    const groups: Record<string, ChangeLogEntry[]> = {};
+    logs.forEach((log) => {
+      const dateKey = new Date(log.createdAt).toLocaleDateString("de-DE", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+      if (!groups[dateKey]) groups[dateKey] = [];
+      groups[dateKey].push(log);
+    });
+    return groups;
   };
 
   const getAvailableCategories = (): string[] => {
@@ -1909,6 +2051,307 @@ export default function SEOMaturityPage() {
                 )
               )}
             </div>
+          </div>
+
+          {/* ChangeLog & Vergleich */}
+          <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+            <div className="flex items-center gap-4 mb-6">
+              <button
+                onClick={() => {
+                  setShowChangeLog(!showChangeLog);
+                  setShowComparison(false);
+                  if (!showChangeLog && selectedMaturity) {
+                    fetchChangeLog(selectedMaturity.id);
+                  }
+                }}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  showChangeLog
+                    ? "bg-blue-600 text-white"
+                    : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Änderungsprotokoll
+                </span>
+              </button>
+              <button
+                onClick={() => {
+                  setShowComparison(!showComparison);
+                  setShowChangeLog(false);
+                  if (!showComparison && selectedMaturity) {
+                    setCompareTargetId(selectedMaturity.id);
+                  }
+                }}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  showComparison
+                    ? "bg-blue-600 text-white"
+                    : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                  Analysen vergleichen
+                </span>
+              </button>
+            </div>
+
+            {/* ChangeLog Timeline */}
+            {showChangeLog && (
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-4">Änderungsprotokoll</h3>
+                {isLoadingChangeLog ? (
+                  <div className="h-32 bg-slate-900 rounded-lg animate-pulse"></div>
+                ) : changeLog.length === 0 ? (
+                  <p className="text-slate-500 text-sm italic">Noch keine Änderungen protokolliert. Änderungen werden ab jetzt aufgezeichnet.</p>
+                ) : (
+                  <div className="space-y-6">
+                    {Object.entries(groupChangeLogByDate(changeLog)).map(([dateKey, logs]) => (
+                      <div key={dateKey}>
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="h-px flex-1 bg-slate-700"></div>
+                          <span className="text-xs font-medium text-slate-400 whitespace-nowrap">{dateKey}</span>
+                          <div className="h-px flex-1 bg-slate-700"></div>
+                        </div>
+                        <div className="space-y-2">
+                          {logs.map((log) => (
+                            <div key={log.id} className="flex items-start gap-3 p-3 bg-slate-900 rounded-lg border border-slate-700">
+                              <div className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${
+                                log.action === "create" ? "bg-green-400" :
+                                log.action === "delete" ? "bg-red-400" : "bg-blue-400"
+                              }`}></div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className={`text-sm font-medium ${getActionColor(log.action)}`}>
+                                    {getActionLabel(log.action)}
+                                  </span>
+                                  {log.field && (
+                                    <span className="px-2 py-0.5 text-xs bg-slate-700 text-slate-300 rounded">
+                                      {getFieldLabel(log.field)}
+                                    </span>
+                                  )}
+                                  <span className="text-xs text-slate-500">
+                                    {new Date(log.createdAt).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-slate-300 mt-1">
+                                  <span className="text-slate-400">{log.itemCategory}</span>
+                                  {" → "}
+                                  <span className="font-medium">{log.itemTitle}</span>
+                                </p>
+                                {log.action === "update" && log.oldValue !== null && log.newValue !== null && (
+                                  <div className="flex items-center gap-2 mt-1.5 text-xs">
+                                    <span className="px-2 py-0.5 bg-red-500/10 text-red-400 rounded line-through">{log.oldValue || "–"}</span>
+                                    <svg className="w-3 h-3 text-slate-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                    </svg>
+                                    <span className="px-2 py-0.5 bg-green-500/10 text-green-400 rounded">{log.newValue || "–"}</span>
+                                  </div>
+                                )}
+                                {log.action === "delete" && log.oldValue && (
+                                  <p className="text-xs text-slate-500 mt-1">
+                                    Score war: {(() => { try { return JSON.parse(log.oldValue).score; } catch { return "?"; } })()}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                    {changeLogTotal > changeLog.length && (
+                      <p className="text-xs text-slate-500 text-center">
+                        {changeLog.length} von {changeLogTotal} Einträgen angezeigt
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Vergleichsansicht */}
+            {showComparison && (
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-4">Analysen vergleichen</h3>
+                <div className="flex flex-wrap items-end gap-4 mb-6">
+                  <div className="flex-1 min-w-[200px]">
+                    <label className="block text-xs font-medium text-slate-400 mb-1">Basis (älter)</label>
+                    <select
+                      value={compareBaseId}
+                      onChange={(e) => { setCompareBaseId(e.target.value); setComparisonResult(null); }}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white text-sm"
+                    >
+                      <option value="">Analyse auswählen...</option>
+                      {maturities.map((m) => (
+                        <option key={m.id} value={m.id}>{m.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex items-center pb-2">
+                    <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-[200px]">
+                    <label className="block text-xs font-medium text-slate-400 mb-1">Ziel (neuer)</label>
+                    <select
+                      value={compareTargetId}
+                      onChange={(e) => { setCompareTargetId(e.target.value); setComparisonResult(null); }}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white text-sm"
+                    >
+                      <option value="">Analyse auswählen...</option>
+                      {maturities.map((m) => (
+                        <option key={m.id} value={m.id}>{m.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <button
+                    onClick={runComparison}
+                    disabled={isComparing || !compareBaseId || !compareTargetId || compareBaseId === compareTargetId}
+                    className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white rounded-lg text-sm transition-colors"
+                  >
+                    {isComparing ? "Vergleiche..." : "Vergleichen"}
+                  </button>
+                </div>
+
+                {comparisonResult && (
+                  <div className="space-y-6">
+                    {/* Summary Cards */}
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                      <div className="bg-slate-900 rounded-lg p-3 border border-slate-700 text-center">
+                        <div className="text-2xl font-bold text-white">{comparisonResult.summary.avgScoreDiff >= 0 ? "+" : ""}{comparisonResult.summary.avgScoreDiff.toFixed(2)}</div>
+                        <div className="text-xs text-slate-400 mt-1">Ø Score-Diff</div>
+                      </div>
+                      <div className="bg-slate-900 rounded-lg p-3 border border-green-800/50 text-center">
+                        <div className="text-2xl font-bold text-green-400">{comparisonResult.summary.added}</div>
+                        <div className="text-xs text-slate-400 mt-1">Hinzugefügt</div>
+                      </div>
+                      <div className="bg-slate-900 rounded-lg p-3 border border-red-800/50 text-center">
+                        <div className="text-2xl font-bold text-red-400">{comparisonResult.summary.removed}</div>
+                        <div className="text-xs text-slate-400 mt-1">Entfernt</div>
+                      </div>
+                      <div className="bg-slate-900 rounded-lg p-3 border border-blue-800/50 text-center">
+                        <div className="text-2xl font-bold text-blue-400">{comparisonResult.summary.changed}</div>
+                        <div className="text-xs text-slate-400 mt-1">Geändert</div>
+                      </div>
+                      <div className="bg-slate-900 rounded-lg p-3 border border-slate-700 text-center">
+                        <div className="text-2xl font-bold text-slate-400">{comparisonResult.summary.unchanged}</div>
+                        <div className="text-xs text-slate-400 mt-1">Unverändert</div>
+                      </div>
+                    </div>
+
+                    {/* Score Comparison Header */}
+                    <div className="flex items-center justify-between bg-slate-900 rounded-lg p-4 border border-slate-700">
+                      <div className="text-center">
+                        <div className="text-sm text-slate-400">{comparisonResult.base.name}</div>
+                        <div className="text-xl font-bold text-white">{comparisonResult.base.avgScore.toFixed(1)}</div>
+                        <div className="text-xs text-slate-500">{comparisonResult.base.itemCount} Punkte</div>
+                      </div>
+                      <div className="text-center px-4">
+                        <div className={`text-3xl font-bold ${comparisonResult.summary.avgScoreDiff > 0 ? "text-green-400" : comparisonResult.summary.avgScoreDiff < 0 ? "text-red-400" : "text-slate-400"}`}>
+                          {comparisonResult.summary.avgScoreDiff > 0 ? "+" : ""}{comparisonResult.summary.avgScoreDiff.toFixed(2)}
+                        </div>
+                        <div className="text-xs text-slate-500">Veränderung</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-sm text-slate-400">{comparisonResult.target.name}</div>
+                        <div className="text-xl font-bold text-white">{comparisonResult.target.avgScore.toFixed(1)}</div>
+                        <div className="text-xs text-slate-500">{comparisonResult.target.itemCount} Punkte</div>
+                      </div>
+                    </div>
+
+                    {/* Filter */}
+                    <div className="flex flex-wrap gap-2">
+                      {(["all", "changed", "added", "removed", "unchanged"] as const).map((type) => {
+                        const labels: Record<string, string> = { all: "Alle", changed: "Geändert", added: "Hinzugefügt", removed: "Entfernt", unchanged: "Unverändert" };
+                        const count = type === "all"
+                          ? comparisonResult.differences.length
+                          : comparisonResult.differences.filter((d) => d.type === type).length;
+                        return (
+                          <button
+                            key={type}
+                            onClick={() => setCompareFilterType(type)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                              compareFilterType === type
+                                ? "bg-blue-600 text-white"
+                                : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                            }`}
+                          >
+                            {labels[type]} ({count})
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Diff-Tabelle */}
+                    <div className="space-y-2">
+                      {comparisonResult.differences
+                        .filter((d) => compareFilterType === "all" || d.type === compareFilterType)
+                        .map((diff, idx) => (
+                          <div
+                            key={idx}
+                            className={`flex items-center gap-4 p-3 rounded-lg border ${
+                              diff.type === "added" ? "bg-green-500/5 border-green-800/30" :
+                              diff.type === "removed" ? "bg-red-500/5 border-red-800/30" :
+                              diff.type === "changed" ? "bg-blue-500/5 border-blue-800/30" :
+                              "bg-slate-900 border-slate-700"
+                            }`}
+                          >
+                            <div className={`w-2 h-2 rounded-full shrink-0 ${
+                              diff.type === "added" ? "bg-green-400" :
+                              diff.type === "removed" ? "bg-red-400" :
+                              diff.type === "changed" ? "bg-blue-400" : "bg-slate-500"
+                            }`}></div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-slate-500">{diff.category}</span>
+                              </div>
+                              <p className={`text-sm font-medium ${diff.type === "removed" ? "text-red-300 line-through" : "text-white"}`}>
+                                {diff.title}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-3 shrink-0">
+                              {diff.baseScore !== undefined && (
+                                <div className="text-center">
+                                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm ${
+                                    (diff.baseScore || 0) <= 3 ? "bg-red-500" : (diff.baseScore || 0) <= 5 ? "bg-orange-500" : (diff.baseScore || 0) <= 7 ? "bg-blue-500" : "bg-green-500"
+                                  }`}>
+                                    {diff.baseScore}
+                                  </div>
+                                </div>
+                              )}
+                              {diff.type === "changed" && diff.scoreDiff !== undefined && diff.scoreDiff !== 0 && (
+                                <span className={`text-sm font-bold ${diff.scoreDiff > 0 ? "text-green-400" : "text-red-400"}`}>
+                                  {diff.scoreDiff > 0 ? "+" : ""}{diff.scoreDiff}
+                                </span>
+                              )}
+                              {diff.targetScore !== undefined && (
+                                <div className="text-center">
+                                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm ${
+                                    (diff.targetScore || 0) <= 3 ? "bg-red-500" : (diff.targetScore || 0) <= 5 ? "bg-orange-500" : (diff.targetScore || 0) <= 7 ? "bg-blue-500" : "bg-green-500"
+                                  }`}>
+                                    {diff.targetScore}
+                                  </div>
+                                </div>
+                              )}
+                              {diff.type === "added" && (
+                                <span className="text-xs text-green-400 font-medium">NEU</span>
+                              )}
+                              {diff.type === "removed" && (
+                                <span className="text-xs text-red-400 font-medium">ENTFERNT</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </>
       ) : (
