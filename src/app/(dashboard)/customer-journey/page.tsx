@@ -1,32 +1,38 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { canEdit } from "@/lib/rbac";
-
-interface ArticleUser {
-  id: string;
-  name: string | null;
-  email: string;
-}
 
 interface Article {
   id: string;
   title: string;
-  description: string | null;
   url: string | null;
   category: string | null;
   status: string;
-  plannedDate: string | null;
-  metaDescription: string | null;
-  h1: string | null;
-  schemaMarkup: string | null;
   location: string | null;
   journeyPhase: string | null;
   journeyConfidence: number | null;
-  creator: ArticleUser;
-  createdAt: string;
-  updatedAt: string;
+}
+
+interface PaginationInfo {
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+}
+
+interface PhaseData {
+  articles: Article[];
+  pagination: PaginationInfo | null;
+  loading: boolean;
+}
+
+interface JourneyStats {
+  stats: Record<string, Record<string, number>>;
+  totalCount: number;
+  totalAssigned: number;
+  totalUnassigned: number;
 }
 
 const JOURNEY_PHASES = [
@@ -180,20 +186,31 @@ const STATUSES: Record<string, string> = {
   published: "Publiziert",
 };
 
+const PAGE_SIZE = 50;
+
+function buildFilterParams(filters: { category: string; location: string; search: string }) {
+  const params = new URLSearchParams();
+  if (filters.category) params.set("category", filters.category);
+  if (filters.location) params.set("location", filters.location);
+  if (filters.search) params.set("search", filters.search);
+  return params;
+}
+
 export default function CustomerJourneyPage() {
   const { data: session } = useSession();
   const userCanEdit = canEdit(session?.user?.role);
 
-  const [articles, setArticles] = useState<Article[]>([]);
+  const [journeyStats, setJourneyStats] = useState<JourneyStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [filterCategory, setFilterCategory] = useState<string>("");
   const [filterLocation, setFilterLocation] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [debouncedSearch, setDebouncedSearch] = useState<string>("");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
-  const [expandedPhases, setExpandedPhases] = useState<Set<string>>(
-    new Set()
-  );
-  const [showUnassigned, setShowUnassigned] = useState(true);
+  const [expandedPhases, setExpandedPhases] = useState<Set<string>>(new Set());
+  const [showUnassigned, setShowUnassigned] = useState(false);
+
+  const [phaseData, setPhaseData] = useState<Record<string, PhaseData>>({});
 
   const [classifying, setClassifying] = useState(false);
   const [classifyProgress, setClassifyProgress] = useState<{
@@ -222,6 +239,11 @@ export default function CustomerJourneyPage() {
   const loadingInterval = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  useEffect(() => {
     if (suggesting) {
       setLoadingMsgIndex(0);
       loadingInterval.current = setInterval(() => {
@@ -238,23 +260,103 @@ export default function CustomerJourneyPage() {
     };
   }, [suggesting]);
 
-  const fetchArticles = useCallback(async () => {
+  const filters = useMemo(
+    () => ({ category: filterCategory, location: filterLocation, search: debouncedSearch }),
+    [filterCategory, filterLocation, debouncedSearch]
+  );
+
+  const fetchStats = useCallback(async () => {
     try {
-      const res = await fetch("/api/editorial-plan");
+      const params = buildFilterParams(filters);
+      const res = await fetch(`/api/editorial-plan/journey-stats?${params}`);
       if (res.ok) {
-        const data = await res.json();
-        setArticles(data.articles);
+        const data: JourneyStats = await res.json();
+        setJourneyStats(data);
       }
     } catch (error) {
-      console.error("Error fetching articles:", error);
+      console.error("Error fetching journey stats:", error);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [filters]);
 
   useEffect(() => {
-    fetchArticles();
-  }, [fetchArticles]);
+    setLoading(true);
+    fetchStats();
+  }, [fetchStats]);
+
+  const fetchPhaseArticles = useCallback(
+    async (phaseKey: string, page: number = 1) => {
+      setPhaseData((prev) => ({
+        ...prev,
+        [phaseKey]: { ...prev[phaseKey], loading: true, articles: prev[phaseKey]?.articles || [], pagination: prev[phaseKey]?.pagination || null },
+      }));
+
+      try {
+        const params = buildFilterParams(filters);
+        params.set("journeyPhase", phaseKey);
+        params.set("page", String(page));
+        params.set("pageSize", String(PAGE_SIZE));
+
+        const res = await fetch(`/api/editorial-plan?${params}`);
+        if (res.ok) {
+          const data = await res.json();
+          setPhaseData((prev) => {
+            const existing = page > 1 ? (prev[phaseKey]?.articles || []) : [];
+            return {
+              ...prev,
+              [phaseKey]: {
+                articles: [...existing, ...data.articles],
+                pagination: data.pagination,
+                loading: false,
+              },
+            };
+          });
+        }
+      } catch (error) {
+        console.error(`Error fetching articles for phase ${phaseKey}:`, error);
+        setPhaseData((prev) => ({
+          ...prev,
+          [phaseKey]: { ...prev[phaseKey], loading: false, articles: prev[phaseKey]?.articles || [], pagination: prev[phaseKey]?.pagination || null },
+        }));
+      }
+    },
+    [filters]
+  );
+
+  useEffect(() => {
+    setPhaseData({});
+    setExpandedPhases(new Set());
+    setShowUnassigned(false);
+  }, [filters]);
+
+  const togglePhase = useCallback(
+    (phaseId: string) => {
+      setExpandedPhases((prev) => {
+        const next = new Set(prev);
+        if (next.has(phaseId)) {
+          next.delete(phaseId);
+        } else {
+          next.add(phaseId);
+          if (!phaseData[phaseId]?.articles.length) {
+            fetchPhaseArticles(phaseId);
+          }
+        }
+        return next;
+      });
+    },
+    [phaseData, fetchPhaseArticles]
+  );
+
+  const toggleUnassigned = useCallback(() => {
+    setShowUnassigned((prev) => {
+      const next = !prev;
+      if (next && !phaseData["__unassigned"]?.articles.length) {
+        fetchPhaseArticles("__unassigned");
+      }
+      return next;
+    });
+  }, [phaseData, fetchPhaseArticles]);
 
   const updateJourneyPhase = async (articleId: string, phase: string | null) => {
     setUpdatingId(articleId);
@@ -265,9 +367,22 @@ export default function CustomerJourneyPage() {
         body: JSON.stringify({ id: articleId, journeyPhase: phase }),
       });
       if (res.ok) {
-        setArticles((prev) =>
-          prev.map((a) => (a.id === articleId ? { ...a, journeyPhase: phase } : a))
-        );
+        for (const key of Object.keys(phaseData)) {
+          setPhaseData((prev) => ({
+            ...prev,
+            [key]: {
+              ...prev[key],
+              articles: prev[key]?.articles.filter((a) => a.id !== articleId) || [],
+              pagination: prev[key]?.pagination || null,
+              loading: prev[key]?.loading || false,
+            },
+          }));
+        }
+        await fetchStats();
+        const targetKey = phase || "__unassigned";
+        if (expandedPhases.has(targetKey) || (targetKey === "__unassigned" && showUnassigned)) {
+          fetchPhaseArticles(targetKey);
+        }
       }
     } catch (error) {
       console.error("Error updating journey phase:", error);
@@ -342,7 +457,10 @@ export default function CustomerJourneyPage() {
         cancelled: classifyCancelledRef.current,
       });
 
-      await fetchArticles();
+      setPhaseData({});
+      setExpandedPhases(new Set());
+      setShowUnassigned(false);
+      await fetchStats();
     } catch (error) {
       console.error("Error classifying articles:", error);
       setClassifyResult({ classified: totalClassified, total: totalProcessed });
@@ -410,7 +528,7 @@ export default function CustomerJourneyPage() {
       });
       if (res.ok) {
         setSavedSuggestions((prev) => new Set(prev).add(index));
-        await fetchArticles();
+        await fetchStats();
       }
     } catch (error) {
       console.error("Error saving suggestion:", error);
@@ -419,55 +537,75 @@ export default function CustomerJourneyPage() {
     }
   };
 
-  const filteredArticles = articles.filter((a) => {
-    if (filterCategory && a.category !== filterCategory) return false;
-    if (filterLocation && a.location !== filterLocation) return false;
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      if (
-        !a.title.toLowerCase().includes(q) &&
-        !a.metaDescription?.toLowerCase().includes(q)
-      )
-        return false;
-    }
-    return true;
-  });
-
-  const getArticlesForPhase = (phaseId: string) =>
-    filteredArticles.filter((a) => a.journeyPhase === phaseId);
-
-  const unassignedArticles = filteredArticles.filter((a) => !a.journeyPhase);
-
-  const totalAssigned = filteredArticles.filter((a) => a.journeyPhase).length;
-  const totalUnassigned = unassignedArticles.length;
-
-  const getCategoryBreakdown = (phaseId: string) => {
-    const phaseArticles = getArticlesForPhase(phaseId);
-    const breakdown: Record<string, number> = {};
-    CATEGORIES.forEach((c) => {
-      const count = phaseArticles.filter((a) => a.category === c).length;
-      if (count > 0) breakdown[c] = count;
-    });
-    const noCategory = phaseArticles.filter((a) => !a.category).length;
-    if (noCategory > 0) breakdown["Ohne Kategorie"] = noCategory;
-    return breakdown;
-  };
-
-  const togglePhase = (phaseId: string) => {
-    setExpandedPhases((prev) => {
-      const next = new Set(prev);
-      if (next.has(phaseId)) next.delete(phaseId);
-      else next.add(phaseId);
-      return next;
-    });
-  };
-
-  const maxPhaseCount = Math.max(
-    ...JOURNEY_PHASES.map((p) => getArticlesForPhase(p.id).length),
-    1
+  const getPhaseCount = useCallback(
+    (phaseId: string): number => {
+      if (!journeyStats) return 0;
+      const phaseStats = journeyStats.stats[phaseId];
+      if (!phaseStats) return 0;
+      return Object.values(phaseStats).reduce((sum, n) => sum + n, 0);
+    },
+    [journeyStats]
   );
 
-  if (loading) {
+  const getCategoryBreakdown = useCallback(
+    (phaseId: string): Record<string, number> => {
+      if (!journeyStats) return {};
+      const phaseStats = journeyStats.stats[phaseId];
+      if (!phaseStats) return {};
+      const breakdown: Record<string, number> = {};
+      for (const [cat, count] of Object.entries(phaseStats)) {
+        if (cat === "__none") {
+          breakdown["Ohne Kategorie"] = count;
+        } else {
+          breakdown[cat] = count;
+        }
+      }
+      return breakdown;
+    },
+    [journeyStats]
+  );
+
+  const getCategoryPhaseCount = useCallback(
+    (category: string, phaseId: string): number => {
+      if (!journeyStats) return 0;
+      return journeyStats.stats[phaseId]?.[category] || 0;
+    },
+    [journeyStats]
+  );
+
+  const getCategoryTotalAssigned = useCallback(
+    (category: string): number => {
+      if (!journeyStats) return 0;
+      let total = 0;
+      for (const [phase, cats] of Object.entries(journeyStats.stats)) {
+        if (phase !== "__unassigned") {
+          total += cats[category] || 0;
+        }
+      }
+      return total;
+    },
+    [journeyStats]
+  );
+
+  const totalAssigned = journeyStats?.totalAssigned ?? 0;
+  const totalUnassigned = journeyStats?.totalUnassigned ?? 0;
+  const totalCount = journeyStats?.totalCount ?? 0;
+
+  const maxPhaseCount = useMemo(
+    () => Math.max(...JOURNEY_PHASES.map((p) => getPhaseCount(p.id)), 1),
+    [getPhaseCount]
+  );
+
+  const suggestPhaseCounts = useMemo(() => {
+    if (!suggestPhase || !journeyStats) return {};
+    const counts: Record<string, number> = {};
+    for (const cat of CATEGORIES) {
+      counts[cat] = journeyStats.stats[suggestPhase]?.[cat] || 0;
+    }
+    return counts;
+  }, [suggestPhase, journeyStats]);
+
+  if (loading && !journeyStats) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
@@ -484,10 +622,10 @@ export default function CustomerJourneyPage() {
             Customer Journey
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            {totalAssigned} von {filteredArticles.length} Artikeln zugeordnet
+            {totalAssigned.toLocaleString()} von {totalCount.toLocaleString()} Artikeln zugeordnet
             {totalUnassigned > 0 && (
               <span className="text-amber-600 dark:text-amber-400">
-                {" "}· {totalUnassigned} ohne Phase
+                {" "}· {totalUnassigned.toLocaleString()} ohne Phase
               </span>
             )}
           </p>
@@ -500,8 +638,8 @@ export default function CustomerJourneyPage() {
               disabled={classifying}
               className="px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300"
             >
-              <option value="unassigned">Nur nicht zugeordnete ({totalUnassigned})</option>
-              <option value="all">Alle Artikel neu klassifizieren ({filteredArticles.length})</option>
+              <option value="unassigned">Nur nicht zugeordnete ({totalUnassigned.toLocaleString()})</option>
+              <option value="all">Alle Artikel neu klassifizieren ({totalCount.toLocaleString()})</option>
             </select>
             <button
               onClick={() => {
@@ -644,6 +782,12 @@ export default function CustomerJourneyPage() {
             <option key={l} value={l}>{l}</option>
           ))}
         </select>
+        {loading && journeyStats && (
+          <div className="flex items-center gap-2 text-xs text-slate-400">
+            <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-slate-400" />
+            Aktualisiere...
+          </div>
+        )}
       </div>
 
       {/* Funnel Overview */}
@@ -653,7 +797,7 @@ export default function CustomerJourneyPage() {
         </h2>
         <div className="flex items-end gap-3 h-40">
           {JOURNEY_PHASES.map((phase) => {
-            const count = getArticlesForPhase(phase.id).length;
+            const count = getPhaseCount(phase.id);
             const heightPercent = maxPhaseCount > 0 ? (count / maxPhaseCount) * 100 : 0;
             const breakdown = getCategoryBreakdown(phase.id);
 
@@ -675,7 +819,7 @@ export default function CustomerJourneyPage() {
                       ))}
                     </div>
                   )}
-                  <span className="text-lg font-bold text-slate-900 dark:text-white">{count}</span>
+                  <span className="text-lg font-bold text-slate-900 dark:text-white">{count.toLocaleString()}</span>
                 </div>
                 <div className="w-full relative" style={{ height: "80px" }}>
                   <div
@@ -695,7 +839,6 @@ export default function CustomerJourneyPage() {
             );
           })}
         </div>
-        {/* Arrow indicators between phases */}
         <div className="flex items-center mt-2 px-4">
           {JOURNEY_PHASES.map((_, i) => (
             <div key={i} className="flex-1 flex items-center">
@@ -731,49 +874,46 @@ export default function CustomerJourneyPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
-              {CATEGORIES.map((cat) => {
-                const catArticles = filteredArticles.filter((a) => a.category === cat);
-                return (
-                  <tr key={cat} className="hover:bg-slate-50 dark:hover:bg-slate-700/30">
-                    <td className="px-3 py-2.5">
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${CATEGORY_COLORS[cat]}`}>
-                        {cat}
-                      </span>
-                    </td>
-                    {JOURNEY_PHASES.map((phase) => {
-                      const count = catArticles.filter((a) => a.journeyPhase === phase.id).length;
-                      return (
-                        <td key={phase.id} className="text-center px-3 py-2.5">
-                          {count > 0 ? (
-                            <span className={`inline-flex items-center justify-center w-8 h-8 rounded-lg text-sm font-bold ${phase.badgeColor}`}>
-                              {count}
-                            </span>
-                          ) : (
-                            <span className="text-slate-300 dark:text-slate-600">–</span>
-                          )}
-                        </td>
-                      );
-                    })}
-                    <td className="text-center px-3 py-2.5">
-                      <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-sm font-bold bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300">
-                        {catArticles.filter((a) => a.journeyPhase).length}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
+              {CATEGORIES.map((cat) => (
+                <tr key={cat} className="hover:bg-slate-50 dark:hover:bg-slate-700/30">
+                  <td className="px-3 py-2.5">
+                    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${CATEGORY_COLORS[cat]}`}>
+                      {cat}
+                    </span>
+                  </td>
+                  {JOURNEY_PHASES.map((phase) => {
+                    const count = getCategoryPhaseCount(cat, phase.id);
+                    return (
+                      <td key={phase.id} className="text-center px-3 py-2.5">
+                        {count > 0 ? (
+                          <span className={`inline-flex items-center justify-center w-8 h-8 rounded-lg text-sm font-bold ${phase.badgeColor}`}>
+                            {count}
+                          </span>
+                        ) : (
+                          <span className="text-slate-300 dark:text-slate-600">–</span>
+                        )}
+                      </td>
+                    );
+                  })}
+                  <td className="text-center px-3 py-2.5">
+                    <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-sm font-bold bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300">
+                      {getCategoryTotalAssigned(cat)}
+                    </span>
+                  </td>
+                </tr>
+              ))}
               <tr className="bg-slate-50 dark:bg-slate-700/30 font-medium">
                 <td className="px-3 py-2.5 text-xs font-semibold text-slate-600 dark:text-slate-400">Total</td>
                 {JOURNEY_PHASES.map((phase) => {
-                  const count = getArticlesForPhase(phase.id).length;
+                  const count = getPhaseCount(phase.id);
                   return (
                     <td key={phase.id} className="text-center px-3 py-2.5">
-                      <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{count}</span>
+                      <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{count.toLocaleString()}</span>
                     </td>
                   );
                 })}
                 <td className="text-center px-3 py-2.5">
-                  <span className="text-sm font-bold text-slate-900 dark:text-white">{totalAssigned}</span>
+                  <span className="text-sm font-bold text-slate-900 dark:text-white">{totalAssigned.toLocaleString()}</span>
                 </td>
               </tr>
             </tbody>
@@ -784,17 +924,18 @@ export default function CustomerJourneyPage() {
       {/* Journey Phases - Article Lists */}
       <div className="space-y-4">
         {JOURNEY_PHASES.map((phase) => {
-          const phaseArticles = getArticlesForPhase(phase.id);
+          const count = getPhaseCount(phase.id);
           const isExpanded = expandedPhases.has(phase.id);
+          const data = phaseData[phase.id];
 
           return (
             <div
               key={phase.id}
-              className={`bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden`}
+              className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden"
             >
               <button
                 onClick={() => togglePhase(phase.id)}
-                className={`w-full flex items-center gap-4 px-6 py-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors`}
+                className="w-full flex items-center gap-4 px-6 py-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors"
               >
                 <div className={`flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br ${phase.color} text-white shrink-0`}>
                   {phase.icon}
@@ -814,7 +955,7 @@ export default function CustomerJourneyPage() {
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
                   <span className={`inline-flex items-center justify-center px-3 py-1 rounded-full text-sm font-bold ${phase.badgeColor}`}>
-                    {phaseArticles.length}
+                    {count.toLocaleString()}
                   </span>
                   {userCanEdit && (
                     <div
@@ -851,27 +992,51 @@ export default function CustomerJourneyPage() {
                 </div>
               </button>
 
-              {isExpanded && phaseArticles.length > 0 && (
+              {isExpanded && (
                 <div className="border-t border-slate-100 dark:border-slate-700/50">
-                  <div className="divide-y divide-slate-100 dark:divide-slate-700/50">
-                    {phaseArticles.map((article) => (
-                      <ArticleRow
-                        key={article.id}
-                        article={article}
-                        userCanEdit={userCanEdit}
-                        updatingId={updatingId}
-                        onUpdatePhase={updateJourneyPhase}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {isExpanded && phaseArticles.length === 0 && (
-                <div className="border-t border-slate-100 dark:border-slate-700/50 px-6 py-8 text-center">
-                  <p className="text-sm text-slate-400 dark:text-slate-500">
-                    Keine Artikel in dieser Phase
-                  </p>
+                  {data?.loading && !data.articles.length ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
+                    </div>
+                  ) : data?.articles.length ? (
+                    <>
+                      <div className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                        {data.articles.map((article) => (
+                          <ArticleRow
+                            key={article.id}
+                            article={article}
+                            userCanEdit={userCanEdit}
+                            updatingId={updatingId}
+                            onUpdatePhase={updateJourneyPhase}
+                          />
+                        ))}
+                      </div>
+                      {data.pagination && data.pagination.page < data.pagination.totalPages && (
+                        <div className="flex items-center justify-center py-3 border-t border-slate-100 dark:border-slate-700/50">
+                          <button
+                            onClick={() => fetchPhaseArticles(phase.id, data.pagination!.page + 1)}
+                            disabled={data.loading}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20 transition-colors disabled:opacity-50"
+                          >
+                            {data.loading ? (
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600" />
+                            ) : (
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            )}
+                            Weitere laden ({data.articles.length} von {data.pagination.totalCount.toLocaleString()})
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="px-6 py-8 text-center">
+                      <p className="text-sm text-slate-400 dark:text-slate-500">
+                        Keine Artikel in dieser Phase
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -883,7 +1048,6 @@ export default function CustomerJourneyPage() {
       {suggestPhase && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className={`bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 mx-4 p-6 flex flex-col ${suggestions ? "w-full max-w-2xl max-h-[85vh]" : "w-full max-w-md"}`}>
-            {/* Header */}
             <div className="flex items-center justify-between gap-3 mb-4">
               <div className="flex items-center gap-3">
                 <div className={`flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br ${JOURNEY_PHASES.find((p) => p.id === suggestPhase)?.color} text-white shrink-0`}>
@@ -908,7 +1072,6 @@ export default function CustomerJourneyPage() {
               </button>
             </div>
 
-            {/* Step 1: Category Selection */}
             {!suggestions && !suggesting && (
               <>
                 <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
@@ -916,9 +1079,7 @@ export default function CustomerJourneyPage() {
                 </p>
                 <div className="space-y-2 mb-6">
                   {CATEGORIES.map((cat) => {
-                    const count = articles.filter(
-                      (a) => a.category === cat && a.journeyPhase === suggestPhase
-                    ).length;
+                    const count = suggestPhaseCounts[cat] || 0;
                     return (
                       <button
                         key={cat}
@@ -958,7 +1119,6 @@ export default function CustomerJourneyPage() {
               </>
             )}
 
-            {/* Loading State */}
             {suggesting && (
               <div className="flex flex-col items-center justify-center py-12 gap-4">
                 <svg className="w-8 h-8 animate-spin text-purple-600" fill="none" viewBox="0 0 24 24">
@@ -977,7 +1137,6 @@ export default function CustomerJourneyPage() {
               </div>
             )}
 
-            {/* Step 2: Suggestions List */}
             {suggestions && suggestMeta && (
               <>
                 <div className="flex items-center gap-2 mb-3 px-1">
@@ -1081,7 +1240,7 @@ export default function CustomerJourneyPage() {
       {/* Unassigned Articles */}
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
         <button
-          onClick={() => setShowUnassigned(!showUnassigned)}
+          onClick={toggleUnassigned}
           className="w-full flex items-center gap-4 px-6 py-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors"
         >
           <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 shrink-0">
@@ -1100,7 +1259,7 @@ export default function CustomerJourneyPage() {
           <div className="flex items-center gap-3 shrink-0">
             {totalUnassigned > 0 && (
               <span className="inline-flex items-center justify-center px-3 py-1 rounded-full text-sm font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
-                {totalUnassigned}
+                {totalUnassigned.toLocaleString()}
               </span>
             )}
             <svg
@@ -1114,30 +1273,55 @@ export default function CustomerJourneyPage() {
           </div>
         </button>
 
-        {showUnassigned && unassignedArticles.length > 0 && (
+        {showUnassigned && (
           <div className="border-t border-slate-100 dark:border-slate-700/50">
-            <div className="divide-y divide-slate-100 dark:divide-slate-700/50">
-              {unassignedArticles.map((article) => (
-                <ArticleRow
-                  key={article.id}
-                  article={article}
-                  userCanEdit={userCanEdit}
-                  updatingId={updatingId}
-                  onUpdatePhase={updateJourneyPhase}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {showUnassigned && unassignedArticles.length === 0 && (
-          <div className="border-t border-slate-100 dark:border-slate-700/50 px-6 py-8 text-center">
-            <div className="inline-flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Alle Artikel sind einer Phase zugeordnet
-            </div>
+            {phaseData["__unassigned"]?.loading && !phaseData["__unassigned"]?.articles.length ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
+              </div>
+            ) : phaseData["__unassigned"]?.articles.length ? (
+              <>
+                <div className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                  {phaseData["__unassigned"].articles.map((article) => (
+                    <ArticleRow
+                      key={article.id}
+                      article={article}
+                      userCanEdit={userCanEdit}
+                      updatingId={updatingId}
+                      onUpdatePhase={updateJourneyPhase}
+                    />
+                  ))}
+                </div>
+                {phaseData["__unassigned"].pagination &&
+                  phaseData["__unassigned"].pagination.page < phaseData["__unassigned"].pagination.totalPages && (
+                    <div className="flex items-center justify-center py-3 border-t border-slate-100 dark:border-slate-700/50">
+                      <button
+                        onClick={() => fetchPhaseArticles("__unassigned", phaseData["__unassigned"].pagination!.page + 1)}
+                        disabled={phaseData["__unassigned"].loading}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20 transition-colors disabled:opacity-50"
+                      >
+                        {phaseData["__unassigned"].loading ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600" />
+                        ) : (
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        )}
+                        Weitere laden ({phaseData["__unassigned"].articles.length} von {phaseData["__unassigned"].pagination.totalCount.toLocaleString()})
+                      </button>
+                    </div>
+                  )}
+              </>
+            ) : totalUnassigned === 0 ? (
+              <div className="px-6 py-8 text-center">
+                <div className="inline-flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Alle Artikel sind einer Phase zugeordnet
+                </div>
+              </div>
+            ) : null}
           </div>
         )}
       </div>

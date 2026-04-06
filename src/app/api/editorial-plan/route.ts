@@ -3,11 +3,71 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { canEdit } from "@/lib/rbac";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const journeyPhase = searchParams.get("journeyPhase");
+    const category = searchParams.get("category") || undefined;
+    const location = searchParams.get("location") || undefined;
+    const search = searchParams.get("search") || undefined;
+    const page = parseInt(searchParams.get("page") || "1", 10);
+    const pageSize = Math.min(
+      parseInt(searchParams.get("pageSize") || "50", 10),
+      200
+    );
+
+    const where: Record<string, unknown> = {};
+    if (journeyPhase === "__unassigned") {
+      where.journeyPhase = null;
+    } else if (journeyPhase) {
+      where.journeyPhase = journeyPhase;
+    }
+    if (category) where.category = category;
+    if (location) where.location = location;
+    if (search) {
+      where.OR = [
+        { title: { contains: search, mode: "insensitive" } },
+        { metaDescription: { contains: search, mode: "insensitive" } },
+      ];
+    }
+
+    const hasPagination = searchParams.has("page") || searchParams.has("journeyPhase");
+
+    if (hasPagination) {
+      const [articles, totalCount] = await Promise.all([
+        prisma.editorialPlanArticle.findMany({
+          where,
+          select: {
+            id: true,
+            title: true,
+            url: true,
+            category: true,
+            status: true,
+            location: true,
+            journeyPhase: true,
+            journeyConfidence: true,
+          },
+          orderBy: [{ plannedDate: "asc" }, { createdAt: "desc" }],
+          skip: (page - 1) * pageSize,
+          take: pageSize,
+        }),
+        prisma.editorialPlanArticle.count({ where }),
+      ]);
+
+      return NextResponse.json({
+        articles,
+        pagination: {
+          page,
+          pageSize,
+          totalCount,
+          totalPages: Math.ceil(totalCount / pageSize),
+        },
+      });
     }
 
     const articles = await prisma.editorialPlanArticle.findMany({
