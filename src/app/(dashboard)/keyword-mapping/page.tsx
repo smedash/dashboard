@@ -32,6 +32,105 @@ interface AnalysisData {
   overlaps: OverlapGroup[];
 }
 
+let _cachedArticles: Article[] | null = null;
+let _cachedAnalysisData: AnalysisData | null = null;
+let _lastFetchTime = 0;
+const CACHE_TTL = 60_000;
+const PAGE_SIZE = 25;
+
+function isCacheFresh(): boolean {
+  return Date.now() - _lastFetchTime < CACHE_TTL;
+}
+
+function Pagination({ page, totalItems, pageSize, onChange }: {
+  page: number;
+  totalItems: number;
+  pageSize: number;
+  onChange: (page: number) => void;
+}) {
+  const totalPages = Math.ceil(totalItems / pageSize);
+  if (totalPages <= 1) return null;
+
+  const start = page * pageSize + 1;
+  const end = Math.min((page + 1) * pageSize, totalItems);
+
+  return (
+    <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30">
+      <span className="text-sm text-slate-500 dark:text-slate-400">
+        {start}–{end} von {totalItems}
+      </span>
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => onChange(0)}
+          disabled={page === 0}
+          className="px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" /></svg>
+        </button>
+        <button
+          onClick={() => onChange(page - 1)}
+          disabled={page === 0}
+          className="px-2.5 py-1 text-xs rounded border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        >
+          Zurück
+        </button>
+        <span className="px-3 py-1 text-xs font-medium text-slate-700 dark:text-slate-300">
+          {page + 1} / {totalPages}
+        </span>
+        <button
+          onClick={() => onChange(page + 1)}
+          disabled={page >= totalPages - 1}
+          className="px-2.5 py-1 text-xs rounded border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        >
+          Weiter
+        </button>
+        <button
+          onClick={() => onChange(totalPages - 1)}
+          disabled={page >= totalPages - 1}
+          className="px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" /></svg>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function LoadingSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <div className="h-7 w-48 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+          <div className="mt-2 h-4 w-80 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+        </div>
+        <div className="h-10 w-52 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse" />
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+            <div className="h-7 w-12 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+            <div className="mt-2 h-4 w-28 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+          </div>
+        ))}
+      </div>
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <div className="px-4 py-3 bg-slate-50 dark:bg-slate-900/50">
+          <div className="h-4 w-full bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+        </div>
+        {[...Array(8)].map((_, i) => (
+          <div key={i} className="px-4 py-4 border-t border-slate-200 dark:border-slate-700 flex gap-6">
+            <div className="h-4 w-1/4 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+            <div className="h-4 w-1/4 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+            <div className="h-4 w-1/6 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+            <div className="h-4 w-1/4 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 const CATEGORY_COLORS: Record<string, string> = {
   Mortgages: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
   "Accounts&Cards": "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
@@ -67,11 +166,11 @@ function formatDate(iso: string): string {
 type TabId = "mapping" | "overlaps" | "location-overlaps" | "keywords" | "tagcloud";
 
 export default function KeywordMappingPage() {
-  const [articles, setArticles] = useState<Article[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [articles, setArticles] = useState<Article[]>(_cachedArticles ?? []);
+  const [loading, setLoading] = useState(!_cachedAnalysisData);
   const [analyzing, setAnalyzing] = useState(false);
   const [progress, setProgress] = useState("");
-  const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
+  const [analysisData, setAnalysisData] = useState<AnalysisData | null>(_cachedAnalysisData);
   const [activeTab, setActiveTab] = useState<TabId>("mapping");
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -79,13 +178,18 @@ export default function KeywordMappingPage() {
   const [overlapFilter, setOverlapFilter] = useState<"all" | "with-overlaps">("all");
   const [keywordSearch, setKeywordSearch] = useState("");
   const [selectedCloudKeyword, setSelectedCloudKeyword] = useState<string | null>(null);
+  const [mappingPage, setMappingPage] = useState(0);
+  const [overlapsPage, setOverlapsPage] = useState(0);
+  const [keywordsPage, setKeywordsPage] = useState(0);
 
   const fetchArticles = useCallback(async () => {
+    if (_cachedArticles && isCacheFresh()) return;
     try {
       const res = await fetch("/api/editorial-plan");
       if (res.ok) {
         const data = await res.json();
         setArticles(data.articles);
+        _cachedArticles = data.articles;
       }
     } catch (error) {
       console.error("Error fetching articles:", error);
@@ -93,18 +197,24 @@ export default function KeywordMappingPage() {
   }, []);
 
   const fetchSavedMapping = useCallback(async () => {
+    if (_cachedAnalysisData && isCacheFresh()) {
+      setLoading(false);
+      return;
+    }
     try {
       const res = await fetch("/api/editorial-plan/keyword-mapping");
       if (res.ok) {
         const data = await res.json();
         if (data.run) {
           setAnalysisData(data.run);
+          _cachedAnalysisData = data.run;
         }
       }
     } catch (error) {
       console.error("Error fetching saved mapping:", error);
     } finally {
       setLoading(false);
+      _lastFetchTime = Date.now();
     }
   }, []);
 
@@ -129,6 +239,8 @@ export default function KeywordMappingPage() {
 
       const data: AnalysisData = await res.json();
       setAnalysisData(data);
+      _cachedAnalysisData = data;
+      _lastFetchTime = Date.now();
       setProgress("");
     } catch (error) {
       console.error("Error running analysis:", error);
@@ -251,12 +363,25 @@ export default function KeywordMappingPage() {
       .filter(Boolean) as Array<{ id: string; title: string; url: string | null }>;
   }, [selectedCloudKeyword, analysisData, filteredResults, articles]);
 
+  useEffect(() => { setMappingPage(0); }, [searchTerm, categoryFilter, locationFilter, overlapFilter]);
+  useEffect(() => { setOverlapsPage(0); }, [categoryFilter, locationFilter]);
+  useEffect(() => { setKeywordsPage(0); }, [keywordSearch, categoryFilter, locationFilter]);
+
+  const paginatedArticles = useMemo(
+    () => filteredArticles.slice(mappingPage * PAGE_SIZE, (mappingPage + 1) * PAGE_SIZE),
+    [filteredArticles, mappingPage]
+  );
+  const paginatedOverlaps = useMemo(
+    () => filteredOverlaps.slice(overlapsPage * PAGE_SIZE, (overlapsPage + 1) * PAGE_SIZE),
+    [filteredOverlaps, overlapsPage]
+  );
+  const paginatedKeywords = useMemo(
+    () => filteredKeywords.slice(keywordsPage * PAGE_SIZE, (keywordsPage + 1) * PAGE_SIZE),
+    [filteredKeywords, keywordsPage]
+  );
+
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
+    return <LoadingSkeleton />;
   }
 
   return (
@@ -489,7 +614,7 @@ export default function KeywordMappingPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                {filteredArticles.map((article) => {
+                {paginatedArticles.map((article) => {
                   const result = getResultForArticle(article.id);
                   const articleOverlaps = getOverlapsForArticle(article.id);
                   const hasOverlaps = articleOverlaps.length > 0;
@@ -616,6 +741,7 @@ export default function KeywordMappingPage() {
               Keine Artikel gefunden, die den Filtern entsprechen.
             </div>
           )}
+          <Pagination page={mappingPage} totalItems={filteredArticles.length} pageSize={PAGE_SIZE} onChange={setMappingPage} />
         </div>
       )}
 
@@ -633,7 +759,8 @@ export default function KeywordMappingPage() {
               </p>
             </div>
           ) : (
-            filteredOverlaps.map((overlap) => (
+            <>
+              {paginatedOverlaps.map((overlap) => (
               <div
                 key={overlap.keyword}
                 className={`rounded-xl border p-5 ${getSeverityColor(overlap.articles.length)}`}
@@ -687,7 +814,9 @@ export default function KeywordMappingPage() {
                   ))}
                 </div>
               </div>
-            ))
+            ))}
+              <Pagination page={overlapsPage} totalItems={filteredOverlaps.length} pageSize={PAGE_SIZE} onChange={setOverlapsPage} />
+            </>
           )}
         </div>
       )}
@@ -818,8 +947,9 @@ export default function KeywordMappingPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                {filteredKeywords.map((kw, idx) => {
+                {paginatedKeywords.map((kw, idx) => {
                   const isOverlap = kw.count > 1;
+                  const globalIdx = keywordsPage * PAGE_SIZE + idx;
                   const matchingArticles = filteredResults
                     .filter((r) => r.focusKeywords.some((fk) => fk.toLowerCase().trim() === kw.keyword))
                     .map((r) => {
@@ -836,7 +966,7 @@ export default function KeywordMappingPage() {
                       } transition-colors`}
                     >
                       <td className="px-4 py-3 text-xs text-slate-400 tabular-nums">
-                        {idx + 1}
+                        {globalIdx + 1}
                       </td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-sm font-medium ${
@@ -900,6 +1030,7 @@ export default function KeywordMappingPage() {
               Keine Keywords gefunden.
             </div>
           )}
+          <Pagination page={keywordsPage} totalItems={filteredKeywords.length} pageSize={PAGE_SIZE} onChange={setKeywordsPage} />
         </div>
       )}
 
