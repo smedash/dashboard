@@ -57,7 +57,7 @@ function Pagination({ page, totalItems, pageSize, onChange }: {
   return (
     <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30">
       <span className="text-sm text-slate-500 dark:text-slate-400">
-        {start}–{end} von {totalItems}
+        {start.toLocaleString()}–{end.toLocaleString()} von {totalItems.toLocaleString()}
       </span>
       <div className="flex items-center gap-1">
         <button
@@ -170,6 +170,7 @@ export default function KeywordMappingPage() {
   const [loading, setLoading] = useState(!_cachedAnalysisData);
   const [analyzing, setAnalyzing] = useState(false);
   const [progress, setProgress] = useState("");
+  const [analysisProgress, setAnalysisProgress] = useState<{ analyzed: number; total: number } | null>(null);
   const [analysisData, setAnalysisData] = useState<AnalysisData | null>(_cachedAnalysisData);
   const [activeTab, setActiveTab] = useState<TabId>("mapping");
   const [searchTerm, setSearchTerm] = useState("");
@@ -224,7 +225,8 @@ export default function KeywordMappingPage() {
 
   const runAnalysis = async () => {
     setAnalyzing(true);
-    setProgress("Sende Artikel an Claude zur Keyword-Analyse...");
+    setProgress("Starte Keyword-Analyse...");
+    setAnalysisProgress(null);
     try {
       const res = await fetch("/api/editorial-plan/keyword-mapping", {
         method: "POST",
@@ -237,16 +239,48 @@ export default function KeywordMappingPage() {
         throw new Error(err.error || "Analyse fehlgeschlagen");
       }
 
-      const data: AnalysisData = await res.json();
-      setAnalysisData(data);
-      _cachedAnalysisData = data;
-      _lastFetchTime = Date.now();
-      setProgress("");
+      if (!res.body) throw new Error("Kein Stream verfügbar");
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const event = JSON.parse(line);
+            if (event.type === "progress") {
+              const pct = event.total > 0 ? Math.round((event.analyzed / event.total) * 100) : 0;
+              setProgress(`Analysiere... ${event.analyzed.toLocaleString("de-CH")} / ${event.total.toLocaleString("de-CH")} Artikel (${pct}%)`);
+              setAnalysisProgress({ analyzed: event.analyzed, total: event.total });
+            } else if (event.type === "complete") {
+              setAnalysisData(event.data);
+              _cachedAnalysisData = event.data;
+              _lastFetchTime = Date.now();
+              setProgress("");
+              setAnalysisProgress(null);
+            } else if (event.type === "error") {
+              setProgress(`Fehler: ${event.message}`);
+            }
+          } catch {
+            // skip malformed lines
+          }
+        }
+      }
     } catch (error) {
       console.error("Error running analysis:", error);
       setProgress(`Fehler: ${error instanceof Error ? error.message : "Unbekannter Fehler"}`);
     } finally {
       setAnalyzing(false);
+      setAnalysisProgress(null);
     }
   };
 
@@ -419,20 +453,42 @@ export default function KeywordMappingPage() {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
-              {analysisData ? "Neue Analyse starten" : `Keyword-Analyse starten (${eligibleArticles.length} Artikel)`}
+              {analysisData ? "Neue Analyse starten" : `Keyword-Analyse starten (${eligibleArticles.length.toLocaleString()} Artikel)`}
             </>
           )}
         </button>
       </div>
 
       {/* Progress */}
-      {progress && (
+      {(progress || analysisProgress) && (
         <div className={`p-4 rounded-lg text-sm ${
           progress.startsWith("Fehler")
             ? "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800"
             : "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
         }`}>
-          {progress}
+          <div className="flex items-center gap-3">
+            {analyzing && !progress.startsWith("Fehler") && (
+              <svg className="animate-spin h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+            )}
+            <span>{progress}</span>
+          </div>
+          {analysisProgress && analysisProgress.total > 0 && (
+            <div className="mt-3">
+              <div className="flex items-center justify-between text-xs mb-1">
+                <span>{analysisProgress.analyzed.toLocaleString("de-CH")} von {analysisProgress.total.toLocaleString("de-CH")} Artikeln</span>
+                <span className="font-medium">{Math.round((analysisProgress.analyzed / analysisProgress.total) * 100)}%</span>
+              </div>
+              <div className="w-full bg-blue-200 dark:bg-blue-900/40 rounded-full h-2.5 overflow-hidden">
+                <div
+                  className="bg-blue-600 dark:bg-blue-400 h-full rounded-full transition-all duration-500 ease-out"
+                  style={{ width: `${Math.round((analysisProgress.analyzed / analysisProgress.total) * 100)}%` }}
+                />
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -440,7 +496,7 @@ export default function KeywordMappingPage() {
       {analysisData && (
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
           <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
-            <div className="text-2xl font-bold text-slate-900 dark:text-white">{filteredResults.length}</div>
+            <div className="text-2xl font-bold text-slate-900 dark:text-white">{filteredResults.length.toLocaleString()}</div>
             <div className="text-sm text-slate-500 dark:text-slate-400">Artikel analysiert</div>
           </div>
           <button
@@ -448,7 +504,7 @@ export default function KeywordMappingPage() {
             className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 text-left hover:border-blue-400 dark:hover:border-blue-500 hover:ring-1 hover:ring-blue-400 dark:hover:ring-blue-500 transition-all group"
           >
             <div className="text-2xl font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-              {keywordStats.unique.length}
+              {keywordStats.unique.length.toLocaleString()}
             </div>
             <div className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-1">
               Einzigartige Keywords
@@ -459,13 +515,13 @@ export default function KeywordMappingPage() {
           </button>
           <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
             <div className={`text-2xl font-bold ${totalOverlaps > 0 ? "text-amber-600 dark:text-amber-400" : "text-green-600 dark:text-green-400"}`}>
-              {totalOverlaps}
+              {totalOverlaps.toLocaleString()}
             </div>
             <div className="text-sm text-slate-500 dark:text-slate-400">Keyword-Überlappungen</div>
           </div>
           <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
             <div className={`text-2xl font-bold ${criticalOverlaps > 0 ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"}`}>
-              {criticalOverlaps}
+              {criticalOverlaps.toLocaleString()}
             </div>
             <div className="text-sm text-slate-500 dark:text-slate-400">Kritische Überlappungen (3+)</div>
           </div>
@@ -484,7 +540,7 @@ export default function KeywordMappingPage() {
                   : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
               }`}
             >
-              Keyword-Mapping ({filteredArticles.length})
+              Keyword-Mapping ({filteredArticles.length.toLocaleString()})
             </button>
             <button
               onClick={() => setActiveTab("overlaps")}
@@ -497,7 +553,7 @@ export default function KeywordMappingPage() {
               Überlappungen
               {totalOverlaps > 0 && (
                 <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
-                  {totalOverlaps}
+                  {totalOverlaps.toLocaleString()}
                 </span>
               )}
             </button>
@@ -512,7 +568,7 @@ export default function KeywordMappingPage() {
               Location Overlap
               {locationOverlaps.length > 0 && (
                 <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-medium bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300">
-                  {locationOverlaps.length}
+                  {locationOverlaps.length.toLocaleString()}
                 </span>
               )}
             </button>
@@ -524,7 +580,7 @@ export default function KeywordMappingPage() {
                   : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
               }`}
             >
-              Alle Keywords ({keywordStats.unique.length})
+              Alle Keywords ({keywordStats.unique.length.toLocaleString()})
             </button>
             <button
               onClick={() => setActiveTab("tagcloud")}
@@ -575,6 +631,10 @@ export default function KeywordMappingPage() {
             <option value="all">Alle Locations</option>
             <option value="Guide">Guide</option>
             <option value="Insights">Insights</option>
+            <option value="CH Market">CH Market</option>
+            <option value="Global">Global</option>
+            <option value="Microsites">Microsites</option>
+            <option value="Minisites">Minisites</option>
           </select>
           {activeTab === "mapping" && (
             <select
@@ -674,20 +734,26 @@ export default function KeywordMappingPage() {
                               const isOverlapping = filteredOverlaps.some(
                                 (o) => o.keyword === kw
                               );
-                              return (
+                              return isOverlapping ? (
+                                <a
+                                  key={kw}
+                                  href={`/keyword-mapping/overlap?keyword=${encodeURIComponent(kw)}`}
+                                  className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 ring-1 ring-amber-300 dark:ring-amber-700 hover:bg-amber-200 dark:hover:bg-amber-900/50 hover:ring-amber-400 dark:hover:ring-amber-600 transition-all"
+                                  title={`Alle URLs mit "${kw}" anzeigen`}
+                                >
+                                  <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                  </svg>
+                                  {kw}
+                                  <svg className="w-3 h-3 ml-1 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                  </svg>
+                                </a>
+                              ) : (
                                 <span
                                   key={kw}
-                                  className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${
-                                    isOverlapping
-                                      ? "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 ring-1 ring-amber-300 dark:ring-amber-700"
-                                      : "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300"
-                                  }`}
+                                  className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300"
                                 >
-                                  {isOverlapping && (
-                                    <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                    </svg>
-                                  )}
                                   {kw}
                                 </span>
                               );
@@ -710,15 +776,21 @@ export default function KeywordMappingPage() {
                         {articleOverlaps.length > 0 ? (
                           <div className="space-y-1">
                             {articleOverlaps.map((overlap) => (
-                              <div key={overlap.keyword} className="text-xs">
-                                <span className="font-medium text-amber-700 dark:text-amber-400">
+                              <a
+                                key={overlap.keyword}
+                                href={`/keyword-mapping/overlap?keyword=${encodeURIComponent(overlap.keyword)}`}
+                                className="flex items-center gap-1 text-xs text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300 hover:underline transition-colors"
+                              >
+                                <span className="font-medium">
                                   &quot;{overlap.keyword}&quot;
                                 </span>
                                 <span className="text-slate-500 dark:text-slate-400">
-                                  {" "}
                                   ({overlap.articles.length} URLs)
                                 </span>
-                              </div>
+                                <svg className="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                </svg>
+                              </a>
                             ))}
                           </div>
                         ) : result ? (
@@ -1145,7 +1217,7 @@ export default function KeywordMappingPage() {
             Keyword-Analyse starten
           </h3>
           <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto mb-6">
-            Klicke auf &quot;Keyword-Analyse starten&quot;, um alle {eligibleArticles.length} Artikel
+            Klicke auf &quot;Keyword-Analyse starten&quot;, um alle {eligibleArticles.length.toLocaleString()} Artikel
             des Redaktionsplans auf ihre Fokuskeywords zu prüfen. Die Analyse basiert auf Title, H1 und Meta-Description.
           </p>
           <div className="flex items-center justify-center gap-8 text-sm text-slate-400 dark:text-slate-500">
@@ -1153,13 +1225,13 @@ export default function KeywordMappingPage() {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              {articles.length} Artikel total
+              {articles.length.toLocaleString()} Artikel total
             </div>
             <div className="flex items-center gap-2">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              {eligibleArticles.length} mit SEO-Daten
+              {eligibleArticles.length.toLocaleString()} mit SEO-Daten
             </div>
           </div>
         </div>
