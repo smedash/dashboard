@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { canEdit } from "@/lib/rbac";
 import Anthropic from "@anthropic-ai/sdk";
 
+export const maxDuration = 300;
+
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
@@ -27,6 +29,28 @@ Die 5 Phasen der Customer Journey:
    Beispiele: "Hypothek beantragen", "Banken vergleichen Schweiz", "Notar Hauskauf", "Depot eröffnen", "Konto eröffnen", Abschluss-Prozesse, Antragsthemen.
 `;
 
+const VALID_PHASES = ["awareness", "orientation", "planning", "product_search", "closing"];
+const CLAUDE_BATCH_SIZE = 100;
+
+export async function GET() {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const [total, unclassified] = await Promise.all([
+      prisma.editorialPlanArticle.count(),
+      prisma.editorialPlanArticle.count({ where: { journeyPhase: null } }),
+    ]);
+
+    return NextResponse.json({ total, unclassified });
+  } catch (error) {
+    console.error("Error getting classification stats:", error);
+    return NextResponse.json({ error: "Failed to get stats" }, { status: 500 });
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
@@ -39,9 +63,11 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { articleIds, overwrite = false } = body as {
+    const { articleIds, overwrite = false, limit = 500, offset = 0 } = body as {
       articleIds?: string[];
       overwrite?: boolean;
+      limit?: number;
+      offset?: number;
     };
 
     const where: Record<string, unknown> = {};
@@ -52,69 +78,73 @@ export async function POST(request: NextRequest) {
       where.journeyPhase = null;
     }
 
+    const remaining = await prisma.editorialPlanArticle.count({ where });
+
     const articles = await prisma.editorialPlanArticle.findMany({
       where,
       select: { id: true, title: true, category: true, description: true, url: true, metaDescription: true, h1: true },
       orderBy: { createdAt: "asc" },
+      take: Math.min(limit, 500),
+      skip: offset,
     });
 
     if (articles.length === 0) {
       return NextResponse.json({
         classified: 0,
+        remaining: 0,
         message: "Keine Artikel zur Klassifizierung gefunden.",
         results: [],
       });
     }
 
-    const BATCH_SIZE = 50;
     const allResults: Array<{ id: string; phase: string; confidence: number; reason: string }> = [];
 
-    for (let i = 0; i < articles.length; i += BATCH_SIZE) {
-      const batch = articles.slice(i, i + BATCH_SIZE);
+    for (let i = 0; i < articles.length; i += CLAUDE_BATCH_SIZE) {
+      const batch = articles.slice(i, i + CLAUDE_BATCH_SIZE);
 
       const articleList = batch
         .map(
           (a, idx) =>
-            `${idx + 1}. [ID: ${a.id}] Titel: "${a.title}"${a.category ? ` | Kategorie: ${a.category}` : ""}${a.h1 ? ` | H1: ${a.h1}` : ""}${a.metaDescription ? ` | Meta-Description: ${a.metaDescription.substring(0, 200)}` : ""}${a.description ? ` | Beschreibung: ${a.description.substring(0, 150)}` : ""}${a.url ? ` | URL: ${a.url}` : ""}`
+            `${idx + 1}. [ID: ${a.id}] Titel: "${a.title}"${a.category ? ` | Kategorie: ${a.category}` : ""}${a.h1 ? ` | H1: ${a.h1}` : ""}${a.metaDescription ? ` | Meta: ${a.metaDescription.substring(0, 150)}` : ""}${a.url ? ` | URL: ${a.url}` : ""}`
         )
         .join("\n");
 
-      const message = await client.messages.create({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 4096,
-        messages: [
-          {
-            role: "user",
-            content: `Du bist ein SEO- und Content-Strategie-Experte für Finanzthemen (Hypotheken, Vorsorge, Investing, Banking) in der Schweiz.
+      try {
+        const message = await client.messages.create({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 8192,
+          messages: [
+            {
+              role: "user",
+              content: `Du bist ein SEO- und Content-Strategie-Experte für Finanzthemen (Hypotheken, Vorsorge, Investing, Banking) in der Schweiz.
 
 ${JOURNEY_PHASE_DESCRIPTIONS}
 
-Klassifiziere die folgenden Artikel in die passende Customer Journey Phase. Berücksichtige dabei den Titel, die Kategorie und die Beschreibung.
+Klassifiziere die folgenden ${batch.length} Artikel in die passende Customer Journey Phase. Berücksichtige dabei den Titel, die Kategorie und die Beschreibung.
 
 Artikel:
 ${articleList}
 
-Wichtig: Viele Themen liegen an der Grenze zwischen zwei Phasen. Gib deshalb einen numerischen Konfidenz-Score (0-100) an, der widerspiegelt, wie eindeutig die Zuordnung ist:
-- 85-100: Sehr eindeutig, passt klar in eine Phase
-- 65-84: Ziemlich klar, aber mit leichten Überschneidungen zu einer Nachbarphase
-- 45-64: Grenzfall, könnte auch in eine andere Phase passen
-- 0-44: Sehr unklar, fast willkürliche Zuordnung
+Konfidenz-Score (0-100):
+- 85-100: Sehr eindeutig
+- 65-84: Ziemlich klar
+- 45-64: Grenzfall
+- 0-44: Sehr unklar
 
-Antworte NUR mit einem JSON-Array im folgenden Format (keine weiteren Erklärungen):
+Antworte NUR mit einem JSON-Array (keine weiteren Erklärungen):
 [
-  {"id": "...", "phase": "awareness|orientation|planning|product_search|closing", "confidence": 75, "reason": "Kurze Begründung (max 10 Wörter)"}
+  {"id": "...", "phase": "awareness|orientation|planning|product_search|closing", "confidence": 75, "reason": "Max 10 Wörter"}
 ]`,
-          },
-        ],
-      });
+            },
+          ],
+        });
 
-      const textContent = message.content.find((c) => c.type === "text");
-      if (!textContent || textContent.type !== "text") continue;
+        const textContent = message.content.find((c) => c.type === "text");
+        if (!textContent || textContent.type !== "text") continue;
 
-      const jsonMatch = textContent.text.match(/\[[\s\S]*\]/);
-      if (!jsonMatch) continue;
+        const jsonMatch = textContent.text.match(/\[[\s\S]*\]/);
+        if (!jsonMatch) continue;
 
-      try {
         const results = JSON.parse(jsonMatch[0]) as Array<{
           id: string;
           phase: string;
@@ -122,35 +152,42 @@ Antworte NUR mit einem JSON-Array im folgenden Format (keine weiteren Erklärung
           reason: string;
         }>;
 
-        const validPhases = ["awareness", "orientation", "planning", "product_search", "closing"];
+        const validResults = results.filter(
+          (r) => VALID_PHASES.includes(r.phase) && batch.find((a) => a.id === r.id)
+        );
 
-        for (const result of results) {
-          if (!validPhases.includes(result.phase)) continue;
+        if (validResults.length > 0) {
+          await prisma.$transaction(
+            validResults.map((r) =>
+              prisma.editorialPlanArticle.update({
+                where: { id: r.id },
+                data: {
+                  journeyPhase: r.phase,
+                  journeyConfidence: Math.max(0, Math.min(100, Math.round(Number(r.confidence) || 0))),
+                },
+              })
+            )
+          );
 
-          const articleExists = batch.find((a) => a.id === result.id);
-          if (!articleExists) continue;
-
-          const confidenceScore = Math.max(0, Math.min(100, Math.round(Number(result.confidence) || 0)));
-
-          await prisma.editorialPlanArticle.update({
-            where: { id: result.id },
-            data: {
-              journeyPhase: result.phase,
-              journeyConfidence: confidenceScore,
-            },
-          });
-
-          allResults.push({ ...result, confidence: confidenceScore });
+          allResults.push(
+            ...validResults.map((r) => ({
+              ...r,
+              confidence: Math.max(0, Math.min(100, Math.round(Number(r.confidence) || 0))),
+            }))
+          );
         }
-      } catch {
-        console.error("Failed to parse Claude response for batch", i / BATCH_SIZE);
+      } catch (batchError) {
+        console.error(`Failed to classify batch at offset ${i}:`, batchError);
       }
     }
+
+    const newRemaining = remaining - allResults.length;
 
     return NextResponse.json({
       classified: allResults.length,
       total: articles.length,
-      results: allResults,
+      remaining: Math.max(0, newRemaining),
+      results: allResults.slice(0, 20),
     });
   } catch (error) {
     console.error("Error classifying articles:", error);

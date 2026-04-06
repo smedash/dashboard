@@ -509,9 +509,9 @@ export default function KeywordMappingPage() {
                             {article.title}
                           </div>
                           {article.url && (
-                            <div className="text-xs text-blue-600 dark:text-blue-400 truncate mt-0.5" title={article.url}>
+                            <a href={article.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 dark:text-blue-400 truncate mt-0.5 hover:underline block" title={article.url}>
                               {article.url}
-                            </div>
+                            </a>
                           )}
                           {article.category && (
                             <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-medium ${CATEGORY_COLORS[article.category] || "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300"}`}>
@@ -678,9 +678,9 @@ export default function KeywordMappingPage() {
                           {article.title}
                         </div>
                         {article.url && (
-                          <div className="text-xs text-blue-600 dark:text-blue-400 truncate">
+                          <a href={article.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 dark:text-blue-400 truncate hover:underline block">
                             {article.url}
-                          </div>
+                          </a>
                         )}
                       </div>
                     </div>
@@ -747,9 +747,9 @@ export default function KeywordMappingPage() {
                                 {article.title}
                               </div>
                               {article.url && (
-                                <div className="text-xs text-blue-600 dark:text-blue-400 truncate mt-0.5">
+                                <a href={article.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 dark:text-blue-400 truncate mt-0.5 hover:underline block">
                                   {article.url}
-                                </div>
+                                </a>
                               )}
                             </div>
                           </div>
@@ -777,9 +777,9 @@ export default function KeywordMappingPage() {
                                 {article.title}
                               </div>
                               {article.url && (
-                                <div className="text-xs text-emerald-600 dark:text-emerald-400 truncate mt-0.5">
+                                <a href={article.url} target="_blank" rel="noopener noreferrer" className="text-xs text-emerald-600 dark:text-emerald-400 truncate mt-0.5 hover:underline block">
                                   {article.url}
-                                </div>
+                                </a>
                               )}
                             </div>
                           </div>
@@ -991,9 +991,9 @@ export default function KeywordMappingPage() {
                         {a.title}
                       </div>
                       {a.url && (
-                        <div className="text-xs text-blue-600 dark:text-blue-400 truncate mt-0.5">
+                        <a href={a.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 dark:text-blue-400 truncate mt-0.5 hover:underline block">
                           {a.url}
-                        </div>
+                        </a>
                       )}
                     </div>
                   </div>

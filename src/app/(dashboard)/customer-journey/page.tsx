@@ -128,9 +128,17 @@ const CATEGORIES = [
   "Investing",
   "Pension",
   "Digital Banking",
+  "Credit Suisse",
+  "Investor Relations",
+  "Legal",
+  "Media",
+  "Payments",
+  "Yumo",
+  "Wealthmanagement",
+  "Assetmanagement",
 ] as const;
 
-const LOCATIONS = ["Guide", "Insights"] as const;
+const LOCATIONS = ["Guide", "Insights", "CH Market", "Global", "Microsites", "Minisites"] as const;
 
 const CATEGORY_COLORS: Record<string, string> = {
   "Mortgages": "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
@@ -138,6 +146,14 @@ const CATEGORY_COLORS: Record<string, string> = {
   "Investing": "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
   "Pension": "bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300",
   "Digital Banking": "bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300",
+  "Credit Suisse": "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
+  "Investor Relations": "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300",
+  "Legal": "bg-slate-100 text-slate-800 dark:bg-slate-900/30 dark:text-slate-300",
+  "Media": "bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-300",
+  "Payments": "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
+  "Yumo": "bg-lime-100 text-lime-800 dark:bg-lime-900/30 dark:text-lime-300",
+  "Wealthmanagement": "bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300",
+  "Assetmanagement": "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300",
 };
 
 const CATEGORY_BAR_COLORS: Record<string, string> = {
@@ -146,6 +162,14 @@ const CATEGORY_BAR_COLORS: Record<string, string> = {
   "Investing": "bg-emerald-400",
   "Pension": "bg-violet-400",
   "Digital Banking": "bg-rose-400",
+  "Credit Suisse": "bg-blue-400",
+  "Investor Relations": "bg-cyan-400",
+  "Legal": "bg-slate-400",
+  "Media": "bg-pink-400",
+  "Payments": "bg-orange-400",
+  "Yumo": "bg-lime-400",
+  "Wealthmanagement": "bg-teal-400",
+  "Assetmanagement": "bg-indigo-400",
 };
 
 const STATUSES: Record<string, string> = {
@@ -172,12 +196,20 @@ export default function CustomerJourneyPage() {
   const [showUnassigned, setShowUnassigned] = useState(true);
 
   const [classifying, setClassifying] = useState(false);
+  const [classifyProgress, setClassifyProgress] = useState<{
+    classified: number;
+    remaining: number;
+    totalToProcess: number;
+    currentBatch: number;
+    totalBatches: number;
+  } | null>(null);
   const [classifyResult, setClassifyResult] = useState<{
     classified: number;
     total: number;
-    results: Array<{ id: string; phase: string; confidence: number; reason: string }>;
+    cancelled?: boolean;
   } | null>(null);
   const [classifyMode, setClassifyMode] = useState<"unassigned" | "all">("unassigned");
+  const classifyCancelledRef = useRef(false);
 
   const [suggestPhase, setSuggestPhase] = useState<string | null>(null);
   const [suggestCategory, setSuggestCategory] = useState<string>("");
@@ -247,24 +279,76 @@ export default function CustomerJourneyPage() {
   const classifyArticles = async (mode: "unassigned" | "all") => {
     setClassifying(true);
     setClassifyResult(null);
+    classifyCancelledRef.current = false;
+
+    const CHUNK_SIZE = 500;
+    let totalClassified = 0;
+    let totalProcessed = 0;
+
     try {
-      const res = await fetch("/api/editorial-plan/classify-journey", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ overwrite: mode === "all" }),
+      const statsRes = await fetch("/api/editorial-plan/classify-journey");
+      const stats = statsRes.ok ? await statsRes.json() : { unclassified: 0, total: 0 };
+      const totalToProcess = mode === "all" ? stats.total : stats.unclassified;
+      const totalBatches = Math.ceil(totalToProcess / CHUNK_SIZE);
+
+      setClassifyProgress({
+        classified: 0,
+        remaining: totalToProcess,
+        totalToProcess,
+        currentBatch: 0,
+        totalBatches,
       });
-      if (res.ok) {
+
+      let remaining = totalToProcess;
+      let batchNum = 0;
+
+      while (remaining > 0) {
+        if (classifyCancelledRef.current) break;
+
+        batchNum++;
+        const res = await fetch("/api/editorial-plan/classify-journey", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            overwrite: mode === "all",
+            limit: CHUNK_SIZE,
+            offset: 0,
+          }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          console.error("Classification error:", err);
+          break;
+        }
+
         const data = await res.json();
-        setClassifyResult(data);
-        await fetchArticles();
-      } else {
-        const err = await res.json();
-        setClassifyResult({ classified: 0, total: 0, results: [], ...err });
+        totalClassified += data.classified;
+        totalProcessed += data.total;
+        remaining = data.remaining;
+
+        setClassifyProgress({
+          classified: totalClassified,
+          remaining,
+          totalToProcess,
+          currentBatch: batchNum,
+          totalBatches: Math.ceil((totalClassified + remaining) / CHUNK_SIZE),
+        });
       }
+
+      setClassifyResult({
+        classified: totalClassified,
+        total: totalProcessed,
+        cancelled: classifyCancelledRef.current,
+      });
+
+      await fetchArticles();
     } catch (error) {
       console.error("Error classifying articles:", error);
+      setClassifyResult({ classified: totalClassified, total: totalProcessed });
     } finally {
       setClassifying(false);
+      setClassifyProgress(null);
     }
   };
 
@@ -420,21 +504,26 @@ export default function CustomerJourneyPage() {
               <option value="all">Alle Artikel neu klassifizieren ({filteredArticles.length})</option>
             </select>
             <button
-              onClick={() => classifyArticles(classifyMode)}
-              disabled={classifying || (classifyMode === "unassigned" && totalUnassigned === 0)}
+              onClick={() => {
+                if (classifying) {
+                  classifyCancelledRef.current = true;
+                } else {
+                  classifyArticles(classifyMode);
+                }
+              }}
+              disabled={!classifying && classifyMode === "unassigned" && totalUnassigned === 0}
               className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 classifying
-                  ? "bg-purple-400 text-white cursor-wait"
+                  ? "bg-red-500 text-white hover:bg-red-600"
                   : "bg-purple-600 text-white hover:bg-purple-700"
               } disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               {classifying ? (
                 <>
-                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
-                  Claude klassifiziert...
+                  Abbrechen
                 </>
               ) : (
                 <>
@@ -449,8 +538,34 @@ export default function CustomerJourneyPage() {
         )}
       </div>
 
+      {/* Classification Progress */}
+      {classifyProgress && (
+        <div className="rounded-xl border p-4 bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800">
+          <div className="flex items-center gap-3 mb-3">
+            <svg className="w-5 h-5 text-purple-600 dark:text-purple-400 animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-slate-900 dark:text-white">
+                {classifyProgress.classified.toLocaleString()} klassifiziert · {classifyProgress.remaining.toLocaleString()} verbleibend
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Batch {classifyProgress.currentBatch} von ~{classifyProgress.totalBatches} · {Math.round((classifyProgress.classified / classifyProgress.totalToProcess) * 100)}% abgeschlossen
+              </p>
+            </div>
+          </div>
+          <div className="w-full bg-purple-200 dark:bg-purple-800 rounded-full h-2.5">
+            <div
+              className="bg-purple-600 dark:bg-purple-400 h-2.5 rounded-full transition-all duration-500"
+              style={{ width: `${Math.max(1, Math.round((classifyProgress.classified / classifyProgress.totalToProcess) * 100))}%` }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Classification Result Banner */}
-      {classifyResult && (
+      {classifyResult && !classifyProgress && (
         <div className={`rounded-xl border p-4 ${
           classifyResult.classified > 0
             ? "bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800"
@@ -463,43 +578,14 @@ export default function CustomerJourneyPage() {
               </svg>
               <div>
                 <p className="text-sm font-medium text-slate-900 dark:text-white">
-                  {classifyResult.classified} von {classifyResult.total} Artikeln klassifiziert
+                  {classifyResult.classified.toLocaleString()} Artikel klassifiziert
+                  {classifyResult.cancelled && (
+                    <span className="text-amber-600 dark:text-amber-400 ml-2">(abgebrochen)</span>
+                  )}
                 </p>
-                {classifyResult.results.length > 0 && (
-                  <div className="mt-2 space-y-1">
-                    {classifyResult.results.slice(0, 10).map((r) => {
-                      const phase = JOURNEY_PHASES.find((p) => p.id === r.phase);
-                      const confColor = r.confidence >= 85
-                        ? "text-green-600 dark:text-green-400"
-                        : r.confidence >= 65
-                          ? "text-blue-600 dark:text-blue-400"
-                          : r.confidence >= 45
-                            ? "text-amber-600 dark:text-amber-400"
-                            : "text-red-600 dark:text-red-400";
-                      return (
-                        <div key={r.id} className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
-                          <span className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium ${phase?.badgeColor || "bg-slate-100 text-slate-600"}`}>
-                            {phase?.label || r.phase}
-                          </span>
-                          <span className="truncate max-w-xs">
-                            {articles.find((a) => a.id === r.id)?.title || r.id}
-                          </span>
-                          <span className={`font-semibold tabular-nums shrink-0 ${confColor}`}>
-                            {r.confidence}%
-                          </span>
-                          <span className="text-slate-400 shrink-0">
-                            {r.reason}
-                          </span>
-                        </div>
-                      );
-                    })}
-                    {classifyResult.results.length > 10 && (
-                      <p className="text-xs text-slate-400">
-                        ... und {classifyResult.results.length - 10} weitere
-                      </p>
-                    )}
-                  </div>
-                )}
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  {classifyResult.classified.toLocaleString()} von {classifyResult.total.toLocaleString()} verarbeitet
+                </p>
               </div>
             </div>
             <button

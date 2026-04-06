@@ -33,6 +33,14 @@ const CATEGORIES = [
   "Investing",
   "Pension",
   "Digital Banking",
+  "Credit Suisse",
+  "Investor Relations",
+  "Legal",
+  "Media",
+  "Payments",
+  "Yumo",
+  "Wealthmanagement",
+  "Assetmanagement",
 ] as const;
 
 const STATUSES = [
@@ -49,9 +57,17 @@ const CATEGORY_COLORS: Record<string, string> = {
   "Investing": "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
   "Pension": "bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300",
   "Digital Banking": "bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300",
+  "Credit Suisse": "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
+  "Investor Relations": "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300",
+  "Legal": "bg-slate-100 text-slate-800 dark:bg-slate-900/30 dark:text-slate-300",
+  "Media": "bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-300",
+  "Payments": "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
+  "Yumo": "bg-lime-100 text-lime-800 dark:bg-lime-900/30 dark:text-lime-300",
+  "Wealthmanagement": "bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300",
+  "Assetmanagement": "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300",
 };
 
-const LOCATIONS = ["Guide", "Insights"] as const;
+const LOCATIONS = ["Guide", "Insights", "CH Market", "Global", "Microsites", "Minisites"] as const;
 
 const MONTHS_DE = [
   "Januar", "Februar", "März", "April", "Mai", "Juni",
