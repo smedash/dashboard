@@ -32,7 +32,8 @@ export async function GET(request: NextRequest) {
         { articles },
         {
           headers: {
-            "Cache-Control": "private, max-age=60, stale-while-revalidate=120",
+            /** Kein Disk-Cache: große Payloads + manche Umgebungen (z. B. Dropbox) lösen ERR_CACHE_WRITE_FAILURE aus. */
+            "Cache-Control": "private, no-store",
           },
         }
       );

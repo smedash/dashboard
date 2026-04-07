@@ -660,6 +660,156 @@ export async function fetchReferringDomains(
   throw new Error("Unerwartete API-Antwort");
 }
 
+/** Top-Rank-Keywords pro Seiten-URL (DataForSEO Labs, wöchentlich aktualisiert). */
+export type LabsRankedKeywordItem = {
+  keyword: string;
+  rankGroup: number;
+  rankAbsolute: number | null;
+  searchVolume: number | null;
+};
+
+export type LabsRankedKeywordsTaskResult = {
+  keywords: LabsRankedKeywordItem[];
+  error?: string;
+};
+
+type RankedKeywordsLiveTask = {
+  status_code: number;
+  status_message?: string;
+  data?: { tag?: string; target?: string };
+  result?: Array<{
+    items?: Array<{
+      keyword_data?: {
+        keyword?: string;
+        keyword_info?: { search_volume?: number };
+      };
+      ranked_serp_element?: {
+        serp_item?: {
+          type?: string;
+          rank_group?: number;
+          rank_absolute?: number;
+          is_paid?: boolean;
+        };
+      };
+    }>;
+  }>;
+};
+
+function parseRankedKeywordsLiveTask(
+  task: RankedKeywordsLiveTask | undefined,
+  limit: number
+): LabsRankedKeywordsTaskResult {
+  if (!task) {
+    return { keywords: [], error: "Keine Task-Antwort" };
+  }
+
+  if (task.status_code !== 20000) {
+    return {
+      keywords: [],
+      error: task.status_message || `Status ${task.status_code}`,
+    };
+  }
+
+  const rawItems = task.result?.[0]?.items ?? [];
+  const keywords: LabsRankedKeywordItem[] = [];
+
+  for (const item of rawItems) {
+    const kw = item.keyword_data?.keyword;
+    if (!kw) continue;
+    const serp = item.ranked_serp_element?.serp_item;
+    if (serp?.type && serp.type !== "organic") continue;
+    if (serp?.is_paid) continue;
+    keywords.push({
+      keyword: kw,
+      rankGroup: typeof serp?.rank_group === "number" ? serp.rank_group : 0,
+      rankAbsolute: typeof serp?.rank_absolute === "number" ? serp.rank_absolute : null,
+      searchVolume:
+        typeof item.keyword_data?.keyword_info?.search_volume === "number"
+          ? item.keyword_data.keyword_info.search_volume
+          : null,
+    });
+    if (keywords.length >= limit) break;
+  }
+
+  return { keywords };
+}
+
+/**
+ * DataForSEO Labs: ranked_keywords/live — Keywords, für die die Ziel-URL organisch rankt.
+ * Pro HTTP-Request nur **eine** Task (API: „You can set only one task at a time.“).
+ * @param tasks je Eintrag: `tag` zur Zuordnung (z. B. Artikel-ID), `target` volle URL mit https://
+ * @see https://docs.dataforseo.com/v3/dataforseo_labs/google/ranked_keywords/live/
+ */
+export async function fetchRankedKeywordsForPageTargets(
+  tasks: Array<{ tag: string; target: string }>,
+  options?: { limit?: number; concurrency?: number }
+): Promise<Map<string, LabsRankedKeywordsTaskResult>> {
+  const limit = Math.min(Math.max(options?.limit ?? 5, 1), 1000);
+  const concurrency = Math.min(Math.max(options?.concurrency ?? 4, 1), 10);
+  const locationName = process.env.DATAFORSEO_LABS_LOCATION_NAME?.trim();
+  const languageName = process.env.DATAFORSEO_LABS_LANGUAGE_NAME?.trim();
+
+  const out = new Map<string, LabsRankedKeywordsTaskResult>();
+  for (const t of tasks) {
+    out.set(t.tag, { keywords: [] });
+  }
+
+  let nextIndex = 0;
+
+  async function worker(): Promise<void> {
+    while (true) {
+      const i = nextIndex++;
+      if (i >= tasks.length) return;
+      const { tag, target } = tasks[i];
+
+      const body: Record<string, unknown> = {
+        target,
+        tag,
+        limit,
+        item_types: ["organic"],
+        order_by: ["ranked_serp_element.serp_item.rank_group,asc"],
+      };
+      if (locationName) body.location_name = locationName;
+      if (languageName) body.language_name = languageName;
+
+      try {
+        const response = await fetch(
+          `${DATAFORSEO_API_URL}/dataforseo_labs/google/ranked_keywords/live`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: getAuthHeader(),
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify([body]),
+          }
+        );
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          out.set(tag, {
+            keywords: [],
+            error: `HTTP ${response.status}: ${errorText.slice(0, 200)}`,
+          });
+          continue;
+        }
+
+        const data = (await response.json()) as { tasks?: RankedKeywordsLiveTask[] };
+        const parsed = parseRankedKeywordsLiveTask(data.tasks?.[0], limit);
+        out.set(tag, parsed);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Unbekannter Fehler";
+        out.set(tag, { keywords: [], error: msg });
+      }
+    }
+  }
+
+  const pool = Math.min(concurrency, tasks.length || 1);
+  await Promise.all(Array.from({ length: pool }, () => worker()));
+
+  return out;
+}
+
 /**
  * Findet die Position einer URL in den Rankings
  * Sucht standardmäßig nach ubs.com URLs, wenn keine targetUrl angegeben ist

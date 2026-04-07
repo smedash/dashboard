@@ -31,6 +31,18 @@ interface OverlapGroup {
   articles: Array<{ id: string; title: string; url: string | null; language?: string | null; location?: string | null }>;
 }
 
+type LabsRankedKeywordRow = {
+  keyword: string;
+  rankGroup: number;
+  rankAbsolute: number | null;
+  searchVolume: number | null;
+};
+
+type LabsKwArticleState =
+  | { status: "loading" }
+  | { status: "ok"; keywords: LabsRankedKeywordRow[]; apiError?: string }
+  | { status: "error"; message: string; needsCredentials?: boolean };
+
 interface AnalysisData {
   id?: string;
   analyzed: number;
@@ -337,6 +349,69 @@ function KeywordMappingGscLine({
       {m.clicks.toLocaleString("de-CH")} Klicks · {m.impressions.toLocaleString("de-CH")} Imp. ·{" "}
       {(m.ctr * 100).toFixed(1)}% CTR · Ø {m.position.toFixed(1)}
     </span>
+  );
+}
+
+function KeywordMappingLabsCell({ state }: { state: LabsKwArticleState | undefined }) {
+  if (state === undefined) {
+    return <span className="text-[10px] text-slate-400 dark:text-slate-500">—</span>;
+  }
+  if (state.status === "loading") {
+    return (
+      <span className="text-[10px] text-slate-400 dark:text-slate-500 animate-pulse">
+        DataForSEO lädt…
+      </span>
+    );
+  }
+  if (state.status === "error") {
+    return (
+      <span
+        className="text-[10px] text-red-600 dark:text-red-400 block leading-snug"
+        title={state.message}
+      >
+        {state.needsCredentials
+          ? "DataForSEO nicht konfiguriert (.env)."
+          : state.message}
+      </span>
+    );
+  }
+  if (state.apiError && state.keywords.length === 0) {
+    return (
+      <span className="text-[10px] text-amber-700 dark:text-amber-300 block leading-snug" title={state.apiError}>
+        {state.apiError}
+      </span>
+    );
+  }
+  if (state.keywords.length === 0) {
+    return (
+      <span
+        className="text-[10px] text-slate-400 dark:text-slate-500 block leading-snug"
+        title="Keine organischen Rankings für diese URL im gewählten Labs-Markt (oder Seite rankt nicht in den Top-Ergebnissen)."
+      >
+        Keine Top-Keywords
+      </span>
+    );
+  }
+  return (
+    <div className="space-y-1 max-w-[14rem]">
+      {state.apiError && (
+        <span className="text-[9px] text-amber-600 dark:text-amber-400 block">{state.apiError}</span>
+      )}
+      <ul className="space-y-1 text-[10px] text-slate-600 dark:text-slate-400 leading-snug">
+        {state.keywords.map((k, idx) => (
+          <li key={`${k.keyword}-${idx}`} className="tabular-nums">
+            <span className="font-medium text-slate-800 dark:text-slate-200">{k.keyword}</span>
+            <span className="text-slate-500 dark:text-slate-500">
+              {" "}
+              · Pos. {k.rankGroup}
+              {k.searchVolume != null
+                ? ` · ${k.searchVolume.toLocaleString("de-CH")} Vol.`
+                : ""}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -652,11 +727,15 @@ export default function KeywordMappingPage() {
   const [gscPeriod, setGscPeriod] = useState<string>("28d");
   const [gscClicksFilterMode, setGscClicksFilterMode] = useState<GscClicksFilterMode>("off");
   const [gscClicksThreshold, setGscClicksThreshold] = useState<number>(50);
+  const [labsKwByArticleId, setLabsKwByArticleId] = useState<Record<string, LabsKwArticleState>>({});
+  const [labsMarketHint, setLabsMarketHint] = useState<string | null>(null);
 
   const fetchArticles = useCallback(async () => {
     if (_cachedArticles && isCacheFresh()) return;
     try {
-      const res = await fetch("/api/editorial-plan?scope=keyword-mapping");
+      const res = await fetch("/api/editorial-plan?scope=keyword-mapping", {
+        cache: "no-store",
+      });
       if (res.ok) {
         const data = await res.json();
         setArticles(data.articles);
@@ -673,7 +752,9 @@ export default function KeywordMappingPage() {
       return;
     }
     try {
-      const res = await fetch("/api/editorial-plan/keyword-mapping");
+      const res = await fetch("/api/editorial-plan/keyword-mapping", {
+        cache: "no-store",
+      });
       if (res.ok) {
         const data = await res.json();
         if (data.run) {
@@ -1077,6 +1158,91 @@ export default function KeywordMappingPage() {
     [urlPrefixCrossOverlaps, urlPrefixOverlapsPage]
   );
 
+  useEffect(() => {
+    if (activeTab !== "mapping" || !analysisData) return;
+
+    const items = paginatedArticles
+      .filter((a) => a.url?.trim())
+      .filter((a) => labsKwByArticleId[a.id] === undefined)
+      .map((a) => ({ id: a.id, url: a.url! }));
+
+    if (items.length === 0) return;
+
+    const itemsSnapshot = items.map((r) => ({ ...r }));
+
+    setLabsKwByArticleId((prev) => {
+      const n = { ...prev };
+      for (const row of itemsSnapshot) n[row.id] = { status: "loading" };
+      return n;
+    });
+
+    (async () => {
+      try {
+        const res = await fetch("/api/keyword-mapping/ranked-keywords", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ items: itemsSnapshot }),
+        });
+        const data = (await res.json()) as {
+          byId?: Record<string, { keywords: LabsRankedKeywordRow[]; error?: string }>;
+          labsLocation?: string | null;
+          labsLanguage?: string | null;
+          error?: string;
+          needsCredentials?: boolean;
+        };
+
+        if (!res.ok) {
+          const msg = data.error || `HTTP ${res.status}`;
+          const needsCredentials = Boolean(data.needsCredentials) || res.status === 503;
+          setLabsKwByArticleId((prev) => {
+            const n = { ...prev };
+            for (const row of itemsSnapshot) {
+              n[row.id] = { status: "error", message: msg, needsCredentials };
+            }
+            return n;
+          });
+          return;
+        }
+
+        if (
+          (data.labsLocation && data.labsLocation.trim()) ||
+          (data.labsLanguage && data.labsLanguage.trim())
+        ) {
+          const loc = data.labsLocation?.trim() || "alle Orte";
+          const lang = data.labsLanguage?.trim() || "alle Sprachen";
+          setLabsMarketHint(`DataForSEO Labs: ${loc}, ${lang}`);
+        }
+
+        const byId = data.byId ?? {};
+        setLabsKwByArticleId((prev) => {
+          const n = { ...prev };
+          for (const row of itemsSnapshot) {
+            const r = byId[row.id];
+            if (r) {
+              n[row.id] = {
+                status: "ok",
+                keywords: Array.isArray(r.keywords) ? r.keywords : [],
+                ...(r.error ? { apiError: r.error } : {}),
+              };
+            } else {
+              n[row.id] = { status: "ok", keywords: [] };
+            }
+          }
+          return n;
+        });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Netzwerkfehler";
+        setLabsKwByArticleId((prev) => {
+          const n = { ...prev };
+          for (const row of itemsSnapshot) {
+            n[row.id] = { status: "error", message: msg };
+          }
+          return n;
+        });
+      }
+    })();
+  }, [paginatedArticles, activeTab, analysisData, labsKwByArticleId]);
+
   if (loading) {
     return <LoadingSkeleton />;
   }
@@ -1104,6 +1270,23 @@ export default function KeywordMappingPage() {
               </span>
             )}
           </p>
+          {labsMarketHint && (
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{labsMarketHint}</p>
+          )}
+          {activeTab === "mapping" && analysisData && (
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              Im Reiter „Keyword-Mapping“: pro Tabellen-Seite bis zu {PAGE_SIZE} DataForSEO-Labs-Aufrufe
+              (ranked_keywords, je URL), kostenpflichtig. Markt/Sprache optional:{" "}
+              <code className="text-[10px] px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-700 font-mono">
+                DATAFORSEO_LABS_LOCATION_NAME
+              </code>{" "}
+              /{" "}
+              <code className="text-[10px] px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-700 font-mono">
+                DATAFORSEO_LABS_LANGUAGE_NAME
+              </code>
+              .
+            </p>
+          )}
           {analysisData?.createdAt && (
             <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
               Letzter Durchlauf: {formatDate(analysisData.createdAt)}
@@ -1434,6 +1617,12 @@ export default function KeywordMappingPage() {
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     SEO-Daten
                   </th>
+                  <th
+                    className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider max-w-[14rem]"
+                    title="Top 5 organische Rank-Keywords pro URL (DataForSEO Labs, wöchentliche Daten)"
+                  >
+                    Top-Rank Keywords (Labs)
+                  </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     Fokuskeywords
                   </th>
@@ -1509,6 +1698,9 @@ export default function KeywordMappingPage() {
                             <span className="text-xs text-slate-400 italic">Keine SEO-Daten</span>
                           )}
                         </div>
+                      </td>
+                      <td className="px-4 py-3 align-top border-l border-slate-100 dark:border-slate-700/80">
+                        <KeywordMappingLabsCell state={labsKwByArticleId[article.id]} />
                       </td>
                       <td className="px-4 py-3">
                         {result ? (

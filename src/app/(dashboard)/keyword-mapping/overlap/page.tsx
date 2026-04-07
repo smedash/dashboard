@@ -59,8 +59,8 @@ export default function OverlapDetailPage() {
     async function fetchData() {
       try {
         const [articlesRes, mappingRes] = await Promise.all([
-          fetch("/api/editorial-plan?scope=keyword-mapping"),
-          fetch("/api/editorial-plan/keyword-mapping"),
+          fetch("/api/editorial-plan?scope=keyword-mapping", { cache: "no-store" }),
+          fetch("/api/editorial-plan/keyword-mapping", { cache: "no-store" }),
         ]);
 
         if (articlesRes.ok) {
