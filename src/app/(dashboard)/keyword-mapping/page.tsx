@@ -200,7 +200,53 @@ function formatDate(iso: string): string {
   });
 }
 
-type TabId = "mapping" | "overlaps" | "location-overlaps" | "keywords" | "tagcloud";
+/** Erste zwei Pfadsegmente nach der Domain, z. B. https://www.ubs.com/us/en/foo → us/en */
+function getFirstTwoPathSegments(urlStr: string | null | undefined): string | null {
+  if (!urlStr?.trim()) return null;
+  let pathname = urlStr.trim();
+  try {
+    if (/^https?:\/\//i.test(pathname)) {
+      pathname = new URL(pathname).pathname;
+    } else {
+      pathname = pathname.startsWith("/") ? pathname : `/${pathname}`;
+    }
+  } catch {
+    return null;
+  }
+  const parts = pathname.split("/").filter(Boolean);
+  if (parts.length < 2) return null;
+  return `${parts[0].toLowerCase()}/${parts[1].toLowerCase()}`;
+}
+
+/** Nutzereingabe (Zeile oder volle URL) in normalisiertes Präfix seg1/seg2 */
+function normalizeUserPathPrefixLine(line: string): string | null {
+  const s = line.trim();
+  if (!s) return null;
+  let pathname = s;
+  try {
+    if (/^https?:\/\//i.test(s)) {
+      pathname = new URL(s).pathname;
+    } else {
+      pathname = s.startsWith("/") ? s : `/${s}`;
+    }
+  } catch {
+    return null;
+  }
+  const parts = pathname.split("/").filter(Boolean);
+  if (parts.length < 2) return null;
+  return `${parts[0].toLowerCase()}/${parts[1].toLowerCase()}`;
+}
+
+const URL_PREFIX_OVERLAP_COLUMN_STYLES = [
+  { dot: "bg-teal-500", border: "border-teal-100 dark:border-teal-900/30", icon: "text-teal-400" },
+  { dot: "bg-sky-500", border: "border-sky-100 dark:border-sky-900/30", icon: "text-sky-400" },
+  { dot: "bg-fuchsia-500", border: "border-fuchsia-100 dark:border-fuchsia-900/30", icon: "text-fuchsia-400" },
+  { dot: "bg-lime-500", border: "border-lime-100 dark:border-lime-900/30", icon: "text-lime-400" },
+  { dot: "bg-pink-500", border: "border-pink-100 dark:border-pink-900/30", icon: "text-pink-400" },
+  { dot: "bg-cyan-500", border: "border-cyan-100 dark:border-cyan-900/30", icon: "text-cyan-400" },
+] as const;
+
+type TabId = "mapping" | "overlaps" | "location-overlaps" | "url-prefix-overlaps" | "keywords" | "tagcloud";
 
 export default function KeywordMappingPage() {
   const [articles, setArticles] = useState<Article[]>(_cachedArticles ?? []);
@@ -221,6 +267,11 @@ export default function KeywordMappingPage() {
   const [mappingPage, setMappingPage] = useState(0);
   const [overlapsPage, setOverlapsPage] = useState(0);
   const [keywordsPage, setKeywordsPage] = useState(0);
+  const [urlPrefixOverlapsPage, setUrlPrefixOverlapsPage] = useState(0);
+  /** Ein Präfix pro Zeile, z. B. us/en oder volle URL — Vergleich der ersten zwei Pfadsegmente */
+  const [urlPrefixCompareInput, setUrlPrefixCompareInput] = useState(
+    "us/en\nglobal/en"
+  );
 
   const fetchArticles = useCallback(async () => {
     if (_cachedArticles && isCacheFresh()) return;
@@ -441,6 +492,39 @@ export default function KeywordMappingPage() {
     });
   }, [filteredOverlaps]);
 
+  const selectedUrlPrefixes = useMemo(() => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const line of urlPrefixCompareInput.split(/\r?\n/)) {
+      const n = normalizeUserPathPrefixLine(line);
+      if (n && !seen.has(n)) {
+        seen.add(n);
+        out.push(n);
+      }
+    }
+    return out;
+  }, [urlPrefixCompareInput]);
+
+  const selectedUrlPrefixSet = useMemo(
+    () => new Set(selectedUrlPrefixes),
+    [selectedUrlPrefixes]
+  );
+
+  /** Überlappungen, bei denen mindestens zwei der gewählten URL-Pfadpräfixe (je 2 Segmente) vorkommen */
+  const urlPrefixCrossOverlaps = useMemo(() => {
+    if (selectedUrlPrefixes.length < 2) return [];
+    return filteredOverlaps.filter((o) => {
+      const hit = new Set<string>();
+      for (const art of o.articles) {
+        const fromPlan = editorialArticleById.get(art.id);
+        const url = fromPlan?.url?.trim() || art.url?.trim() || null;
+        const p = getFirstTwoPathSegments(url);
+        if (p && selectedUrlPrefixSet.has(p)) hit.add(p);
+      }
+      return hit.size >= 2;
+    });
+  }, [filteredOverlaps, editorialArticleById, selectedUrlPrefixSet]);
+
   const filteredResults = useMemo(() => {
     if (!analysisData) return [];
     if (!filteredArticleIds) return analysisData.results;
@@ -492,6 +576,9 @@ export default function KeywordMappingPage() {
   useEffect(() => { setMappingPage(0); }, [articleSearchFilter, categoryFilter, locationFilter, overlapFilter]);
   useEffect(() => { setOverlapsPage(0); }, [categoryFilter, locationFilter]);
   useEffect(() => { setKeywordsPage(0); }, [keywordSearchFilter, categoryFilter, locationFilter]);
+  useEffect(() => {
+    setUrlPrefixOverlapsPage(0);
+  }, [urlPrefixCompareInput, categoryFilter, locationFilter]);
 
   const paginatedArticles = useMemo(
     () => filteredArticles.slice(mappingPage * PAGE_SIZE, (mappingPage + 1) * PAGE_SIZE),
@@ -504,6 +591,14 @@ export default function KeywordMappingPage() {
   const paginatedKeywords = useMemo(
     () => filteredKeywords.slice(keywordsPage * PAGE_SIZE, (keywordsPage + 1) * PAGE_SIZE),
     [filteredKeywords, keywordsPage]
+  );
+  const paginatedUrlPrefixOverlaps = useMemo(
+    () =>
+      urlPrefixCrossOverlaps.slice(
+        urlPrefixOverlapsPage * PAGE_SIZE,
+        (urlPrefixOverlapsPage + 1) * PAGE_SIZE
+      ),
+    [urlPrefixCrossOverlaps, urlPrefixOverlapsPage]
   );
 
   if (loading) {
@@ -661,6 +756,21 @@ export default function KeywordMappingPage() {
               {locationOverlaps.length > 0 && (
                 <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-medium bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300">
                   {locationOverlaps.length.toLocaleString()}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab("url-prefix-overlaps")}
+              className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
+                activeTab === "url-prefix-overlaps"
+                  ? "border-blue-600 text-blue-600 dark:text-blue-400"
+                  : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
+              }`}
+            >
+              URL-Pfad-Overlap
+              {selectedUrlPrefixes.length >= 2 && urlPrefixCrossOverlaps.length > 0 && (
+                <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-medium bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300">
+                  {urlPrefixCrossOverlaps.length.toLocaleString()}
                 </span>
               )}
             </button>
@@ -1098,6 +1208,201 @@ export default function KeywordMappingPage() {
                 </div>
               );
             })
+          )}
+        </div>
+      )}
+
+      {/* URL-Pfad-Overlap Tab */}
+      {activeTab === "url-prefix-overlaps" && analysisData && (
+        <div className="space-y-4">
+          <div className="bg-teal-50 dark:bg-teal-900/30 border border-teal-200 dark:border-teal-700 rounded-xl p-4 space-y-3">
+            <p className="text-sm text-teal-800 dark:text-teal-200">
+              Vergleiche <strong>zwei oder mehr URL-Bereiche</strong> anhand der ersten beiden Pfadsegmente nach der Domain
+              (z. B.{" "}
+              <code className="text-xs bg-teal-100 dark:bg-teal-900/50 px-1 rounded">us/en</code> vs.{" "}
+              <code className="text-xs bg-teal-100 dark:bg-teal-900/50 px-1 rounded">global/en</code>).
+              Angezeigt werden nur Fokuskeyword-Überlappungen, bei denen betroffene Artikel unter{" "}
+              <strong>mindestens zwei</strong> der eingetragenen Pfade liegen. Kategorie- und Location-Filter wirken weiterhin auf die Datenbasis.
+            </p>
+            <div>
+              <label
+                htmlFor="url-prefix-compare-input"
+                className="block text-xs font-semibold text-teal-900 dark:text-teal-100 mb-1.5"
+              >
+                Pfade zum Vergleich (eine Zeile pro Präfix oder volle URL)
+              </label>
+              <textarea
+                id="url-prefix-compare-input"
+                value={urlPrefixCompareInput}
+                onChange={(e) => setUrlPrefixCompareInput(e.target.value)}
+                rows={5}
+                spellCheck={false}
+                className="w-full max-w-2xl font-mono text-sm px-3 py-2 border border-teal-200 dark:border-teal-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                placeholder={"us/en\nglobal/en\nuk/en"}
+              />
+              <p className="mt-1.5 text-xs text-teal-700 dark:text-teal-300">
+                Erkannt:{" "}
+                {selectedUrlPrefixes.length === 0 ? (
+                  <span>keine gültigen Präfixe</span>
+                ) : (
+                  <span className="font-mono">{selectedUrlPrefixes.join(" · ")}</span>
+                )}
+                {selectedUrlPrefixes.length === 1 && (
+                  <span className="block mt-1 text-amber-700 dark:text-amber-300">
+                    Mindestens zwei verschiedene Präfixe eintragen, um kreuzende Überlappungen zu sehen.
+                  </span>
+                )}
+              </p>
+            </div>
+          </div>
+
+          {selectedUrlPrefixes.length < 2 ? (
+            <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl p-8 text-center text-sm text-slate-600 dark:text-slate-400">
+              Bitte mindestens zwei gültige Pfade angeben (je zwei Segmente nach der Domain, z. B.{" "}
+              <span className="font-mono">us/en</span> und <span className="font-mono">global/en</span>).
+            </div>
+          ) : urlPrefixCrossOverlaps.length === 0 ? (
+            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-8 text-center">
+              <svg className="w-12 h-12 mx-auto text-green-500 dark:text-green-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <h3 className="text-lg font-medium text-green-800 dark:text-green-300">Keine Überlappungen über die gewählten Pfade</h3>
+              <p className="text-sm text-green-600 dark:text-green-400 mt-1 max-w-lg mx-auto">
+                Unter den aktuellen Filtern gibt es kein Keyword, das gleichzeitig in Artikeln mit mindestens zwei verschiedenen
+                der angegebenen URL-Pfadpräfixe vorkommt.
+              </p>
+            </div>
+          ) : (
+            <>
+              {paginatedUrlPrefixOverlaps.map((overlap) => {
+                const URL_COL_OTHER = "Anderer Pfad";
+                const URL_COL_NONE = "Ohne URL-Pfad";
+                const bucket = (art: (typeof overlap.articles)[number]) => {
+                  const fromPlan = editorialArticleById.get(art.id);
+                  const displayUrl = fromPlan?.url?.trim() || art.url?.trim() || null;
+                  const p = getFirstTwoPathSegments(displayUrl);
+                  if (!p) return URL_COL_NONE;
+                  if (selectedUrlPrefixSet.has(p)) return p;
+                  return URL_COL_OTHER;
+                };
+                const colKeys: string[] = [];
+                for (const p of selectedUrlPrefixes) {
+                  if (overlap.articles.some((a) => bucket(a) === p)) colKeys.push(p);
+                }
+                if (overlap.articles.some((a) => bucket(a) === URL_COL_OTHER)) colKeys.push(URL_COL_OTHER);
+                if (overlap.articles.some((a) => bucket(a) === URL_COL_NONE)) colKeys.push(URL_COL_NONE);
+
+                const pathLabels = colKeys
+                  .filter((k) => k !== URL_COL_OTHER && k !== URL_COL_NONE)
+                  .join(" · ");
+                const extraBits = [
+                  colKeys.includes(URL_COL_OTHER) ? URL_COL_OTHER : null,
+                  colKeys.includes(URL_COL_NONE) ? URL_COL_NONE : null,
+                ].filter(Boolean);
+
+                return (
+                  <div
+                    key={overlap.keyword}
+                    className="rounded-xl border p-5 bg-teal-50/50 dark:bg-teal-900/5 border-teal-200 dark:border-teal-800"
+                  >
+                    <div className="flex flex-wrap items-center gap-3 mb-4">
+                      <a
+                        href={`/keyword-mapping/overlap?keyword=${encodeURIComponent(overlap.keyword)}`}
+                        className="inline-flex items-center px-3 py-1 rounded-lg text-sm font-bold bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300 hover:bg-teal-200 dark:hover:bg-teal-900/50 transition-colors"
+                      >
+                        &quot;{overlap.keyword}&quot;
+                        <svg className="w-3.5 h-3.5 ml-1 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                      </a>
+                      <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-teal-200 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300">
+                        {overlap.articles.length} URLs
+                      </span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400">
+                        Pfade: {pathLabels || "—"}
+                        {extraBits.length > 0 && ` · ${extraBits.join(" · ")}`}
+                      </span>
+                    </div>
+                    <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(220px,1fr))]">
+                      {colKeys.map((colKey, colIdx) => {
+                        const style = URL_PREFIX_OVERLAP_COLUMN_STYLES[colIdx % URL_PREFIX_OVERLAP_COLUMN_STYLES.length];
+                        return (
+                          <div key={colKey}>
+                            <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                              <span className={`w-2 h-2 rounded-full shrink-0 ${style.dot}`} />
+                              <span className="normal-case font-mono text-[11px] tracking-normal">{colKey}</span>
+                            </div>
+                            <div className="space-y-2">
+                              {overlap.articles
+                                .filter((a) => bucket(a) === colKey)
+                                .map((article) => {
+                                  const fromPlan = editorialArticleById.get(article.id);
+                                  const displayTitle = fromPlan?.title ?? article.title;
+                                  const displayUrl =
+                                    fromPlan?.url?.trim() || article.url?.trim() || null;
+                                  const seg = getFirstTwoPathSegments(displayUrl);
+                                  return (
+                                    <div
+                                      key={`${colKey}-${article.id}`}
+                                      className={`flex items-start gap-3 bg-white/80 dark:bg-slate-800/60 rounded-lg px-3 py-2 border ${style.border}`}
+                                    >
+                                      <svg
+                                        className={`w-4 h-4 mt-0.5 shrink-0 ${style.icon}`}
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                      >
+                                        <path
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          strokeWidth={2}
+                                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                        />
+                                      </svg>
+                                      <div className="min-w-0">
+                                        <div className="text-sm font-medium text-slate-900 dark:text-white truncate">
+                                          {displayTitle}
+                                        </div>
+                                        {displayUrl ? (
+                                          <>
+                                            <a
+                                              href={displayUrl}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="text-xs text-blue-600 dark:text-blue-400 truncate mt-0.5 hover:underline block"
+                                            >
+                                              {displayUrl}
+                                            </a>
+                                            {seg && (
+                                              <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-0.5 block">
+                                                Präfix: {seg}
+                                              </span>
+                                            )}
+                                          </>
+                                        ) : (
+                                          <span className="text-xs text-slate-500 dark:text-slate-500 italic mt-0.5 block">
+                                            Keine URL im Redaktionsplan
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+              <Pagination
+                page={urlPrefixOverlapsPage}
+                totalItems={urlPrefixCrossOverlaps.length}
+                pageSize={PAGE_SIZE}
+                onChange={setUrlPrefixOverlapsPage}
+              />
+            </>
           )}
         </div>
       )}
