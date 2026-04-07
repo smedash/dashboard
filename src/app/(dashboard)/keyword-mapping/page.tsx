@@ -37,6 +37,10 @@ let _cachedAnalysisData: AnalysisData | null = null;
 let _lastFetchTime = 0;
 const CACHE_TTL = 60_000;
 const PAGE_SIZE = 25;
+/** Suche erst nach Pause auslösen, damit große Datenmengen nicht bei jedem Tastendruck filtern. */
+const SEARCH_DEBOUNCE_MS = 350;
+/** Einzelne Zeichen matchen fast alles und sind extrem teuer — erst ab dieser Länge filtern. */
+const MIN_SEARCH_CHARS = 2;
 
 function isCacheFresh(): boolean {
   return Date.now() - _lastFetchTime < CACHE_TTL;
@@ -139,6 +143,39 @@ const CATEGORY_COLORS: Record<string, string> = {
   "Digital Banking": "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300",
 };
 
+/** Gleiche Werte wie im Location-Filter — für Location-Overlap-Sortierung und Dropdown. */
+const EDITORIAL_LOCATIONS = [
+  "Guide",
+  "Insights",
+  "CH Market",
+  "Global",
+  "Microsites",
+  "Minisites",
+] as const;
+
+const LOCATION_OVERLAP_COLUMN_STYLES = [
+  { dot: "bg-blue-500", border: "border-blue-100 dark:border-blue-900/30", icon: "text-blue-400" },
+  { dot: "bg-emerald-500", border: "border-emerald-100 dark:border-emerald-900/30", icon: "text-emerald-400" },
+  { dot: "bg-amber-500", border: "border-amber-100 dark:border-amber-900/30", icon: "text-amber-400" },
+  { dot: "bg-rose-500", border: "border-rose-100 dark:border-rose-900/30", icon: "text-rose-400" },
+  { dot: "bg-cyan-500", border: "border-cyan-100 dark:border-cyan-900/30", icon: "text-cyan-400" },
+  { dot: "bg-indigo-500", border: "border-indigo-100 dark:border-indigo-900/30", icon: "text-indigo-400" },
+  { dot: "bg-violet-500", border: "border-violet-100 dark:border-violet-900/30", icon: "text-violet-400" },
+  { dot: "bg-orange-500", border: "border-orange-100 dark:border-orange-900/30", icon: "text-orange-400" },
+] as const;
+
+function sortLocationsForOverlapDisplay(locations: Iterable<string>): string[] {
+  const order = new Map<string, number>(
+    EDITORIAL_LOCATIONS.map((loc, i) => [loc, i])
+  );
+  return [...locations].sort((a, b) => {
+    const ia = order.has(a) ? order.get(a)! : 1000;
+    const ib = order.has(b) ? order.get(b)! : 1000;
+    if (ia !== ib) return ia - ib;
+    return a.localeCompare(b, "de");
+  });
+}
+
 const OVERLAP_SEVERITY_COLORS = [
   "",
   "",
@@ -178,6 +215,8 @@ export default function KeywordMappingPage() {
   const [locationFilter, setLocationFilter] = useState<string>("all");
   const [overlapFilter, setOverlapFilter] = useState<"all" | "with-overlaps">("all");
   const [keywordSearch, setKeywordSearch] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
+  const [debouncedKeywordSearch, setDebouncedKeywordSearch] = useState("");
   const [selectedCloudKeyword, setSelectedCloudKeyword] = useState<string | null>(null);
   const [mappingPage, setMappingPage] = useState(0);
   const [overlapsPage, setOverlapsPage] = useState(0);
@@ -222,6 +261,26 @@ export default function KeywordMappingPage() {
   useEffect(() => {
     Promise.all([fetchArticles(), fetchSavedMapping()]);
   }, [fetchArticles, fetchSavedMapping]);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearchTerm(searchTerm), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedKeywordSearch(keywordSearch), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [keywordSearch]);
+
+  const articleSearchFilter = useMemo(() => {
+    const s = debouncedSearchTerm.trim();
+    return s.length >= MIN_SEARCH_CHARS ? s : "";
+  }, [debouncedSearchTerm]);
+
+  const keywordSearchFilter = useMemo(() => {
+    const s = debouncedKeywordSearch.trim();
+    return s.length >= MIN_SEARCH_CHARS ? s : "";
+  }, [debouncedKeywordSearch]);
 
   const runAnalysis = async () => {
     setAnalyzing(true);
@@ -284,40 +343,6 @@ export default function KeywordMappingPage() {
     }
   };
 
-  const getResultForArticle = (articleId: string): KeywordResult | undefined => {
-    return analysisData?.results.find((r) => r.id === articleId);
-  };
-
-  const getOverlapsForArticle = (articleId: string): OverlapGroup[] => {
-    if (!analysisData) return [];
-    return filteredOverlaps.filter((o) => o.articles.some((a) => a.id === articleId));
-  };
-
-  const eligibleArticles = articles.filter(
-    (a) => a.title && (a.h1 || a.metaDescription)
-  );
-
-  const filteredArticles = eligibleArticles.filter((a) => {
-    const matchesSearch =
-      !searchTerm ||
-      a.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      a.url?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      a.h1?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      getResultForArticle(a.id)?.focusKeywords.some((k) =>
-        k.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-
-    const matchesCategory = categoryFilter === "all" || a.category === categoryFilter;
-    const matchesLocation = locationFilter === "all" || a.location === locationFilter;
-
-    const matchesOverlap =
-      overlapFilter === "all" || getOverlapsForArticle(a.id).length > 0;
-
-    return matchesSearch && matchesCategory && matchesLocation && matchesOverlap;
-  });
-
-  const categories = [...new Set(articles.map((a) => a.category).filter(Boolean))] as string[];
-
   const filteredArticleIds = useMemo(() => {
     if (categoryFilter === "all" && locationFilter === "all") return null;
     return new Set(
@@ -339,13 +364,80 @@ export default function KeywordMappingPage() {
       .filter((o) => o.articles.length > 1);
   }, [analysisData, filteredArticleIds]);
 
+  const getResultForArticle = (articleId: string): KeywordResult | undefined => {
+    return analysisData?.results.find((r) => r.id === articleId);
+  };
+
+  const getOverlapsForArticle = (articleId: string): OverlapGroup[] => {
+    if (!analysisData) return [];
+    return filteredOverlaps.filter((o) => o.articles.some((a) => a.id === articleId));
+  };
+
+  const eligibleArticles = useMemo(
+    () => articles.filter((a) => a.title && (a.h1 || a.metaDescription)),
+    [articles]
+  );
+
+  const filteredArticles = useMemo(() => {
+    const resultById = new Map<string, KeywordResult>();
+    if (analysisData) {
+      for (const r of analysisData.results) {
+        resultById.set(r.id, r);
+      }
+    }
+    const overlapArticleIds = new Set<string>();
+    for (const o of filteredOverlaps) {
+      for (const art of o.articles) {
+        overlapArticleIds.add(art.id);
+      }
+    }
+    const term = articleSearchFilter.toLowerCase();
+    const hasSearch = articleSearchFilter.length > 0;
+
+    return eligibleArticles.filter((a) => {
+      const matchesSearch =
+        !hasSearch ||
+        a.title.toLowerCase().includes(term) ||
+        (a.url?.toLowerCase().includes(term) ?? false) ||
+        (a.h1?.toLowerCase().includes(term) ?? false) ||
+        (resultById.get(a.id)?.focusKeywords.some((k) => k.toLowerCase().includes(term)) ?? false);
+
+      const matchesCategory = categoryFilter === "all" || a.category === categoryFilter;
+      const matchesLocation = locationFilter === "all" || a.location === locationFilter;
+      const matchesOverlap =
+        overlapFilter === "all" || overlapArticleIds.has(a.id);
+
+      return matchesSearch && matchesCategory && matchesLocation && matchesOverlap;
+    });
+  }, [
+    eligibleArticles,
+    articleSearchFilter,
+    categoryFilter,
+    locationFilter,
+    overlapFilter,
+    analysisData,
+    filteredOverlaps,
+  ]);
+
+  const categories = [...new Set(articles.map((a) => a.category).filter(Boolean))] as string[];
+
+  /** Überlappungs-Payload kann ältere/leere URLs enthalten — Anzeige mit Redaktionsplan abgleichen. */
+  const editorialArticleById = useMemo(
+    () => new Map(articles.map((a) => [a.id, a])),
+    [articles]
+  );
+
   const totalOverlaps = filteredOverlaps.length;
   const criticalOverlaps = filteredOverlaps.filter((o) => o.articles.length >= 3).length;
 
   const locationOverlaps = useMemo(() => {
     return filteredOverlaps.filter((o) => {
-      const locations = new Set(o.articles.map((a) => a.location).filter(Boolean));
-      return locations.has("Guide") && locations.has("Insights");
+      const locations = new Set(
+        o.articles
+          .map((a) => a.location?.trim())
+          .filter((loc): loc is string => Boolean(loc))
+      );
+      return locations.size >= 2;
     });
   }, [filteredOverlaps]);
 
@@ -371,10 +463,10 @@ export default function KeywordMappingPage() {
   }, [analysisData, filteredResults]);
 
   const filteredKeywords = useMemo(() => {
-    if (!keywordSearch) return keywordStats.unique;
-    const term = keywordSearch.toLowerCase();
+    if (!keywordSearchFilter) return keywordStats.unique;
+    const term = keywordSearchFilter.toLowerCase();
     return keywordStats.unique.filter((k) => k.keyword.includes(term));
-  }, [keywordStats.unique, keywordSearch]);
+  }, [keywordStats.unique, keywordSearchFilter]);
 
   const tagCloudData = useMemo(() => {
     if (keywordStats.unique.length === 0) return [];
@@ -397,9 +489,9 @@ export default function KeywordMappingPage() {
       .filter(Boolean) as Array<{ id: string; title: string; url: string | null }>;
   }, [selectedCloudKeyword, analysisData, filteredResults, articles]);
 
-  useEffect(() => { setMappingPage(0); }, [searchTerm, categoryFilter, locationFilter, overlapFilter]);
+  useEffect(() => { setMappingPage(0); }, [articleSearchFilter, categoryFilter, locationFilter, overlapFilter]);
   useEffect(() => { setOverlapsPage(0); }, [categoryFilter, locationFilter]);
-  useEffect(() => { setKeywordsPage(0); }, [keywordSearch, categoryFilter, locationFilter]);
+  useEffect(() => { setKeywordsPage(0); }, [keywordSearchFilter, categoryFilter, locationFilter]);
 
   const paginatedArticles = useMemo(
     () => filteredArticles.slice(mappingPage * PAGE_SIZE, (mappingPage + 1) * PAGE_SIZE),
@@ -606,7 +698,11 @@ export default function KeywordMappingPage() {
               </svg>
               <input
                 type="text"
-                placeholder={activeTab === "keywords" ? "Keyword suchen..." : "Suche nach Titel, URL oder Keyword..."}
+                placeholder={
+                  activeTab === "keywords"
+                    ? "Keyword suchen (mind. 2 Zeichen)…"
+                    : "Titel, URL oder Keyword (mind. 2 Zeichen)…"
+                }
                 value={activeTab === "keywords" ? keywordSearch : searchTerm}
                 onChange={(e) => activeTab === "keywords" ? setKeywordSearch(e.target.value) : setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -629,12 +725,9 @@ export default function KeywordMappingPage() {
             className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
           >
             <option value="all">Alle Locations</option>
-            <option value="Guide">Guide</option>
-            <option value="Insights">Insights</option>
-            <option value="CH Market">CH Market</option>
-            <option value="Global">Global</option>
-            <option value="Microsites">Microsites</option>
-            <option value="Minisites">Minisites</option>
+            {EDITORIAL_LOCATIONS.map((loc) => (
+              <option key={loc} value={loc}>{loc}</option>
+            ))}
           </select>
           {activeTab === "mapping" && (
             <select
@@ -864,26 +957,36 @@ export default function KeywordMappingPage() {
                   )}
                 </div>
                 <div className="space-y-2">
-                  {overlap.articles.map((article) => (
-                    <div
-                      key={article.id}
-                      className="flex items-start gap-3 bg-white/60 dark:bg-slate-800/60 rounded-lg px-3 py-2"
-                    >
-                      <svg className="w-4 h-4 mt-0.5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      <div className="min-w-0">
-                        <div className="text-sm font-medium text-slate-900 dark:text-white truncate">
-                          {article.title}
+                  {overlap.articles.map((article, artIdx) => {
+                    const fromPlan = editorialArticleById.get(article.id);
+                    const displayTitle = fromPlan?.title ?? article.title;
+                    const displayUrl =
+                      fromPlan?.url?.trim() || article.url?.trim() || null;
+                    return (
+                      <div
+                        key={`${overlap.keyword}-${article.id}-${artIdx}`}
+                        className="flex items-start gap-3 bg-white/60 dark:bg-slate-800/60 rounded-lg px-3 py-2"
+                      >
+                        <svg className="w-4 h-4 mt-0.5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium text-slate-900 dark:text-white truncate">
+                            {displayTitle}
+                          </div>
+                          {displayUrl ? (
+                            <a href={displayUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 dark:text-blue-400 truncate hover:underline block">
+                              {displayUrl}
+                            </a>
+                          ) : (
+                            <span className="text-xs text-slate-500 dark:text-slate-500 italic">
+                              Keine URL im Redaktionsplan
+                            </span>
+                          )}
                         </div>
-                        {article.url && (
-                          <a href={article.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 dark:text-blue-400 truncate hover:underline block">
-                            {article.url}
-                          </a>
-                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ))}
@@ -898,8 +1001,9 @@ export default function KeywordMappingPage() {
         <div className="space-y-4">
           <div className="bg-violet-50 dark:bg-violet-900/30 border border-violet-200 dark:border-violet-700 rounded-xl p-4">
             <p className="text-sm text-violet-700 dark:text-violet-200">
-              Hier werden Keywords angezeigt, die sowohl in <strong>Guide</strong>- als auch in <strong>Insights</strong>-Artikeln vorkommen.
-              Diese Überlappungen über Location-Grenzen hinweg sind besonders relevant für die Content-Strategie.
+              Hier erscheinen Keywords, die in Artikeln mit <strong>mindestens zwei verschiedenen Locations</strong> vorkommen
+              (alle Locations aus dem Filter: {EDITORIAL_LOCATIONS.join(", ")}).
+              Für die vollständige Übersicht bitte im Filter <strong>Alle Locations</strong> wählen — bei nur einer Location sind kreuzende Überlappungen nicht sichtbar.
             </p>
           </div>
           {locationOverlaps.length === 0 ? (
@@ -909,87 +1013,91 @@ export default function KeywordMappingPage() {
               </svg>
               <h3 className="text-lg font-medium text-green-800 dark:text-green-300">Keine Location-Überlappungen</h3>
               <p className="text-sm text-green-600 dark:text-green-400 mt-1">
-                Kein Keyword kommt gleichzeitig in Guide- und Insights-Artikeln vor.
+                Kein Keyword tritt unter den aktuellen Filtern gleichzeitig in Artikeln mit unterschiedlicher Location auf.
               </p>
             </div>
           ) : (
-            locationOverlaps.map((overlap) => (
-              <div
-                key={overlap.keyword}
-                className="rounded-xl border p-5 bg-violet-50/50 dark:bg-violet-900/5 border-violet-200 dark:border-violet-800"
-              >
-                <div className="flex items-center gap-3 mb-4">
-                  <span className="inline-flex items-center px-3 py-1 rounded-lg text-sm font-bold bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300">
-                    &quot;{overlap.keyword}&quot;
-                  </span>
-                  <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-violet-200 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300">
-                    {overlap.articles.length} URLs
-                  </span>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-blue-500" />
-                      Guide
-                    </div>
-                    <div className="space-y-2">
-                      {overlap.articles
-                        .filter((a) => a.location === "Guide")
-                        .map((article) => (
-                          <div
-                            key={article.id}
-                            className="flex items-start gap-3 bg-white/80 dark:bg-slate-800/60 rounded-lg px-3 py-2 border border-blue-100 dark:border-blue-900/30"
-                          >
-                            <svg className="w-4 h-4 mt-0.5 text-blue-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                            </svg>
-                            <div className="min-w-0">
-                              <div className="text-sm font-medium text-slate-900 dark:text-white truncate">
-                                {article.title}
-                              </div>
-                              {article.url && (
-                                <a href={article.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 dark:text-blue-400 truncate mt-0.5 hover:underline block">
-                                  {article.url}
-                                </a>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                    </div>
+            locationOverlaps.map((overlap) => {
+              const locKeys = sortLocationsForOverlapDisplay(
+                new Set(
+                  overlap.articles
+                    .map((a) => a.location?.trim())
+                    .filter((loc): loc is string => Boolean(loc))
+                )
+              );
+              const hasUnassigned = overlap.articles.some((a) => !a.location?.trim());
+              const columnKeys = hasUnassigned ? [...locKeys, "Ohne Location"] : locKeys;
+              return (
+                <div
+                  key={overlap.keyword}
+                  className="rounded-xl border p-5 bg-violet-50/50 dark:bg-violet-900/5 border-violet-200 dark:border-violet-800"
+                >
+                  <div className="flex flex-wrap items-center gap-3 mb-4">
+                    <span className="inline-flex items-center px-3 py-1 rounded-lg text-sm font-bold bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300">
+                      &quot;{overlap.keyword}&quot;
+                    </span>
+                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-violet-200 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300">
+                      {overlap.articles.length} URLs
+                    </span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                      Locations: {locKeys.join(" · ")}
+                      {hasUnassigned && " · (ohne Location)"}
+                    </span>
                   </div>
-                  <div>
-                    <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                      Insights
-                    </div>
-                    <div className="space-y-2">
-                      {overlap.articles
-                        .filter((a) => a.location === "Insights")
-                        .map((article) => (
-                          <div
-                            key={article.id}
-                            className="flex items-start gap-3 bg-white/80 dark:bg-slate-800/60 rounded-lg px-3 py-2 border border-emerald-100 dark:border-emerald-900/30"
-                          >
-                            <svg className="w-4 h-4 mt-0.5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <div className="min-w-0">
-                              <div className="text-sm font-medium text-slate-900 dark:text-white truncate">
-                                {article.title}
-                              </div>
-                              {article.url && (
-                                <a href={article.url} target="_blank" rel="noopener noreferrer" className="text-xs text-emerald-600 dark:text-emerald-400 truncate mt-0.5 hover:underline block">
-                                  {article.url}
-                                </a>
-                              )}
-                            </div>
+                  <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(220px,1fr))]">
+                    {columnKeys.map((loc, colIdx) => {
+                      const style = LOCATION_OVERLAP_COLUMN_STYLES[colIdx % LOCATION_OVERLAP_COLUMN_STYLES.length];
+                      return (
+                        <div key={loc}>
+                          <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                            <span className={`w-2 h-2 rounded-full shrink-0 ${style.dot}`} />
+                            {loc}
                           </div>
-                        ))}
-                    </div>
+                          <div className="space-y-2">
+                            {overlap.articles
+                              .filter((a) =>
+                                loc === "Ohne Location"
+                                  ? !a.location?.trim()
+                                  : (a.location?.trim() ?? "") === loc
+                              )
+                              .map((article) => {
+                                const fromPlan = editorialArticleById.get(article.id);
+                                const displayTitle = fromPlan?.title ?? article.title;
+                                const displayUrl =
+                                  fromPlan?.url?.trim() || article.url?.trim() || null;
+                                return (
+                                  <div
+                                    key={`${loc}-${article.id}`}
+                                    className={`flex items-start gap-3 bg-white/80 dark:bg-slate-800/60 rounded-lg px-3 py-2 border ${style.border}`}
+                                  >
+                                    <svg className={`w-4 h-4 mt-0.5 shrink-0 ${style.icon}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    <div className="min-w-0">
+                                      <div className="text-sm font-medium text-slate-900 dark:text-white truncate">
+                                        {displayTitle}
+                                      </div>
+                                      {displayUrl ? (
+                                        <a href={displayUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 dark:text-blue-400 truncate mt-0.5 hover:underline block">
+                                          {displayUrl}
+                                        </a>
+                                      ) : (
+                                        <span className="text-xs text-slate-500 dark:text-slate-500 italic mt-0.5 block">
+                                          Keine URL im Redaktionsplan
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       )}

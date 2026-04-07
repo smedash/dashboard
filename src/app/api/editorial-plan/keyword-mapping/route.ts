@@ -58,8 +58,26 @@ function computeOverlaps(
   }> = [];
 
   for (const [keyword, mappedArticles] of keywordMap.entries()) {
-    if (mappedArticles.length > 1) {
-      overlaps.push({ keyword, articles: mappedArticles });
+    const byId = new Map<
+      string,
+      { id: string; title: string; url: string | null; location: string | null }
+    >();
+    for (const a of mappedArticles) {
+      const prev = byId.get(a.id);
+      if (!prev) {
+        byId.set(a.id, { ...a });
+      } else {
+        byId.set(a.id, {
+          id: a.id,
+          title: (prev.title || a.title)?.trim() || prev.title || a.title,
+          url: prev.url || a.url,
+          location: prev.location ?? a.location,
+        });
+      }
+    }
+    const uniq = [...byId.values()];
+    if (uniq.length > 1) {
+      overlaps.push({ keyword, articles: uniq });
     }
   }
 

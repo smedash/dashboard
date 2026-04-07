@@ -3,48 +3,11 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { canEdit } from "@/lib/rbac";
+import {
+  cleanImportedOptionalText,
+  titleMatchKey,
+} from "@/lib/editorial-text-encoding";
 import * as XLSX from "xlsx";
-
-const WIN1252_REVERSE: Record<number, number> = {
-  0x20ac: 0x80, 0x201a: 0x82, 0x0192: 0x83, 0x201e: 0x84, 0x2026: 0x85,
-  0x2020: 0x86, 0x2021: 0x87, 0x02c6: 0x88, 0x2030: 0x89, 0x0160: 0x8a,
-  0x2039: 0x8b, 0x0152: 0x8c, 0x017d: 0x8e, 0x2018: 0x91, 0x2019: 0x92,
-  0x201c: 0x93, 0x201d: 0x94, 0x2022: 0x95, 0x2013: 0x96, 0x2014: 0x97,
-  0x02dc: 0x98, 0x2122: 0x99, 0x0161: 0x9a, 0x203a: 0x9b, 0x0153: 0x9c,
-  0x017e: 0x9e, 0x0178: 0x9f,
-};
-
-function fixMojibake(text: string): string {
-  let hasHighChars = false;
-  for (let i = 0; i < text.length; i++) {
-    const cp = text.charCodeAt(i);
-    if (cp >= 0xc0 && cp <= 0xff) { hasHighChars = true; break; }
-  }
-  if (!hasHighChars) return text;
-
-  const bytes: number[] = [];
-  for (let i = 0; i < text.length; i++) {
-    const cp = text.charCodeAt(i);
-    if (cp < 0x80) { bytes.push(cp); }
-    else if (cp >= 0xa0 && cp <= 0xff) { bytes.push(cp); }
-    else {
-      const b = WIN1252_REVERSE[cp];
-      if (b !== undefined) { bytes.push(b); } else { return text; }
-    }
-  }
-  try {
-    const decoded = new TextDecoder("utf-8", { fatal: true }).decode(new Uint8Array(bytes));
-    if (decoded !== text && decoded.length < text.length) return decoded;
-  } catch { /* not mojibake */ }
-  return text;
-}
-
-function cleanText(value: string | undefined): string | null {
-  if (!value) return null;
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-  return fixMojibake(trimmed);
-}
 
 const VALID_CATEGORIES = [
   "Mortgages", "Accounts&Cards", "Investing", "Pension", "Digital Banking",
@@ -153,6 +116,98 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const mode = ((formData.get("mode") as string | null) || "create").toLowerCase();
+    const mergeMode = mode === "merge";
+
+    if (mergeMode && !headerMap.url) {
+      return NextResponse.json(
+        { error: "Im Modus „Aktualisieren“ wird eine URL-Spalte benötigt, um bestehende Artikel zuzuordnen." },
+        { status: 400 }
+      );
+    }
+
+    if (mergeMode) {
+      const urlColumn = headerMap.url;
+      const allArticles = await prisma.editorialPlanArticle.findMany({
+        select: { id: true, title: true },
+      });
+      const byTitle = new Map<string, string[]>();
+      for (const a of allArticles) {
+        const key = titleMatchKey(a.title);
+        if (!key) continue;
+        const list = byTitle.get(key) ?? [];
+        list.push(a.id);
+        byTitle.set(key, list);
+      }
+
+      let skipped = 0;
+      let notFound = 0;
+      let ambiguous = 0;
+      const errors: string[] = [];
+      /** Letzte URL pro Artikel-ID gewinnt (doppelte Zeilen in der Excel). */
+      const urlByArticleId = new Map<string, string>();
+
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const title = titleMatchKey(row[headerMap.title]?.toString());
+        if (!title) {
+          skipped++;
+          continue;
+        }
+
+        const newUrl = row[urlColumn]?.toString().trim();
+        if (!newUrl) {
+          skipped++;
+          continue;
+        }
+
+        const ids = byTitle.get(title);
+        if (!ids || ids.length === 0) {
+          notFound++;
+          continue;
+        }
+        if (ids.length > 1) {
+          ambiguous++;
+          continue;
+        }
+
+        urlByArticleId.set(ids[0], newUrl);
+      }
+
+      const pending = [...urlByArticleId.entries()].map(([id, url]) => ({ id, url }));
+      let updated = 0;
+
+      const TX_CHUNK = 40;
+      for (let i = 0; i < pending.length; i += TX_CHUNK) {
+        const chunk = pending.slice(i, i + TX_CHUNK);
+        try {
+          await prisma.$transaction(
+            chunk.map((p) =>
+              prisma.editorialPlanArticle.update({
+                where: { id: p.id },
+                data: { url: p.url },
+              })
+            )
+          );
+          updated += chunk.length;
+        } catch (err) {
+          errors.push(
+            `Batch ${Math.floor(i / TX_CHUNK) + 1}: ${err instanceof Error ? err.message : "Update fehlgeschlagen"}`
+          );
+        }
+      }
+
+      return NextResponse.json({
+        mode: "merge",
+        updated,
+        skipped,
+        notFound,
+        ambiguous,
+        total: rows.length,
+        errors: errors.slice(0, 10),
+      });
+    }
+
     let imported = 0;
     let skipped = 0;
     const errors: string[] = [];
@@ -182,7 +237,7 @@ export async function POST(request: NextRequest) {
 
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
-      const title = cleanText(row[headerMap.title]?.toString());
+      const title = titleMatchKey(row[headerMap.title]?.toString());
 
       if (!title) {
         skipped++;
@@ -198,9 +253,9 @@ export async function POST(request: NextRequest) {
       batch.push({
         title,
         url: headerMap.url ? row[headerMap.url]?.toString().trim() || null : null,
-        metaDescription: cleanText(row[headerMap.metaDescription]?.toString()),
-        h1: cleanText(row[headerMap.h1]?.toString()),
-        schemaMarkup: cleanText(row[headerMap.schemaMarkup]?.toString()),
+        metaDescription: cleanImportedOptionalText(row[headerMap.metaDescription]?.toString()),
+        h1: cleanImportedOptionalText(row[headerMap.h1]?.toString()),
+        schemaMarkup: cleanImportedOptionalText(row[headerMap.schemaMarkup]?.toString()),
         category: normalizeCategory(category),
         location: normalizedLocation,
         status: "idea",

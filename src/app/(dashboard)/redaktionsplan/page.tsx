@@ -114,7 +114,17 @@ export default function RedaktionsplanPage() {
   const [filterLocation, setFilterLocation] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [importing, setImporting] = useState(false);
-  const [importResult, setImportResult] = useState<{ imported: number; skipped: number; total: number; errors: string[] } | null>(null);
+  const [importMergeMode, setImportMergeMode] = useState(false);
+  const [importResult, setImportResult] = useState<{
+    mode?: string;
+    imported?: number;
+    updated?: number;
+    skipped: number;
+    total: number;
+    notFound?: number;
+    ambiguous?: number;
+    errors: string[];
+  } | null>(null);
 
   const now = new Date();
   const [currentYear, setCurrentYear] = useState(now.getFullYear());
@@ -246,6 +256,9 @@ export default function RedaktionsplanPage() {
     try {
       const formData = new FormData();
       formData.append("file", file);
+      if (importMergeMode) {
+        formData.append("mode", "merge");
+      }
 
       const res = await fetch("/api/editorial-plan/import", {
         method: "POST",
@@ -258,11 +271,11 @@ export default function RedaktionsplanPage() {
         setImportResult(data);
         await fetchArticles();
       } else {
-        setImportResult({ imported: 0, skipped: 0, total: 0, errors: [data.error || "Import fehlgeschlagen"] });
+        setImportResult({ skipped: 0, total: 0, errors: [data.error || "Import fehlgeschlagen"] });
       }
     } catch (error) {
       console.error("Import error:", error);
-      setImportResult({ imported: 0, skipped: 0, total: 0, errors: ["Netzwerkfehler beim Import"] });
+      setImportResult({ skipped: 0, total: 0, errors: ["Netzwerkfehler beim Import"] });
     } finally {
       setImporting(false);
       e.target.value = "";
@@ -348,31 +361,43 @@ export default function RedaktionsplanPage() {
             </button>
           </div>
           {userCanEdit && (
-            <div className="flex items-center gap-2">
-              <label
-                className={`inline-flex items-center gap-2 px-4 py-2 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-sm font-medium cursor-pointer ${importing ? "opacity-50 pointer-events-none" : ""}`}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                </svg>
-                {importing ? "Importiere..." : "XLSX Import"}
+            <div className="flex flex-col items-end gap-2 sm:items-end">
+              <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 cursor-pointer select-none max-w-md sm:text-right">
                 <input
-                  type="file"
-                  accept=".xlsx,.xls"
-                  onChange={handleImport}
-                  className="hidden"
+                  type="checkbox"
+                  checked={importMergeMode}
+                  onChange={(e) => setImportMergeMode(e.target.checked)}
+                  className="rounded border-slate-300 dark:border-slate-600 shrink-0"
                   disabled={importing}
                 />
+                Nur bestehende Artikel aktualisieren (URLs nach Titel zuordnen, keine neuen Datensätze)
               </label>
-              <button
-                onClick={() => { resetForm(); setShowForm(true); }}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Neuer Artikel
-              </button>
+              <div className="flex items-center gap-2">
+                <label
+                  className={`inline-flex items-center gap-2 px-4 py-2 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-sm font-medium cursor-pointer ${importing ? "opacity-50 pointer-events-none" : ""}`}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                  {importing ? "Importiere..." : importMergeMode ? "XLSX → URLs aktualisieren" : "XLSX Import"}
+                  <input
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={handleImport}
+                    className="hidden"
+                    disabled={importing}
+                  />
+                </label>
+                <button
+                  onClick={() => { resetForm(); setShowForm(true); }}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Neuer Artikel
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -445,23 +470,56 @@ export default function RedaktionsplanPage() {
 
       {/* Import Result Banner */}
       {importResult && (
-        <div className={`rounded-xl border p-4 ${importResult.errors.length > 0 && importResult.imported === 0 ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800" : "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"}`}>
+        <div
+          className={`rounded-xl border p-4 ${
+            importResult.errors.length > 0 && (importResult.mode === "merge" ? (importResult.updated ?? 0) === 0 : (importResult.imported ?? 0) === 0)
+              ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
+              : importResult.mode === "merge" && (importResult.updated ?? 0) === 0 && (importResult.notFound ?? 0) > 0
+                ? "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800"
+                : "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+          }`}
+        >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              {importResult.imported > 0 ? (
-                <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {importResult.mode === "merge" ? (
+                (importResult.updated ?? 0) > 0 ? (
+                  <svg className="w-5 h-5 text-green-600 dark:text-green-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                )
+              ) : (importResult.imported ?? 0) > 0 ? (
+                <svg className="w-5 h-5 text-green-600 dark:text-green-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               ) : (
-                <svg className="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               )}
               <div>
-                <p className="text-sm font-medium text-slate-900 dark:text-white">
-                  {importResult.imported} von {importResult.total} Artikeln importiert
-                  {importResult.skipped > 0 && <span className="text-slate-500"> · {importResult.skipped} übersprungen</span>}
-                </p>
+                {importResult.mode === "merge" ? (
+                  <p className="text-sm font-medium text-slate-900 dark:text-white">
+                    <strong>{importResult.updated ?? 0}</strong> Artikel mit URL aktualisiert
+                    {importResult.skipped > 0 && (
+                      <span className="text-slate-500 font-normal"> · {importResult.skipped} Zeilen ohne Titel/URL übersprungen</span>
+                    )}
+                    {(importResult.notFound ?? 0) > 0 && (
+                      <span className="text-slate-500 font-normal"> · {importResult.notFound} Titel in der Datenbank nicht gefunden</span>
+                    )}
+                    {(importResult.ambiguous ?? 0) > 0 && (
+                      <span className="text-amber-700 dark:text-amber-300 font-normal"> · {importResult.ambiguous} Titel mehrfach im Plan (nicht aktualisiert)</span>
+                    )}
+                  </p>
+                ) : (
+                  <p className="text-sm font-medium text-slate-900 dark:text-white">
+                    {importResult.imported ?? 0} von {importResult.total} Artikeln importiert
+                    {importResult.skipped > 0 && <span className="text-slate-500"> · {importResult.skipped} übersprungen</span>}
+                  </p>
+                )}
                 {importResult.errors.length > 0 && (
                   <ul className="mt-1 text-xs text-red-600 dark:text-red-400 space-y-0.5">
                     {importResult.errors.map((err, i) => <li key={i}>{err}</li>)}

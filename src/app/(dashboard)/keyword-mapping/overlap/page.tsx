@@ -95,9 +95,9 @@ export default function OverlapDetailPage() {
       const result = analysisData?.results.find((r) => r.id === oa.id);
       return {
         id: oa.id,
-        title: oa.title,
-        url: oa.url,
-        location: oa.location ?? full?.location ?? null,
+        title: (full?.title?.trim() || oa.title)?.trim() || oa.title,
+        url: full?.url?.trim() || oa.url?.trim() || null,
+        location: full?.location ?? oa.location ?? null,
         category: full?.category ?? null,
         h1: full?.h1 ?? null,
         metaDescription: full?.metaDescription ?? null,

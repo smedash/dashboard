@@ -209,6 +209,9 @@ export default function CustomerJourneyPage() {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [expandedPhases, setExpandedPhases] = useState<Set<string>>(new Set());
   const [showUnassigned, setShowUnassigned] = useState(false);
+  const [phaseSearch, setPhaseSearch] = useState<Record<string, string>>({});
+  const [phaseCategoryFilter, setPhaseCategoryFilter] = useState<Record<string, string>>({});
+  const [phaseLocationFilter, setPhaseLocationFilter] = useState<Record<string, string>>({});
 
   const [phaseData, setPhaseData] = useState<Record<string, PhaseData>>({});
 
@@ -547,24 +550,6 @@ export default function CustomerJourneyPage() {
     [journeyStats]
   );
 
-  const getCategoryBreakdown = useCallback(
-    (phaseId: string): Record<string, number> => {
-      if (!journeyStats) return {};
-      const phaseStats = journeyStats.stats[phaseId];
-      if (!phaseStats) return {};
-      const breakdown: Record<string, number> = {};
-      for (const [cat, count] of Object.entries(phaseStats)) {
-        if (cat === "__none") {
-          breakdown["Ohne Kategorie"] = count;
-        } else {
-          breakdown[cat] = count;
-        }
-      }
-      return breakdown;
-    },
-    [journeyStats]
-  );
-
   const getCategoryPhaseCount = useCallback(
     (category: string, phaseId: string): number => {
       if (!journeyStats) return 0;
@@ -799,26 +784,10 @@ export default function CustomerJourneyPage() {
           {JOURNEY_PHASES.map((phase) => {
             const count = getPhaseCount(phase.id);
             const heightPercent = maxPhaseCount > 0 ? (count / maxPhaseCount) * 100 : 0;
-            const breakdown = getCategoryBreakdown(phase.id);
 
             return (
               <div key={phase.id} className="flex-1 flex flex-col items-center gap-2">
                 <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                  {count > 0 && (
-                    <div className="flex flex-wrap justify-center gap-0.5 mb-1">
-                      {Object.entries(breakdown).map(([cat, n]) => (
-                        <span
-                          key={cat}
-                          className={`inline-block px-1 py-0 rounded text-[9px] font-medium ${
-                            CATEGORY_COLORS[cat] || "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400"
-                          }`}
-                          title={`${cat}: ${n}`}
-                        >
-                          {n}
-                        </span>
-                      ))}
-                    </div>
-                  )}
                   <span className="text-lg font-bold text-slate-900 dark:text-white">{count.toLocaleString()}</span>
                 </div>
                 <div className="w-full relative" style={{ height: "80px" }}>
@@ -999,19 +968,98 @@ export default function CustomerJourneyPage() {
                       <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
                     </div>
                   ) : data?.articles.length ? (
-                    <>
-                      <div className="divide-y divide-slate-100 dark:divide-slate-700/50">
-                        {data.articles.map((article) => (
-                          <ArticleRow
-                            key={article.id}
-                            article={article}
-                            userCanEdit={userCanEdit}
-                            updatingId={updatingId}
-                            onUpdatePhase={updateJourneyPhase}
-                          />
-                        ))}
-                      </div>
-                      {data.pagination && data.pagination.page < data.pagination.totalPages && (
+                    (() => {
+                      const searchTerm = (phaseSearch[phase.id] || "").toLowerCase();
+                      const catFilter = phaseCategoryFilter[phase.id] || "";
+                      const locFilter = phaseLocationFilter[phase.id] || "";
+                      const hasFilter = searchTerm || catFilter || locFilter;
+                      const filtered = hasFilter
+                        ? data.articles.filter((a) =>
+                            (!searchTerm || a.title.toLowerCase().includes(searchTerm) || a.url?.toLowerCase().includes(searchTerm)) &&
+                            (!catFilter || a.category === catFilter) &&
+                            (!locFilter || a.location === locFilter)
+                          )
+                        : data.articles;
+                      const phaseCategories = [...new Set(data.articles.map((a) => a.category).filter(Boolean))] as string[];
+                      const phaseLocations = [...new Set(data.articles.map((a) => a.location).filter(Boolean))] as string[];
+                      return (
+                        <>
+                          <div className="px-4 py-2.5 bg-slate-50/80 dark:bg-slate-900/30 border-b border-slate-100 dark:border-slate-700/50">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <div className="relative flex-1 min-w-[180px]">
+                                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                                <input
+                                  type="text"
+                                  placeholder="Titel oder URL suchen..."
+                                  value={phaseSearch[phase.id] || ""}
+                                  onChange={(e) => setPhaseSearch((prev) => ({ ...prev, [phase.id]: e.target.value }))}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="w-full pl-9 pr-8 py-1.5 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                />
+                                {phaseSearch[phase.id] && (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setPhaseSearch((prev) => ({ ...prev, [phase.id]: "" })); }}
+                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                  </button>
+                                )}
+                              </div>
+                              {phaseCategories.length > 1 && (
+                                <select
+                                  value={phaseCategoryFilter[phase.id] || ""}
+                                  onChange={(e) => setPhaseCategoryFilter((prev) => ({ ...prev, [phase.id]: e.target.value }))}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="px-2.5 py-1.5 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                                >
+                                  <option value="">Alle Kategorien</option>
+                                  {phaseCategories.sort().map((c) => (
+                                    <option key={c} value={c}>{c}</option>
+                                  ))}
+                                </select>
+                              )}
+                              {phaseLocations.length > 1 && (
+                                <select
+                                  value={phaseLocationFilter[phase.id] || ""}
+                                  onChange={(e) => setPhaseLocationFilter((prev) => ({ ...prev, [phase.id]: e.target.value }))}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="px-2.5 py-1.5 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                                >
+                                  <option value="">Alle Locations</option>
+                                  {phaseLocations.sort().map((l) => (
+                                    <option key={l} value={l}>{l}</option>
+                                  ))}
+                                </select>
+                              )}
+                            </div>
+                            {hasFilter && (
+                              <div className="mt-1.5 text-xs text-slate-400 dark:text-slate-500">
+                                {filtered.length.toLocaleString()} von {data.articles.length.toLocaleString()} geladenen Artikeln
+                              </div>
+                            )}
+                          </div>
+                          {filtered.length > 0 ? (
+                            <div className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                              {filtered.map((article) => (
+                                <ArticleRow
+                                  key={article.id}
+                                  article={article}
+                                  userCanEdit={userCanEdit}
+                                  updatingId={updatingId}
+                                  onUpdatePhase={updateJourneyPhase}
+                                />
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="px-6 py-6 text-center text-sm text-slate-400 dark:text-slate-500">
+                              Keine Artikel für die gewählten Filter
+                            </div>
+                          )}
+                          {data.pagination && data.pagination.page < data.pagination.totalPages && (
                         <div className="flex items-center justify-center py-3 border-t border-slate-100 dark:border-slate-700/50">
                           <button
                             onClick={() => fetchPhaseArticles(phase.id, data.pagination!.page + 1)}
@@ -1029,7 +1077,9 @@ export default function CustomerJourneyPage() {
                           </button>
                         </div>
                       )}
-                    </>
+                        </>
+                      );
+                    })()
                   ) : (
                     <div className="px-6 py-8 text-center">
                       <p className="text-sm text-slate-400 dark:text-slate-500">
@@ -1280,18 +1330,98 @@ export default function CustomerJourneyPage() {
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
               </div>
             ) : phaseData["__unassigned"]?.articles.length ? (
-              <>
-                <div className="divide-y divide-slate-100 dark:divide-slate-700/50">
-                  {phaseData["__unassigned"].articles.map((article) => (
-                    <ArticleRow
-                      key={article.id}
-                      article={article}
-                      userCanEdit={userCanEdit}
-                      updatingId={updatingId}
-                      onUpdatePhase={updateJourneyPhase}
-                    />
-                  ))}
-                </div>
+              (() => {
+                const searchTerm = (phaseSearch["__unassigned"] || "").toLowerCase();
+                const catFilter = phaseCategoryFilter["__unassigned"] || "";
+                const locFilter = phaseLocationFilter["__unassigned"] || "";
+                const allArticles = phaseData["__unassigned"].articles;
+                const hasFilter = searchTerm || catFilter || locFilter;
+                const filtered = hasFilter
+                  ? allArticles.filter((a) =>
+                      (!searchTerm || a.title.toLowerCase().includes(searchTerm) || a.url?.toLowerCase().includes(searchTerm)) &&
+                      (!catFilter || a.category === catFilter) &&
+                      (!locFilter || a.location === locFilter)
+                    )
+                  : allArticles;
+                const uCategories = [...new Set(allArticles.map((a) => a.category).filter(Boolean))] as string[];
+                const uLocations = [...new Set(allArticles.map((a) => a.location).filter(Boolean))] as string[];
+                return (
+                  <>
+                    <div className="px-4 py-2.5 bg-slate-50/80 dark:bg-slate-900/30 border-b border-slate-100 dark:border-slate-700/50">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="relative flex-1 min-w-[180px]">
+                          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                          </svg>
+                          <input
+                            type="text"
+                            placeholder="Titel oder URL suchen..."
+                            value={phaseSearch["__unassigned"] || ""}
+                            onChange={(e) => setPhaseSearch((prev) => ({ ...prev, "__unassigned": e.target.value }))}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-full pl-9 pr-8 py-1.5 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          />
+                          {phaseSearch["__unassigned"] && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setPhaseSearch((prev) => ({ ...prev, "__unassigned": "" })); }}
+                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                        {uCategories.length > 1 && (
+                          <select
+                            value={phaseCategoryFilter["__unassigned"] || ""}
+                            onChange={(e) => setPhaseCategoryFilter((prev) => ({ ...prev, "__unassigned": e.target.value }))}
+                            onClick={(e) => e.stopPropagation()}
+                            className="px-2.5 py-1.5 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="">Alle Kategorien</option>
+                            {uCategories.sort().map((c) => (
+                              <option key={c} value={c}>{c}</option>
+                            ))}
+                          </select>
+                        )}
+                        {uLocations.length > 1 && (
+                          <select
+                            value={phaseLocationFilter["__unassigned"] || ""}
+                            onChange={(e) => setPhaseLocationFilter((prev) => ({ ...prev, "__unassigned": e.target.value }))}
+                            onClick={(e) => e.stopPropagation()}
+                            className="px-2.5 py-1.5 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="">Alle Locations</option>
+                            {uLocations.sort().map((l) => (
+                              <option key={l} value={l}>{l}</option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
+                      {hasFilter && (
+                        <div className="mt-1.5 text-xs text-slate-400 dark:text-slate-500">
+                          {filtered.length.toLocaleString()} von {allArticles.length.toLocaleString()} geladenen Artikeln
+                        </div>
+                      )}
+                    </div>
+                    {filtered.length > 0 ? (
+                      <div className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                        {filtered.map((article) => (
+                          <ArticleRow
+                            key={article.id}
+                            article={article}
+                            userCanEdit={userCanEdit}
+                            updatingId={updatingId}
+                            onUpdatePhase={updateJourneyPhase}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="px-6 py-6 text-center text-sm text-slate-400 dark:text-slate-500">
+                        Keine Artikel für die gewählten Filter
+                      </div>
+                    )}
                 {phaseData["__unassigned"].pagination &&
                   phaseData["__unassigned"].pagination.page < phaseData["__unassigned"].pagination.totalPages && (
                     <div className="flex items-center justify-center py-3 border-t border-slate-100 dark:border-slate-700/50">
@@ -1311,7 +1441,9 @@ export default function CustomerJourneyPage() {
                       </button>
                     </div>
                   )}
-              </>
+                  </>
+                );
+              })()
             ) : totalUnassigned === 0 ? (
               <div className="px-6 py-8 text-center">
                 <div className="inline-flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
