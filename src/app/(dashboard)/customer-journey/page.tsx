@@ -8,6 +8,7 @@ interface Article {
   id: string;
   title: string;
   url: string | null;
+  language: string | null;
   category: string | null;
   status: string;
   location: string | null;
@@ -1490,6 +1491,11 @@ function ArticleRow({
           {article.location && (
             <span className="inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 shrink-0">
               {article.location}
+            </span>
+          )}
+          {article.language && (
+            <span className="inline-flex px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300 shrink-0 uppercase" title="Sprache aus URL-Pfad">
+              {article.language}
             </span>
           )}
           <span className="inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400 shrink-0">

@@ -1,7 +1,249 @@
 {
-  "generatedAt": "2026-02-16T12:20:20.449Z",
-  "totalCommits": 86,
+  "generatedAt": "2026-04-07T13:24:31.852Z",
+  "totalCommits": 108,
   "commits": [
+    {
+      "hash": "bcffb3fe7327b2964dd93660bc0a559baba3d9a1",
+      "shortHash": "bcffb3f",
+      "author": "smedash",
+      "date": "2026-04-07 15:16:56 +0200",
+      "subject": "Keyword-Mapping: Ladezeit optimieren",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Keyword-Mapping: Ladezeit optimieren"
+    },
+    {
+      "hash": "24e477d2c7f58954c293bd16e5280729ef7cbd2d",
+      "shortHash": "24e477d",
+      "author": "smedash",
+      "date": "2026-04-07 09:16:30 +0200",
+      "subject": "Redaktionsplan: URL-Merge-Import, zentrale UTF-8/Mojibake-Normalisierung",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "URL-Merge-Import, zentrale UTF-8/Mojibake-Normalisierung"
+    },
+    {
+      "hash": "edf152e118a2a2b1ee25c24cd253d20241b53aee",
+      "shortHash": "edf152e",
+      "author": "smedash",
+      "date": "2026-04-06 18:09:43 +0200",
+      "subject": "feat(keyword-mapping): Overlap-Detailseite, Location-Filter, Encoding-Fix und Zahlenformatierung",
+      "type": "feat",
+      "typeLabel": "Feature",
+      "scope": "keyword-mapping",
+      "message": "Overlap-Detailseite, Location-Filter, Encoding-Fix und Zahlenformatierung"
+    },
+    {
+      "hash": "adc96e892e19e80a889bc7ac81c2abbf79b23f52",
+      "shortHash": "adc96e8",
+      "author": "smedash",
+      "date": "2026-04-06 11:03:18 +0200",
+      "subject": "perf(keyword-mapping): Module-Level-Cache, Pagination und Loading-Skeleton",
+      "type": "perf",
+      "typeLabel": "Performance",
+      "scope": "keyword-mapping",
+      "message": "Module-Level-Cache, Pagination und Loading-Skeleton"
+    },
+    {
+      "hash": "c443f43c9088c792d6d25b9b9efb1fc091873a7b",
+      "shortHash": "c443f43",
+      "author": "smedash",
+      "date": "2026-04-06 10:47:53 +0200",
+      "subject": "perf(customer-journey): server-seitige Aggregation, Pagination und Lazy Loading",
+      "type": "perf",
+      "typeLabel": "Performance",
+      "scope": "customer-journey",
+      "message": "server-seitige Aggregation, Pagination und Lazy Loading"
+    },
+    {
+      "hash": "6a857628956f02ba1a5fb60449e35763378b58ce",
+      "shortHash": "6a85762",
+      "author": "smedash",
+      "date": "2026-04-06 10:38:22 +0200",
+      "subject": "feat(redaktionsplan): neue Kategorien, Locations, optimierter Import & KI-Klassifizierung",
+      "type": "feat",
+      "typeLabel": "Feature",
+      "scope": "redaktionsplan",
+      "message": "neue Kategorien, Locations, optimierter Import & KI-Klassifizierung"
+    },
+    {
+      "hash": "1038b0adbbb9f8aacc957da0b354bd96fb73c224",
+      "shortHash": "1038b0a",
+      "author": "smedash",
+      "date": "2026-03-26 13:11:58 +0100",
+      "subject": "feat(seo-reifegrad): ChangeLog-Protokollierung und Analysen-Vergleich",
+      "type": "feat",
+      "typeLabel": "Feature",
+      "scope": "seo-reifegrad",
+      "message": "ChangeLog-Protokollierung und Analysen-Vergleich"
+    },
+    {
+      "hash": "38077ab89130a7c10ab92c94dfbc729b6d94ff28",
+      "shortHash": "38077ab",
+      "author": "smedash",
+      "date": "2026-03-26 12:59:10 +0100",
+      "subject": "feat(seo-reifegrad): Inline-Bearbeitung und Löschen von Checklisten-Punkten",
+      "type": "feat",
+      "typeLabel": "Feature",
+      "scope": "seo-reifegrad",
+      "message": "Inline-Bearbeitung und Löschen von Checklisten-Punkten"
+    },
+    {
+      "hash": "078883ce166138dac665b31a33c2a6da1ca885bc",
+      "shortHash": "078883c",
+      "author": "smedash",
+      "date": "2026-03-26 12:53:09 +0100",
+      "subject": "feat(briefings): Datei-Upload für Briefings (PDFs, Recherchen etc.)",
+      "type": "feat",
+      "typeLabel": "Feature",
+      "scope": "briefings",
+      "message": "Datei-Upload für Briefings (PDFs, Recherchen etc.)"
+    },
+    {
+      "hash": "ccaecd817035ff110a83feba49314e26fdf4fcc0",
+      "shortHash": "ccaecd8",
+      "author": "smedash",
+      "date": "2026-03-23 18:20:45 +0100",
+      "subject": "feat(customer-journey): KI-Konfidenz-Score (0-100%) für Journey-Phase-Zuordnung",
+      "type": "feat",
+      "typeLabel": "Feature",
+      "scope": "customer-journey",
+      "message": "KI-Konfidenz-Score (0-100%) für Journey-Phase-Zuordnung"
+    },
+    {
+      "hash": "9fec8180502d0f0af052817f729b8fc8172f2d57",
+      "shortHash": "9fec818",
+      "author": "smedash",
+      "date": "2026-03-23 17:44:25 +0100",
+      "subject": "feat(customer-journey): KI-Titelvorschläge pro Phase & Kategorie mit Speichern in Redaktionsplan",
+      "type": "feat",
+      "typeLabel": "Feature",
+      "scope": "customer-journey",
+      "message": "KI-Titelvorschläge pro Phase & Kategorie mit Speichern in Redaktionsplan"
+    },
+    {
+      "hash": "a52077b359805f7d82d1988c6702f0027a1e65c5",
+      "shortHash": "a52077b",
+      "author": "smedash",
+      "date": "2026-03-23 17:26:15 +0100",
+      "subject": "fix(keyword-mapping): Globaler Kategorie-/Location-Filter, vollständige Artikelanzeige",
+      "type": "fix",
+      "typeLabel": "Bugfix",
+      "scope": "keyword-mapping",
+      "message": "Globaler Kategorie-/Location-Filter, vollständige Artikelanzeige"
+    },
+    {
+      "hash": "9b3a272da9b3d910dc8e4b80d68781d1d1275347",
+      "shortHash": "9b3a272",
+      "author": "smedash",
+      "date": "2026-03-23 17:08:54 +0100",
+      "subject": "feat(keyword-mapping): Keyword Mapping Seite mit persistenter Claude-Analyse",
+      "type": "feat",
+      "typeLabel": "Feature",
+      "scope": "keyword-mapping",
+      "message": "Keyword Mapping Seite mit persistenter Claude-Analyse"
+    },
+    {
+      "hash": "e8e75277530ce3272a60aeb988ddc78543b02f64",
+      "shortHash": "e8e7527",
+      "author": "smedash",
+      "date": "2026-03-23 15:54:45 +0100",
+      "subject": "feat(customer-journey): Customer Journey Page mit KI-Klassifizierung",
+      "type": "feat",
+      "typeLabel": "Feature",
+      "scope": "customer-journey",
+      "message": "Customer Journey Page mit KI-Klassifizierung"
+    },
+    {
+      "hash": "9df368788b1e6599e475df7eb31f5902b007fd19",
+      "shortHash": "9df3687",
+      "author": "smedash",
+      "date": "2026-03-23 13:54:50 +0100",
+      "subject": "feat(redaktionsplan): Redaktionsplan-Seite mit Kalender, CRUD und XLSX-Import",
+      "type": "feat",
+      "typeLabel": "Feature",
+      "scope": "redaktionsplan",
+      "message": "Redaktionsplan-Seite mit Kalender, CRUD und XLSX-Import"
+    },
+    {
+      "hash": "9f3b9e0dd87f2f7dd7f6bec1f3a2d85a849e5a14",
+      "shortHash": "9f3b9e0",
+      "author": "smedash",
+      "date": "2026-03-02 17:03:15 +0100",
+      "subject": "feat(schema-generator): CollectionPage Schema-Markup hinzufügen",
+      "type": "feat",
+      "typeLabel": "Feature",
+      "scope": "schema-generator",
+      "message": "CollectionPage Schema-Markup hinzufügen"
+    },
+    {
+      "hash": "78428931bd33b1b1cf211b7338c45e2c3097a6d6",
+      "shortHash": "7842893",
+      "author": "smedash",
+      "date": "2026-03-02 13:16:14 +0100",
+      "subject": "fix(dashboard): Geräte-Chart responsive für kleine Screens",
+      "type": "fix",
+      "typeLabel": "Bugfix",
+      "scope": "dashboard",
+      "message": "Geräte-Chart responsive für kleine Screens"
+    },
+    {
+      "hash": "005f100d25ad1f67d8b5b5586518cf03629b866d",
+      "shortHash": "005f100",
+      "author": "smedash",
+      "date": "2026-03-02 12:20:21 +0100",
+      "subject": "fix(cron): maxDuration auf 600s erhöhen für Vercel Pro Plan",
+      "type": "fix",
+      "typeLabel": "Bugfix",
+      "scope": "cron",
+      "message": "maxDuration auf 600s erhöhen für Vercel Pro Plan"
+    },
+    {
+      "hash": "5c8260f78683d5adda2c7618068d40cf738d08eb",
+      "shortHash": "5c8260f",
+      "author": "smedash",
+      "date": "2026-02-27 10:23:42 +0100",
+      "subject": "feat(ranktracker): Inline-Kategorie-Editing & fix(faq-generator): Unauthorized-Bug",
+      "type": "feat",
+      "typeLabel": "Feature",
+      "scope": "ranktracker",
+      "message": "Inline-Kategorie-Editing & fix(faq-generator): Unauthorized-Bug"
+    },
+    {
+      "hash": "aebfdcf92696d5e91a7836ebf0f2ed441952eb5b",
+      "shortHash": "aebfdcf",
+      "author": "smedash",
+      "date": "2026-02-16 13:46:38 +0100",
+      "subject": "fix(tickets): Auto-Scroll zur Ticket-Detail-Ansicht bei Auswahl",
+      "type": "fix",
+      "typeLabel": "Bugfix",
+      "scope": "tickets",
+      "message": "Auto-Scroll zur Ticket-Detail-Ansicht bei Auswahl"
+    },
+    {
+      "hash": "7686d053f2ca175bdfeca39af8cd5e7cfbce7c81",
+      "shortHash": "7686d05",
+      "author": "smedash",
+      "date": "2026-02-16 13:36:07 +0100",
+      "subject": "feat(content-analyzer): Info-Tooltip zur Lesbarkeits-Card hinzufügen",
+      "type": "feat",
+      "typeLabel": "Feature",
+      "scope": "content-analyzer",
+      "message": "Info-Tooltip zur Lesbarkeits-Card hinzufügen"
+    },
+    {
+      "hash": "6aaf8f9c71c90691261ad8312d49e44f44bd456a",
+      "shortHash": "6aaf8f9",
+      "author": "smedash",
+      "date": "2026-02-16 13:21:36 +0100",
+      "subject": "fix: 12-Monats-Filter durch 8-Monate ersetzen und Blob-Access korrigieren",
+      "type": "fix",
+      "typeLabel": "Bugfix",
+      "scope": null,
+      "message": "12-Monats-Filter durch 8-Monate ersetzen und Blob-Access korrigieren"
+    },
     {
       "hash": "c1d5b27d309acfb8af028332565130df9bd916fb",
       "shortHash": "c1d5b27",
@@ -950,7 +1192,261 @@
     }
   ],
   "groupedByDate": {
+    "2026-04-07": [
+      {
+        "hash": "bcffb3fe7327b2964dd93660bc0a559baba3d9a1",
+        "shortHash": "bcffb3f",
+        "author": "smedash",
+        "date": "2026-04-07 15:16:56 +0200",
+        "subject": "Keyword-Mapping: Ladezeit optimieren",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Keyword-Mapping: Ladezeit optimieren"
+      },
+      {
+        "hash": "24e477d2c7f58954c293bd16e5280729ef7cbd2d",
+        "shortHash": "24e477d",
+        "author": "smedash",
+        "date": "2026-04-07 09:16:30 +0200",
+        "subject": "Redaktionsplan: URL-Merge-Import, zentrale UTF-8/Mojibake-Normalisierung",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "URL-Merge-Import, zentrale UTF-8/Mojibake-Normalisierung"
+      }
+    ],
+    "2026-04-06": [
+      {
+        "hash": "edf152e118a2a2b1ee25c24cd253d20241b53aee",
+        "shortHash": "edf152e",
+        "author": "smedash",
+        "date": "2026-04-06 18:09:43 +0200",
+        "subject": "feat(keyword-mapping): Overlap-Detailseite, Location-Filter, Encoding-Fix und Zahlenformatierung",
+        "type": "feat",
+        "typeLabel": "Feature",
+        "scope": "keyword-mapping",
+        "message": "Overlap-Detailseite, Location-Filter, Encoding-Fix und Zahlenformatierung"
+      },
+      {
+        "hash": "adc96e892e19e80a889bc7ac81c2abbf79b23f52",
+        "shortHash": "adc96e8",
+        "author": "smedash",
+        "date": "2026-04-06 11:03:18 +0200",
+        "subject": "perf(keyword-mapping): Module-Level-Cache, Pagination und Loading-Skeleton",
+        "type": "perf",
+        "typeLabel": "Performance",
+        "scope": "keyword-mapping",
+        "message": "Module-Level-Cache, Pagination und Loading-Skeleton"
+      },
+      {
+        "hash": "c443f43c9088c792d6d25b9b9efb1fc091873a7b",
+        "shortHash": "c443f43",
+        "author": "smedash",
+        "date": "2026-04-06 10:47:53 +0200",
+        "subject": "perf(customer-journey): server-seitige Aggregation, Pagination und Lazy Loading",
+        "type": "perf",
+        "typeLabel": "Performance",
+        "scope": "customer-journey",
+        "message": "server-seitige Aggregation, Pagination und Lazy Loading"
+      },
+      {
+        "hash": "6a857628956f02ba1a5fb60449e35763378b58ce",
+        "shortHash": "6a85762",
+        "author": "smedash",
+        "date": "2026-04-06 10:38:22 +0200",
+        "subject": "feat(redaktionsplan): neue Kategorien, Locations, optimierter Import & KI-Klassifizierung",
+        "type": "feat",
+        "typeLabel": "Feature",
+        "scope": "redaktionsplan",
+        "message": "neue Kategorien, Locations, optimierter Import & KI-Klassifizierung"
+      }
+    ],
+    "2026-03-26": [
+      {
+        "hash": "1038b0adbbb9f8aacc957da0b354bd96fb73c224",
+        "shortHash": "1038b0a",
+        "author": "smedash",
+        "date": "2026-03-26 13:11:58 +0100",
+        "subject": "feat(seo-reifegrad): ChangeLog-Protokollierung und Analysen-Vergleich",
+        "type": "feat",
+        "typeLabel": "Feature",
+        "scope": "seo-reifegrad",
+        "message": "ChangeLog-Protokollierung und Analysen-Vergleich"
+      },
+      {
+        "hash": "38077ab89130a7c10ab92c94dfbc729b6d94ff28",
+        "shortHash": "38077ab",
+        "author": "smedash",
+        "date": "2026-03-26 12:59:10 +0100",
+        "subject": "feat(seo-reifegrad): Inline-Bearbeitung und Löschen von Checklisten-Punkten",
+        "type": "feat",
+        "typeLabel": "Feature",
+        "scope": "seo-reifegrad",
+        "message": "Inline-Bearbeitung und Löschen von Checklisten-Punkten"
+      },
+      {
+        "hash": "078883ce166138dac665b31a33c2a6da1ca885bc",
+        "shortHash": "078883c",
+        "author": "smedash",
+        "date": "2026-03-26 12:53:09 +0100",
+        "subject": "feat(briefings): Datei-Upload für Briefings (PDFs, Recherchen etc.)",
+        "type": "feat",
+        "typeLabel": "Feature",
+        "scope": "briefings",
+        "message": "Datei-Upload für Briefings (PDFs, Recherchen etc.)"
+      }
+    ],
+    "2026-03-23": [
+      {
+        "hash": "ccaecd817035ff110a83feba49314e26fdf4fcc0",
+        "shortHash": "ccaecd8",
+        "author": "smedash",
+        "date": "2026-03-23 18:20:45 +0100",
+        "subject": "feat(customer-journey): KI-Konfidenz-Score (0-100%) für Journey-Phase-Zuordnung",
+        "type": "feat",
+        "typeLabel": "Feature",
+        "scope": "customer-journey",
+        "message": "KI-Konfidenz-Score (0-100%) für Journey-Phase-Zuordnung"
+      },
+      {
+        "hash": "9fec8180502d0f0af052817f729b8fc8172f2d57",
+        "shortHash": "9fec818",
+        "author": "smedash",
+        "date": "2026-03-23 17:44:25 +0100",
+        "subject": "feat(customer-journey): KI-Titelvorschläge pro Phase & Kategorie mit Speichern in Redaktionsplan",
+        "type": "feat",
+        "typeLabel": "Feature",
+        "scope": "customer-journey",
+        "message": "KI-Titelvorschläge pro Phase & Kategorie mit Speichern in Redaktionsplan"
+      },
+      {
+        "hash": "a52077b359805f7d82d1988c6702f0027a1e65c5",
+        "shortHash": "a52077b",
+        "author": "smedash",
+        "date": "2026-03-23 17:26:15 +0100",
+        "subject": "fix(keyword-mapping): Globaler Kategorie-/Location-Filter, vollständige Artikelanzeige",
+        "type": "fix",
+        "typeLabel": "Bugfix",
+        "scope": "keyword-mapping",
+        "message": "Globaler Kategorie-/Location-Filter, vollständige Artikelanzeige"
+      },
+      {
+        "hash": "9b3a272da9b3d910dc8e4b80d68781d1d1275347",
+        "shortHash": "9b3a272",
+        "author": "smedash",
+        "date": "2026-03-23 17:08:54 +0100",
+        "subject": "feat(keyword-mapping): Keyword Mapping Seite mit persistenter Claude-Analyse",
+        "type": "feat",
+        "typeLabel": "Feature",
+        "scope": "keyword-mapping",
+        "message": "Keyword Mapping Seite mit persistenter Claude-Analyse"
+      },
+      {
+        "hash": "e8e75277530ce3272a60aeb988ddc78543b02f64",
+        "shortHash": "e8e7527",
+        "author": "smedash",
+        "date": "2026-03-23 15:54:45 +0100",
+        "subject": "feat(customer-journey): Customer Journey Page mit KI-Klassifizierung",
+        "type": "feat",
+        "typeLabel": "Feature",
+        "scope": "customer-journey",
+        "message": "Customer Journey Page mit KI-Klassifizierung"
+      },
+      {
+        "hash": "9df368788b1e6599e475df7eb31f5902b007fd19",
+        "shortHash": "9df3687",
+        "author": "smedash",
+        "date": "2026-03-23 13:54:50 +0100",
+        "subject": "feat(redaktionsplan): Redaktionsplan-Seite mit Kalender, CRUD und XLSX-Import",
+        "type": "feat",
+        "typeLabel": "Feature",
+        "scope": "redaktionsplan",
+        "message": "Redaktionsplan-Seite mit Kalender, CRUD und XLSX-Import"
+      }
+    ],
+    "2026-03-02": [
+      {
+        "hash": "9f3b9e0dd87f2f7dd7f6bec1f3a2d85a849e5a14",
+        "shortHash": "9f3b9e0",
+        "author": "smedash",
+        "date": "2026-03-02 17:03:15 +0100",
+        "subject": "feat(schema-generator): CollectionPage Schema-Markup hinzufügen",
+        "type": "feat",
+        "typeLabel": "Feature",
+        "scope": "schema-generator",
+        "message": "CollectionPage Schema-Markup hinzufügen"
+      },
+      {
+        "hash": "78428931bd33b1b1cf211b7338c45e2c3097a6d6",
+        "shortHash": "7842893",
+        "author": "smedash",
+        "date": "2026-03-02 13:16:14 +0100",
+        "subject": "fix(dashboard): Geräte-Chart responsive für kleine Screens",
+        "type": "fix",
+        "typeLabel": "Bugfix",
+        "scope": "dashboard",
+        "message": "Geräte-Chart responsive für kleine Screens"
+      },
+      {
+        "hash": "005f100d25ad1f67d8b5b5586518cf03629b866d",
+        "shortHash": "005f100",
+        "author": "smedash",
+        "date": "2026-03-02 12:20:21 +0100",
+        "subject": "fix(cron): maxDuration auf 600s erhöhen für Vercel Pro Plan",
+        "type": "fix",
+        "typeLabel": "Bugfix",
+        "scope": "cron",
+        "message": "maxDuration auf 600s erhöhen für Vercel Pro Plan"
+      }
+    ],
+    "2026-02-27": [
+      {
+        "hash": "5c8260f78683d5adda2c7618068d40cf738d08eb",
+        "shortHash": "5c8260f",
+        "author": "smedash",
+        "date": "2026-02-27 10:23:42 +0100",
+        "subject": "feat(ranktracker): Inline-Kategorie-Editing & fix(faq-generator): Unauthorized-Bug",
+        "type": "feat",
+        "typeLabel": "Feature",
+        "scope": "ranktracker",
+        "message": "Inline-Kategorie-Editing & fix(faq-generator): Unauthorized-Bug"
+      }
+    ],
     "2026-02-16": [
+      {
+        "hash": "aebfdcf92696d5e91a7836ebf0f2ed441952eb5b",
+        "shortHash": "aebfdcf",
+        "author": "smedash",
+        "date": "2026-02-16 13:46:38 +0100",
+        "subject": "fix(tickets): Auto-Scroll zur Ticket-Detail-Ansicht bei Auswahl",
+        "type": "fix",
+        "typeLabel": "Bugfix",
+        "scope": "tickets",
+        "message": "Auto-Scroll zur Ticket-Detail-Ansicht bei Auswahl"
+      },
+      {
+        "hash": "7686d053f2ca175bdfeca39af8cd5e7cfbce7c81",
+        "shortHash": "7686d05",
+        "author": "smedash",
+        "date": "2026-02-16 13:36:07 +0100",
+        "subject": "feat(content-analyzer): Info-Tooltip zur Lesbarkeits-Card hinzufügen",
+        "type": "feat",
+        "typeLabel": "Feature",
+        "scope": "content-analyzer",
+        "message": "Info-Tooltip zur Lesbarkeits-Card hinzufügen"
+      },
+      {
+        "hash": "6aaf8f9c71c90691261ad8312d49e44f44bd456a",
+        "shortHash": "6aaf8f9",
+        "author": "smedash",
+        "date": "2026-02-16 13:21:36 +0100",
+        "subject": "fix: 12-Monats-Filter durch 8-Monate ersetzen und Blob-Access korrigieren",
+        "type": "fix",
+        "typeLabel": "Bugfix",
+        "scope": null,
+        "message": "12-Monats-Filter durch 8-Monate ersetzen und Blob-Access korrigieren"
+      },
       {
         "hash": "c1d5b27d309acfb8af028332565130df9bd916fb",
         "shortHash": "c1d5b27",

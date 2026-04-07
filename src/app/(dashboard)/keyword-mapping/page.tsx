@@ -6,6 +6,7 @@ interface Article {
   id: string;
   title: string;
   url: string | null;
+  language: string | null;
   metaDescription: string | null;
   h1: string | null;
   category: string | null;
@@ -20,7 +21,7 @@ interface KeywordResult {
 
 interface OverlapGroup {
   keyword: string;
-  articles: Array<{ id: string; title: string; url: string | null; location?: string | null }>;
+  articles: Array<{ id: string; title: string; url: string | null; language?: string | null; location?: string | null }>;
 }
 
 interface AnalysisData {
@@ -259,6 +260,7 @@ export default function KeywordMappingPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [locationFilter, setLocationFilter] = useState<string>("all");
+  const [languageFilter, setLanguageFilter] = useState<string>("all");
   const [overlapFilter, setOverlapFilter] = useState<"all" | "with-overlaps">("all");
   const [keywordSearch, setKeywordSearch] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
@@ -395,14 +397,22 @@ export default function KeywordMappingPage() {
   };
 
   const filteredArticleIds = useMemo(() => {
-    if (categoryFilter === "all" && locationFilter === "all") return null;
+    if (categoryFilter === "all" && locationFilter === "all" && languageFilter === "all") {
+      return null;
+    }
     return new Set(
       articles
-        .filter((a) => (categoryFilter === "all" || a.category === categoryFilter) &&
-                       (locationFilter === "all" || a.location === locationFilter))
+        .filter((a) => {
+          const matchesCategory = categoryFilter === "all" || a.category === categoryFilter;
+          const matchesLocation = locationFilter === "all" || a.location === locationFilter;
+          const matchesLanguage =
+            languageFilter === "all" ||
+            (languageFilter === "__none__" ? !a.language?.trim() : a.language?.toLowerCase() === languageFilter);
+          return matchesCategory && matchesLocation && matchesLanguage;
+        })
         .map((a) => a.id)
     );
-  }, [articles, categoryFilter, locationFilter]);
+  }, [articles, categoryFilter, locationFilter, languageFilter]);
 
   const filteredOverlaps = useMemo(() => {
     if (!analysisData) return [];
@@ -455,22 +465,35 @@ export default function KeywordMappingPage() {
 
       const matchesCategory = categoryFilter === "all" || a.category === categoryFilter;
       const matchesLocation = locationFilter === "all" || a.location === locationFilter;
+      const matchesLanguage =
+        languageFilter === "all" ||
+        (languageFilter === "__none__" ? !a.language?.trim() : a.language?.toLowerCase() === languageFilter);
       const matchesOverlap =
         overlapFilter === "all" || overlapArticleIds.has(a.id);
 
-      return matchesSearch && matchesCategory && matchesLocation && matchesOverlap;
+      return matchesSearch && matchesCategory && matchesLocation && matchesLanguage && matchesOverlap;
     });
   }, [
     eligibleArticles,
     articleSearchFilter,
     categoryFilter,
     locationFilter,
+    languageFilter,
     overlapFilter,
     analysisData,
     filteredOverlaps,
   ]);
 
   const categories = [...new Set(articles.map((a) => a.category).filter(Boolean))] as string[];
+
+  const languagesFromArticles = useMemo(() => {
+    const seen = new Set<string>();
+    for (const a of articles) {
+      const lang = a.language?.trim().toLowerCase();
+      if (lang) seen.add(lang);
+    }
+    return [...seen].sort((a, b) => a.localeCompare(b, "de"));
+  }, [articles]);
 
   /** Überlappungs-Payload kann ältere/leere URLs enthalten — Anzeige mit Redaktionsplan abgleichen. */
   const editorialArticleById = useMemo(
@@ -568,17 +591,17 @@ export default function KeywordMappingPage() {
       .filter((r) => r.focusKeywords.some((kw) => kw.toLowerCase().trim() === selectedCloudKeyword))
       .map((r) => {
         const article = articles.find((a) => a.id === r.id);
-        return article ? { id: article.id, title: article.title, url: article.url } : null;
+        return article ? { id: article.id, title: article.title, url: article.url, language: article.language } : null;
       })
-      .filter(Boolean) as Array<{ id: string; title: string; url: string | null }>;
+      .filter(Boolean) as Array<{ id: string; title: string; url: string | null; language: string | null }>;
   }, [selectedCloudKeyword, analysisData, filteredResults, articles]);
 
-  useEffect(() => { setMappingPage(0); }, [articleSearchFilter, categoryFilter, locationFilter, overlapFilter]);
-  useEffect(() => { setOverlapsPage(0); }, [categoryFilter, locationFilter]);
-  useEffect(() => { setKeywordsPage(0); }, [keywordSearchFilter, categoryFilter, locationFilter]);
+  useEffect(() => { setMappingPage(0); }, [articleSearchFilter, categoryFilter, locationFilter, languageFilter, overlapFilter]);
+  useEffect(() => { setOverlapsPage(0); }, [categoryFilter, locationFilter, languageFilter]);
+  useEffect(() => { setKeywordsPage(0); }, [keywordSearchFilter, categoryFilter, locationFilter, languageFilter]);
   useEffect(() => {
     setUrlPrefixOverlapsPage(0);
-  }, [urlPrefixCompareInput, categoryFilter, locationFilter]);
+  }, [urlPrefixCompareInput, categoryFilter, locationFilter, languageFilter]);
 
   const paginatedArticles = useMemo(
     () => filteredArticles.slice(mappingPage * PAGE_SIZE, (mappingPage + 1) * PAGE_SIZE),
@@ -839,6 +862,20 @@ export default function KeywordMappingPage() {
               <option key={loc} value={loc}>{loc}</option>
             ))}
           </select>
+          <select
+            value={languageFilter}
+            onChange={(e) => setLanguageFilter(e.target.value)}
+            className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+            title="Sprache aus URL-Pfad (Redaktionsplan)"
+          >
+            <option value="all">Alle Sprachen</option>
+            <option value="__none__">Ohne Sprachzuordnung</option>
+            {languagesFromArticles.map((lang) => (
+              <option key={lang} value={lang}>
+                {lang.toUpperCase()}
+              </option>
+            ))}
+          </select>
           {activeTab === "mapping" && (
             <select
               value={overlapFilter}
@@ -900,6 +937,11 @@ export default function KeywordMappingPage() {
                             <a href={article.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 dark:text-blue-400 truncate mt-0.5 hover:underline block" title={article.url}>
                               {article.url}
                             </a>
+                          )}
+                          {article.language && (
+                            <span className="inline-flex mt-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300 uppercase">
+                              {article.language}
+                            </span>
                           )}
                           {article.category && (
                             <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-medium ${CATEGORY_COLORS[article.category] || "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300"}`}>
@@ -1439,9 +1481,9 @@ export default function KeywordMappingPage() {
                     .filter((r) => r.focusKeywords.some((fk) => fk.toLowerCase().trim() === kw.keyword))
                     .map((r) => {
                       const a = articles.find((art) => art.id === r.id);
-                      return a ? { id: a.id, title: a.title, url: a.url } : null;
+                      return a ? { id: a.id, title: a.title, url: a.url, language: a.language } : null;
                     })
-                    .filter(Boolean) as Array<{ id: string; title: string; url: string | null }>;
+                    .filter(Boolean) as Array<{ id: string; title: string; url: string | null; language: string | null }>;
 
                   return (
                     <tr
@@ -1499,6 +1541,11 @@ export default function KeywordMappingPage() {
                               <div className="font-medium text-slate-700 dark:text-slate-300">{a.title}</div>
                               {a.url && (
                                 <a href={a.url} target="_blank" rel="noopener noreferrer" className="text-blue-500 dark:text-blue-400 hover:underline break-all">{a.url}</a>
+                              )}
+                              {a.language && (
+                                <span className="inline-flex mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-mono bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300 uppercase">
+                                  {a.language}
+                                </span>
                               )}
                             </div>
                           ))}
@@ -1610,6 +1657,11 @@ export default function KeywordMappingPage() {
                         <a href={a.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 dark:text-blue-400 truncate mt-0.5 hover:underline block">
                           {a.url}
                         </a>
+                      )}
+                      {a.language && (
+                        <span className="inline-flex mt-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300 uppercase">
+                          {a.language}
+                        </span>
                       )}
                     </div>
                   </div>

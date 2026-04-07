@@ -553,6 +553,7 @@ model EditorialPlanArticle {
   title       String
   description String?  @db.Text
   url         String?  @db.Text
+  language    String?  // ISO-ähnlicher Code aus URL-Pfad (zweites Segment), z. B. en, de, fr
   category    String?  // Kategorie: Mortgages, Accounts&Cards, Investing, Pension, Digital Banking
   status      String   @default("idea") // idea, planned, in_progress, in_review, published
   plannedDate DateTime?

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { canEdit } from "@/lib/rbac";
+import { languageFromUrlPath } from "@/lib/url-language";
 
 export async function GET(request: NextRequest) {
   try {
@@ -19,6 +20,7 @@ export async function GET(request: NextRequest) {
           id: true,
           title: true,
           url: true,
+          language: true,
           metaDescription: true,
           h1: true,
           category: true,
@@ -71,6 +73,7 @@ export async function GET(request: NextRequest) {
             id: true,
             title: true,
             url: true,
+            language: true,
             category: true,
             status: true,
             location: true,
@@ -132,11 +135,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Title is required" }, { status: 400 });
     }
 
+    const urlTrimmed = url?.trim() || null;
     const article = await prisma.editorialPlanArticle.create({
       data: {
         title: title.trim(),
         description: description?.trim() || null,
-        url: url?.trim() || null,
+        url: urlTrimmed,
+        language: languageFromUrlPath(urlTrimmed),
         category: category || null,
         status: status || "idea",
         plannedDate: plannedDate ? new Date(plannedDate) : null,
@@ -186,7 +191,11 @@ export async function PUT(request: NextRequest) {
     const updateData: Record<string, unknown> = {};
     if (title !== undefined) updateData.title = title.trim();
     if (description !== undefined) updateData.description = description?.trim() || null;
-    if (url !== undefined) updateData.url = url?.trim() || null;
+    if (url !== undefined) {
+      const nextUrl = url?.trim() || null;
+      updateData.url = nextUrl;
+      updateData.language = languageFromUrlPath(nextUrl);
+    }
     if (category !== undefined) updateData.category = category || null;
     if (status !== undefined) updateData.status = status || "idea";
     if (plannedDate !== undefined) updateData.plannedDate = plannedDate ? new Date(plannedDate) : null;

@@ -7,6 +7,7 @@ import {
   cleanImportedOptionalText,
   titleMatchKey,
 } from "@/lib/editorial-text-encoding";
+import { languageFromUrlPath } from "@/lib/url-language";
 import * as XLSX from "xlsx";
 
 const VALID_CATEGORIES = [
@@ -185,7 +186,7 @@ export async function POST(request: NextRequest) {
             chunk.map((p) =>
               prisma.editorialPlanArticle.update({
                 where: { id: p.id },
-                data: { url: p.url },
+                data: { url: p.url, language: languageFromUrlPath(p.url) },
               })
             )
           );
@@ -250,9 +251,11 @@ export async function POST(request: NextRequest) {
 
       const plannedDate = getPlannedDate(imported);
 
+      const rowUrl = headerMap.url ? row[headerMap.url]?.toString().trim() || null : null;
       batch.push({
         title,
-        url: headerMap.url ? row[headerMap.url]?.toString().trim() || null : null,
+        url: rowUrl,
+        language: languageFromUrlPath(rowUrl),
         metaDescription: cleanImportedOptionalText(row[headerMap.metaDescription]?.toString()),
         h1: cleanImportedOptionalText(row[headerMap.h1]?.toString()),
         schemaMarkup: cleanImportedOptionalText(row[headerMap.schemaMarkup]?.toString()),

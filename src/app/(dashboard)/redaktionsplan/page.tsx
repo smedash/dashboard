@@ -15,6 +15,7 @@ interface Article {
   title: string;
   description: string | null;
   url: string | null;
+  language: string | null;
   category: string | null;
   status: string;
   plannedDate: string | null;
@@ -669,6 +670,7 @@ export default function RedaktionsplanPage() {
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Kategorie</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Geplant</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">URL</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Sprache</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Erstellt von</th>
                   <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Aktionen</th>
                 </tr>
@@ -676,7 +678,7 @@ export default function RedaktionsplanPage() {
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
                 {filteredArticles.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-12 text-center text-sm text-slate-500 dark:text-slate-400">
+                    <td colSpan={8} className="px-4 py-12 text-center text-sm text-slate-500 dark:text-slate-400">
                       Keine Artikel vorhanden. Erstelle deinen ersten Artikel!
                     </td>
                   </tr>
@@ -726,6 +728,15 @@ export default function RedaktionsplanPage() {
                             >
                               {article.url}
                             </a>
+                          ) : (
+                            <span className="text-xs text-slate-400">–</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          {article.language ? (
+                            <span className="inline-flex px-2 py-0.5 rounded text-xs font-mono font-medium bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200 uppercase">
+                              {article.language}
+                            </span>
                           ) : (
                             <span className="text-xs text-slate-400">–</span>
                           )}
@@ -847,6 +858,15 @@ export default function RedaktionsplanPage() {
                   >
                     {selectedArticle.url}
                   </a>
+                </div>
+              )}
+
+              {selectedArticle.language && (
+                <div className="mb-4">
+                  <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Sprache (URL)</h3>
+                  <span className="inline-flex px-2.5 py-1 rounded text-xs font-mono font-medium bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-200 uppercase">
+                    {selectedArticle.language}
+                  </span>
                 </div>
               )}
 
