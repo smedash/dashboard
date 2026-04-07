@@ -32,10 +32,11 @@ function computeOverlaps(
   results: AnalysisResult[],
   articles: Array<{ id: string; title: string; url: string | null; location: string | null }>
 ) {
+  const articleById = new Map(articles.map((a) => [a.id, a]));
   const keywordMap = new Map<string, Array<{ id: string; title: string; url: string | null; location: string | null }>>();
 
   for (const result of results) {
-    const article = articles.find((a) => a.id === result.id);
+    const article = articleById.get(result.id);
     if (!article) continue;
 
     for (const keyword of result.focusKeywords) {
@@ -159,11 +160,30 @@ export async function GET() {
 
     const latestRun = await prisma.keywordMappingRun.findFirst({
       orderBy: { createdAt: "desc" },
-      include: { results: true },
+      select: {
+        id: true,
+        analyzed: true,
+        total: true,
+        createdAt: true,
+        results: {
+          select: {
+            articleId: true,
+            focusKeywords: true,
+            reasoning: true,
+          },
+        },
+      },
     });
 
     if (!latestRun) {
-      return NextResponse.json({ run: null });
+      return NextResponse.json(
+        { run: null },
+        {
+          headers: {
+            "Cache-Control": "private, max-age=60, stale-while-revalidate=120",
+          },
+        }
+      );
     }
 
     const articleIds = latestRun.results.map((r) => r.articleId);
@@ -180,16 +200,23 @@ export async function GET() {
 
     const overlaps = computeOverlaps(results, articles);
 
-    return NextResponse.json({
-      run: {
-        id: latestRun.id,
-        analyzed: latestRun.analyzed,
-        total: latestRun.total,
-        createdAt: latestRun.createdAt.toISOString(),
-        results,
-        overlaps,
+    return NextResponse.json(
+      {
+        run: {
+          id: latestRun.id,
+          analyzed: latestRun.analyzed,
+          total: latestRun.total,
+          createdAt: latestRun.createdAt.toISOString(),
+          results,
+          overlaps,
+        },
       },
-    });
+      {
+        headers: {
+          "Cache-Control": "private, max-age=60, stale-while-revalidate=120",
+        },
+      }
+    );
   } catch (error) {
     console.error("Error fetching keyword mapping:", error);
     return NextResponse.json({ error: "Laden fehlgeschlagen" }, { status: 500 });

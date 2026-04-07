@@ -11,6 +11,31 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
+
+    /** Nur Felder, die Keyword-Mapping / Overlap brauchen — ohne Creator-Join und ohne große Textfelder. */
+    if (searchParams.get("scope") === "keyword-mapping") {
+      const articles = await prisma.editorialPlanArticle.findMany({
+        select: {
+          id: true,
+          title: true,
+          url: true,
+          metaDescription: true,
+          h1: true,
+          category: true,
+          location: true,
+        },
+        orderBy: [{ plannedDate: "asc" }, { createdAt: "desc" }],
+      });
+      return NextResponse.json(
+        { articles },
+        {
+          headers: {
+            "Cache-Control": "private, max-age=60, stale-while-revalidate=120",
+          },
+        }
+      );
+    }
+
     const journeyPhase = searchParams.get("journeyPhase");
     const category = searchParams.get("category") || undefined;
     const location = searchParams.get("location") || undefined;

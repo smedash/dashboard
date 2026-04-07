@@ -225,7 +225,7 @@ export default function KeywordMappingPage() {
   const fetchArticles = useCallback(async () => {
     if (_cachedArticles && isCacheFresh()) return;
     try {
-      const res = await fetch("/api/editorial-plan");
+      const res = await fetch("/api/editorial-plan?scope=keyword-mapping");
       if (res.ok) {
         const data = await res.json();
         setArticles(data.articles);
