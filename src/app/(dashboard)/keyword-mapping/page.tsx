@@ -270,10 +270,32 @@ const GSC_PERIOD_OPTIONS = [
   { value: "8m", short: "8 M.", selectLabel: "8 Monate" },
 ] as const;
 
+/** Schwellen für GSC-Klicks pro URL (Property www.ubs.com, geladener Seitenreport). */
+const GSC_CLICKS_THRESHOLD_OPTIONS = [1, 10, 50, 100, 500, 1000] as const;
+
+type GscClicksFilterMode = "off" | "gte" | "lt";
+
 type GscKeywordMappingState = "loading" | "ready" | "needsConnection" | "error";
 
 function gscPeriodShortLabel(period: string): string {
   return GSC_PERIOD_OPTIONS.find((p) => p.value === period)?.short ?? period;
+}
+
+function gscClicksForArticleUrl(
+  gscByPath: Map<string, GscPageMetrics>,
+  url: string | null | undefined
+): number {
+  return lookupGscMetrics(gscByPath, url)?.clicks ?? 0;
+}
+
+function articleMatchesGscClicksFilter(
+  clicks: number,
+  mode: GscClicksFilterMode,
+  threshold: number
+): boolean {
+  if (mode === "off") return true;
+  if (mode === "gte") return clicks >= threshold;
+  return clicks < threshold;
 }
 
 function KeywordMappingGscLine({
@@ -628,6 +650,8 @@ export default function KeywordMappingPage() {
   const [gscRows, setGscRows] = useState<GscPageRow[]>([]);
   const [gscState, setGscState] = useState<GscKeywordMappingState>("loading");
   const [gscPeriod, setGscPeriod] = useState<string>("28d");
+  const [gscClicksFilterMode, setGscClicksFilterMode] = useState<GscClicksFilterMode>("off");
+  const [gscClicksThreshold, setGscClicksThreshold] = useState<number>(50);
 
   const fetchArticles = useCallback(async () => {
     if (_cachedArticles && isCacheFresh()) return;
@@ -806,16 +830,36 @@ export default function KeywordMappingPage() {
     );
   }, [articles, categoryFilter, locationFilter, languageFilter]);
 
+  const clicksFilteredArticleIds = useMemo(() => {
+    if (gscClicksFilterMode === "off" || gscState !== "ready") return null;
+    const s = new Set<string>();
+    for (const a of articles) {
+      const clicks = gscClicksForArticleUrl(gscByPath, a.url);
+      if (articleMatchesGscClicksFilter(clicks, gscClicksFilterMode, gscClicksThreshold)) {
+        s.add(a.id);
+      }
+    }
+    return s;
+  }, [articles, gscByPath, gscClicksFilterMode, gscClicksThreshold, gscState]);
+
+  const effectiveFilteredArticleIds = useMemo(() => {
+    if (!filteredArticleIds && !clicksFilteredArticleIds) return null;
+    if (!filteredArticleIds) return clicksFilteredArticleIds;
+    if (!clicksFilteredArticleIds) return filteredArticleIds;
+    const clicksSet = clicksFilteredArticleIds;
+    return new Set([...filteredArticleIds].filter((id) => clicksSet.has(id)));
+  }, [filteredArticleIds, clicksFilteredArticleIds]);
+
   const filteredOverlaps = useMemo(() => {
     if (!analysisData) return [];
-    if (!filteredArticleIds) return analysisData.overlaps;
+    if (!effectiveFilteredArticleIds) return analysisData.overlaps;
     return analysisData.overlaps
       .map((o) => ({
         ...o,
-        articles: o.articles.filter((a) => filteredArticleIds.has(a.id)),
+        articles: o.articles.filter((a) => effectiveFilteredArticleIds.has(a.id)),
       }))
       .filter((o) => o.articles.length > 1);
-  }, [analysisData, filteredArticleIds]);
+  }, [analysisData, effectiveFilteredArticleIds]);
 
   const getResultForArticle = (articleId: string): KeywordResult | undefined => {
     return analysisData?.results.find((r) => r.id === articleId);
@@ -863,7 +907,20 @@ export default function KeywordMappingPage() {
       const matchesOverlap =
         overlapFilter === "all" || overlapArticleIds.has(a.id);
 
-      return matchesSearch && matchesCategory && matchesLocation && matchesLanguage && matchesOverlap;
+      const c = gscClicksForArticleUrl(gscByPath, a.url);
+      const matchesGscClicks =
+        gscClicksFilterMode === "off" ||
+        gscState !== "ready" ||
+        articleMatchesGscClicksFilter(c, gscClicksFilterMode, gscClicksThreshold);
+
+      return (
+        matchesSearch &&
+        matchesCategory &&
+        matchesLocation &&
+        matchesLanguage &&
+        matchesOverlap &&
+        matchesGscClicks
+      );
     });
   }, [
     eligibleArticles,
@@ -874,6 +931,10 @@ export default function KeywordMappingPage() {
     overlapFilter,
     analysisData,
     filteredOverlaps,
+    gscByPath,
+    gscClicksFilterMode,
+    gscClicksThreshold,
+    gscState,
   ]);
 
   const categories = [...new Set(articles.map((a) => a.category).filter(Boolean))] as string[];
@@ -942,9 +1003,9 @@ export default function KeywordMappingPage() {
 
   const filteredResults = useMemo(() => {
     if (!analysisData) return [];
-    if (!filteredArticleIds) return analysisData.results;
-    return analysisData.results.filter((r) => filteredArticleIds.has(r.id));
-  }, [analysisData, filteredArticleIds]);
+    if (!effectiveFilteredArticleIds) return analysisData.results;
+    return analysisData.results.filter((r) => effectiveFilteredArticleIds.has(r.id));
+  }, [analysisData, effectiveFilteredArticleIds]);
 
   const keywordStats = useMemo(() => {
     if (!analysisData) return { unique: [], counts: new Map<string, number>() };
@@ -988,12 +1049,12 @@ export default function KeywordMappingPage() {
       .filter(Boolean) as Array<{ id: string; title: string; url: string | null; language: string | null }>;
   }, [selectedCloudKeyword, analysisData, filteredResults, articles]);
 
-  useEffect(() => { setMappingPage(0); }, [articleSearchFilter, categoryFilter, locationFilter, languageFilter, overlapFilter]);
-  useEffect(() => { setOverlapsPage(0); }, [categoryFilter, locationFilter, languageFilter]);
-  useEffect(() => { setKeywordsPage(0); }, [keywordSearchFilter, categoryFilter, locationFilter, languageFilter]);
+  useEffect(() => { setMappingPage(0); }, [articleSearchFilter, categoryFilter, locationFilter, languageFilter, overlapFilter, gscClicksFilterMode, gscClicksThreshold, gscState]);
+  useEffect(() => { setOverlapsPage(0); }, [categoryFilter, locationFilter, languageFilter, gscClicksFilterMode, gscClicksThreshold, gscState]);
+  useEffect(() => { setKeywordsPage(0); }, [keywordSearchFilter, categoryFilter, locationFilter, languageFilter, gscClicksFilterMode, gscClicksThreshold, gscState]);
   useEffect(() => {
     setUrlPrefixOverlapsPage(0);
-  }, [urlPrefixCompareInput, categoryFilter, locationFilter, languageFilter]);
+  }, [urlPrefixCompareInput, categoryFilter, locationFilter, languageFilter, gscClicksFilterMode, gscClicksThreshold, gscState]);
 
   const paginatedArticles = useMemo(
     () => filteredArticles.slice(mappingPage * PAGE_SIZE, (mappingPage + 1) * PAGE_SIZE),
@@ -1321,6 +1382,42 @@ export default function KeywordMappingPage() {
               </option>
             ))}
           </select>
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={gscClicksFilterMode}
+              onChange={(e) => setGscClicksFilterMode(e.target.value as GscClicksFilterMode)}
+              title={
+                gscState !== "ready"
+                  ? "GSC-Klicks-Filter: wirkt, sobald GSC-Daten geladen sind (sonst keine Einschränkung)."
+                  : "Filtern nach GSC-Klicks der Artikel-URL im gewählten Zeitraum (Abgleich mit dem geladenen Seitenreport)."
+              }
+              className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 min-w-[11rem] max-w-[14rem]"
+            >
+              <option value="off">Alle Klickstärken</option>
+              <option value="gte">Mind. Klicks (≥)</option>
+              <option value="lt">Weniger als (&lt;)</option>
+            </select>
+            {gscClicksFilterMode !== "off" && (
+              <select
+                value={gscClicksThreshold}
+                onChange={(e) => setGscClicksThreshold(Number(e.target.value))}
+                title={
+                  gscClicksFilterMode === "gte"
+                    ? `Nur URLs mit mindestens ${gscClicksThreshold.toLocaleString("de-CH")} GSC-Klicks.`
+                    : `Nur URLs mit strikt weniger als ${gscClicksThreshold.toLocaleString("de-CH")} GSC-Klicks (0 bis ${(gscClicksThreshold - 1).toLocaleString("de-CH")}).`
+                }
+                className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 tabular-nums max-w-[9rem]"
+              >
+                {GSC_CLICKS_THRESHOLD_OPTIONS.map((n) => (
+                  <option key={n} value={n}>
+                    {gscClicksFilterMode === "gte"
+                      ? `≥ ${n.toLocaleString("de-CH")}`
+                      : `< ${n.toLocaleString("de-CH")}`}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
         </div>
       )}
 
