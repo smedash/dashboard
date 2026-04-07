@@ -1,6 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
+import {
+  KEYWORD_MAPPING_GSC_SITE_URL,
+  type GscPageMetrics,
+  type GscPageRow,
+  buildGscMetricsByPathname,
+  lookupGscMetrics,
+} from "@/lib/keyword-mapping-gsc";
 
 interface Article {
   id: string;
@@ -253,16 +260,80 @@ const URL_PREFIX_CARD_URL_COL_NONE = "Ohne URL-Pfad";
 const URL_PREFIX_OVERLAP_INITIAL_VISIBLE = 10;
 const URL_PREFIX_OVERLAP_MORE_STEP = 20;
 
+const GSC_PAGE_ROW_LIMIT = 25_000;
+
+const GSC_PERIOD_OPTIONS = [
+  { value: "7d", short: "7 T.", selectLabel: "7 Tage" },
+  { value: "28d", short: "28 T.", selectLabel: "28 Tage" },
+  { value: "3m", short: "3 M.", selectLabel: "3 Monate" },
+  { value: "6m", short: "6 M.", selectLabel: "6 Monate" },
+  { value: "8m", short: "8 M.", selectLabel: "8 Monate" },
+] as const;
+
+type GscKeywordMappingState = "loading" | "ready" | "needsConnection" | "error";
+
+function gscPeriodShortLabel(period: string): string {
+  return GSC_PERIOD_OPTIONS.find((p) => p.value === period)?.short ?? period;
+}
+
+function KeywordMappingGscLine({
+  url,
+  gscByPath,
+  state,
+  periodShort,
+}: {
+  url: string | null | undefined;
+  gscByPath: Map<string, GscPageMetrics>;
+  state: GscKeywordMappingState;
+  periodShort: string;
+}) {
+  if (!url?.trim()) return null;
+  if (state === "loading") {
+    return (
+      <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 block">
+        GSC lädt…
+      </span>
+    );
+  }
+  if (state === "needsConnection" || state === "error") {
+    return null;
+  }
+  const m = lookupGscMetrics(gscByPath, url);
+  if (!m) {
+    return (
+      <span
+        className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 block"
+        title="Keine Zeile in den bis zu 25 000 stärksten Seiten dieses Zeitraums (Search Console, Property www.ubs.com)."
+      >
+        GSC: kein Treffer
+      </span>
+    );
+  }
+  return (
+    <span className="text-[10px] text-slate-600 dark:text-slate-400 mt-0.5 block tabular-nums leading-snug">
+      <span className="text-slate-500 dark:text-slate-500">GSC {periodShort}:</span>{" "}
+      {m.clicks.toLocaleString("de-CH")} Klicks · {m.impressions.toLocaleString("de-CH")} Imp. ·{" "}
+      {(m.ctr * 100).toFixed(1)}% CTR · Ø {m.position.toFixed(1)}
+    </span>
+  );
+}
+
 function UrlPrefixOverlapCard({
   overlap,
   editorialArticleById,
   selectedUrlPrefixes,
   selectedUrlPrefixSet,
+  gscByPath,
+  gscState,
+  gscPeriodShort,
 }: {
   overlap: OverlapGroup;
   editorialArticleById: Map<string, Article>;
   selectedUrlPrefixes: string[];
   selectedUrlPrefixSet: Set<string>;
+  gscByPath: Map<string, GscPageMetrics>;
+  gscState: GscKeywordMappingState;
+  gscPeriodShort: string;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [visibleCount, setVisibleCount] = useState(URL_PREFIX_OVERLAP_INITIAL_VISIBLE);
@@ -486,6 +557,12 @@ function UrlPrefixOverlapCard({
                                     Präfix: {seg}
                                   </span>
                                 )}
+                                <KeywordMappingGscLine
+                                  url={displayUrl}
+                                  gscByPath={gscByPath}
+                                  state={gscState}
+                                  periodShort={gscPeriodShort}
+                                />
                               </>
                             ) : (
                               <span className="text-xs text-slate-500 dark:text-slate-500 italic mt-0.5 block">
@@ -547,6 +624,10 @@ export default function KeywordMappingPage() {
   const [urlPrefixCompareInput, setUrlPrefixCompareInput] = useState(
     "us/en\nglobal/en"
   );
+  /** GSC-Daten immer von dieser Property (nicht vom Header-Property-Selektor). */
+  const [gscRows, setGscRows] = useState<GscPageRow[]>([]);
+  const [gscState, setGscState] = useState<GscKeywordMappingState>("loading");
+  const [gscPeriod, setGscPeriod] = useState<string>("28d");
 
   const fetchArticles = useCallback(async () => {
     if (_cachedArticles && isCacheFresh()) return;
@@ -587,6 +668,44 @@ export default function KeywordMappingPage() {
   useEffect(() => {
     Promise.all([fetchArticles(), fetchSavedMapping()]);
   }, [fetchArticles, fetchSavedMapping]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadGscPages() {
+      setGscState("loading");
+      try {
+        const res = await fetch(
+          `/api/gsc/pages?siteUrl=${encodeURIComponent(KEYWORD_MAPPING_GSC_SITE_URL)}&period=${encodeURIComponent(gscPeriod)}&limit=${GSC_PAGE_ROW_LIMIT}`
+        );
+        const data = await res.json();
+        if (cancelled) return;
+        if (res.status === 403 && data.needsConnection) {
+          setGscRows([]);
+          setGscState("needsConnection");
+          return;
+        }
+        if (!res.ok) {
+          setGscRows([]);
+          setGscState("error");
+          return;
+        }
+        setGscRows(Array.isArray(data.data) ? data.data : []);
+        setGscState("ready");
+      } catch {
+        if (!cancelled) {
+          setGscRows([]);
+          setGscState("error");
+        }
+      }
+    }
+    loadGscPages();
+    return () => {
+      cancelled = true;
+    };
+  }, [gscPeriod]);
+
+  const gscByPath = useMemo(() => buildGscMetricsByPathname(gscRows), [gscRows]);
+  const gscPeriodShort = useMemo(() => gscPeriodShortLabel(gscPeriod), [gscPeriod]);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearchTerm(searchTerm), SEARCH_DEBOUNCE_MS);
@@ -912,6 +1031,18 @@ export default function KeywordMappingPage() {
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             Analysiere Fokuskeywords und erkenne Kannibalisierungspotenzial im Redaktionsplan
           </p>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            Organische Kennzahlen (Klicks, Impressionen, CTR, Ø-Position) aus der Search Console, Property{" "}
+            <code className="text-[11px] px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-700 font-mono">
+              {KEYWORD_MAPPING_GSC_SITE_URL}
+            </code>
+            {gscState === "ready" && (
+              <span className="text-slate-400 dark:text-slate-500">
+                {" "}
+                · {gscRows.length.toLocaleString("de-CH")} Seitenzeilen geladen
+              </span>
+            )}
+          </p>
           {analysisData?.createdAt && (
             <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
               Letzter Durchlauf: {formatDate(analysisData.createdAt)}
@@ -941,6 +1072,25 @@ export default function KeywordMappingPage() {
           )}
         </button>
       </div>
+
+      {gscState === "needsConnection" && (
+        <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-4 py-3 text-sm text-amber-900 dark:text-amber-200">
+          Für GSC-Trafficdaten zu den URLs bitte{" "}
+          <a href="/api/auth/link-google" className="font-medium underline hover:no-underline">
+            Google verbinden
+          </a>
+          . Es wird die Property{" "}
+          <code className="text-xs font-mono px-1 rounded bg-amber-100 dark:bg-amber-900/50">
+            {KEYWORD_MAPPING_GSC_SITE_URL}
+          </code>{" "}
+          abgefragt (unabhängig vom Property-Selektor oben).
+        </div>
+      )}
+      {gscState === "error" && (
+        <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-800 dark:text-red-200">
+          GSC-Seitendaten konnten nicht geladen werden. Bitte später erneut versuchen.
+        </div>
+      )}
 
       {/* Progress */}
       {(progress || analysisProgress) && (
@@ -1159,6 +1309,18 @@ export default function KeywordMappingPage() {
               <option value="with-overlaps">Nur mit Überlappungen</option>
             </select>
           )}
+          <select
+            value={gscPeriod}
+            onChange={(e) => setGscPeriod(e.target.value)}
+            title="Zeitraum für organische Kennzahlen (Search Console, www.ubs.com)"
+            className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 max-w-[200px]"
+          >
+            {GSC_PERIOD_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                GSC: {o.selectLabel}
+              </option>
+            ))}
+          </select>
         </div>
       )}
 
@@ -1211,6 +1373,12 @@ export default function KeywordMappingPage() {
                               {article.url}
                             </a>
                           )}
+                          <KeywordMappingGscLine
+                            url={article.url}
+                            gscByPath={gscByPath}
+                            state={gscState}
+                            periodShort={gscPeriodShort}
+                          />
                           {article.language && (
                             <span className="inline-flex mt-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300 uppercase">
                               {article.language}
@@ -1408,6 +1576,12 @@ export default function KeywordMappingPage() {
                               Keine URL im Redaktionsplan
                             </span>
                           )}
+                          <KeywordMappingGscLine
+                            url={displayUrl}
+                            gscByPath={gscByPath}
+                            state={gscState}
+                            periodShort={gscPeriodShort}
+                          />
                         </div>
                       </div>
                     );
@@ -1511,6 +1685,12 @@ export default function KeywordMappingPage() {
                                           Keine URL im Redaktionsplan
                                         </span>
                                       )}
+                                      <KeywordMappingGscLine
+                                        url={displayUrl}
+                                        gscByPath={gscByPath}
+                                        state={gscState}
+                                        periodShort={gscPeriodShort}
+                                      />
                                     </div>
                                   </div>
                                 );
@@ -1599,6 +1779,9 @@ export default function KeywordMappingPage() {
                     editorialArticleById={editorialArticleById}
                     selectedUrlPrefixes={selectedUrlPrefixes}
                     selectedUrlPrefixSet={selectedUrlPrefixSet}
+                    gscByPath={gscByPath}
+                    gscState={gscState}
+                    gscPeriodShort={gscPeriodShort}
                   />
                 ))}
               </div>
@@ -1706,6 +1889,12 @@ export default function KeywordMappingPage() {
                               {a.url && (
                                 <a href={a.url} target="_blank" rel="noopener noreferrer" className="text-blue-500 dark:text-blue-400 hover:underline break-all">{a.url}</a>
                               )}
+                              <KeywordMappingGscLine
+                                url={a.url}
+                                gscByPath={gscByPath}
+                                state={gscState}
+                                periodShort={gscPeriodShort}
+                              />
                               {a.language && (
                                 <span className="inline-flex mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-mono bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300 uppercase">
                                   {a.language}
@@ -1822,6 +2011,12 @@ export default function KeywordMappingPage() {
                           {a.url}
                         </a>
                       )}
+                      <KeywordMappingGscLine
+                        url={a.url}
+                        gscByPath={gscByPath}
+                        state={gscState}
+                        periodShort={gscPeriodShort}
+                      />
                       {a.language && (
                         <span className="inline-flex mt-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300 uppercase">
                           {a.language}
