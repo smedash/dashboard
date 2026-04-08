@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import * as XLSX from "xlsx";
 import { DataTable } from "@/components/ui/DataTable";
 import { PeriodSelector } from "@/components/ui/PeriodSelector";
 import { useProperty } from "@/contexts/PropertyContext";
@@ -104,6 +105,33 @@ export default function PagesPage() {
     }
   };
 
+  const exportToXlsx = useCallback(() => {
+    if (tableData.length === 0) return;
+
+    const rows = tableData.map((r) => ({
+      Seite: r.page,
+      KVP: r.hasKvp ? "Ja" : "Nein",
+      Klicks: r.clicks,
+      Impressionen: r.impressions,
+      "CTR (%)": Math.round(r.ctr * 10000) / 100,
+      Position: Math.round(r.position * 10) / 10,
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Seiten");
+
+    const host = (() => {
+      try {
+        return new URL(selectedProperty || "").hostname.replace(/[^a-zA-Z0-9._-]/g, "_") || "property";
+      } catch {
+        return "property";
+      }
+    })();
+    const stamp = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `gsc-seiten_${host}_${period}_${stamp}.xlsx`);
+  }, [tableData, selectedProperty, period]);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -184,6 +212,19 @@ export default function PagesPage() {
           <span className="text-sm text-slate-600 dark:text-slate-400">
             {tableData.length} von {data.length} Seiten
           </span>
+
+          <button
+            type="button"
+            onClick={exportToXlsx}
+            disabled={isLoading || tableData.length === 0}
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-600 disabled:opacity-50 disabled:pointer-events-none transition-colors"
+            title="Aktuelle Tabelle (inkl. Filter) als Excel-Datei speichern"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Excel (.xlsx)
+          </button>
         </div>
       </div>
 
