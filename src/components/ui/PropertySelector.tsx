@@ -12,12 +12,6 @@ interface PropertySelectorProps {
   onChange: (value: string) => void;
 }
 
-// Erlaubte Properties - kann über Umgebungsvariable erweitert werden
-const ALLOWED_PROPERTIES = [
-  "https://www.raiffeisen.ch/rch/de/privatkunden/",
-  "sc-domain:raiffeisen.ch",
-];
-
 export function PropertySelector({ value, onChange }: PropertySelectorProps) {
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -35,35 +29,17 @@ export function PropertySelector({ value, onChange }: PropertySelectorProps) {
           return;
         }
 
-        // Filtere nur erlaubte Properties
         const allProperties = data.properties || [];
-        const filteredProperties = allProperties.filter((p: Property) =>
-          ALLOWED_PROPERTIES.some(
-            (allowed) =>
-              p.siteUrl.includes(allowed) || allowed.includes(p.siteUrl)
-          )
-        );
+        setProperties(allProperties);
 
-        // Falls keine gefilterten Properties, zeige alle (Fallback)
-        const finalProperties =
-          filteredProperties.length > 0 ? filteredProperties : allProperties;
-
-        setProperties(finalProperties);
-
-        // Only auto-select first property if truly no value is set anywhere
-        // This should only happen on the very first load when nothing is saved
-        // We check both the prop value AND localStorage to avoid race conditions
         const hasValue = value !== null && value !== undefined;
         const savedProperty = typeof window !== "undefined" 
           ? localStorage.getItem("gsc-selected-property")
           : null;
         
-        if (!hasValue && !savedProperty && finalProperties?.length > 0) {
-          // Only auto-select if there's truly no value anywhere
-          onChange(finalProperties[0].siteUrl);
+        if (!hasValue && !savedProperty && allProperties?.length > 0) {
+          onChange(allProperties[0].siteUrl);
         } else if (savedProperty && savedProperty !== value) {
-          // If there's a saved value but it doesn't match current value, restore it
-          // This handles the case where Context hasn't loaded yet
           onChange(savedProperty);
         }
       } catch {
