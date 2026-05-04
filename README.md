@@ -211,7 +211,6 @@ npm run add-user
 | Model | Beschreibung |
 |-------|-------------|
 | `User` | Benutzer mit Rollen (superadmin, agentur, member, viewer) |
-| `Snapshot` | Gespeicherte GSC-Daten für historische Analysen |
 | `SEOMaturity` | SEO Reifegrad-Bewertungen mit Checklisten |
 | `RankTracker` | Keyword Rank Tracking mit Suchvolumen |
 | `KVPUrl` | URLs im kontinuierlichen Verbesserungsprozess |
