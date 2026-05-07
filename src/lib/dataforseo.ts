@@ -755,6 +755,7 @@ export async function fetchRankedKeywordsForPageTargets(
   }
 
   let nextIndex = 0;
+  const MAX_RETRIES = 3;
 
   async function worker(): Promise<void> {
     while (true) {
@@ -772,34 +773,66 @@ export async function fetchRankedKeywordsForPageTargets(
       if (locationName) body.location_name = locationName;
       if (languageName) body.language_name = languageName;
 
-      try {
-        const response = await fetch(
-          `${DATAFORSEO_API_URL}/dataforseo_labs/google/ranked_keywords/live`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: getAuthHeader(),
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify([body]),
+      let lastError = "";
+      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          const response = await fetch(
+            `${DATAFORSEO_API_URL}/dataforseo_labs/google/ranked_keywords/live`,
+            {
+              method: "POST",
+              headers: {
+                Authorization: getAuthHeader(),
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify([body]),
+            }
+          );
+
+          if (response.status === 429) {
+            const wait = Math.min(2000 * 2 ** attempt, 30_000);
+            await new Promise((r) => setTimeout(r, wait));
+            lastError = "Rate limit exceeded";
+            continue;
           }
-        );
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          out.set(tag, {
-            keywords: [],
-            error: `HTTP ${response.status}: ${errorText.slice(0, 200)}`,
-          });
-          continue;
+          if (!response.ok) {
+            const errorText = await response.text();
+            const isRateLimit = errorText.includes("rates limit") || errorText.includes("rate limit");
+            if (isRateLimit && attempt < MAX_RETRIES) {
+              const wait = Math.min(2000 * 2 ** attempt, 30_000);
+              await new Promise((r) => setTimeout(r, wait));
+              lastError = errorText.slice(0, 200);
+              continue;
+            }
+            out.set(tag, {
+              keywords: [],
+              error: `HTTP ${response.status}: ${errorText.slice(0, 200)}`,
+            });
+            break;
+          }
+
+          const data = (await response.json()) as { tasks?: RankedKeywordsLiveTask[] };
+          const taskResult = data.tasks?.[0];
+          const taskStatusMsg = taskResult?.status_message ?? "";
+          if (taskStatusMsg.toLowerCase().includes("rate") && taskStatusMsg.toLowerCase().includes("limit") && attempt < MAX_RETRIES) {
+            const wait = Math.min(2000 * 2 ** attempt, 30_000);
+            await new Promise((r) => setTimeout(r, wait));
+            lastError = taskStatusMsg;
+            continue;
+          }
+
+          const parsed = parseRankedKeywordsLiveTask(taskResult, limit);
+          out.set(tag, parsed);
+          break;
+        } catch (e) {
+          lastError = e instanceof Error ? e.message : "Unbekannter Fehler";
+          if (attempt === MAX_RETRIES) {
+            out.set(tag, { keywords: [], error: lastError });
+          }
         }
-
-        const data = (await response.json()) as { tasks?: RankedKeywordsLiveTask[] };
-        const parsed = parseRankedKeywordsLiveTask(data.tasks?.[0], limit);
-        out.set(tag, parsed);
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : "Unbekannter Fehler";
-        out.set(tag, { keywords: [], error: msg });
+      }
+      if (!out.has(tag)) {
+        out.set(tag, { keywords: [], error: lastError || "Max retries exceeded" });
       }
     }
   }

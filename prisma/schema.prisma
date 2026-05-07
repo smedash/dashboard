@@ -678,3 +678,16 @@ model KeywordMappingResult {
   @@index([runId])
   @@index([articleId])
 }
+
+// Top Ranked Keywords Cache — DataForSEO Labs-Ergebnisse persistent pro URL
+model RankedKeywordsCache {
+  id        String   @id @default(cuid())
+  url       String   @unique @db.Text // Normalisierte URL (https://www.ubs.com/...)
+  keywords  String   @db.Text // JSON: [{keyword, rankGroup, rankAbsolute, searchVolume}]
+  error     String?  @db.Text
+  location  String?  // DATAFORSEO_LABS_LOCATION_NAME zum Zeitpunkt des Abrufs
+  language  String?  // DATAFORSEO_LABS_LANGUAGE_NAME zum Zeitpunkt des Abrufs
+  fetchedAt DateTime @default(now())
+
+  @@index([fetchedAt])
+}

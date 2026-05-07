@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from "react";
+import * as XLSX from "xlsx";
 import {
   KEYWORD_MAPPING_GSC_SITE_URL,
   type GscPageMetrics,
@@ -1243,6 +1244,198 @@ export default function KeywordMappingPage() {
     })();
   }, [paginatedArticles, activeTab, analysisData, labsKwByArticleId]);
 
+  const [exportLoading, setExportLoading] = useState(false);
+  const [exportProgress, setExportProgress] = useState<{ done: number; total: number } | null>(null);
+  const exportCancelRef = useRef(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [cacheInfo, setCacheInfo] = useState<{
+    cachedUrlCount: number;
+    latestFetchedAt: string | null;
+  } | null>(null);
+
+  const EXPORT_BATCH_SIZE = 50;
+  const EXPORT_PARALLEL_BATCHES = 2;
+
+  useEffect(() => {
+    fetch("/api/keyword-mapping/ranked-keywords/cache-info")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data) setCacheInfo({ cachedUrlCount: data.cachedUrlCount, latestFetchedAt: data.latestFetchedAt });
+      })
+      .catch(() => {});
+  }, []);
+
+  const labsMissingCount = useMemo(() => {
+    return filteredArticles.filter((a) => a.url?.trim() && labsKwByArticleId[a.id] === undefined).length;
+  }, [filteredArticles, labsKwByArticleId]);
+
+  const labsLoadedCount = useMemo(() => {
+    return filteredArticles.filter((a) => labsKwByArticleId[a.id]?.status === "ok").length;
+  }, [filteredArticles, labsKwByArticleId]);
+
+  const fetchLabsBatched = useCallback(async (
+    articleList: Array<{ id: string; url: string }>,
+    opts: { useCache?: boolean } = {},
+  ): Promise<Record<string, LabsKwArticleState>> => {
+    const merged: Record<string, LabsKwArticleState> = { ...labsKwByArticleId };
+    if (articleList.length === 0) return merged;
+
+    const total = articleList.length;
+    let done = 0;
+
+    const allBatches: Array<Array<{ id: string; url: string }>> = [];
+    for (let i = 0; i < articleList.length; i += EXPORT_BATCH_SIZE) {
+      allBatches.push(articleList.slice(i, i + EXPORT_BATCH_SIZE));
+    }
+
+    async function processBatch(batch: Array<{ id: string; url: string }>): Promise<void> {
+      if (exportCancelRef.current) return;
+
+      setLabsKwByArticleId((prev) => {
+        const n = { ...prev };
+        for (const row of batch) n[row.id] = { status: "loading" };
+        return n;
+      });
+
+      try {
+        const res = await fetch("/api/keyword-mapping/ranked-keywords", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ items: batch, useCache: opts.useCache }),
+        });
+        const data = (await res.json()) as {
+          byId?: Record<string, { keywords: LabsRankedKeywordRow[]; error?: string }>;
+          error?: string;
+          needsCredentials?: boolean;
+        };
+        if (!res.ok) {
+          const msg = data.error || `HTTP ${res.status}`;
+          const needsCredentials = Boolean(data.needsCredentials) || res.status === 503;
+          for (const row of batch) merged[row.id] = { status: "error", message: msg, needsCredentials };
+        } else {
+          const byId = data.byId ?? {};
+          for (const row of batch) {
+            const r = byId[row.id];
+            if (r) {
+              merged[row.id] = { status: "ok", keywords: Array.isArray(r.keywords) ? r.keywords : [], ...(r.error ? { apiError: r.error } : {}) };
+            } else {
+              merged[row.id] = { status: "ok", keywords: [] };
+            }
+          }
+        }
+        setLabsKwByArticleId((prev) => ({ ...prev, ...Object.fromEntries(batch.map((b) => [b.id, merged[b.id]])) }));
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Netzwerkfehler";
+        for (const row of batch) merged[row.id] = { status: "error", message: msg };
+        setLabsKwByArticleId((prev) => ({ ...prev, ...Object.fromEntries(batch.map((b) => [b.id, merged[b.id]])) }));
+      }
+
+      done += batch.length;
+      setExportProgress({ done: Math.min(done, total), total });
+    }
+
+    for (let i = 0; i < allBatches.length; i += EXPORT_PARALLEL_BATCHES) {
+      if (exportCancelRef.current) break;
+      const chunk = allBatches.slice(i, i + EXPORT_PARALLEL_BATCHES);
+      await Promise.all(chunk.map(processBatch));
+    }
+
+    return merged;
+  }, [labsKwByArticleId]);
+
+  const buildXlsx = useCallback((labsData: Record<string, LabsKwArticleState>) => {
+    const resultById = new Map<string, KeywordResult>();
+    if (analysisData) {
+      for (const r of analysisData.results) resultById.set(r.id, r);
+    }
+
+    const rows = filteredArticles.map((article) => {
+      const result = resultById.get(article.id);
+      const gsc = lookupGscMetrics(gscByPath, article.url);
+      const labsState = labsData[article.id];
+      const labsKeywords =
+        labsState?.status === "ok"
+          ? labsState.keywords.map((k) => `${k.keyword} (Pos. ${k.rankGroup}${k.searchVolume != null ? `, ${k.searchVolume} Vol.` : ""})`).join("; ")
+          : labsState?.status === "error"
+            ? `Fehler: ${labsState.message}`
+            : "";
+
+      const overlaps = filteredOverlaps
+        .filter((o) => o.articles.some((a) => a.id === article.id))
+        .map((o) => `${o.keyword} (${o.articles.length} URLs)`)
+        .join("; ");
+
+      return {
+        Titel: article.title,
+        URL: article.url ?? "",
+        Sprache: article.language ?? "",
+        Kategorie: article.category ?? "",
+        Location: article.location ?? "",
+        H1: article.h1 ?? "",
+        "Meta Description": article.metaDescription ?? "",
+        Fokuskeywords: result?.focusKeywords.join(", ") ?? "",
+        Begründung: result?.reasoning ?? "",
+        "Top Ranked Keywords (DataForSEO)": labsKeywords,
+        "GSC Klicks": gsc?.clicks ?? "",
+        "GSC Impressionen": gsc?.impressions ?? "",
+        "GSC CTR (%)": gsc ? Math.round(gsc.ctr * 10000) / 100 : "",
+        "GSC Ø Position": gsc ? Math.round(gsc.position * 10) / 10 : "",
+        Überlappungen: overlaps,
+      };
+    });
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Keyword-Mapping");
+    ws["!cols"] = [
+      { wch: 40 }, { wch: 60 }, { wch: 6 }, { wch: 16 }, { wch: 14 },
+      { wch: 40 }, { wch: 60 }, { wch: 30 }, { wch: 50 }, { wch: 50 },
+      { wch: 12 }, { wch: 14 }, { wch: 10 }, { wch: 12 }, { wch: 40 },
+    ];
+    const stamp = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `keyword-mapping_${stamp}.xlsx`);
+  }, [filteredArticles, analysisData, gscByPath, filteredOverlaps]);
+
+  const runExport = useCallback(async (mode: "quick" | "cached" | "live") => {
+    setShowExportDialog(false);
+    if (mode === "quick") {
+      buildXlsx(labsKwByArticleId);
+      return;
+    }
+
+    setExportLoading(true);
+    exportCancelRef.current = false;
+    setExportProgress(null);
+
+    try {
+      const articlesWithUrl = filteredArticles
+        .filter((a) => a.url?.trim())
+        .map((a) => ({ id: a.id, url: a.url! }));
+
+      const toFetch = mode === "cached"
+        ? articlesWithUrl.filter((a) => labsKwByArticleId[a.id] === undefined)
+        : articlesWithUrl.filter((a) => labsKwByArticleId[a.id] === undefined || labsKwByArticleId[a.id]?.status === "error");
+
+      const allLabs = await fetchLabsBatched(toFetch, { useCache: mode === "cached" });
+      if (!exportCancelRef.current) {
+        buildXlsx(allLabs);
+        if (mode === "live") {
+          fetch("/api/keyword-mapping/ranked-keywords/cache-info")
+            .then((r) => (r.ok ? r.json() : null))
+            .then((data) => { if (data) setCacheInfo({ cachedUrlCount: data.cachedUrlCount, latestFetchedAt: data.latestFetchedAt }); })
+            .catch(() => {});
+        }
+      }
+    } finally {
+      setExportLoading(false);
+      setExportProgress(null);
+    }
+  }, [filteredArticles, labsKwByArticleId, fetchLabsBatched, buildXlsx]);
+
+  const cancelExport = useCallback(() => {
+    exportCancelRef.current = true;
+  }, []);
+
   if (loading) {
     return <LoadingSkeleton />;
   }
@@ -1293,28 +1486,62 @@ export default function KeywordMappingPage() {
             </p>
           )}
         </div>
-        <button
-          onClick={runAnalysis}
-          disabled={analyzing || eligibleArticles.length === 0}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          {analyzing ? (
-            <>
+        <div className="flex flex-col sm:flex-row gap-2">
+          {analysisData && !exportLoading && (
+            <button
+              onClick={() => setShowExportDialog(true)}
+              disabled={filteredArticles.length === 0}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-lg font-medium text-sm hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              title={`${filteredArticles.length} Artikel als XLSX exportieren`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              XLSX Export ({filteredArticles.length.toLocaleString()})
+            </button>
+          )}
+          {exportLoading && (
+            <div className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-lg font-medium text-sm">
               <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
               </svg>
-              Analyse läuft...
-            </>
-          ) : (
-            <>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              {analysisData ? "Neue Analyse starten" : `Keyword-Analyse starten (${eligibleArticles.length.toLocaleString()} Artikel)`}
-            </>
+              <span>
+                {exportProgress
+                  ? `Labs laden: ${exportProgress.done.toLocaleString("de-CH")} / ${exportProgress.total.toLocaleString("de-CH")}`
+                  : "Export wird vorbereitet…"}
+              </span>
+              <button
+                onClick={cancelExport}
+                className="ml-1 px-2 py-0.5 text-xs rounded bg-emerald-800 hover:bg-emerald-900 transition-colors"
+              >
+                Abbrechen
+              </button>
+            </div>
           )}
-        </button>
+          <button
+            onClick={runAnalysis}
+            disabled={analyzing || eligibleArticles.length === 0}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {analyzing ? (
+              <>
+                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                Analyse läuft...
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                {analysisData ? "Neue Analyse starten" : `Keyword-Analyse starten (${eligibleArticles.length.toLocaleString()} Artikel)`}
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {gscState === "needsConnection" && (
@@ -2345,6 +2572,95 @@ export default function KeywordMappingPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               {eligibleArticles.length.toLocaleString()} mit SEO-Daten
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showExportDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setShowExportDialog(false)}>
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 p-6 max-w-lg w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">XLSX-Export</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+              {filteredArticles.length.toLocaleString()} Artikel werden exportiert. Wähle, wie mit den Top Ranked Keywords (DataForSEO) umgegangen werden soll.
+            </p>
+
+            <div className="space-y-3">
+              {/* Option 1: Schnell-Export */}
+              <button
+                onClick={() => runExport("quick")}
+                className="w-full text-left px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-emerald-400 dark:hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all group"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-slate-900 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-300 transition-colors">
+                    Schnell-Export (ohne Labs-Nachladen)
+                  </span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 font-medium">
+                    Sofort
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Nur bereits im Browser geladene Labs-Daten
+                  ({labsLoadedCount.toLocaleString()} von {filteredArticles.length.toLocaleString()}).
+                  Kein API-Aufruf, kein Warten.
+                </p>
+              </button>
+
+              {/* Option 2: Gespeicherte Daten aus DB */}
+              <button
+                onClick={() => runExport("cached")}
+                className="w-full text-left px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-violet-400 dark:hover:border-violet-500 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-all group"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-slate-900 dark:text-white group-hover:text-violet-700 dark:group-hover:text-violet-300 transition-colors">
+                    Gespeicherte Labs-Daten nutzen
+                  </span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300 font-medium">
+                    Kostenlos
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  {cacheInfo && cacheInfo.cachedUrlCount > 0
+                    ? <>
+                        Liest Keywords aus der Datenbank ({cacheInfo.cachedUrlCount.toLocaleString()} URLs gespeichert,
+                        letzter Stand: {formatDate(cacheInfo.latestFetchedAt!)}). Keine API-Kosten.
+                      </>
+                    : "Noch keine Labs-Daten in der Datenbank gespeichert. Beim ersten Komplett-Export werden die Daten automatisch gesichert."
+                  }
+                </p>
+              </button>
+
+              {/* Option 3: Frische Daten via API */}
+              <button
+                onClick={() => runExport("live")}
+                className="w-full text-left px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all group"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-slate-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors">
+                    Frische Live-Daten holen
+                  </span>
+                  {labsMissingCount > 0 && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 font-medium">
+                      ~{Math.ceil(labsMissingCount / EXPORT_BATCH_SIZE)} API-Batches
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  {labsMissingCount === 0
+                    ? "Alle Labs-Daten sind bereits geladen — Export ist sofort bereit."
+                    : `Holt aktuelle Rankings für ${labsMissingCount.toLocaleString()} fehlende URLs von DataForSEO (${Math.ceil(labsMissingCount / EXPORT_BATCH_SIZE)} Batches à ${EXPORT_BATCH_SIZE}, ${EXPORT_PARALLEL_BATCHES}× parallel). Ergebnisse werden für künftige Exporte gespeichert. Kostenpflichtig.`
+                  }
+                </p>
+              </button>
+            </div>
+
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={() => setShowExportDialog(false)}
+                className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+              >
+                Abbrechen
+              </button>
             </div>
           </div>
         </div>
