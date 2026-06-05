@@ -977,6 +977,105 @@ export async function fetchGoogleTrends(
   return results;
 }
 
+// ==========================================
+// SEARCH INTENT API (DataForSEO Labs)
+// ==========================================
+
+export interface SearchIntentResult {
+  keyword: string;
+  intentLabel: string; // informational, navigational, commercial, transactional
+  intentProbability: number;
+  secondaryIntents: Array<{ label: string; probability: number }> | null;
+}
+
+/**
+ * Ruft Search Intent Daten fuer Keywords ab via DataForSEO Labs.
+ * Bis zu 1000 Keywords pro Request moeglich.
+ * @see https://docs.dataforseo.com/v3/dataforseo_labs/google/search_intent/live/
+ */
+export async function fetchSearchIntent(
+  keywords: string[],
+  options?: { language_code?: string }
+): Promise<SearchIntentResult[]> {
+  const languageCode = options?.language_code ?? "de";
+
+  console.log(`[fetchSearchIntent] ${keywords.length} Keywords, Language: ${languageCode}`);
+
+  const results: SearchIntentResult[] = [];
+  const batchSize = 1000;
+
+  for (let i = 0; i < keywords.length; i += batchSize) {
+    const batch = keywords.slice(i, i + batchSize);
+    console.log(`[fetchSearchIntent] Batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(keywords.length / batchSize)} (${batch.length} Keywords)`);
+
+    try {
+      const requestBody = [{
+        keywords: batch,
+        language_code: languageCode,
+      }];
+
+      const response = await fetch(
+        `${DATAFORSEO_API_URL}/dataforseo_labs/google/search_intent/live`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: getAuthHeader(),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(requestBody),
+        }
+      );
+
+      if (response.status === 429) {
+        console.warn(`[fetchSearchIntent] Rate limited, warte 5s...`);
+        await new Promise((r) => setTimeout(r, 5000));
+        i -= batchSize; // Retry this batch
+        continue;
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[fetchSearchIntent] HTTP ${response.status}: ${errorText}`);
+        continue;
+      }
+
+      const data = await response.json();
+      const task = data.tasks?.[0];
+
+      if (task?.status_code !== 20000 || !task.result?.[0]?.items?.length) {
+        console.warn(`[fetchSearchIntent] Keine Ergebnisse: ${task?.status_message}`);
+        continue;
+      }
+
+      const items = task.result[0].items as Array<{
+        keyword: string;
+        keyword_intent: { label: string; probability: number } | null;
+        secondary_keyword_intents: Array<{ label: string; probability: number }> | null;
+      }>;
+
+      for (const item of items) {
+        results.push({
+          keyword: item.keyword,
+          intentLabel: item.keyword_intent?.label ?? "informational",
+          intentProbability: item.keyword_intent?.probability ?? 0,
+          secondaryIntents: item.secondary_keyword_intents ?? null,
+        });
+      }
+
+      console.log(`[fetchSearchIntent] Batch erfolgreich: ${items.length} Ergebnisse`);
+
+      if (i + batchSize < keywords.length) {
+        await new Promise((r) => setTimeout(r, 300));
+      }
+    } catch (error) {
+      console.error(`[fetchSearchIntent] Fehler bei Batch:`, error);
+    }
+  }
+
+  console.log(`[fetchSearchIntent] Fertig: ${results.length}/${keywords.length} erfolgreich`);
+  return results;
+}
+
 /**
  * Findet die Position einer URL in den Rankings
  * Sucht standardmäßig nach ubs.com URLs, wenn keine targetUrl angegeben ist

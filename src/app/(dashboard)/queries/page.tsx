@@ -22,7 +22,23 @@ interface TrendData {
   updatedAt?: string;
 }
 
+interface IntentData {
+  keyword: string;
+  intentLabel: string;
+  intentProbability: number;
+  secondaryIntents: Array<{ label: string; probability: number }> | null;
+  updatedAt?: string;
+}
+
 interface TrendJob {
+  id: string;
+  status: "pending" | "processing" | "completed" | "failed";
+  totalKeywords: number;
+  processedKeywords: number;
+  createdAt: string;
+}
+
+interface IntentJob {
   id: string;
   status: "pending" | "processing" | "completed" | "failed";
   totalKeywords: number;
@@ -38,10 +54,15 @@ export default function QueriesPage() {
   const [brandFilter, setBrandFilter] = useState("ubs");
   const [excludeBrand, setExcludeBrand] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [intentFilter, setIntentFilter] = useState<string>("all");
   const [trendsMap, setTrendsMap] = useState<Map<string, TrendData>>(new Map());
   const [trendJob, setTrendJob] = useState<TrendJob | null>(null);
   const [isStartingJob, setIsStartingJob] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [intentMap, setIntentMap] = useState<Map<string, IntentData>>(new Map());
+  const [intentJob, setIntentJob] = useState<IntentJob | null>(null);
+  const [isStartingIntentJob, setIsStartingIntentJob] = useState(false);
+  const intentPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -95,6 +116,60 @@ export default function QueriesPage() {
     }
   }, []);
 
+  const loadCachedIntents = useCallback(async (keywords: string[]) => {
+    if (keywords.length === 0) return;
+
+    const batchSize = 2000;
+    const newMap = new Map<string, IntentData>();
+
+    for (let i = 0; i < keywords.length; i += batchSize) {
+      const batch = keywords.slice(i, i + batchSize);
+      try {
+        const response = await fetch("/api/search-intent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ keywords: batch }),
+        });
+        if (!response.ok) continue;
+        const result = await response.json();
+        if (result.data) {
+          for (const [key, value] of Object.entries(result.data)) {
+            newMap.set(key, value as IntentData);
+          }
+        }
+      } catch {
+        console.error("Error loading cached intents batch");
+      }
+    }
+
+    if (newMap.size > 0) {
+      setIntentMap(newMap);
+    }
+  }, []);
+
+  const checkIntentJobStatus = useCallback(async (opts?: { loadIntents?: boolean }) => {
+    if (!selectedProperty) return null;
+    try {
+      const response = await fetch(
+        `/api/search-intent/jobs?property=${encodeURIComponent(selectedProperty)}`
+      );
+      if (!response.ok) return null;
+      const result = await response.json();
+      const job = result.job as IntentJob | null;
+      setIntentJob(job);
+
+      if (opts?.loadIntents && job?.status === "completed" && data.length > 0) {
+        const keywords = data.map((r) => r.keys[0].toLowerCase().trim());
+        loadCachedIntents(keywords);
+      }
+
+      return job;
+    } catch {
+      console.error("Error checking intent job status");
+      return null;
+    }
+  }, [selectedProperty, data, loadCachedIntents]);
+
   const checkJobStatus = useCallback(async (opts?: { loadTrends?: boolean }) => {
     if (!selectedProperty) return null;
     try {
@@ -121,8 +196,9 @@ export default function QueriesPage() {
   useEffect(() => {
     if (selectedProperty && data.length > 0) {
       checkJobStatus({ loadTrends: true });
+      checkIntentJobStatus({ loadIntents: true });
     }
-  }, [selectedProperty, data.length, checkJobStatus]);
+  }, [selectedProperty, data.length, checkJobStatus, checkIntentJobStatus]);
 
   useEffect(() => {
     if (trendJob?.status === "pending" || trendJob?.status === "processing") {
@@ -154,6 +230,34 @@ export default function QueriesPage() {
     };
   }, [trendJob?.status, checkJobStatus]);
 
+  useEffect(() => {
+    if (intentJob?.status === "pending" || intentJob?.status === "processing") {
+      if (!intentPollRef.current) {
+        intentPollRef.current = setInterval(async () => {
+          const job = await checkIntentJobStatus({ loadIntents: true });
+          if (!job || job.status === "completed" || job.status === "failed") {
+            if (intentPollRef.current) {
+              clearInterval(intentPollRef.current);
+              intentPollRef.current = null;
+            }
+          }
+        }, 15_000);
+      }
+    } else {
+      if (intentPollRef.current) {
+        clearInterval(intentPollRef.current);
+        intentPollRef.current = null;
+      }
+    }
+
+    return () => {
+      if (intentPollRef.current) {
+        clearInterval(intentPollRef.current);
+        intentPollRef.current = null;
+      }
+    };
+  }, [intentJob?.status, checkIntentJobStatus]);
+
   const tableData = useMemo(() => {
     const brandTerms = brandFilter
       .toLowerCase()
@@ -170,10 +274,15 @@ export default function QueriesPage() {
         if (excludeBrand && brandTerms.length > 0) {
           if (brandTerms.some((term) => queryLower.includes(term))) return false;
         }
+        if (intentFilter !== "all") {
+          const intent = intentMap.get(queryLower);
+          if (!intent || intent.intentLabel !== intentFilter) return false;
+        }
         return true;
       })
       .map((row, index) => {
         const trend = trendsMap.get(row.keys[0].toLowerCase());
+        const intent = intentMap.get(row.keys[0].toLowerCase());
         return {
           id: index,
           query: row.keys[0],
@@ -184,9 +293,11 @@ export default function QueriesPage() {
           trendAvg: trend?.trendAvg ?? null,
           trendRecent: trend?.trendRecent ?? null,
           trendDirection: trend?.trendDirection ?? null,
+          intentLabel: intent?.intentLabel ?? null,
+          intentProbability: intent?.intentProbability ?? null,
         };
       });
-  }, [data, excludeBrand, brandFilter, searchQuery, trendsMap]);
+  }, [data, excludeBrand, brandFilter, searchQuery, trendsMap, intentMap, intentFilter]);
 
   const startTrendJob = useCallback(async () => {
     if (!selectedProperty || data.length === 0) return;
@@ -220,10 +331,42 @@ export default function QueriesPage() {
     }
   }, [selectedProperty, data]);
 
+  const startIntentJob = useCallback(async () => {
+    if (!selectedProperty || data.length === 0) return;
+
+    setIsStartingIntentJob(true);
+    try {
+      const keywords = data.map((r) => r.keys[0]);
+      const response = await fetch("/api/search-intent/jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          keywords,
+          property: selectedProperty,
+          language: "de",
+        }),
+      });
+
+      const result = await response.json();
+      if (response.ok) {
+        setIntentJob(result.job);
+      } else {
+        if (result.job) setIntentJob(result.job);
+        alert(result.error || "Fehler beim Starten des Jobs");
+      }
+    } catch (error) {
+      console.error("Error starting intent job:", error);
+      alert("Fehler beim Starten des Search Intent Jobs");
+    } finally {
+      setIsStartingIntentJob(false);
+    }
+  }, [selectedProperty, data]);
+
   const exportToXlsx = useCallback(() => {
     if (tableData.length === 0) return;
 
     const hasTrends = trendsMap.size > 0;
+    const hasIntents = intentMap.size > 0;
     const rows = tableData.map((r) => {
       const base: Record<string, unknown> = {
         Suchanfrage: r.query,
@@ -232,6 +375,9 @@ export default function QueriesPage() {
         "CTR (%)": Math.round(r.ctr * 10000) / 100,
         Position: Math.round(r.position * 10) / 10,
       };
+      if (hasIntents) {
+        base["Search Intent"] = r.intentLabel ?? "";
+      }
       if (hasTrends) {
         base["Trend Ø"] = r.trendAvg ?? "";
         base["Trend aktuell"] = r.trendRecent ?? "";
@@ -256,11 +402,15 @@ export default function QueriesPage() {
     })();
     const stamp = new Date().toISOString().slice(0, 10);
     XLSX.writeFile(wb, `gsc-suchanfragen_${host}_${period}_${stamp}.xlsx`);
-  }, [tableData, selectedProperty, period, trendsMap]);
+  }, [tableData, selectedProperty, period, trendsMap, intentMap]);
 
   const jobIsActive = trendJob?.status === "pending" || trendJob?.status === "processing";
   const jobProgress = jobIsActive && trendJob
     ? Math.round((trendJob.processedKeywords / trendJob.totalKeywords) * 100)
+    : null;
+  const intentJobIsActive = intentJob?.status === "pending" || intentJob?.status === "processing";
+  const intentJobProgress = intentJobIsActive && intentJob
+    ? Math.round((intentJob.processedKeywords / intentJob.totalKeywords) * 100)
     : null;
 
   return (
@@ -284,6 +434,22 @@ export default function QueriesPage() {
               </svg>
             )}
             Google Trends
+          </button>
+          <button
+            type="button"
+            onClick={startIntentJob}
+            disabled={isLoading || isStartingIntentJob || intentJobIsActive || data.length === 0}
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-violet-600 bg-violet-700 text-violet-100 hover:bg-violet-600 disabled:opacity-50 disabled:pointer-events-none transition-colors"
+            title="Search Intent fuer alle Keywords im Hintergrund laden (DataForSEO Labs). Du erhaeltst eine E-Mail wenn fertig."
+          >
+            {isStartingIntentJob || intentJobIsActive ? (
+              <div className="w-4 h-4 border-2 border-violet-300 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
+            )}
+            Search Intent
           </button>
           <button
             type="button"
@@ -341,6 +507,47 @@ export default function QueriesPage() {
         </div>
       )}
 
+      {/* Search Intent Job Status Banner */}
+      {intentJobIsActive && intentJob && (
+        <div className="bg-violet-900/50 border border-violet-700 rounded-xl p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-3">
+              <div className="w-5 h-5 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" />
+              <span className="text-sm font-medium text-violet-200">
+                Search Intent wird geladen...
+              </span>
+            </div>
+            <span className="text-sm text-violet-300">
+              {intentJob.processedKeywords.toLocaleString("de-DE")} / {intentJob.totalKeywords.toLocaleString("de-DE")} Keywords ({intentJobProgress}%)
+            </span>
+          </div>
+          <div className="w-full bg-violet-950 rounded-full h-2">
+            <div
+              className="bg-violet-500 h-2 rounded-full transition-all duration-500"
+              style={{ width: `${intentJobProgress}%` }}
+            />
+          </div>
+          <p className="text-xs text-violet-400 mt-2">
+            Laeuft im Hintergrund — du kannst die Seite verlassen.
+          </p>
+        </div>
+      )}
+
+      {intentJob?.status === "completed" && intentMap.size > 0 && (
+        <div className="bg-violet-900/30 border border-violet-800 rounded-xl px-4 py-3 flex items-center justify-between">
+          <span className="text-sm text-violet-300">
+            Search Intent geladen: {intentMap.size.toLocaleString("de-DE")} Keywords mit Intent-Daten
+          </span>
+          <button
+            onClick={startIntentJob}
+            disabled={isLoading || isStartingIntentJob || data.length === 0}
+            className="text-xs text-violet-400 hover:text-violet-200 underline disabled:opacity-50"
+          >
+            Neu laden
+          </button>
+        </div>
+      )}
+
       {/* Search and Filters */}
       <div className="bg-slate-800 rounded-xl border border-slate-700 p-4 space-y-4">
         <div className="relative">
@@ -386,6 +593,34 @@ export default function QueriesPage() {
             disabled={!excludeBrand}
             className="flex-1 min-w-[200px] max-w-[400px] px-3 py-2 text-sm bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
           />
+          {intentMap.size > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-slate-300">Intent:</span>
+              <div className="flex items-center gap-1">
+                {[
+                  { value: "all", label: "Alle", cls: "border-slate-500 text-slate-300 hover:bg-slate-600" },
+                  { value: "informational", label: "I", cls: "border-blue-500/50 text-blue-300 hover:bg-blue-500/20" },
+                  { value: "navigational", label: "N", cls: "border-purple-500/50 text-purple-300 hover:bg-purple-500/20" },
+                  { value: "commercial", label: "C", cls: "border-amber-500/50 text-amber-300 hover:bg-amber-500/20" },
+                  { value: "transactional", label: "T", cls: "border-emerald-500/50 text-emerald-300 hover:bg-emerald-500/20" },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setIntentFilter(opt.value)}
+                    className={`px-2 py-1 text-xs font-bold rounded border transition-colors ${opt.cls} ${
+                      intentFilter === opt.value
+                        ? "ring-2 ring-offset-1 ring-offset-slate-800 ring-blue-500 bg-slate-600"
+                        : ""
+                    }`}
+                    title={opt.value === "all" ? "Alle anzeigen" : opt.value.charAt(0).toUpperCase() + opt.value.slice(1)}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <span className="text-sm text-slate-400">
             {tableData.length} von {data.length} Suchanfragen
           </span>
@@ -444,6 +679,40 @@ export default function QueriesPage() {
                 sortable: true,
                 render: (value) => Number(value).toFixed(1),
               },
+              ...(intentMap.size > 0
+                ? [
+                    {
+                      key: "intentLabel" as const,
+                      header: "Intent",
+                      sortable: true,
+                      render: (value: unknown) => {
+                        const label = value as string | null;
+                        if (!label) return <span className="text-slate-500">–</span>;
+                        const colors: Record<string, string> = {
+                          informational: "bg-blue-500/20 text-blue-300 border-blue-500/30",
+                          navigational: "bg-purple-500/20 text-purple-300 border-purple-500/30",
+                          commercial: "bg-amber-500/20 text-amber-300 border-amber-500/30",
+                          transactional: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
+                        };
+                        const abbr: Record<string, string> = {
+                          informational: "I",
+                          navigational: "N",
+                          commercial: "C",
+                          transactional: "T",
+                        };
+                        const cls = colors[label] || "bg-slate-500/20 text-slate-300 border-slate-500/30";
+                        return (
+                          <span
+                            className={`inline-flex items-center justify-center w-6 h-6 rounded text-xs font-bold border ${cls}`}
+                            title={label.charAt(0).toUpperCase() + label.slice(1)}
+                          >
+                            {abbr[label] || "?"}
+                          </span>
+                        );
+                      },
+                    },
+                  ]
+                : []),
               ...(trendsMap.size > 0
                 ? [
                     {

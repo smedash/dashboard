@@ -509,6 +509,70 @@ export async function sendWelcomeEmail({
   return data;
 }
 
+export async function sendSearchIntentCompletedNotification({
+  to,
+  totalKeywords,
+  processedKeywords,
+  property,
+  dashboardUrl,
+}: {
+  to: string;
+  totalKeywords: number;
+  processedKeywords: number;
+  property: string;
+  dashboardUrl: string;
+}) {
+  const { data, error } = await resend.emails.send({
+    from: EMAIL_FROM,
+    to,
+    subject: `Search Intent fertig – ${processedKeywords.toLocaleString("de-DE")} Keywords verarbeitet`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f4f4f5; margin: 0; padding: 40px 20px;">
+          <div style="max-width: 480px; margin: 0 auto; background-color: white; border-radius: 12px; padding: 40px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+            <h1 style="color: #18181b; font-size: 24px; margin: 0 0 16px 0;">Search Intent geladen</h1>
+            <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 16px 0;">
+              Die Search Intent Daten für <strong>${property}</strong> wurden erfolgreich verarbeitet.
+            </p>
+            <table style="width: 100%; border-collapse: collapse; margin: 0 0 24px 0;">
+              <tr>
+                <td style="color: #71717a; font-size: 14px; padding: 8px 0; border-bottom: 1px solid #e4e4e7;">Keywords gesamt</td>
+                <td style="color: #18181b; font-size: 14px; padding: 8px 0; border-bottom: 1px solid #e4e4e7; text-align: right; font-weight: 600;">${totalKeywords.toLocaleString("de-DE")}</td>
+              </tr>
+              <tr>
+                <td style="color: #71717a; font-size: 14px; padding: 8px 0; border-bottom: 1px solid #e4e4e7;">Erfolgreich verarbeitet</td>
+                <td style="color: #18181b; font-size: 14px; padding: 8px 0; border-bottom: 1px solid #e4e4e7; text-align: right; font-weight: 600;">${processedKeywords.toLocaleString("de-DE")}</td>
+              </tr>
+              <tr>
+                <td style="color: #71717a; font-size: 14px; padding: 8px 0;">Kategorien</td>
+                <td style="color: #18181b; font-size: 14px; padding: 8px 0; text-align: right; font-weight: 600;">I / N / C / T</td>
+              </tr>
+            </table>
+            <a href="${dashboardUrl}" style="display: inline-block; background-color: #7c3aed; color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px; margin-bottom: 24px;">
+              Suchanfragen öffnen
+            </a>
+            <p style="color: #a1a1aa; font-size: 14px; margin: 24px 0 0 0; border-top: 1px solid #e4e4e7; padding-top: 24px;">
+              Die Intent-Daten sind jetzt auf der Suchanfragen-Seite verfügbar (Spalte "Intent") und können gefiltert werden.
+            </p>
+          </div>
+        </body>
+      </html>
+    `,
+  });
+
+  if (error) {
+    console.error("Failed to send Search Intent notification:", error);
+    throw error;
+  }
+
+  return data;
+}
+
 export async function sendGoogleTrendsCompletedNotification({
   to,
   totalKeywords,
