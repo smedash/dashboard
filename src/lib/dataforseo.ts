@@ -843,6 +843,140 @@ export async function fetchRankedKeywordsForPageTargets(
   return out;
 }
 
+// ==========================================
+// GOOGLE TRENDS API
+// ==========================================
+
+export interface GoogleTrendResult {
+  keyword: string;
+  trendAvg: number | null;
+  trendRecent: number | null;
+  trendDirection: "up" | "down" | "stable" | null;
+}
+
+/**
+ * Ruft Google Trends Daten fuer Keywords ab via DataForSEO Explore Live.
+ * Jedes Keyword wird einzeln abgefragt fuer konsistente 0-100 Scores.
+ * @see https://docs.dataforseo.com/v3/keywords_data/google_trends/explore/live/
+ */
+export async function fetchGoogleTrends(
+  keywords: string[],
+  options?: {
+    location_name?: string;
+    language_name?: string;
+    time_range?: string;
+    concurrency?: number;
+  }
+): Promise<GoogleTrendResult[]> {
+  const locationName = options?.location_name ?? "Switzerland";
+  const languageName = options?.language_name ?? "German";
+  const timeRange = options?.time_range ?? "past_12_months";
+  const concurrency = Math.min(Math.max(options?.concurrency ?? 10, 1), 20);
+
+  console.log(`[fetchGoogleTrends] ${keywords.length} Keywords, Location: ${locationName}, Language: ${languageName}`);
+
+  const results: GoogleTrendResult[] = [];
+  let nextIndex = 0;
+
+  async function worker(): Promise<void> {
+    while (true) {
+      const i = nextIndex++;
+      if (i >= keywords.length) return;
+      const keyword = keywords[i];
+
+      try {
+        const requestBody = [{
+          keywords: [keyword],
+          location_name: locationName,
+          language_name: languageName,
+          time_range: timeRange,
+          item_types: ["google_trends_graph"],
+        }];
+
+        const response = await fetch(
+          `${DATAFORSEO_API_URL}/keywords_data/google_trends/explore/live`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: getAuthHeader(),
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(requestBody),
+          }
+        );
+
+        if (response.status === 429) {
+          await new Promise((r) => setTimeout(r, 5000));
+          nextIndex--;
+          continue;
+        }
+
+        if (!response.ok) {
+          console.warn(`[fetchGoogleTrends] HTTP ${response.status} fuer "${keyword}"`);
+          results.push({ keyword, trendAvg: null, trendRecent: null, trendDirection: null });
+          continue;
+        }
+
+        const data = await response.json();
+        const task = data.tasks?.[0];
+
+        if (task?.status_code !== 20000 || !task.result?.[0]?.items?.length) {
+          results.push({ keyword, trendAvg: null, trendRecent: null, trendDirection: null });
+          continue;
+        }
+
+        const graphItem = task.result[0].items.find(
+          (it: { type: string }) => it.type === "google_trends_graph"
+        );
+
+        if (!graphItem?.data?.length) {
+          results.push({ keyword, trendAvg: null, trendRecent: null, trendDirection: null });
+          continue;
+        }
+
+        const values: number[] = graphItem.data
+          .map((d: { values: (number | null)[] }) => d.values?.[0])
+          .filter((v: number | null): v is number => v !== null && v !== undefined);
+
+        if (values.length === 0) {
+          results.push({ keyword, trendAvg: null, trendRecent: null, trendDirection: null });
+          continue;
+        }
+
+        const avg = Math.round(values.reduce((a: number, b: number) => a + b, 0) / values.length);
+        const recentSlice = values.slice(-4);
+        const olderSlice = values.slice(0, 4);
+        const recentAvg = recentSlice.reduce((a, b) => a + b, 0) / recentSlice.length;
+        const olderAvg = olderSlice.length > 0
+          ? olderSlice.reduce((a, b) => a + b, 0) / olderSlice.length
+          : recentAvg;
+
+        const diff = recentAvg - olderAvg;
+        const threshold = Math.max(olderAvg * 0.15, 5);
+        const direction: "up" | "down" | "stable" =
+          diff > threshold ? "up" : diff < -threshold ? "down" : "stable";
+
+        results.push({
+          keyword,
+          trendAvg: avg,
+          trendRecent: Math.round(recentAvg),
+          trendDirection: direction,
+        });
+      } catch (error) {
+        console.error(`[fetchGoogleTrends] Fehler bei "${keyword}":`, error);
+        results.push({ keyword, trendAvg: null, trendRecent: null, trendDirection: null });
+      }
+    }
+  }
+
+  const pool = Math.min(concurrency, keywords.length || 1);
+  await Promise.all(Array.from({ length: pool }, () => worker()));
+
+  console.log(`[fetchGoogleTrends] Fertig: ${results.filter(r => r.trendAvg !== null).length}/${keywords.length} erfolgreich`);
+
+  return results;
+}
+
 /**
  * Findet die Position einer URL in den Rankings
  * Sucht standardmäßig nach ubs.com URLs, wenn keine targetUrl angegeben ist

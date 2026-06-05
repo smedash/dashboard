@@ -34,6 +34,7 @@ model User {
   tasksCreated  Task[]         @relation("TaskCreator") // Tasks die der User erstellt hat
   taskAssignments TaskAssignee[] @relation("TaskAssignee") // Tasks die dem User zugewiesen sind
   editorialArticles EditorialPlanArticle[] @relation("EditorialPlanCreator") // Redaktionsplan-Artikel
+  googleTrendJobs   GoogleTrendJob[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
@@ -677,6 +678,42 @@ model KeywordMappingResult {
 
   @@index([runId])
   @@index([articleId])
+}
+
+// Google Trends — Background-Job mit Batch-Verarbeitung via Cron
+model GoogleTrendJob {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status            String   @default("pending") // pending, processing, completed, failed
+  property          String   // GSC-Property URL fuer Kontext
+  keywords          String   @db.Text // JSON-Array aller Keywords
+  totalKeywords     Int
+  processedKeywords Int      @default(0)
+  location          String   @default("Switzerland")
+  language          String   @default("German")
+  error             String?  @db.Text
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([status])
+  @@index([userId])
+}
+
+// Google Trends — gecachte Ergebnisse pro Keyword+Location+Language
+model GoogleTrend {
+  id             String   @id @default(cuid())
+  keyword        String
+  location       String   @default("Switzerland")
+  language       String   @default("German")
+  trendAvg       Int?
+  trendRecent    Int?
+  trendDirection String?  // up, down, stable
+  updatedAt      DateTime @updatedAt
+  createdAt      DateTime @default(now())
+
+  @@unique([keyword, location, language])
+  @@index([keyword])
 }
 
 // Top Ranked Keywords Cache — DataForSEO Labs-Ergebnisse persistent pro URL
