@@ -276,7 +276,11 @@ export default function QueriesPage() {
         }
         if (intentFilter !== "all") {
           const intent = intentMap.get(queryLower);
-          if (!intent || intent.intentLabel !== intentFilter) return false;
+          if (intentFilter === "none") {
+            if (intent) return false;
+          } else {
+            if (!intent || intent.intentLabel !== intentFilter) return false;
+          }
         }
         return true;
       })
@@ -604,6 +608,7 @@ export default function QueriesPage() {
                   { value: "navigational", label: "N", cls: "border-purple-500/50 text-purple-300 hover:bg-purple-500/20" },
                   { value: "commercial", label: "C", cls: "border-amber-500/50 text-amber-300 hover:bg-amber-500/20" },
                   { value: "transactional", label: "T", cls: "border-emerald-500/50 text-emerald-300 hover:bg-emerald-500/20" },
+                  { value: "none", label: "?", cls: "border-red-500/50 text-red-300 hover:bg-red-500/20" },
                 ].map((opt) => (
                   <button
                     key={opt.value}
@@ -614,7 +619,7 @@ export default function QueriesPage() {
                         ? "ring-2 ring-offset-1 ring-offset-slate-800 ring-blue-500 bg-slate-600"
                         : ""
                     }`}
-                    title={opt.value === "all" ? "Alle anzeigen" : opt.value.charAt(0).toUpperCase() + opt.value.slice(1)}
+                    title={opt.value === "all" ? "Alle anzeigen" : opt.value === "none" ? "Kein Intent" : opt.value.charAt(0).toUpperCase() + opt.value.slice(1)}
                   >
                     {opt.label}
                   </button>
@@ -630,12 +635,16 @@ export default function QueriesPage() {
 
       {/* Intent Pie Chart */}
       {intentMap.size > 0 && (() => {
-        const counts = { informational: 0, navigational: 0, commercial: 0, transactional: 0 };
+        const counts = { informational: 0, navigational: 0, commercial: 0, transactional: 0, none: 0 };
         for (const row of tableData) {
           const label = row.intentLabel as string | null;
-          if (label && label in counts) counts[label as keyof typeof counts]++;
+          if (label && label in counts) {
+            counts[label as keyof typeof counts]++;
+          } else {
+            counts.none++;
+          }
         }
-        const total = counts.informational + counts.navigational + counts.commercial + counts.transactional;
+        const total = counts.informational + counts.navigational + counts.commercial + counts.transactional + counts.none;
         if (total === 0) return null;
 
         const segments = [
@@ -643,6 +652,7 @@ export default function QueriesPage() {
           { label: "Navigational", short: "N", count: counts.navigational, color: "#a855f7" },
           { label: "Commercial", short: "C", count: counts.commercial, color: "#f59e0b" },
           { label: "Transactional", short: "T", count: counts.transactional, color: "#10b981" },
+          { label: "Kein Intent", short: "?", count: counts.none, color: "#ef4444" },
         ].filter((s) => s.count > 0);
 
         const radius = 40;
@@ -749,7 +759,14 @@ export default function QueriesPage() {
                       sortable: true,
                       render: (value: unknown) => {
                         const label = value as string | null;
-                        if (!label) return <span className="text-slate-500">–</span>;
+                        if (!label) return (
+                          <span
+                            className="inline-flex items-center justify-center w-6 h-6 rounded text-xs font-bold border bg-red-500/10 text-red-400 border-red-500/30"
+                            title="Kein Intent vorhanden"
+                          >
+                            ?
+                          </span>
+                        );
                         const colors: Record<string, string> = {
                           informational: "bg-blue-500/20 text-blue-300 border-blue-500/30",
                           navigational: "bg-purple-500/20 text-purple-300 border-purple-500/30",
