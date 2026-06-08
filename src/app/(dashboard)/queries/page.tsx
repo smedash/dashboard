@@ -271,6 +271,18 @@ export default function QueriesPage() {
   const CATEGORY_KEYWORDS: Record<string, string[]> = {
     beratung: ["termin", "vereinbaren", "kontakt", "beratungsgespräch", "terminvereinbarung", "telefon", "email"],
     abschluss: ["eröffnen", "beantragen", "abschliessen", "kaufen", "buchen", "eröffnung", "abschluss"],
+    produkte: [
+      "hypothek", "zinsen", "konto", "konten", "kredit", "kreditkarte",
+      "investment", "pension", "rente", "säule 3a", "sparkonto",
+      "grenzgängerkonto", "mietkautionskonto", "bankkonto", "kontokorrentkonto",
+      "haushaltskonto", "studentenkonto", "jugendkonto", "kinderkonto",
+      "debitkarte", "prepaidkarte", "festhypothek", "baukredit",
+      "baufinanzierung", "saron", "hypothekenrechner", "ablöserechner",
+      "renovationsrechner", "finanzierungsrechner", "freizügigkeitskonto",
+      "pensionierung", "pensionierungsrechner", "steuerrechner",
+      "vermögensrechner", "fondskonto", "anlageplan", "festgeld",
+      "wertschriftendepot", "anlagefonds", "twint", "mobile payment",
+    ],
   };
 
   const tableData = useMemo(() => {
@@ -663,6 +675,7 @@ export default function QueriesPage() {
                 { value: "all", label: "Alle", cls: "border-slate-500 text-slate-300 hover:bg-slate-600" },
                 { value: "beratung", label: "Beratung", cls: "border-cyan-500/50 text-cyan-300 hover:bg-cyan-500/20" },
                 { value: "abschluss", label: "Abschluss", cls: "border-orange-500/50 text-orange-300 hover:bg-orange-500/20" },
+                { value: "produkte", label: "Produkte", cls: "border-emerald-500/50 text-emerald-300 hover:bg-emerald-500/20" },
               ].map((opt) => (
                 <button
                   key={opt.value}
