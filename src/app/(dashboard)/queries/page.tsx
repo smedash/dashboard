@@ -295,7 +295,11 @@ export default function QueriesPage() {
         }
         if (trendDirectionFilter !== "all") {
           const trend = trendsMap.get(queryLower);
-          if (!trend || trend.trendDirection !== trendDirectionFilter) return false;
+          if (trendDirectionFilter === "none") {
+            if (!trend || trend.trendDirection) return false;
+          } else {
+            if (!trend || trend.trendDirection !== trendDirectionFilter) return false;
+          }
         }
         return true;
       })
@@ -680,6 +684,7 @@ export default function QueriesPage() {
                   { value: "up", label: "↑", icon: null, cls: "border-emerald-500/50 text-emerald-300 hover:bg-emerald-500/20" },
                   { value: "stable", label: "→", icon: null, cls: "border-slate-400/50 text-slate-300 hover:bg-slate-500/20" },
                   { value: "down", label: "↓", icon: null, cls: "border-red-500/50 text-red-300 hover:bg-red-500/20" },
+                  { value: "none", label: "?", icon: null, cls: "border-yellow-500/50 text-yellow-300 hover:bg-yellow-500/20" },
                 ].map((opt) => (
                   <button
                     key={opt.value}
@@ -694,7 +699,8 @@ export default function QueriesPage() {
                       opt.value === "all" ? "Alle anzeigen" :
                       opt.value === "up" ? "Steigend" :
                       opt.value === "stable" ? "Stagniert" :
-                      "Fallend"
+                      opt.value === "down" ? "Fallend" :
+                      "Keine Richtung"
                     }
                   >
                     {opt.label}
