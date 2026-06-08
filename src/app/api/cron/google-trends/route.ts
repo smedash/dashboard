@@ -78,7 +78,8 @@ export async function GET(request: NextRequest) {
             concurrency: 20,
           });
 
-          const upsertBatch = results.map((r) =>
+          const validResults = results.filter((r) => r.trendAvg !== null || r.trendRecent !== null);
+          const upsertBatch = validResults.map((r) =>
             prisma.googleTrend.upsert({
               where: {
                 keyword_location_language: {

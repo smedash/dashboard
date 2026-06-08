@@ -260,6 +260,14 @@ export default function QueriesPage() {
     };
   }, [intentJob?.status, checkIntentJobStatus]);
 
+  const validTrendsCount = useMemo(() => {
+    let count = 0;
+    for (const t of trendsMap.values()) {
+      if (t.trendAvg !== null || t.trendRecent !== null) count++;
+    }
+    return count;
+  }, [trendsMap]);
+
   const CATEGORY_KEYWORDS: Record<string, string[]> = {
     beratung: ["termin", "vereinbaren", "kontakt", "beratungsgespräch", "terminvereinbarung", "telefon", "email"],
     abschluss: ["eröffnen", "beantragen", "abschliessen", "kaufen", "buchen", "eröffnung", "abschluss"],
@@ -295,10 +303,11 @@ export default function QueriesPage() {
         }
         if (trendDirectionFilter !== "all") {
           const trend = trendsMap.get(queryLower);
+          const hasRealData = trend && (trend.trendAvg !== null || trend.trendRecent !== null);
           if (trendDirectionFilter === "none") {
-            if (!trend || trend.trendDirection) return false;
+            if (hasRealData) return false;
           } else {
-            if (!trend || trend.trendDirection !== trendDirectionFilter) return false;
+            if (!hasRealData || trend.trendDirection !== trendDirectionFilter) return false;
           }
         }
         return true;
@@ -516,10 +525,10 @@ export default function QueriesPage() {
         </div>
       )}
 
-      {trendJob?.status === "completed" && trendsMap.size > 0 && (
+      {trendJob?.status === "completed" && validTrendsCount > 0 && (
         <div className="bg-emerald-900/30 border border-emerald-800 rounded-xl px-4 py-3 flex items-center justify-between">
           <span className="text-sm text-emerald-300">
-            Google Trends geladen: {trendsMap.size.toLocaleString("de-DE")} Keywords mit Trend-Daten
+            Google Trends geladen: {validTrendsCount.toLocaleString("de-DE")} Keywords mit Trend-Daten
           </span>
           <button
             onClick={startTrendJob}
