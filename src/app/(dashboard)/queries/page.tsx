@@ -847,6 +847,7 @@ export default function QueriesPage() {
                   <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: seg.color }} />
                   <span className="text-slate-400">{seg.short}</span>
                   <span className="text-slate-200 font-medium">{seg.count.toLocaleString("de-DE")}</span>
+                  <span className="text-slate-500">{Math.round((seg.count / totalImp) * 100)}%</span>
                 </div>
               ))}
             </div>
@@ -912,6 +913,7 @@ export default function QueriesPage() {
                   <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: seg.color }} />
                   <span className="text-slate-400">{seg.short}</span>
                   <span className="text-slate-200 font-medium">{seg.count.toLocaleString("de-DE")}</span>
+                  <span className="text-slate-500">{Math.round((seg.count / totalClicks) * 100)}%</span>
                 </div>
               ))}
             </div>
