@@ -56,6 +56,7 @@ export default function QueriesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [intentFilter, setIntentFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [trendDirectionFilter, setTrendDirectionFilter] = useState<string>("all");
   const [trendsMap, setTrendsMap] = useState<Map<string, TrendData>>(new Map());
   const [trendJob, setTrendJob] = useState<TrendJob | null>(null);
   const [isStartingJob, setIsStartingJob] = useState(false);
@@ -292,6 +293,10 @@ export default function QueriesPage() {
           const keywords = CATEGORY_KEYWORDS[categoryFilter];
           if (keywords && !keywords.some((kw) => queryLower.includes(kw))) return false;
         }
+        if (trendDirectionFilter !== "all") {
+          const trend = trendsMap.get(queryLower);
+          if (!trend || trend.trendDirection !== trendDirectionFilter) return false;
+        }
         return true;
       })
       .map((row, index) => {
@@ -312,7 +317,7 @@ export default function QueriesPage() {
           intentProbability: intent?.intentProbability ?? null,
         };
       });
-  }, [data, excludeBrand, brandFilter, searchQuery, trendsMap, intentMap, intentFilter, categoryFilter]);
+  }, [data, excludeBrand, brandFilter, searchQuery, trendsMap, intentMap, intentFilter, categoryFilter, trendDirectionFilter]);
 
   const startTrendJob = useCallback(async () => {
     if (!selectedProperty || data.length === 0) return;
@@ -666,6 +671,38 @@ export default function QueriesPage() {
               ))}
             </div>
           </div>
+          {trendsMap.size > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-slate-300">Trend:</span>
+              <div className="flex items-center gap-[5px]">
+                {[
+                  { value: "all", label: "Alle", icon: null, cls: "border-slate-500 text-slate-300 hover:bg-slate-600" },
+                  { value: "up", label: "↑", icon: null, cls: "border-emerald-500/50 text-emerald-300 hover:bg-emerald-500/20" },
+                  { value: "stable", label: "→", icon: null, cls: "border-slate-400/50 text-slate-300 hover:bg-slate-500/20" },
+                  { value: "down", label: "↓", icon: null, cls: "border-red-500/50 text-red-300 hover:bg-red-500/20" },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setTrendDirectionFilter(opt.value)}
+                    className={`px-2.5 py-1 text-xs font-semibold rounded border transition-colors ${opt.cls} ${
+                      trendDirectionFilter === opt.value
+                        ? "ring-2 ring-offset-1 ring-offset-slate-800 ring-blue-500 bg-slate-600"
+                        : ""
+                    }`}
+                    title={
+                      opt.value === "all" ? "Alle anzeigen" :
+                      opt.value === "up" ? "Steigend" :
+                      opt.value === "stable" ? "Stagniert" :
+                      "Fallend"
+                    }
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <span className="text-sm text-slate-400">
             {tableData.length} von {data.length} Suchanfragen
           </span>
