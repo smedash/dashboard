@@ -563,7 +563,7 @@ export default function QueriesPage() {
       )}
 
       {/* Search/Filters + Intent Pie Chart */}
-      <div className={`grid gap-4 ${intentMap.size > 0 ? "grid-cols-1 lg:grid-cols-[1fr_280px]" : "grid-cols-1"}`}>
+      <div className={`grid gap-4 ${intentMap.size > 0 ? "grid-cols-1 lg:grid-cols-[1fr_280px_280px]" : "grid-cols-1"}`}>
       <div className="bg-slate-800 rounded-xl border border-slate-700 p-4 space-y-4">
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -729,6 +729,71 @@ export default function QueriesPage() {
                   <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: seg.color }} />
                   <span className="text-slate-400">{seg.short}</span>
                   <span className="text-slate-200 font-medium">{Math.round((seg.count / total) * 100)}%</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Intent Clicks Pie Chart */}
+      {intentMap.size > 0 && (() => {
+        const clicksByIntent = { informational: 0, navigational: 0, commercial: 0, transactional: 0, none: 0 };
+        for (const row of tableData) {
+          const label = row.intentLabel as string | null;
+          if (label && label in clicksByIntent) {
+            clicksByIntent[label as keyof typeof clicksByIntent] += row.clicks;
+          } else {
+            clicksByIntent.none += row.clicks;
+          }
+        }
+        const totalClicks = Object.values(clicksByIntent).reduce((a, b) => a + b, 0);
+        if (totalClicks === 0) return null;
+
+        const segments = [
+          { label: "Informational", short: "I", count: clicksByIntent.informational, color: "#3b82f6" },
+          { label: "Navigational", short: "N", count: clicksByIntent.navigational, color: "#a855f7" },
+          { label: "Commercial", short: "C", count: clicksByIntent.commercial, color: "#f59e0b" },
+          { label: "Transactional", short: "T", count: clicksByIntent.transactional, color: "#10b981" },
+          { label: "Kein Intent", short: "?", count: clicksByIntent.none, color: "#ef4444" },
+        ].filter((s) => s.count > 0);
+
+        const radius = 40;
+        const circumference = 2 * Math.PI * radius;
+        let offset = 0;
+
+        return (
+          <div className="bg-slate-800 rounded-xl border border-slate-700 p-4 flex flex-col items-center justify-center">
+            <h3 className="text-sm font-medium text-slate-300 mb-3">Klicks je Intent</h3>
+            <svg viewBox="0 0 100 100" className="w-28 h-28 mb-3">
+              {segments.map((seg) => {
+                const pct = seg.count / totalClicks;
+                const dashLength = pct * circumference;
+                const dashOffset = -offset * circumference;
+                offset += pct;
+                return (
+                  <circle
+                    key={seg.label}
+                    cx="50" cy="50" r={radius}
+                    fill="none"
+                    stroke={seg.color}
+                    strokeWidth="18"
+                    strokeDasharray={`${dashLength} ${circumference - dashLength}`}
+                    strokeDashoffset={dashOffset}
+                    className="transition-all duration-500"
+                  />
+                );
+              })}
+              <text x="50" y="50" textAnchor="middle" dominantBaseline="middle" className="fill-white text-[10px] font-bold">
+                {totalClicks.toLocaleString("de-DE")}
+              </text>
+            </svg>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+              {segments.map((seg) => (
+                <div key={seg.label} className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: seg.color }} />
+                  <span className="text-slate-400">{seg.short}</span>
+                  <span className="text-slate-200 font-medium">{seg.count.toLocaleString("de-DE")}</span>
                 </div>
               ))}
             </div>
