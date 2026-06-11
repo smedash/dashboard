@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useProperty } from "@/contexts/PropertyContext";
+import * as XLSX from "xlsx";
 
 interface KeywordSuggestionItem {
   keyword: string;
@@ -244,6 +245,31 @@ export default function KeywordsPage() {
   const inGscCount = currentResult && gscLoaded
     ? currentResult.suggestions.filter((s) => isKeywordInGsc(s.keyword)).length
     : 0;
+
+  function exportToExcel() {
+    if (history.length === 0) return;
+
+    const wb = XLSX.utils.book_new();
+
+    for (const item of history) {
+      const rows = item.suggestions.map((s) => ({
+        Keyword: s.keyword,
+        Suchvolumen: s.searchVolume ?? "",
+        Difficulty: s.difficulty ?? "",
+        CPC: s.cpc ?? "",
+        Competition: s.competition != null ? (s.competition * 100).toFixed(0) + "%" : "",
+        "Search Intent": s.searchIntents?.join(", ") ?? "",
+        "GSC Status": gscLoaded ? (isKeywordInGsc(s.keyword) ? "In GSC" : "Gap") : "",
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const sheetName = item.keyword.slice(0, 31).replace(/[/\\?*[\]]/g, "");
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    }
+
+    const date = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `keyword-research-${date}.xlsx`);
+  }
 
   function SortIcon({ field }: { field: typeof sortField }) {
     if (sortField !== field) return null;
@@ -516,10 +542,21 @@ export default function KeywordsPage() {
         {/* History-Sidebar */}
         <div className="lg:col-span-1">
           <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden">
-            <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700">
+            <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
                 Bisherige Abfragen
               </h3>
+              {history.length > 0 && (
+                <button
+                  onClick={exportToExcel}
+                  className="p-1.5 rounded text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
+                  title="Alle als Excel exportieren"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                </button>
+              )}
             </div>
             {history.length === 0 ? (
               <div className="p-4 text-center">
