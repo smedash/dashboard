@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 
 interface QuestionResult {
   id: string;
@@ -11,31 +12,20 @@ interface QuestionResult {
 }
 
 export default function QuestionsPage() {
+  const searchParams = useSearchParams();
   const [keyword, setKeyword] = useState("");
   const [loading, setLoading] = useState(false);
   const [currentResult, setCurrentResult] = useState<QuestionResult | null>(null);
   const [history, setHistory] = useState<QuestionResult[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const autoTriggered = useRef(false);
 
   useEffect(() => {
     fetchHistory();
   }, []);
 
-  async function fetchHistory() {
-    try {
-      const res = await fetch("/api/questions");
-      if (res.ok) {
-        const data = await res.json();
-        setHistory(data);
-      }
-    } catch {
-      // silently fail
-    }
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!keyword.trim() || loading) return;
+  const generateForKeyword = useCallback(async (kw: string) => {
+    if (!kw.trim() || loading) return;
 
     setLoading(true);
     setError(null);
@@ -44,7 +34,7 @@ export default function QuestionsPage() {
       const res = await fetch("/api/questions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ keyword: keyword.trim() }),
+        body: JSON.stringify({ keyword: kw.trim() }),
       });
 
       const data = await res.json();
@@ -62,6 +52,33 @@ export default function QuestionsPage() {
     } finally {
       setLoading(false);
     }
+  }, [loading]);
+
+  // Auto-trigger from URL parameter (from keywords page)
+  useEffect(() => {
+    const kwParam = searchParams.get("keyword");
+    if (kwParam && !autoTriggered.current) {
+      autoTriggered.current = true;
+      setKeyword(kwParam);
+      generateForKeyword(kwParam);
+    }
+  }, [searchParams, generateForKeyword]);
+
+  async function fetchHistory() {
+    try {
+      const res = await fetch("/api/questions");
+      if (res.ok) {
+        const data = await res.json();
+        setHistory(data);
+      }
+    } catch {
+      // silently fail
+    }
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    generateForKeyword(keyword);
   }
 
   async function handleDelete(id: string) {
