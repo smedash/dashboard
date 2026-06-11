@@ -37,6 +37,7 @@ model User {
   googleTrendJobs   GoogleTrendJob[]
   searchIntentJobs  SearchIntentJob[]
   keywordVolumeJobs KeywordVolumeJob[]
+  topicGraphs       TopicGraph[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
@@ -789,6 +790,26 @@ model KeywordVolumeJob {
 
   @@index([status])
   @@index([userId])
+}
+
+// TopicGraph — gespeicherte TopicLoops-Ergebnisse
+model TopicGraph {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  keyword       String
+  countryCode   String   @default("ch")
+  languageCode  String   @default("de")
+  topicloopsId  String   // Job-ID von TopicLoops
+  status        String   @default("processing") // processing, succeeded, failed
+  topicGraph    String?  @db.Text // JSON des Topic-Graphs
+  totalTopics   Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([keyword, countryCode, languageCode])
+  @@index([userId])
+  @@index([keyword])
 }
 
 // Top Ranked Keywords Cache — DataForSEO Labs-Ergebnisse persistent pro URL

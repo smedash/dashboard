@@ -3,5 +3,6 @@ export { BarChart } from "./BarChart";
 export { PieChart } from "./PieChart";
 export { SunburstChart } from "./SunburstChart";
 export type { SunburstChartRef } from "./SunburstChart";
+export { TopicSunburstChart } from "./TopicSunburstChart";
 
 
