@@ -804,12 +804,14 @@ model TopicGraph {
   status        String   @default("processing") // processing, succeeded, failed
   topicGraph    String?  @db.Text // JSON des Topic-Graphs
   totalTopics   Int      @default(0)
+  category      String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   @@unique([keyword, countryCode, languageCode])
   @@index([userId])
   @@index([keyword])
+  @@index([category])
 }
 
 // Keyword Questions — via Anthropic generierte Fragen zu einem Keyword
@@ -817,10 +819,12 @@ model KeywordQuestion {
   id        String   @id @default(cuid())
   keyword   String   @unique
   questions String   @db.Text // JSON-Array der 20 Fragen
+  category  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([keyword])
+  @@index([category])
 }
 
 // Keyword Suggestions — SEOspark Keyword-Vorschläge persistent gecacht
@@ -831,11 +835,27 @@ model KeywordSuggestion {
   languageCode  String   @default("de")
   totalCount    Int      @default(0)
   suggestions   String   @db.Text // JSON-Array der Keyword-Vorschläge mit Metriken
+  category      String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   @@unique([keyword, countryCode, languageCode])
   @@index([keyword])
+  @@index([category])
+}
+
+// Seed-Keywords — importierte Keywords aus dem UBS-Produktportfolio
+model SeedKeyword {
+  id          String   @id @default(cuid())
+  keyword     String
+  fullName    String?
+  category    String
+  type        String?
+  url         String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  @@unique([keyword, category])
+  @@index([category])
 }
 
 // Top Ranked Keywords Cache — DataForSEO Labs-Ergebnisse persistent pro URL

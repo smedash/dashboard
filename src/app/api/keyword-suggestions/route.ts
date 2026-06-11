@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { keyword, country_code, language_code } = body;
+    const { keyword, country_code, language_code, category } = body;
 
     if (!keyword || typeof keyword !== "string" || keyword.trim().length === 0) {
       return NextResponse.json({ error: "Keyword ist erforderlich" }, { status: 400 });
@@ -49,6 +49,12 @@ export async function POST(request: NextRequest) {
     });
 
     if (existing) {
+      if (category && !existing.category) {
+        await prisma.keywordSuggestion.update({
+          where: { id: existing.id },
+          data: { category },
+        });
+      }
       return NextResponse.json({
         id: existing.id,
         keyword: existing.keyword,
@@ -56,6 +62,7 @@ export async function POST(request: NextRequest) {
         languageCode: existing.languageCode,
         totalCount: existing.totalCount,
         suggestions: JSON.parse(existing.suggestions),
+        category: category || existing.category,
         createdAt: existing.createdAt.toISOString(),
         cached: true,
       });
@@ -117,6 +124,7 @@ export async function POST(request: NextRequest) {
         languageCode: lc,
         totalCount,
         suggestions: JSON.stringify(suggestions),
+        category: category || null,
       },
     });
 
@@ -127,6 +135,7 @@ export async function POST(request: NextRequest) {
       languageCode: saved.languageCode,
       totalCount: saved.totalCount,
       suggestions,
+      category: saved.category,
       createdAt: saved.createdAt.toISOString(),
       cached: false,
     });
@@ -158,6 +167,7 @@ export async function GET() {
         languageCode: item.languageCode,
         totalCount: item.totalCount,
         suggestions: JSON.parse(item.suggestions),
+        category: item.category,
         createdAt: item.createdAt.toISOString(),
       }))
     );

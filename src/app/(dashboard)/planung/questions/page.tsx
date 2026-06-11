@@ -3,11 +3,13 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import * as XLSX from "xlsx";
+import CategorySelector from "@/components/planning/CategorySelector";
 
 interface QuestionResult {
   id: string;
   keyword: string;
   questions: string[];
+  category?: string | null;
   createdAt: string;
   cached?: boolean;
 }
@@ -15,6 +17,8 @@ interface QuestionResult {
 export default function QuestionsPage() {
   const searchParams = useSearchParams();
   const [keyword, setKeyword] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [filterCategory, setFilterCategory] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [currentResult, setCurrentResult] = useState<QuestionResult | null>(null);
   const [history, setHistory] = useState<QuestionResult[]>([]);
@@ -25,7 +29,12 @@ export default function QuestionsPage() {
     fetchHistory();
   }, []);
 
-  const generateForKeyword = useCallback(async (kw: string) => {
+  const handleSeedKeywordSelect = useCallback((kw: string, category: string) => {
+    setKeyword(kw);
+    setSelectedCategory(category);
+  }, []);
+
+  const generateForKeyword = useCallback(async (kw: string, cat?: string | null) => {
     if (!kw.trim() || loading) return;
 
     setLoading(true);
@@ -35,7 +44,7 @@ export default function QuestionsPage() {
       const res = await fetch("/api/questions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ keyword: kw.trim() }),
+        body: JSON.stringify({ keyword: kw.trim(), category: cat || undefined }),
       });
 
       const data = await res.json();
@@ -79,7 +88,7 @@ export default function QuestionsPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    generateForKeyword(keyword);
+    generateForKeyword(keyword, selectedCategory);
   }
 
   async function handleDelete(id: string) {
@@ -155,6 +164,12 @@ export default function QuestionsPage() {
           </button>
         )}
       </div>
+
+      {/* Kategorie-Selektor */}
+      <CategorySelector
+        onSelectKeyword={handleSeedKeywordSelect}
+        actionLabel="Fragen generieren"
+      />
 
       {/* Eingabeformular */}
       <form onSubmit={handleSubmit} className="flex gap-3">
@@ -261,6 +276,29 @@ export default function QuestionsPage() {
               <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
                 Bisherige Abfragen
               </h3>
+              {(() => {
+                const cats = [...new Set(history.map((h) => h.category).filter(Boolean))] as string[];
+                if (cats.length === 0) return null;
+                return (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    <button
+                      onClick={() => setFilterCategory("")}
+                      className={`px-2 py-0.5 text-[10px] rounded transition-colors ${!filterCategory ? "bg-slate-600 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400"}`}
+                    >
+                      Alle
+                    </button>
+                    {cats.map((c) => (
+                      <button
+                        key={c}
+                        onClick={() => setFilterCategory(filterCategory === c ? "" : c)}
+                        className={`px-2 py-0.5 text-[10px] rounded transition-colors ${filterCategory === c ? "bg-amber-600 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400"}`}
+                      >
+                        {c}
+                      </button>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
             {history.length === 0 ? (
               <div className="p-4 text-center">
@@ -270,7 +308,9 @@ export default function QuestionsPage() {
               </div>
             ) : (
               <div className="divide-y divide-slate-100 dark:divide-slate-700 max-h-[500px] overflow-y-auto">
-                {history.map((item) => (
+                {history
+                  .filter((item) => !filterCategory || item.category === filterCategory)
+                  .map((item) => (
                   <div
                     key={item.id}
                     className={`px-4 py-3 flex items-center justify-between gap-2 hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer transition-colors ${
@@ -282,9 +322,16 @@ export default function QuestionsPage() {
                       <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
                         {item.keyword}
                       </p>
-                      <p className="text-xs text-slate-400 dark:text-slate-500">
-                        {new Date(item.createdAt).toLocaleDateString("de-CH")}
-                      </p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-xs text-slate-400 dark:text-slate-500">
+                          {new Date(item.createdAt).toLocaleDateString("de-CH")}
+                        </p>
+                        {item.category && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
+                            {item.category}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div className="flex-shrink-0 flex items-center gap-0.5">
                       <button

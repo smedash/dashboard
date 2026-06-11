@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useProperty } from "@/contexts/PropertyContext";
 import * as XLSX from "xlsx";
+import CategorySelector from "@/components/planning/CategorySelector";
 
 interface KeywordSuggestionItem {
   keyword: string;
@@ -22,6 +23,7 @@ interface KeywordSuggestionResult {
   languageCode: string;
   totalCount: number;
   suggestions: KeywordSuggestionItem[];
+  category?: string | null;
   createdAt: string;
   cached?: boolean;
 }
@@ -88,6 +90,8 @@ export default function KeywordsPage() {
   const [keyword, setKeyword] = useState("");
   const [countryCode, setCountryCode] = useState("ch");
   const [languageCode, setLanguageCode] = useState("de");
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [filterCategory, setFilterCategory] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [currentResult, setCurrentResult] = useState<KeywordSuggestionResult | null>(null);
   const [history, setHistory] = useState<KeywordSuggestionResult[]>([]);
@@ -155,6 +159,11 @@ export default function KeywordsPage() {
     }
   }
 
+  const handleSeedKeywordSelect = useCallback((kw: string, category: string) => {
+    setKeyword(kw);
+    setSelectedCategory(category);
+  }, []);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!keyword.trim() || loading) return;
@@ -166,7 +175,7 @@ export default function KeywordsPage() {
       const res = await fetch("/api/keyword-suggestions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ keyword: keyword.trim(), country_code: countryCode, language_code: languageCode }),
+        body: JSON.stringify({ keyword: keyword.trim(), country_code: countryCode, language_code: languageCode, category: selectedCategory || undefined }),
       });
 
       const data = await res.json();
@@ -322,6 +331,12 @@ export default function KeywordsPage() {
           </button>
         )}
       </div>
+
+      {/* Kategorie-Selektor */}
+      <CategorySelector
+        onSelectKeyword={handleSeedKeywordSelect}
+        actionLabel="Keywords finden"
+      />
 
       {/* Eingabeformular */}
       <form onSubmit={handleSubmit} className="flex gap-3 items-end">
@@ -578,6 +593,29 @@ export default function KeywordsPage() {
               <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
                 Bisherige Abfragen
               </h3>
+              {(() => {
+                const cats = [...new Set(history.map((h) => h.category).filter(Boolean))] as string[];
+                if (cats.length === 0) return null;
+                return (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    <button
+                      onClick={() => setFilterCategory("")}
+                      className={`px-2 py-0.5 text-[10px] rounded transition-colors ${!filterCategory ? "bg-slate-600 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400"}`}
+                    >
+                      Alle
+                    </button>
+                    {cats.map((c) => (
+                      <button
+                        key={c}
+                        onClick={() => setFilterCategory(filterCategory === c ? "" : c)}
+                        className={`px-2 py-0.5 text-[10px] rounded transition-colors ${filterCategory === c ? "bg-amber-600 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400"}`}
+                      >
+                        {c}
+                      </button>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
             {history.length === 0 ? (
               <div className="p-4 text-center">
@@ -587,7 +625,9 @@ export default function KeywordsPage() {
               </div>
             ) : (
               <div className="divide-y divide-slate-100 dark:divide-slate-700 max-h-[500px] overflow-y-auto">
-                {history.map((item) => (
+                {history
+                  .filter((item) => !filterCategory || item.category === filterCategory)
+                  .map((item) => (
                   <div
                     key={item.id}
                     className={`px-4 py-3 flex items-center justify-between gap-2 hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer transition-colors ${
@@ -599,10 +639,17 @@ export default function KeywordsPage() {
                       <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
                         {item.keyword}
                       </p>
-                      <p className="text-xs text-slate-400 dark:text-slate-500">
-                        {item.totalCount.toLocaleString("de-CH")} Keywords &middot;{" "}
-                        {new Date(item.createdAt).toLocaleDateString("de-CH")}
-                      </p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-xs text-slate-400 dark:text-slate-500">
+                          {item.totalCount.toLocaleString("de-CH")} Keywords &middot;{" "}
+                          {new Date(item.createdAt).toLocaleDateString("de-CH")}
+                        </p>
+                        {item.category && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
+                            {item.category}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div className="flex-shrink-0 flex items-center gap-0.5">
                       <button

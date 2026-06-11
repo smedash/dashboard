@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { keyword, country_code, language_code } = body;
+    const { keyword, country_code, language_code, category } = body;
 
     if (!keyword || typeof keyword !== "string" || keyword.trim().length === 0) {
       return NextResponse.json({ error: "Keyword ist erforderlich" }, { status: 400 });
@@ -76,12 +76,14 @@ export async function POST(request: NextRequest) {
         languageCode: lc,
         topicloopsId: result.id,
         status: "processing",
+        category: category || null,
       },
       update: {
         topicloopsId: result.id,
         status: "processing",
         topicGraph: null,
         totalTopics: 0,
+        ...(category ? { category } : {}),
       },
     });
 
@@ -122,6 +124,7 @@ export async function GET(request: NextRequest) {
           status: true,
           topicGraph: true,
           totalTopics: true,
+          category: true,
           createdAt: true,
         },
       });
@@ -138,6 +141,7 @@ export async function GET(request: NextRequest) {
           status: g.status,
           topic_graph: g.topicGraph ? JSON.parse(g.topicGraph) : null,
           totalTopics: g.totalTopics,
+          category: g.category,
         }))
       );
     }

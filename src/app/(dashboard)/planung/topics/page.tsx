@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import * as XLSX from "xlsx";
 import { TopicSunburstChart } from "@/components/charts";
+import CategorySelector from "@/components/planning/CategorySelector";
 
 interface TopicGraphNode {
   label: string;
@@ -19,6 +20,7 @@ interface TopicGraphJob {
   };
   status: "processing" | "failed" | "succeeded";
   topic_graph: TopicGraphNode | null;
+  category?: string | null;
 }
 
 function TopicNode({ node, depth = 0 }: { node: TopicGraphNode; depth?: number }) {
@@ -166,6 +168,8 @@ export default function TopicsPage() {
   const [keyword, setKeyword] = useState("");
   const [countryCode, setCountryCode] = useState("ch");
   const [languageCode, setLanguageCode] = useState("de");
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [filterCategory, setFilterCategory] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingSaved, setIsLoadingSaved] = useState(true);
   const [jobs, setJobs] = useState<TopicGraphJob[]>([]);
@@ -241,6 +245,11 @@ export default function TopicsPage() {
     pollIntervals.current.set(dbId, interval);
   }, []);
 
+  const handleSeedKeywordSelect = useCallback((kw: string, category: string) => {
+    setKeyword(kw);
+    setSelectedCategory(category);
+  }, []);
+
   const handleSubmit = useCallback(async () => {
     const trimmed = keyword.trim();
     if (!trimmed || isLoading) return;
@@ -256,6 +265,7 @@ export default function TopicsPage() {
           keyword: trimmed,
           country_code: countryCode,
           language_code: languageCode,
+          category: selectedCategory || undefined,
         }),
       });
 
@@ -299,7 +309,7 @@ export default function TopicsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [keyword, countryCode, languageCode, isLoading, pollJob]);
+  }, [keyword, countryCode, languageCode, selectedCategory, isLoading, pollJob]);
 
   const totalTopics = (job: TopicGraphJob) => {
     if (!job.topic_graph) return 0;
@@ -329,6 +339,10 @@ export default function TopicsPage() {
     XLSX.writeFile(wb, `alle-topics-${date}.xlsx`);
   }, [jobs]);
 
+  const filteredJobs = filterCategory
+    ? jobs.filter((j) => j.category === filterCategory)
+    : jobs;
+  const jobCategories = [...new Set(jobs.map((j) => j.category).filter(Boolean))] as string[];
   const succeededCount = jobs.filter((j) => j.status === "succeeded").length;
 
   return (
@@ -352,6 +366,12 @@ export default function TopicsPage() {
           </button>
         )}
       </div>
+
+      {/* Kategorie-Selektor */}
+      <CategorySelector
+        onSelectKeyword={handleSeedKeywordSelect}
+        actionLabel="Topic-Graph erstellen"
+      />
 
       {/* Eingabe */}
       <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
@@ -426,8 +446,38 @@ export default function TopicsPage() {
         )}
       </div>
 
+      {/* Kategorie-Filter fuer Ergebnisse */}
+      {jobCategories.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs font-medium text-slate-400">Filtern:</span>
+          <button
+            onClick={() => setFilterCategory("")}
+            className={`px-2.5 py-1 text-xs rounded-md transition-colors ${
+              !filterCategory
+                ? "bg-slate-600 text-white"
+                : "bg-slate-800 text-slate-400 hover:text-white"
+            }`}
+          >
+            Alle ({jobs.length})
+          </button>
+          {jobCategories.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setFilterCategory(filterCategory === cat ? "" : cat)}
+              className={`px-2.5 py-1 text-xs rounded-md transition-colors ${
+                filterCategory === cat
+                  ? "bg-amber-600 text-white"
+                  : "bg-slate-800 text-slate-400 hover:text-white"
+              }`}
+            >
+              {cat} ({jobs.filter((j) => j.category === cat).length})
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Ergebnisse */}
-      {jobs.map((job) => {
+      {filteredJobs.map((job) => {
         const isExpanded = expandedJobs.has(job.id);
         return (
           <div key={job.id} className="bg-slate-800/50 border border-slate-700 rounded-xl overflow-hidden">
@@ -450,6 +500,11 @@ export default function TopicsPage() {
                 <span className="text-xs text-slate-500 uppercase">
                   {job.parameters.country_code} / {job.parameters.language_code}
                 </span>
+                {job.category && (
+                  <span className="text-xs px-2 py-0.5 rounded bg-amber-900/30 text-amber-300 font-medium">
+                    {job.category}
+                  </span>
+                )}
                 {job.status === "processing" && (
                   <span className="flex items-center gap-1.5 text-xs text-amber-400">
                     <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">

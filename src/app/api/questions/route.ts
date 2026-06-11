@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { keyword } = body;
+    const { keyword, category } = body;
 
     if (!keyword || typeof keyword !== "string" || keyword.trim().length === 0) {
       return NextResponse.json({ error: "Keyword ist erforderlich" }, { status: 400 });
@@ -28,10 +28,17 @@ export async function POST(request: NextRequest) {
     });
 
     if (existing) {
+      if (category && !existing.category) {
+        await prisma.keywordQuestion.update({
+          where: { id: existing.id },
+          data: { category },
+        });
+      }
       return NextResponse.json({
         id: existing.id,
         keyword: existing.keyword,
         questions: JSON.parse(existing.questions),
+        category: category || existing.category,
         createdAt: existing.createdAt.toISOString(),
         cached: true,
       });
@@ -79,6 +86,7 @@ Die Fragen sollen auf Deutsch sein, es sei denn das Keyword ist eindeutig englis
       data: {
         keyword: normalizedKeyword,
         questions: JSON.stringify(questions),
+        category: category || null,
       },
     });
 
@@ -114,6 +122,7 @@ export async function GET() {
         id: q.id,
         keyword: q.keyword,
         questions: JSON.parse(q.questions),
+        category: q.category,
         createdAt: q.createdAt.toISOString(),
       }))
     );
