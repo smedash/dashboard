@@ -212,22 +212,14 @@ export default function KeywordsPage() {
 
   function isKeywordInGsc(kw: string): boolean {
     const normalized = kw.toLowerCase();
-    const exact = gscKeywords.get(normalized);
-    if (exact && exact.impressions > 0) return true;
-    for (const [gscKw, data] of gscKeywords.entries()) {
-      if ((gscKw.includes(normalized) || normalized.includes(gscKw)) && data.impressions > 0) return true;
-    }
-    return false;
+    const match = gscKeywords.get(normalized);
+    return !!match && match.impressions > 0;
   }
 
   function getGscMatch(kw: string): GscKeyword | undefined {
     const normalized = kw.toLowerCase();
-    const exact = gscKeywords.get(normalized);
-    if (exact && exact.impressions > 0) return exact;
-    for (const [gscKw, data] of gscKeywords.entries()) {
-      if ((gscKw.includes(normalized) || normalized.includes(gscKw)) && data.impressions > 0) return data;
-    }
-    return undefined;
+    const match = gscKeywords.get(normalized);
+    return match && match.impressions > 0 ? match : undefined;
   }
 
   const sortedSuggestions = currentResult
