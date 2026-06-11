@@ -823,6 +823,21 @@ model KeywordQuestion {
   @@index([keyword])
 }
 
+// Keyword Suggestions — SEOspark Keyword-Vorschläge persistent gecacht
+model KeywordSuggestion {
+  id            String   @id @default(cuid())
+  keyword       String
+  countryCode   String   @default("ch")
+  languageCode  String   @default("de")
+  totalCount    Int      @default(0)
+  suggestions   String   @db.Text // JSON-Array der Keyword-Vorschläge mit Metriken
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([keyword, countryCode, languageCode])
+  @@index([keyword])
+}
+
 // Top Ranked Keywords Cache — DataForSEO Labs-Ergebnisse persistent pro URL
 model RankedKeywordsCache {
   id        String   @id @default(cuid())
