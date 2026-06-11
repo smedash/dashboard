@@ -35,6 +35,11 @@ yarn-error.log*
 
 # security audit
 SECURITY.md
+SECURITY.en.md
+
+# Internal handover docs (not pushed)
+TECH.md
+TECH.en.md
 
 # vercel
 .vercel

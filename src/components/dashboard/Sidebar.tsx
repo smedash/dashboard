@@ -162,6 +162,19 @@ const reportingNavigation: NavigationItem[] = [
   },
 ];
 
+// Planung-Navigation
+const planungNavigation: NavigationItem[] = [
+  {
+    name: "Marketing Planung",
+    href: "/planung/marketing",
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+      </svg>
+    ),
+  },
+];
+
 // Prozesse-Navigation (SEO KVP, SEO Reifegrad, Briefings)
 const processNavigation: NavigationItem[] = [
   {
@@ -329,7 +342,7 @@ export function Sidebar() {
     const newExpanded = new Set<string>();
     
     // Prüfe alle Navigation-Arrays
-    [...dataNavigation, ...reportingNavigation, ...processNavigation].forEach(item => {
+    [...dataNavigation, ...reportingNavigation, ...processNavigation, ...planungNavigation].forEach(item => {
       if (item.children) {
         const isChildActive = item.children.some(child => pathname === child.href);
         if (isChildActive || pathname === item.href) {
@@ -470,6 +483,19 @@ export function Sidebar() {
             </h3>
             <NavigationItems 
               items={reportingNavigation} 
+              pathname={pathname}
+              expandedItems={expandedItems}
+              onToggleExpand={handleToggleExpand}
+            />
+          </div>
+
+          {/* Planung - Menübox */}
+          <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
+            <h3 className="px-3 mb-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              Planung
+            </h3>
+            <NavigationItems 
+              items={planungNavigation} 
               pathname={pathname}
               expandedItems={expandedItems}
               onToggleExpand={handleToggleExpand}

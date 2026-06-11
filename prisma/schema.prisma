@@ -36,6 +36,7 @@ model User {
   editorialArticles EditorialPlanArticle[] @relation("EditorialPlanCreator") // Redaktionsplan-Artikel
   googleTrendJobs   GoogleTrendJob[]
   searchIntentJobs  SearchIntentJob[]
+  keywordVolumeJobs KeywordVolumeJob[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
@@ -743,6 +744,45 @@ model SearchIntentJob {
   totalKeywords     Int
   processedKeywords Int      @default(0)
   language          String   @default("de")
+  error             String?  @db.Text
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([status])
+  @@index([userId])
+}
+
+// Keyword Volume + CPC — gecachte Ergebnisse pro Keyword (DataForSEO Google Ads)
+model KeywordVolume {
+  id                String   @id @default(cuid())
+  keyword           String
+  location          String   @default("Switzerland")
+  language          String   @default("German")
+  searchVolume      Int?
+  cpc               Float?
+  competition       String?
+  competitionIndex  Float?
+  lowTopOfPageBid   Float?
+  highTopOfPageBid  Float?
+  updatedAt         DateTime @updatedAt
+  createdAt         DateTime @default(now())
+
+  @@unique([keyword, location, language])
+  @@index([keyword])
+}
+
+// Keyword Volume — Background-Job mit Batch-Verarbeitung via Cron
+model KeywordVolumeJob {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status            String   @default("pending") // pending, processing, completed, failed
+  property          String
+  keywords          String   @db.Text
+  totalKeywords     Int
+  processedKeywords Int      @default(0)
+  location          String   @default("Switzerland")
+  language          String   @default("German")
   error             String?  @db.Text
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt

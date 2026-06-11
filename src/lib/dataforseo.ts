@@ -2,6 +2,17 @@
 
 const DATAFORSEO_API_URL = "https://api.dataforseo.com/v3";
 
+const ALLOWED_CHARS_RE = /[^\p{L}\p{N}\s\-.:\/]/gu;
+const MAX_KEYWORD_WORDS = 5;
+
+function sanitizeKeyword(kw: string): string {
+  const cleaned = kw.replace(ALLOWED_CHARS_RE, " ").replace(/\s+/g, " ").trim();
+  if (cleaned.split(" ").length > MAX_KEYWORD_WORDS) {
+    return "";
+  }
+  return cleaned;
+}
+
 // Base64 encode credentials for Basic Auth
 function getAuthHeader(): string {
   const username = process.env.DATAFORSEO_USERNAME;
@@ -295,65 +306,121 @@ export async function fetchSearchVolume(
   const batchSize = 100;
   const allResults: SearchVolumeResult[] = [];
 
+  const MAX_RETRIES = 3;
+
   for (let i = 0; i < keywords.length; i += batchSize) {
-    const batch = keywords.slice(i, i + batchSize);
-    console.log(`[fetchSearchVolume] Verarbeite Batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(keywords.length / batchSize)}`);
+    const rawBatch = keywords.slice(i, i + batchSize);
+    const cleanedToOriginals = new Map<string, string[]>();
+    const batch: string[] = [];
 
-    try {
-      // Explizit Schweiz setzen mit location_code UND location_name
-      const requestBody = [{
-        keywords: batch,
-        location_code: 2756, // Schweiz - HARDCODED
-        location_name: "Switzerland",
-        language_code: "de",
-        language_name: "German",
-      }];
-
-      console.log(`[fetchSearchVolume] Request Body:`, JSON.stringify(requestBody, null, 2));
-
-      const response = await fetch(`${DATAFORSEO_API_URL}/keywords_data/google_ads/search_volume/live`, {
-        method: "POST",
-        headers: {
-          Authorization: getAuthHeader(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestBody),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`[fetchSearchVolume] API Fehler: ${response.status} - ${errorText}`);
-        continue; // Weiter mit nächstem Batch
+    for (const kw of rawBatch) {
+      const cleaned = sanitizeKeyword(kw);
+      if (!cleaned) continue;
+      if (!cleanedToOriginals.has(cleaned)) {
+        cleanedToOriginals.set(cleaned, []);
+        batch.push(cleaned);
       }
+      if (kw !== cleaned) {
+        cleanedToOriginals.get(cleaned)!.push(kw);
+      }
+    }
 
-      const data = await response.json();
+    const batchNum = Math.floor(i / batchSize) + 1;
+    const totalBatches = Math.ceil(keywords.length / batchSize);
+    if (batch.length === 0) {
+      continue;
+    }
+    console.log(`[fetchSearchVolume] Verarbeite Batch ${batchNum}/${totalBatches} (${batch.length} Keywords)`);
 
-      if (data.tasks && data.tasks.length > 0) {
-        const task = data.tasks[0];
-        console.log(`[fetchSearchVolume] Response Status: ${task.status_code} (${task.status_message})`);
+    let lastError = "";
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const requestBody = [{
+          keywords: batch,
+          location_code: 2756,
+          location_name: "Switzerland",
+          language_code: "de",
+          language_name: "German",
+        }];
 
-        if (task.status_code === 20000 && task.result && task.result.length > 0) {
-          const results = task.result as (SearchVolumeResult & { location_code?: number })[];
-          console.log(`[fetchSearchVolume] ✓ ${results.length} Suchvolumen-Ergebnisse erhalten`);
-          
-          // Logge die ersten 5 Ergebnisse mit Location Code zur Überprüfung
-          results.slice(0, 5).forEach((r) => {
-            console.log(`[fetchSearchVolume]   "${r.keyword}": ${r.search_volume || 0} monatliche Suchen (Location: ${r.location_code || 'N/A'})`);
-          });
+        const response = await fetch(`${DATAFORSEO_API_URL}/keywords_data/google_ads/search_volume/live`, {
+          method: "POST",
+          headers: {
+            Authorization: getAuthHeader(),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(requestBody),
+        });
 
-          allResults.push(...results);
+        if (response.status === 429) {
+          const wait = Math.min(2000 * 2 ** attempt, 30_000);
+          console.warn(`[fetchSearchVolume] Rate limited bei Batch ${batchNum}, warte ${wait}ms (Versuch ${attempt + 1}/${MAX_RETRIES + 1})`);
+          await new Promise((r) => setTimeout(r, wait));
+          lastError = "Rate limit exceeded";
+          continue;
+        }
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          const isRateLimit = errorText.includes("rate") || errorText.includes("limit");
+          if (isRateLimit && attempt < MAX_RETRIES) {
+            const wait = Math.min(2000 * 2 ** attempt, 30_000);
+            console.warn(`[fetchSearchVolume] Rate limit in Body bei Batch ${batchNum}, warte ${wait}ms`);
+            await new Promise((r) => setTimeout(r, wait));
+            lastError = errorText.slice(0, 200);
+            continue;
+          }
+          console.error(`[fetchSearchVolume] API Fehler bei Batch ${batchNum}: ${response.status} - ${errorText.slice(0, 200)}`);
+          break;
+        }
+
+        const data = await response.json();
+
+        if (data.tasks && data.tasks.length > 0) {
+          const task = data.tasks[0];
+          const taskMsg = task.status_message ?? "";
+          if (taskMsg.toLowerCase().includes("rate") && taskMsg.toLowerCase().includes("limit") && attempt < MAX_RETRIES) {
+            const wait = Math.min(2000 * 2 ** attempt, 30_000);
+            console.warn(`[fetchSearchVolume] Rate limit in Task bei Batch ${batchNum}, warte ${wait}ms`);
+            await new Promise((r) => setTimeout(r, wait));
+            lastError = taskMsg;
+            continue;
+          }
+
+          console.log(`[fetchSearchVolume] Batch ${batchNum} Response Status: ${task.status_code} (${taskMsg})`);
+
+          if (task.status_code === 20000 && task.result && task.result.length > 0) {
+            const results = task.result as (SearchVolumeResult & { location_code?: number })[];
+            console.log(`[fetchSearchVolume] ✓ Batch ${batchNum}: ${results.length} Suchvolumen-Ergebnisse erhalten`);
+            for (const result of results) {
+              allResults.push(result);
+              const originals = cleanedToOriginals.get(result.keyword);
+              if (originals) {
+                for (const orig of originals) {
+                  allResults.push({ ...result, keyword: orig });
+                }
+              }
+            }
+          } else {
+            console.warn(`[fetchSearchVolume] ✗ Batch ${batchNum}: Keine Ergebnisse: ${taskMsg}`);
+          }
+        }
+
+        break;
+      } catch (error) {
+        lastError = error instanceof Error ? error.message : "Unbekannter Fehler";
+        if (attempt < MAX_RETRIES) {
+          const wait = Math.min(2000 * 2 ** attempt, 30_000);
+          console.warn(`[fetchSearchVolume] Fehler bei Batch ${batchNum}, Retry in ${wait}ms: ${lastError}`);
+          await new Promise((r) => setTimeout(r, wait));
         } else {
-          console.warn(`[fetchSearchVolume] ✗ Keine Ergebnisse: ${task.status_message}`);
+          console.error(`[fetchSearchVolume] Batch ${batchNum} endgueltig fehlgeschlagen nach ${MAX_RETRIES + 1} Versuchen: ${lastError}`);
         }
       }
+    }
 
-      // Kurze Pause zwischen Batches um Rate-Limits zu vermeiden
-      if (i + batchSize < keywords.length) {
-        await new Promise((resolve) => setTimeout(resolve, 500));
-      }
-    } catch (error) {
-      console.error(`[fetchSearchVolume] Fehler bei Batch:`, error);
-      // Weiter mit nächstem Batch
+    if (i + batchSize < keywords.length) {
+      await new Promise((resolve) => setTimeout(resolve, 6000));
     }
   }
 
@@ -882,7 +949,12 @@ export async function fetchGoogleTrends(
     while (true) {
       const i = nextIndex++;
       if (i >= keywords.length) return;
-      const keyword = keywords[i];
+      const originalKeyword = keywords[i];
+      const keyword = sanitizeKeyword(originalKeyword);
+      if (!keyword) {
+        results.push({ keyword: originalKeyword, trendAvg: null, trendRecent: null, trendDirection: null });
+        continue;
+      }
 
       try {
         const requestBody = [{
@@ -913,7 +985,7 @@ export async function fetchGoogleTrends(
 
         if (!response.ok) {
           console.warn(`[fetchGoogleTrends] HTTP ${response.status} fuer "${keyword}"`);
-          results.push({ keyword, trendAvg: null, trendRecent: null, trendDirection: null });
+          results.push({ keyword: originalKeyword, trendAvg: null, trendRecent: null, trendDirection: null });
           continue;
         }
 
@@ -921,7 +993,7 @@ export async function fetchGoogleTrends(
         const task = data.tasks?.[0];
 
         if (task?.status_code !== 20000 || !task.result?.[0]?.items?.length) {
-          results.push({ keyword, trendAvg: null, trendRecent: null, trendDirection: null });
+          results.push({ keyword: originalKeyword, trendAvg: null, trendRecent: null, trendDirection: null });
           continue;
         }
 
@@ -930,7 +1002,7 @@ export async function fetchGoogleTrends(
         );
 
         if (!graphItem?.data?.length) {
-          results.push({ keyword, trendAvg: null, trendRecent: null, trendDirection: null });
+          results.push({ keyword: originalKeyword, trendAvg: null, trendRecent: null, trendDirection: null });
           continue;
         }
 
@@ -939,7 +1011,7 @@ export async function fetchGoogleTrends(
           .filter((v: number | null): v is number => v !== null && v !== undefined);
 
         if (values.length === 0) {
-          results.push({ keyword, trendAvg: null, trendRecent: null, trendDirection: null });
+          results.push({ keyword: originalKeyword, trendAvg: null, trendRecent: null, trendDirection: null });
           continue;
         }
 
@@ -957,14 +1029,14 @@ export async function fetchGoogleTrends(
           diff > threshold ? "up" : diff < -threshold ? "down" : "stable";
 
         results.push({
-          keyword,
+          keyword: originalKeyword,
           trendAvg: avg,
           trendRecent: Math.round(recentAvg),
           trendDirection: direction,
         });
       } catch (error) {
         console.error(`[fetchGoogleTrends] Fehler bei "${keyword}":`, error);
-        results.push({ keyword, trendAvg: null, trendRecent: null, trendDirection: null });
+        results.push({ keyword: originalKeyword, trendAvg: null, trendRecent: null, trendDirection: null });
       }
     }
   }
@@ -1005,8 +1077,25 @@ export async function fetchSearchIntent(
   const batchSize = 1000;
 
   for (let i = 0; i < keywords.length; i += batchSize) {
-    const batch = keywords.slice(i, i + batchSize);
+    const rawBatch = keywords.slice(i, i + batchSize);
+    const cleanedToOriginals = new Map<string, string[]>();
+    const batch: string[] = [];
+
+    for (const kw of rawBatch) {
+      const cleaned = sanitizeKeyword(kw);
+      if (!cleaned) continue;
+      if (!cleanedToOriginals.has(cleaned)) {
+        cleanedToOriginals.set(cleaned, []);
+        batch.push(cleaned);
+      }
+      if (kw !== cleaned) {
+        cleanedToOriginals.get(cleaned)!.push(kw);
+      }
+    }
+
     console.log(`[fetchSearchIntent] Batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(keywords.length / batchSize)} (${batch.length} Keywords)`);
+
+    if (batch.length === 0) continue;
 
     try {
       const requestBody = [{
@@ -1054,12 +1143,19 @@ export async function fetchSearchIntent(
       }>;
 
       for (const item of items) {
-        results.push({
+        const result = {
           keyword: item.keyword,
           intentLabel: item.keyword_intent?.label ?? "informational",
           intentProbability: item.keyword_intent?.probability ?? 0,
           secondaryIntents: item.secondary_keyword_intents ?? null,
-        });
+        };
+        results.push(result);
+        const originals = cleanedToOriginals.get(item.keyword);
+        if (originals) {
+          for (const orig of originals) {
+            results.push({ ...result, keyword: orig });
+          }
+        }
       }
 
       console.log(`[fetchSearchIntent] Batch erfolgreich: ${items.length} Ergebnisse`);
