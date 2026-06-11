@@ -109,7 +109,7 @@ export default function KeywordsPage() {
 
     setGscLoading(true);
     try {
-      const res = await fetch(`/api/gsc/queries?siteUrl=${encodeURIComponent(selectedProperty)}&period=90d&limit=5000`);
+      const res = await fetch(`/api/gsc/queries?siteUrl=${encodeURIComponent(selectedProperty)}&period=90d&limit=25000`);
       if (res.ok) {
         const data = await res.json();
         const kwMap = new Map<string, GscKeyword>();
@@ -212,18 +212,20 @@ export default function KeywordsPage() {
 
   function isKeywordInGsc(kw: string): boolean {
     const normalized = kw.toLowerCase();
-    if (gscKeywords.has(normalized)) return true;
-    for (const gscKw of gscKeywords.keys()) {
-      if (gscKw.includes(normalized) || normalized.includes(gscKw)) return true;
+    const exact = gscKeywords.get(normalized);
+    if (exact && exact.impressions > 0) return true;
+    for (const [gscKw, data] of gscKeywords.entries()) {
+      if ((gscKw.includes(normalized) || normalized.includes(gscKw)) && data.impressions > 0) return true;
     }
     return false;
   }
 
   function getGscMatch(kw: string): GscKeyword | undefined {
     const normalized = kw.toLowerCase();
-    if (gscKeywords.has(normalized)) return gscKeywords.get(normalized);
+    const exact = gscKeywords.get(normalized);
+    if (exact && exact.impressions > 0) return exact;
     for (const [gscKw, data] of gscKeywords.entries()) {
-      if (gscKw.includes(normalized) || normalized.includes(gscKw)) return data;
+      if ((gscKw.includes(normalized) || normalized.includes(gscKw)) && data.impressions > 0) return data;
     }
     return undefined;
   }
