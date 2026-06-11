@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
         country_code: cc,
         language_code: lc,
         keyword: normalizedKeyword,
-        page_size: 50,
+        page_size: 100,
         sort: "searchVolume,desc",
       }),
     });
