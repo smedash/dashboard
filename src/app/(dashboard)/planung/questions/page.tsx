@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
+import * as XLSX from "xlsx";
 
 interface QuestionResult {
   id: string;
@@ -99,15 +100,60 @@ export default function QuestionsPage() {
     setCurrentResult(item);
   }
 
+  function exportAllToExcel() {
+    if (history.length === 0) return;
+
+    const wb = XLSX.utils.book_new();
+
+    for (const item of history) {
+      const rows = item.questions.map((q, i) => ({
+        Nr: i + 1,
+        Frage: q,
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const sheetName = item.keyword.slice(0, 31).replace(/[/\\?*[\]]/g, "");
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    }
+
+    const date = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `fragen-research-${date}.xlsx`);
+  }
+
+  function exportSingleToExcel(item: QuestionResult) {
+    const rows = item.questions.map((q, i) => ({
+      Nr: i + 1,
+      Frage: q,
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Fragen");
+    XLSX.writeFile(wb, `fragen-${item.keyword.replace(/\s+/g, "-")}.xlsx`);
+  }
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-          Question based
-        </h1>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Finde die 20 häufigsten Fragen zu einem Keyword — generiert via KI und persistent gespeichert.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+            Question based
+          </h1>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            Finde die 20 häufigsten Fragen zu einem Keyword — generiert via KI und persistent gespeichert.
+          </p>
+        </div>
+        {history.length > 0 && (
+          <button
+            onClick={exportAllToExcel}
+            className="px-4 py-2 text-sm rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors flex items-center gap-1.5"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Excel Export
+          </button>
+        )}
       </div>
 
       {/* Eingabeformular */}
@@ -240,18 +286,32 @@ export default function QuestionsPage() {
                         {new Date(item.createdAt).toLocaleDateString("de-CH")}
                       </p>
                     </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(item.id);
-                      }}
-                      className="flex-shrink-0 p-1 rounded text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                      title="Löschen"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
+                    <div className="flex-shrink-0 flex items-center gap-0.5">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          exportSingleToExcel(item);
+                        }}
+                        className="p-1 rounded text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
+                        title="Als Excel exportieren"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(item.id);
+                        }}
+                        className="p-1 rounded text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                        title="Löschen"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
