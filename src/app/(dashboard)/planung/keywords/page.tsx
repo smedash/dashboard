@@ -51,6 +51,8 @@ function DifficultyBar({ value }: { value: number }) {
 
 export default function KeywordsPage() {
   const [keyword, setKeyword] = useState("");
+  const [countryCode, setCountryCode] = useState("ch");
+  const [languageCode, setLanguageCode] = useState("de");
   const [loading, setLoading] = useState(false);
   const [currentResult, setCurrentResult] = useState<KeywordSuggestionResult | null>(null);
   const [history, setHistory] = useState<KeywordSuggestionResult[]>([]);
@@ -85,7 +87,7 @@ export default function KeywordsPage() {
       const res = await fetch("/api/keyword-suggestions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ keyword: keyword.trim() }),
+        body: JSON.stringify({ keyword: keyword.trim(), country_code: countryCode, language_code: languageCode }),
       });
 
       const data = await res.json();
@@ -161,21 +163,53 @@ export default function KeywordsPage() {
       </div>
 
       {/* Eingabeformular */}
-      <form onSubmit={handleSubmit} className="flex gap-3">
+      <form onSubmit={handleSubmit} className="flex gap-3 items-end">
         <div className="flex-1">
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Seed-Keyword</label>
           <input
             type="text"
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
-            placeholder="Seed-Keyword eingeben, z.B. 'hypothek', 'vorsorge'..."
-            className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-3 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="z.B. 'hypothek', 'vorsorge'..."
+            className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             disabled={loading}
           />
+        </div>
+        <div className="w-36">
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Land</label>
+          <select
+            value={countryCode}
+            onChange={(e) => setCountryCode(e.target.value)}
+            className="w-full px-3 py-2.5 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 rounded-lg text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            disabled={loading}
+          >
+            <option value="ch">Schweiz</option>
+            <option value="de">Deutschland</option>
+            <option value="at">Österreich</option>
+            <option value="us">USA</option>
+            <option value="gb">UK</option>
+            <option value="fr">Frankreich</option>
+            <option value="it">Italien</option>
+          </select>
+        </div>
+        <div className="w-36">
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Sprache</label>
+          <select
+            value={languageCode}
+            onChange={(e) => setLanguageCode(e.target.value)}
+            className="w-full px-3 py-2.5 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 rounded-lg text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            disabled={loading}
+          >
+            <option value="de">Deutsch</option>
+            <option value="en">Englisch</option>
+            <option value="fr">Französisch</option>
+            <option value="it">Italienisch</option>
+          </select>
         </div>
         <button
           type="submit"
           disabled={loading || !keyword.trim()}
-          className="px-6 py-3 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+          className="px-6 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
         >
           {loading ? (
             <>
