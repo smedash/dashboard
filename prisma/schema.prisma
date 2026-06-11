@@ -812,6 +812,17 @@ model TopicGraph {
   @@index([keyword])
 }
 
+// Keyword Questions — via Anthropic generierte Fragen zu einem Keyword
+model KeywordQuestion {
+  id        String   @id @default(cuid())
+  keyword   String   @unique
+  questions String   @db.Text // JSON-Array der 20 Fragen
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([keyword])
+}
+
 // Top Ranked Keywords Cache — DataForSEO Labs-Ergebnisse persistent pro URL
 model RankedKeywordsCache {
   id        String   @id @default(cuid())
