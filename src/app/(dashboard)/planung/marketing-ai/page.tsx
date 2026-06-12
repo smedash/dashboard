@@ -1,6 +1,14 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+
+interface RefinementMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  appliedDiff?: Record<string, unknown> | null;
+  createdAt: string;
+}
 
 interface MarketingAction {
   id: string;
@@ -77,6 +85,11 @@ export default function MarketingAIPage() {
   const [generating, setGenerating] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["details", "actions"]));
+
+  const [refinements, setRefinements] = useState<Record<string, RefinementMessage[]>>({});
+  const [refinerInput, setRefinerInput] = useState("");
+  const [refinerLoading, setRefinerLoading] = useState(false);
+  const refinerEndRef = useRef<HTMLDivElement>(null);
 
   const loadStrategies = useCallback(async () => {
     try {
@@ -160,6 +173,73 @@ export default function MarketingAIPage() {
       }
       return next;
     });
+  };
+
+  const loadRefinements = useCallback(async (strategyId: string) => {
+    try {
+      const res = await fetch(`/api/planung/marketing-ai/refine?strategyId=${strategyId}`);
+      if (!res.ok) return;
+      const msgs = await res.json();
+      setRefinements((prev) => ({ ...prev, [strategyId]: msgs }));
+    } catch {
+      // silent
+    }
+  }, []);
+
+  useEffect(() => {
+    const strategy = strategies[activeTab];
+    if (strategy && !refinements[strategy.id]) {
+      loadRefinements(strategy.id);
+    }
+  }, [activeTab, strategies, refinements, loadRefinements]);
+
+  useEffect(() => {
+    refinerEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [refinements, activeTab]);
+
+  const sendRefinement = async () => {
+    const strategy = strategies[activeTab];
+    if (!strategy || !refinerInput.trim() || refinerLoading) return;
+
+    const userMessage = refinerInput.trim();
+    setRefinerInput("");
+    setRefinerLoading(true);
+
+    setRefinements((prev) => ({
+      ...prev,
+      [strategy.id]: [
+        ...(prev[strategy.id] || []),
+        { id: `temp-${Date.now()}`, role: "user", content: userMessage, createdAt: new Date().toISOString() },
+      ],
+    }));
+
+    try {
+      const res = await fetch("/api/planung/marketing-ai/refine", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ strategyId: strategy.id, message: userMessage }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || "Fehler bei der Verfeinerung");
+      }
+
+      const data = await res.json();
+
+      if (data.updatedStrategy) {
+        setStrategies((prev) => ({
+          ...prev,
+          [activeTab]: data.updatedStrategy,
+        }));
+      }
+
+      await loadRefinements(strategy.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Fehler bei der Verfeinerung");
+    } finally {
+      setRefinerLoading(false);
+    }
   };
 
   const activeChannel = CHANNELS.find((c) => c.id === activeTab)!;
@@ -505,6 +585,131 @@ export default function MarketingAIPage() {
                 )}
               </div>
             )}
+
+            {/* ReFiner */}
+            <div className="bg-slate-800/30">
+              <button
+                onClick={() => toggleSection("refiner")}
+                className="w-full flex items-center justify-between p-4 hover:bg-slate-700/20 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+                    <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                    ReFiner
+                  </h3>
+                  {(refinements[activeStrategy.id]?.length || 0) > 0 && (
+                    <span className="text-xs text-slate-500">
+                      {refinements[activeStrategy.id].length} Nachrichten
+                    </span>
+                  )}
+                </div>
+                <svg
+                  className={`w-4 h-4 text-slate-500 transition-transform ${expandedSections.has("refiner") ? "rotate-180" : ""}`}
+                  fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {expandedSections.has("refiner") && (
+                <div className="px-6 pb-6">
+                  <p className="text-xs text-slate-500 mb-4">
+                    Diskutiere die Strategie mit der KI. Schlage Änderungen vor, stelle Fragen oder ergänze Punkte — die Strategie wird gezielt angepasst, nicht neu generiert.
+                  </p>
+
+                  {/* Chat Messages */}
+                  <div className="space-y-3 max-h-[500px] overflow-y-auto mb-4 scroll-smooth">
+                    {(refinements[activeStrategy.id] || []).map((msg) => (
+                      <div
+                        key={msg.id}
+                        className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                      >
+                        <div
+                          className={`max-w-[85%] rounded-xl px-4 py-3 ${
+                            msg.role === "user"
+                              ? `${colors.bg} ${colors.border} border`
+                              : "bg-slate-700/50 border border-slate-600/50"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            {msg.role === "user" ? (
+                              <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Du</span>
+                            ) : (
+                              <span className="text-[10px] font-medium text-purple-400 uppercase tracking-wider flex items-center gap-1">
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                                </svg>
+                                KI ReFiner
+                              </span>
+                            )}
+                            <span className="text-[10px] text-slate-600">
+                              {new Date(msg.createdAt).toLocaleTimeString("de-CH", { hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                          </div>
+                          <div className="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">
+                            {msg.role === "assistant"
+                              ? msg.content.replace(/```json[\s\S]*?```/g, "").trim()
+                              : msg.content}
+                          </div>
+                          {msg.appliedDiff && (
+                            <div className="mt-2 pt-2 border-t border-slate-600/30">
+                              <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400 font-medium">
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                                Änderungen wurden angewendet
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    {refinerLoading && (
+                      <div className="flex justify-start">
+                        <div className="bg-slate-700/50 border border-slate-600/50 rounded-xl px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <div className="flex gap-1">
+                              <div className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                              <div className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                              <div className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                            </div>
+                            <span className="text-xs text-slate-500">KI analysiert dein Feedback...</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    <div ref={refinerEndRef} />
+                  </div>
+
+                  {/* Input */}
+                  <div className="flex gap-2">
+                    <textarea
+                      value={refinerInput}
+                      onChange={(e) => setRefinerInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          sendRefinement();
+                        }
+                      }}
+                      placeholder="z.B. &quot;Die Social Media Strategie sollte stärker auf LinkedIn fokussieren...&quot;"
+                      rows={2}
+                      className="flex-1 bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-3 text-sm text-slate-200 placeholder-slate-500 resize-none focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/20"
+                    />
+                    <button
+                      onClick={sendRefinement}
+                      disabled={!refinerInput.trim() || refinerLoading}
+                      className="px-4 bg-purple-600 hover:bg-purple-500 text-white rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed self-end h-[42px]"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         ) : (
           /* Empty State */

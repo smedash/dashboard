@@ -846,20 +846,33 @@ model KeywordSuggestion {
 
 // Marketing AI — KI-generierte Kanal-Strategien
 model MarketingStrategy {
-  id          String            @id @default(cuid())
-  channel     String
-  title       String
-  summary     String            @db.Text
-  details     Json
-  status      String            @default("draft")
-  period      String?
-  actions     MarketingAction[]
-  dataContext  Json?
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+  id           String               @id @default(cuid())
+  channel      String
+  title        String
+  summary      String               @db.Text
+  details      Json
+  status       String               @default("draft")
+  period       String?
+  actions      MarketingAction[]
+  refinements  MarketingRefinement[]
+  dataContext   Json?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
 
   @@index([channel])
   @@index([createdAt])
+}
+
+model MarketingRefinement {
+  id          String            @id @default(cuid())
+  strategyId  String
+  strategy    MarketingStrategy @relation(fields: [strategyId], references: [id], onDelete: Cascade)
+  role        String
+  content     String            @db.Text
+  appliedDiff Json?
+  createdAt   DateTime          @default(now())
+
+  @@index([strategyId, createdAt])
 }
 
 model MarketingAction {
