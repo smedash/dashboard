@@ -844,6 +844,40 @@ model KeywordSuggestion {
   @@index([category])
 }
 
+// Marketing AI — KI-generierte Kanal-Strategien
+model MarketingStrategy {
+  id          String            @id @default(cuid())
+  channel     String
+  title       String
+  summary     String            @db.Text
+  details     Json
+  status      String            @default("draft")
+  period      String?
+  actions     MarketingAction[]
+  dataContext  Json?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([channel])
+  @@index([createdAt])
+}
+
+model MarketingAction {
+  id          String            @id @default(cuid())
+  strategyId  String
+  strategy    MarketingStrategy @relation(fields: [strategyId], references: [id], onDelete: Cascade)
+  title       String
+  description String            @db.Text
+  priority    String            @default("medium")
+  effort      String?
+  impact      String?
+  completed   Boolean           @default(false)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([strategyId])
+}
+
 // Seed-Keywords — importierte Keywords aus dem UBS-Produktportfolio
 model SeedKeyword {
   id          String   @id @default(cuid())
