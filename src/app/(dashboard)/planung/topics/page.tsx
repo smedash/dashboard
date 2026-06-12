@@ -89,15 +89,23 @@ function flattenTopics(node: TopicGraphNode, depth = 0): { label: string; depth:
 
 function flattenForExport(
   node: TopicGraphNode,
-  path: string[] = []
-): { topic: string; ebene: number; pfad: string }[] {
+  path: string[] = [],
+  meta?: { seedKeyword: string; kategorie: string }
+): { "Seed-Keyword"?: string; Kategorie?: string; topic: string; ebene: number; pfad: string }[] {
   const currentPath = [...path, node.label];
-  const rows: { topic: string; ebene: number; pfad: string }[] = [
-    { topic: node.label, ebene: currentPath.length, pfad: currentPath.join(" > ") },
-  ];
+  const row: Record<string, string | number> = {};
+  if (meta) {
+    row["Seed-Keyword"] = meta.seedKeyword;
+    row["Kategorie"] = meta.kategorie;
+  }
+  row["topic"] = node.label;
+  row["ebene"] = currentPath.length;
+  row["pfad"] = currentPath.join(" > ");
+
+  const rows = [row as { "Seed-Keyword"?: string; Kategorie?: string; topic: string; ebene: number; pfad: string }];
   if (node.children) {
     for (const child of node.children) {
-      rows.push(...flattenForExport(child, currentPath));
+      rows.push(...flattenForExport(child, currentPath, meta));
     }
   }
   return rows;
@@ -108,12 +116,12 @@ function TopicContent({ job }: { job: TopicGraphJob }) {
 
   const exportToXlsx = () => {
     if (!job.topic_graph) return;
-    const rows = flattenForExport(job.topic_graph);
-    const ws = XLSX.utils.json_to_sheet(rows, {
-      header: ["topic", "ebene", "pfad"],
-    });
-    ws["!cols"] = [{ wch: 40 }, { wch: 8 }, { wch: 80 }];
-    XLSX.utils.sheet_add_aoa(ws, [["Topic", "Ebene", "Pfad"]], { origin: "A1" });
+    const meta = { seedKeyword: job.parameters.keyword, kategorie: job.category || "" };
+    const rows = flattenForExport(job.topic_graph, [], meta);
+    const header = ["Seed-Keyword", "Kategorie", "topic", "ebene", "pfad"];
+    const ws = XLSX.utils.json_to_sheet(rows, { header });
+    ws["!cols"] = [{ wch: 25 }, { wch: 25 }, { wch: 40 }, { wch: 8 }, { wch: 80 }];
+    XLSX.utils.sheet_add_aoa(ws, [["Seed-Keyword", "Kategorie", "Topic", "Ebene", "Pfad"]], { origin: "A1" });
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Topics");
     XLSX.writeFile(wb, `topics-${job.parameters.keyword.replace(/\s+/g, "-")}.xlsx`);
@@ -324,12 +332,12 @@ export default function TopicsPage() {
 
     succeededJobs.forEach((job) => {
       if (!job.topic_graph) return;
-      const rows = flattenForExport(job.topic_graph);
-      const ws = XLSX.utils.json_to_sheet(rows, {
-        header: ["topic", "ebene", "pfad"],
-      });
-      ws["!cols"] = [{ wch: 40 }, { wch: 8 }, { wch: 80 }];
-      XLSX.utils.sheet_add_aoa(ws, [["Topic", "Ebene", "Pfad"]], { origin: "A1" });
+      const meta = { seedKeyword: job.parameters.keyword, kategorie: job.category || "" };
+      const rows = flattenForExport(job.topic_graph, [], meta);
+      const header = ["Seed-Keyword", "Kategorie", "topic", "ebene", "pfad"];
+      const ws = XLSX.utils.json_to_sheet(rows, { header });
+      ws["!cols"] = [{ wch: 25 }, { wch: 25 }, { wch: 40 }, { wch: 8 }, { wch: 80 }];
+      XLSX.utils.sheet_add_aoa(ws, [["Seed-Keyword", "Kategorie", "Topic", "Ebene", "Pfad"]], { origin: "A1" });
 
       const sheetName = job.parameters.keyword.slice(0, 31).replace(/[\\/*?[\]:]/g, "");
       XLSX.utils.book_append_sheet(wb, ws, sheetName);

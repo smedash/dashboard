@@ -80,9 +80,11 @@ async function fetchTopics(keyword: string, category: string): Promise<string> {
 
   const jobId = createJson.data.id;
 
-  // Finde den erstbesten User fuer die userId
-  const firstUser = await prisma.user.findFirst();
-  const userId = firstUser?.id || "system";
+  // Admin-User fuer die userId (bevorzugt admin_nico_contentking)
+  const adminUser = await prisma.user.findFirst({
+    where: { id: "admin_nico_contentking" },
+  }) || await prisma.user.findFirst();
+  const userId = adminUser?.id || "system";
 
   await prisma.topicGraph.upsert({
     where: { keyword_countryCode_languageCode: { keyword, countryCode: "ch", languageCode: "de" } },

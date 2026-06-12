@@ -263,7 +263,10 @@ export default function KeywordsPage() {
     const wb = XLSX.utils.book_new();
 
     for (const item of history) {
+      if (item.suggestions.length === 0) continue;
       const rows = item.suggestions.map((s) => ({
+        "Seed-Keyword": item.keyword,
+        Kategorie: item.category ?? "",
         Keyword: s.keyword,
         Suchvolumen: s.searchVolume ?? "",
         Difficulty: s.difficulty ?? "",
@@ -284,6 +287,8 @@ export default function KeywordsPage() {
 
   function exportSingleToExcel(item: KeywordSuggestionResult) {
     const rows = item.suggestions.map((s) => ({
+      "Seed-Keyword": item.keyword,
+      Kategorie: item.category ?? "",
       Keyword: s.keyword,
       Suchvolumen: s.searchVolume ?? "",
       Difficulty: s.difficulty ?? "",

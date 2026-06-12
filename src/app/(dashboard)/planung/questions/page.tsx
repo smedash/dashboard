@@ -116,6 +116,8 @@ export default function QuestionsPage() {
 
     for (const item of history) {
       const rows = item.questions.map((q, i) => ({
+        "Seed-Keyword": item.keyword,
+        Kategorie: item.category ?? "",
         Nr: i + 1,
         Frage: q,
       }));
@@ -131,6 +133,8 @@ export default function QuestionsPage() {
 
   function exportSingleToExcel(item: QuestionResult) {
     const rows = item.questions.map((q, i) => ({
+      "Seed-Keyword": item.keyword,
+      Kategorie: item.category ?? "",
       Nr: i + 1,
       Frage: q,
     }));
