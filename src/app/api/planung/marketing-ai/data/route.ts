@@ -1,12 +1,40 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
+import { getGSCSearchAnalytics, getDateRange } from "@/lib/gsc";
 
 export async function GET() {
   try {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Fetch GSC position data for the user's property
+    let gscPositionData: { keyword: string; clicks: number; impressions: number; ctr: number; position: number }[] = [];
+    try {
+      const gscProperty = await prisma.gSCProperty.findFirst({
+        where: { userId: session.user.id },
+        select: { siteUrl: true },
+      });
+      if (gscProperty) {
+        const { startDate, endDate } = getDateRange("3m");
+        const gscData = await getGSCSearchAnalytics(session.user.id, gscProperty.siteUrl, {
+          startDate,
+          endDate,
+          dimensions: ["query"],
+          rowLimit: 500,
+        });
+        gscPositionData = (gscData.rows || []).map((row) => ({
+          keyword: row.keys[0],
+          clicks: row.clicks,
+          impressions: row.impressions,
+          ctr: row.ctr,
+          position: row.position,
+        }));
+      }
+    } catch (e) {
+      console.warn("GSC position data unavailable for marketing AI:", e);
     }
 
     const [
@@ -186,6 +214,47 @@ export async function GET() {
         intentDistribution,
         trendDistribution,
       },
+      gscPositions: (() => {
+        const volumeMap = new Map(keywordVolumes.map((kv) => [kv.keyword.toLowerCase(), kv]));
+
+        const enrich = (kw: typeof gscPositionData[0]) => {
+          const vol = volumeMap.get(kw.keyword.toLowerCase());
+          return {
+            keyword: kw.keyword,
+            position: Math.round(kw.position * 10) / 10,
+            clicks: kw.clicks,
+            impressions: kw.impressions,
+            searchVolume: vol?.searchVolume ?? null,
+            cpc: vol?.cpc ?? null,
+          };
+        };
+
+        return {
+          alreadyRanking: gscPositionData
+            .filter((kw) => kw.position <= 3)
+            .sort((a, b) => a.position - b.position)
+            .slice(0, 30)
+            .map(enrich),
+          optimizationOpportunities: gscPositionData
+            .filter((kw) => {
+              const vol = volumeMap.get(kw.keyword.toLowerCase());
+              const sv = vol?.searchVolume ?? kw.impressions;
+              return kw.position > 3 && kw.position <= 15 && sv >= 50;
+            })
+            .sort((a, b) => b.impressions - a.impressions)
+            .slice(0, 30)
+            .map(enrich),
+          lowHangingFruit: gscPositionData
+            .filter((kw) => {
+              const vol = volumeMap.get(kw.keyword.toLowerCase());
+              const sv = vol?.searchVolume ?? kw.impressions;
+              return kw.position > 3 && kw.position <= 10 && kw.impressions > 100 && sv >= 50;
+            })
+            .sort((a, b) => b.impressions - a.impressions)
+            .slice(0, 15)
+            .map(enrich),
+        };
+      })(),
       seedKeywords: seedByCategory,
     });
   } catch (error) {

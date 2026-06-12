@@ -30,11 +30,25 @@ const CHANNEL_LABELS: Record<Channel, string> = {
 
 const CHANNEL_INSTRUCTIONS: Record<Channel, string> = {
   organic_seo: `Erstelle eine detaillierte Organic-SEO-Strategie. Fokussiere auf:
-- Keyword-Priorisierung basierend auf Suchvolumen, Difficulty und Trend-Richtung
+- Keyword-Priorisierung basierend auf Suchvolumen, Difficulty, Trend-Richtung UND aktueller GSC-Position
 - Content-Cluster und Topic-Empfehlungen basierend auf den Topic-Graphen
-- Quick Wins (niedrige Difficulty, hohes Volumen)
+- Quick Wins: Keywords mit durchschnittlicher Position zwischen 4 und 10, hohen Impressionen aber wenigen Clicks
 - Long-Tail-Keyword-Strategien aus den generierten Fragen
-- Technische SEO-Empfehlungen basierend auf den Daten`,
+- Technische SEO-Empfehlungen basierend auf den Daten
+
+WICHTIGE REGELN für Keyword-Optimierungsempfehlungen:
+- Empfehle NIEMALS die Optimierung von Keywords, die bereits eine durchschnittliche Position von 1 bis 3 haben. Diese ranken bereits optimal.
+- Fokussiere Optimierungsempfehlungen NUR auf Keywords mit durchschnittlicher Position zwischen 4 und 15 — dort liegt das grösste Verbesserungspotenzial.
+- Die "Bereits gut rankende Keywords" (Position 1-3) aus den GSC-Daten dienen nur als Kontext, NICHT als Optimierungsziel.
+- Die "Optimierungschancen" (Position 4-15) sind die primären Kandidaten für Keyword-Optimierungen.
+- "Low Hanging Fruits" (Position 4-10 mit hohen Impressionen) sollten höchste Priorität bekommen.
+- Empfehle NUR Keywords mit mindestens 50 Suchanfragen pro Monat (Suchvolumen ≥ 50). Keywords unter diesem Schwellenwert sind nicht relevant genug.
+
+PFLICHT — Konkrete Keywords in Empfehlungen:
+- Jede Empfehlung (recommendation) MUSS konkrete Keywords mit Daten enthalten, z.B.: "Keyword 'hypothek schweiz' optimieren (Ø Position: 7.2, SV: 1'200/Monat, 890 Impressionen) — Potenzial: +500 Clicks/Monat bei Verbesserung auf Position 3"
+- Jede Massnahme (action) MUSS die konkreten Ziel-Keywords benennen und das geschätzte Traffic-Potenzial quantifizieren.
+- Nenne in den Empfehlungen und Massnahmen IMMER: das Keyword, die aktuelle Ø-Position, das monatliche Suchvolumen, und das geschätzte Potenzial bei Ranking-Verbesserung.
+- Vermeide generische Empfehlungen ohne Keyword-Bezug. Jede Empfehlung muss an echten Daten verankert sein.`,
 
   social_media: `Erstelle eine Social-Media-Strategie. Fokussiere auf:
 - Content-Ideen abgeleitet aus den Top-Keywords und Trending-Themen
@@ -90,7 +104,7 @@ Antworte AUSSCHLIESSLICH mit validem JSON im folgenden Format:
     "goals": ["Ziel 1", "Ziel 2", "Ziel 3"],
     "targetAudience": "Beschreibung der Zielgruppe",
     "keyInsights": ["Insight aus den Daten 1", "Insight 2", "Insight 3"],
-    "recommendations": ["Empfehlung 1", "Empfehlung 2", "Empfehlung 3", "Empfehlung 4", "Empfehlung 5"],
+    "recommendations": ["Für SEO-Strategien: Jede Empfehlung MUSS konkrete Keywords mit Daten enthalten, z.B. 'Keyword X optimieren (Ø Pos: 7, SV: 800/Mt) — Potenzial: +300 Clicks/Mt'", "Empfehlung 2", "Empfehlung 3", "Empfehlung 4", "Empfehlung 5"],
     "timeline": "Empfohlener Umsetzungszeitraum",
     "kpis": ["KPI 1", "KPI 2", "KPI 3"]
   },
@@ -129,10 +143,43 @@ function buildUserPrompt(
   }
 
   if (data.keywords?.topByVolume?.length > 0) {
-    dataContext += `## Top Keywords nach Suchvolumen\n`;
-    const top20 = data.keywords.topByVolume.slice(0, 20);
+    dataContext += `## Top Keywords nach Suchvolumen (nur SV ≥ 50)\n`;
+    const filtered = data.keywords.topByVolume.filter((kw: { searchVolume: number }) => kw.searchVolume >= 50);
+    const top20 = filtered.slice(0, 20);
     for (const kw of top20) {
-      dataContext += `- "${kw.keyword}" (SV: ${kw.searchVolume}, CPC: ${kw.cpc || "n/a"}, Competition: ${kw.competition || "n/a"})\n`;
+      dataContext += `- "${kw.keyword}" (SV: ${kw.searchVolume}/Monat, CPC: ${kw.cpc || "n/a"}, Competition: ${kw.competition || "n/a"})\n`;
+    }
+    dataContext += "\n";
+  }
+
+  if (data.gscPositions?.alreadyRanking?.length > 0) {
+    dataContext += `## Bereits gut rankende Keywords (Position 1-3) — NICHT optimieren!\n`;
+    dataContext += `Diese Keywords ranken bereits optimal. Keine Optimierung empfehlen.\n`;
+    for (const kw of data.gscPositions.alreadyRanking) {
+      const svInfo = kw.searchVolume ? `, SV: ${kw.searchVolume}/Monat` : "";
+      dataContext += `- "${kw.keyword}" (Ø Position: ${kw.position}, Clicks: ${kw.clicks}, Impressionen: ${kw.impressions}${svInfo})\n`;
+    }
+    dataContext += "\n";
+  }
+
+  if (data.gscPositions?.lowHangingFruit?.length > 0) {
+    dataContext += `## Low Hanging Fruits (Position 4-10, SV ≥ 50, hohe Impressionen) — HÖCHSTE PRIORITÄT für Optimierung\n`;
+    dataContext += `Diese Keywords haben das grösste Optimierungspotenzial. Nutze diese für konkrete Empfehlungen mit Keyword, Position, SV und geschätztem Traffic-Potenzial.\n`;
+    for (const kw of data.gscPositions.lowHangingFruit) {
+      const svInfo = kw.searchVolume ? `SV: ${kw.searchVolume}/Monat, ` : "";
+      const cpcInfo = kw.cpc ? `CPC: CHF ${kw.cpc}, ` : "";
+      dataContext += `- "${kw.keyword}" (Ø Position: ${kw.position}, ${svInfo}${cpcInfo}Clicks: ${kw.clicks}, Impressionen: ${kw.impressions})\n`;
+    }
+    dataContext += "\n";
+  }
+
+  if (data.gscPositions?.optimizationOpportunities?.length > 0) {
+    dataContext += `## Weitere Optimierungschancen (Position 4-15, SV ≥ 50) — hier optimieren\n`;
+    dataContext += `Nutze diese Keywords für konkrete Empfehlungen. Nenne immer das Keyword, die Ø-Position, das SV und das geschätzte Potenzial.\n`;
+    for (const kw of data.gscPositions.optimizationOpportunities) {
+      const svInfo = kw.searchVolume ? `SV: ${kw.searchVolume}/Monat, ` : "";
+      const cpcInfo = kw.cpc ? `CPC: CHF ${kw.cpc}, ` : "";
+      dataContext += `- "${kw.keyword}" (Ø Position: ${kw.position}, ${svInfo}${cpcInfo}Clicks: ${kw.clicks}, Impressionen: ${kw.impressions})\n`;
     }
     dataContext += "\n";
   }
