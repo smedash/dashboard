@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import * as XLSX from "xlsx";
 import { TopicSunburstChart } from "@/components/charts";
 import CategorySelector from "@/components/planning/CategorySelector";
+import CategoryTotalsChart from "@/components/planning/CategoryTotalsChart";
 
 interface TopicGraphNode {
   label: string;
@@ -353,6 +354,23 @@ export default function TopicsPage() {
   const jobCategories = [...new Set(jobs.map((j) => j.category).filter(Boolean))] as string[];
   const succeededCount = jobs.filter((j) => j.status === "succeeded").length;
 
+  const categoryChartData = useMemo(() => {
+    const map = new Map<string, { count: number; total: number }>();
+    for (const job of jobs) {
+      if (!job.category) continue;
+      const entry = map.get(job.category) || { count: 0, total: 0 };
+      entry.count++;
+      if (job.status === "succeeded" && job.topic_graph) {
+        entry.total += flattenTopics(job.topic_graph).length;
+      }
+      map.set(job.category, entry);
+    }
+    return Array.from(map.entries()).map(([category, vals]) => ({
+      category,
+      ...vals,
+    }));
+  }, [jobs]);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -453,6 +471,15 @@ export default function TopicsPage() {
           </div>
         )}
       </div>
+
+      {/* Kategorie-Totals Chart */}
+      {categoryChartData.length > 0 && (
+        <CategoryTotalsChart
+          data={categoryChartData}
+          countLabel="Recherchen"
+          totalLabel="Topics"
+        />
+      )}
 
       {/* Kategorie-Filter fuer Ergebnisse */}
       {jobCategories.length > 0 && (

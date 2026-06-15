@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useProperty } from "@/contexts/PropertyContext";
 import * as XLSX from "xlsx";
 import CategorySelector from "@/components/planning/CategorySelector";
+import CategoryTotalsChart from "@/components/planning/CategoryTotalsChart";
 
 interface KeywordSuggestionItem {
   keyword: string;
@@ -304,6 +305,30 @@ export default function KeywordsPage() {
     XLSX.writeFile(wb, `keywords-${item.keyword.replace(/\s+/g, "-")}.xlsx`);
   }
 
+  const categoryChartData = useMemo(() => {
+    const map = new Map<string, { count: number; total: number; inGsc: number; gap: number }>();
+    for (const item of history) {
+      if (!item.category) continue;
+      const entry = map.get(item.category) || { count: 0, total: 0, inGsc: 0, gap: 0 };
+      entry.count++;
+      entry.total += item.totalCount;
+      if (gscLoaded) {
+        for (const s of item.suggestions) {
+          if (isKeywordInGsc(s.keyword)) {
+            entry.inGsc++;
+          } else {
+            entry.gap++;
+          }
+        }
+      }
+      map.set(item.category, entry);
+    }
+    return Array.from(map.entries()).map(([category, vals]) => ({
+      category,
+      ...vals,
+    }));
+  }, [history, gscLoaded, gscKeywords]);
+
   function SortIcon({ field }: { field: typeof sortField }) {
     if (sortField !== field) return null;
     return (
@@ -410,6 +435,19 @@ export default function KeywordsPage() {
           )}
         </button>
       </form>
+
+      {/* Kategorie-Totals Chart */}
+      {categoryChartData.length > 0 && (
+        <CategoryTotalsChart
+          data={categoryChartData}
+          countLabel="Recherchen"
+          totalLabel="Keywords"
+          extraMetrics={gscLoaded ? [
+            { key: "inGsc", label: "In GSC", color: "#10b981" },
+            { key: "gap", label: "Gap", color: "#f97316" },
+          ] : undefined}
+        />
+      )}
 
       {/* GSC Gap-Analyse Filter */}
       {currentResult && gscLoaded && (

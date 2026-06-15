@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 export const maxDuration = 600;
 export const dynamic = "force-dynamic";
 
-const BATCH_SIZE = 1000;
+const BATCH_SIZE = 200;
 const MAX_PROCESSING_MS = 500_000;
 
 export async function GET(request: NextRequest) {

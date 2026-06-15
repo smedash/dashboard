@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import * as XLSX from "xlsx";
 import CategorySelector from "@/components/planning/CategorySelector";
+import CategoryTotalsChart from "@/components/planning/CategoryTotalsChart";
 
 interface QuestionResult {
   id: string;
@@ -145,6 +146,21 @@ export default function QuestionsPage() {
     XLSX.writeFile(wb, `fragen-${item.keyword.replace(/\s+/g, "-")}.xlsx`);
   }
 
+  const categoryChartData = useMemo(() => {
+    const map = new Map<string, { count: number; total: number }>();
+    for (const item of history) {
+      if (!item.category) continue;
+      const entry = map.get(item.category) || { count: 0, total: 0 };
+      entry.count++;
+      entry.total += item.questions.length;
+      map.set(item.category, entry);
+    }
+    return Array.from(map.entries()).map(([category, vals]) => ({
+      category,
+      ...vals,
+    }));
+  }, [history]);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -210,6 +226,15 @@ export default function QuestionsPage() {
           )}
         </button>
       </form>
+
+      {/* Kategorie-Totals Chart */}
+      {categoryChartData.length > 0 && (
+        <CategoryTotalsChart
+          data={categoryChartData}
+          countLabel="Abfragen"
+          totalLabel="Fragen"
+        />
+      )}
 
       {error && (
         <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4">
