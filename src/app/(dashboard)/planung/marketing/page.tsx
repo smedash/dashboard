@@ -14,6 +14,14 @@ interface QueryRow {
   position: number;
 }
 
+interface QueryUrlData {
+  url: string;
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  position: number;
+}
+
 interface TrendData {
   keyword: string;
   trendAvg: number | null;
@@ -86,12 +94,16 @@ export default function MarketingPlanungPage() {
   const [volumeJob, setVolumeJob] = useState<VolumeJob | null>(null);
   const [isStartingVolumeJob, setIsStartingVolumeJob] = useState(false);
   const volumePollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [queryUrlsCache, setQueryUrlsCache] = useState<Map<string, QueryUrlData[]>>(new Map());
+  const [loadingQueryUrls, setLoadingQueryUrls] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     async function fetchData() {
       if (!selectedProperty) return;
 
       setIsLoading(true);
+      setQueryUrlsCache(new Map());
+      setLoadingQueryUrls(new Set());
       try {
         const response = await fetch(
           `/api/gsc/queries?siteUrl=${encodeURIComponent(selectedProperty)}&period=${period}&limit=25000`
@@ -545,6 +557,38 @@ export default function MarketingPlanungPage() {
       setIsStartingVolumeJob(false);
     }
   }, [selectedProperty, data]);
+
+  const fetchQueryUrls = useCallback(async (query: string) => {
+    if (!selectedProperty || queryUrlsCache.has(query)) return;
+
+    setLoadingQueryUrls((prev) => new Set(prev).add(query));
+    try {
+      const response = await fetch(
+        `/api/gsc/query-urls?siteUrl=${encodeURIComponent(selectedProperty)}&period=${period}&query=${encodeURIComponent(query)}`
+      );
+      const result = await response.json();
+      const urls: QueryUrlData[] = (result.data || []).map(
+        (row: { keys: string[]; clicks: number; impressions: number; ctr: number; position: number }) => ({
+          url: row.keys[1],
+          clicks: row.clicks,
+          impressions: row.impressions,
+          ctr: row.ctr,
+          position: row.position,
+        })
+      );
+      urls.sort((a, b) => b.clicks - a.clicks);
+      setQueryUrlsCache((prev) => new Map(prev).set(query, urls));
+    } catch (error) {
+      console.error("Error fetching query URLs:", error);
+      setQueryUrlsCache((prev) => new Map(prev).set(query, []));
+    } finally {
+      setLoadingQueryUrls((prev) => {
+        const next = new Set(prev);
+        next.delete(query);
+        return next;
+      });
+    }
+  }, [selectedProperty, period, queryUrlsCache]);
 
   const exportToXlsx = useCallback(() => {
     if (tableData.length === 0) return;
@@ -1157,6 +1201,79 @@ export default function MarketingPlanungPage() {
           <DataTable
             data={tableData}
             keyField="id"
+            expandableRow={{
+              onExpand: (row) => {
+                const query = String(row.query);
+                if (!queryUrlsCache.has(query) && !loadingQueryUrls.has(query)) {
+                  fetchQueryUrls(query);
+                }
+              },
+              render: (row) => {
+                const query = String(row.query);
+                const urls = queryUrlsCache.get(query);
+                const isUrlLoading = loadingQueryUrls.has(query);
+
+                if (isUrlLoading || !urls) {
+                  return (
+                    <div className="flex items-center gap-2 py-2 pl-2">
+                      <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                      <span className="text-sm text-slate-400">URLs werden geladen...</span>
+                    </div>
+                  );
+                }
+
+                if (urls.length === 0) {
+                  return (
+                    <div className="py-2 pl-2 text-sm text-slate-500">Keine URLs gefunden</div>
+                  );
+                }
+
+                return (
+                  <div className="pl-2">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-slate-500 text-xs uppercase">
+                          <th className="text-left py-1.5 pr-4 font-medium">URL</th>
+                          <th className="text-left py-1.5 pr-4 font-medium">Klicks</th>
+                          <th className="text-left py-1.5 pr-4 font-medium">Impressionen</th>
+                          <th className="text-left py-1.5 pr-4 font-medium">CTR</th>
+                          <th className="text-left py-1.5 font-medium">Position</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {urls.map((u) => {
+                          let displayUrl = u.url;
+                          try {
+                            const parsed = new URL(u.url);
+                            displayUrl = parsed.pathname + parsed.search;
+                          } catch { /* keep full URL */ }
+                          return (
+                            <tr key={u.url} className="border-t border-slate-700/30">
+                              <td className="py-1.5 pr-4">
+                                <a
+                                  href={u.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-400 hover:text-blue-300 hover:underline truncate block max-w-[500px]"
+                                  title={u.url}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {displayUrl}
+                                </a>
+                              </td>
+                              <td className="py-1.5 pr-4 text-blue-400">{u.clicks.toLocaleString("de-DE")}</td>
+                              <td className="py-1.5 pr-4 text-slate-300">{u.impressions.toLocaleString("de-DE")}</td>
+                              <td className="py-1.5 pr-4 text-slate-300">{(u.ctr * 100).toFixed(2)}%</td>
+                              <td className="py-1.5 text-slate-300">{u.position.toFixed(1)}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              },
+            }}
             columns={[
               {
                 key: "query",

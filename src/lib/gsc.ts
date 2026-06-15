@@ -70,6 +70,7 @@ export async function getGSCSearchAnalytics(
     dimensions?: string[];
     rowLimit?: number;
     urlPathFilter?: string;
+    queryFilter?: string;
   }
 ): Promise<GSCData> {
   const searchconsole = await getGSCClient(userId);
@@ -93,24 +94,21 @@ export async function getGSCSearchAnalytics(
     rowLimit: options.rowLimit || 1000,
   };
 
-  // Add URL path filter if provided
+  const filters: Array<{ dimension: string; operator: string; expression: string }> = [];
+
   if (options.urlPathFilter && options.urlPathFilter.trim()) {
-    // Ensure the filter starts with a slash
     const pathFilter = options.urlPathFilter.trim().startsWith("/")
       ? options.urlPathFilter.trim()
       : `/${options.urlPathFilter.trim()}`;
-    
-    requestBody.dimensionFilterGroups = [
-      {
-        filters: [
-          {
-            dimension: "page",
-            operator: "contains",
-            expression: pathFilter,
-          },
-        ],
-      },
-    ];
+    filters.push({ dimension: "page", operator: "contains", expression: pathFilter });
+  }
+
+  if (options.queryFilter) {
+    filters.push({ dimension: "query", operator: "equals", expression: options.queryFilter });
+  }
+
+  if (filters.length > 0) {
+    requestBody.dimensionFilterGroups = [{ filters }];
   }
 
   const response = await searchconsole.searchanalytics.query({

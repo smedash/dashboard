@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, Fragment } from "react";
 
 interface Column<T> {
   key: keyof T | string;
@@ -14,6 +14,10 @@ interface DataTableProps<T> {
   columns: Column<T>[];
   keyField: keyof T;
   pageSize?: number;
+  expandableRow?: {
+    render: (row: T) => React.ReactNode;
+    onExpand?: (row: T) => void;
+  };
 }
 
 export function DataTable<T extends Record<string, unknown>>({
@@ -21,10 +25,24 @@ export function DataTable<T extends Record<string, unknown>>({
   columns,
   keyField,
   pageSize = 50,
+  expandableRow,
 }: DataTableProps<T>) {
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [currentPage, setCurrentPage] = useState(1);
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+
+  const toggleRow = (key: string, row: T) => {
+    const willExpand = !expandedRows.has(key);
+    setExpandedRows((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+    if (willExpand && expandableRow?.onExpand) {
+      expandableRow.onExpand(row);
+    }
+  };
 
   const handleSort = (key: string) => {
     if (sortKey === key) {
@@ -92,6 +110,7 @@ export function DataTable<T extends Record<string, unknown>>({
         <table className="w-full">
           <thead>
             <tr className="border-b border-slate-200 dark:border-slate-700">
+              {expandableRow && <th className="w-8 px-2 py-3" />}
               {columns.map((column) => (
                 <th
                   key={String(column.key)}
@@ -111,20 +130,45 @@ export function DataTable<T extends Record<string, unknown>>({
             </tr>
           </thead>
           <tbody>
-            {paginatedData.map((row) => (
-              <tr
-                key={String(row[keyField])}
-                className="border-b border-slate-200 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors"
-              >
-                {columns.map((column) => (
-                  <td key={String(column.key)} className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">
-                    {column.render
-                      ? column.render(row[column.key as keyof T], row)
-                      : String(row[column.key as keyof T] ?? "")}
-                  </td>
-                ))}
-              </tr>
-            ))}
+            {paginatedData.map((row) => {
+              const rowKey = String(row[keyField]);
+              const isExpanded = expandedRows.has(rowKey);
+              return (
+                <Fragment key={rowKey}>
+                  <tr
+                    onClick={expandableRow ? () => toggleRow(rowKey, row) : undefined}
+                    className={`border-b border-slate-200 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors ${
+                      expandableRow ? "cursor-pointer" : ""
+                    } ${isExpanded ? "bg-slate-50 dark:bg-slate-700/20" : ""}`}
+                  >
+                    {expandableRow && (
+                      <td className="w-8 px-2 py-3 text-center text-slate-400">
+                        <svg
+                          className={`w-4 h-4 inline-block transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`}
+                          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </td>
+                    )}
+                    {columns.map((column) => (
+                      <td key={String(column.key)} className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">
+                        {column.render
+                          ? column.render(row[column.key as keyof T], row)
+                          : String(row[column.key as keyof T] ?? "")}
+                      </td>
+                    ))}
+                  </tr>
+                  {expandableRow && isExpanded && (
+                    <tr className="bg-slate-50/50 dark:bg-slate-800/50">
+                      <td colSpan={columns.length + 1} className="px-4 py-3">
+                        {expandableRow.render(row)}
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
           </tbody>
         </table>
         {data.length === 0 && (
