@@ -1064,7 +1064,15 @@ export default function MarketingPlanungPage() {
       )}
 
       {/* Search/Filters + Intent Pie Chart */}
-      <div className={`grid gap-4 ${intentMap.size > 0 ? "grid-cols-1 lg:grid-cols-[1fr_280px_280px_280px]" : "grid-cols-1"}`}>
+      <div className={`grid gap-4 ${
+        keywordUrlMap.size > 0 && intentMap.size > 0
+          ? "grid-cols-1 xl:grid-cols-[1fr_250px_250px_250px_250px]"
+          : intentMap.size > 0
+          ? "grid-cols-1 lg:grid-cols-[1fr_280px_280px_280px]"
+          : keywordUrlMap.size > 0
+          ? "grid-cols-1 lg:grid-cols-[1fr_280px]"
+          : "grid-cols-1"
+      }`}>
       <div className="bg-slate-800 rounded-xl border border-slate-700 p-4 space-y-4">
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -1240,6 +1248,101 @@ export default function MarketingPlanungPage() {
           </span>
         </div>
       </div>
+
+      {/* URL Category Pie Chart */}
+      {keywordUrlMap.size > 0 && (() => {
+        const CAT_LABELS: Record<string, string> = {
+          mortgages: "Mortgages",
+          accounts: "Accounts",
+          payment: "Payment",
+          pension: "Pension",
+          investments: "Investments",
+          digitalbanking: "Digital Banking",
+        };
+        const CAT_COLORS: Record<string, string> = {
+          mortgages: "#14b8a6",
+          accounts: "#818cf8",
+          payment: "#ec4899",
+          pension: "#f59e0b",
+          investments: "#84cc16",
+          digitalbanking: "#38bdf8",
+          other: "#64748b",
+        };
+
+        const counts: Record<string, number> = {};
+        for (const row of tableData) {
+          const url = row.topUrl as string | null;
+          if (!url) {
+            counts.other = (counts.other || 0) + 1;
+            continue;
+          }
+          let matched = false;
+          for (const [key, pattern] of Object.entries(URL_CATEGORIES)) {
+            if (url.includes(pattern)) {
+              counts[key] = (counts[key] || 0) + 1;
+              matched = true;
+              break;
+            }
+          }
+          if (!matched) {
+            counts.other = (counts.other || 0) + 1;
+          }
+        }
+
+        const total = Object.values(counts).reduce((a, b) => a + b, 0);
+        if (total === 0) return null;
+
+        const segments = [
+          ...Object.keys(URL_CATEGORIES).map((key) => ({
+            label: CAT_LABELS[key],
+            count: counts[key] || 0,
+            color: CAT_COLORS[key],
+          })),
+          { label: "Sonstige", count: counts.other || 0, color: CAT_COLORS.other },
+        ].filter((s) => s.count > 0);
+
+        const radius = 40;
+        const circumference = 2 * Math.PI * radius;
+        let offset = 0;
+
+        return (
+          <div className="bg-slate-800 rounded-xl border border-slate-700 p-4 flex flex-col items-center justify-center">
+            <h3 className="text-sm font-medium text-slate-300 mb-3">URLs nach Kategorie</h3>
+            <svg viewBox="0 0 100 100" className="w-28 h-28 mb-3">
+              {segments.map((seg) => {
+                const pct = seg.count / total;
+                const dashLength = pct * circumference;
+                const dashOffset = -offset * circumference;
+                offset += pct;
+                return (
+                  <circle
+                    key={seg.label}
+                    cx="50" cy="50" r={radius}
+                    fill="none"
+                    stroke={seg.color}
+                    strokeWidth="18"
+                    strokeDasharray={`${dashLength} ${circumference - dashLength}`}
+                    strokeDashoffset={dashOffset}
+                    className="transition-all duration-500"
+                  />
+                );
+              })}
+              <text x="50" y="50" textAnchor="middle" dominantBaseline="middle" className="fill-white text-[10px] font-bold">
+                {total.toLocaleString("de-DE")}
+              </text>
+            </svg>
+            <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+              {segments.map((seg) => (
+                <div key={seg.label} className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: seg.color }} />
+                  <span className="text-slate-400 truncate">{seg.label}</span>
+                  <span className="text-slate-200 font-medium">{Math.round((seg.count / total) * 100)}%</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Intent Pie Chart */}
       {intentMap.size > 0 && (() => {
