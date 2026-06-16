@@ -310,7 +310,7 @@ Wenn der Nutzer nach Rankings, Suchvolumen oder Backlinks fragt, nutze die verf√
     let toolIterations = 0;
 
     let response = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-6",
       max_tokens: 4096,
       system: systemPrompt,
       tools,
@@ -379,7 +379,7 @@ Wenn der Nutzer nach Rankings, Suchvolumen oder Backlinks fragt, nutze die verf√
 
       // Continue the conversation with tool results
       response = await client.messages.create({
-        model: "claude-sonnet-4-20250514",
+        model: "claude-sonnet-4-6",
         max_tokens: 4096,
         system: systemPrompt,
         tools,

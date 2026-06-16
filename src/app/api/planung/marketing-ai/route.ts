@@ -87,8 +87,14 @@ PFLICHT — Konkrete Keywords in Empfehlungen:
 };
 
 function buildSystemPrompt(): string {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const nextYear = currentYear + 1;
+
   return `Du bist ein erfahrener Marketing-Stratege für einen Schweizer Finanzdienstleister (UBS). 
 Du analysierst SEO- und Marketing-Daten und erstellst daraus konkrete, umsetzbare Marketing-Strategien.
+
+Heute ist der ${now.toLocaleDateString("de-CH", { day: "2-digit", month: "long", year: "numeric" })}. Alle Strategien sind zukunftsgerichtet und beziehen sich auf den Zeitraum ${currentYear}/${nextYear}. Verwende NIEMALS ein vergangenes Jahr im Titel oder in Empfehlungen.
 
 Deine Strategien sind:
 - Spezifisch für den Schweizer Markt (DE/FR/IT)
@@ -327,8 +333,8 @@ export async function POST(request: NextRequest) {
     const data = await dataResponse.json();
 
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 4096,
+      model: "claude-sonnet-4-6",
+      max_tokens: 16384,
       messages: [
         {
           role: "user",
@@ -338,8 +344,13 @@ export async function POST(request: NextRequest) {
       system: buildSystemPrompt(),
     });
 
+    if (message.stop_reason === "max_tokens") {
+      console.error("Marketing AI: Response was truncated (max_tokens reached)");
+    }
+
     const textContent = message.content.find((c) => c.type === "text");
     if (!textContent || textContent.type !== "text") {
+      console.error("Marketing AI: No text content in response. Content types:", message.content.map((c) => c.type));
       return NextResponse.json(
         { error: "Keine Antwort von der KI erhalten" },
         { status: 500 }
@@ -368,9 +379,12 @@ export async function POST(request: NextRequest) {
       if (!parsed.title || !parsed.summary || !parsed.actions) {
         throw new Error("Unvollständige Strategie-Struktur");
       }
-    } catch {
+    } catch (parseErr) {
+      console.error("Marketing AI JSON parse error:", parseErr);
+      console.error("Marketing AI raw response (first 500 chars):", textContent.text.substring(0, 500));
+      console.error("Marketing AI stop_reason:", message.stop_reason);
       return NextResponse.json(
-        { error: "KI-Antwort konnte nicht verarbeitet werden", raw: textContent.text },
+        { error: "KI-Antwort konnte nicht verarbeitet werden", raw: textContent.text.substring(0, 1000) },
         { status: 500 }
       );
     }
