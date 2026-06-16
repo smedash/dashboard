@@ -924,6 +924,10 @@ export interface GoogleTrendResult {
 /**
  * Ruft Google Trends Daten fuer Keywords ab via DataForSEO Explore Live.
  * Jedes Keyword wird einzeln abgefragt fuer konsistente 0-100 Scores.
+ *
+ * DataForSEO Google Trends Explore hat hohe Latenz (40-50s typisch, Timeout 120s).
+ * Wir setzen fetch-Timeout auf 130s und retrien bei 500ern (Systemlast).
+ *
  * @see https://docs.dataforseo.com/v3/keywords_data/google_trends/explore/live/
  */
 export async function fetchGoogleTrends(
@@ -938,9 +942,12 @@ export async function fetchGoogleTrends(
   const locationName = options?.location_name ?? "Switzerland";
   const languageName = options?.language_name ?? "German";
   const timeRange = options?.time_range ?? "past_12_months";
-  const concurrency = Math.min(Math.max(options?.concurrency ?? 10, 1), 20);
+  const concurrency = Math.min(Math.max(options?.concurrency ?? 5, 1), 10);
 
-  console.log(`[fetchGoogleTrends] ${keywords.length} Keywords, Location: ${locationName}, Language: ${languageName}`);
+  const FETCH_TIMEOUT_MS = 130_000;
+  const MAX_RETRIES = 2;
+
+  console.log(`[fetchGoogleTrends] ${keywords.length} Keywords, Location: ${locationName}, Language: ${languageName}, Concurrency: ${concurrency}`);
 
   const results: GoogleTrendResult[] = [];
   let nextIndex = 0;
@@ -956,86 +963,128 @@ export async function fetchGoogleTrends(
         continue;
       }
 
-      try {
-        const requestBody = [{
-          keywords: [keyword],
-          location_name: locationName,
-          language_name: languageName,
-          time_range: timeRange,
-          item_types: ["google_trends_graph"],
-        }];
+      let lastError = "";
+      let success = false;
 
-        const response = await fetch(
-          `${DATAFORSEO_API_URL}/keywords_data/google_trends/explore/live`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: getAuthHeader(),
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(requestBody),
+      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          const requestBody = [{
+            keywords: [keyword],
+            location_name: locationName,
+            language_name: languageName,
+            time_range: timeRange,
+            item_types: ["google_trends_graph"],
+          }];
+
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+          let response: Response;
+          try {
+            response = await fetch(
+              `${DATAFORSEO_API_URL}/keywords_data/google_trends/explore/live`,
+              {
+                method: "POST",
+                headers: {
+                  Authorization: getAuthHeader(),
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify(requestBody),
+                signal: controller.signal,
+              }
+            );
+          } finally {
+            clearTimeout(timeout);
           }
-        );
 
-        if (response.status === 429) {
-          await new Promise((r) => setTimeout(r, 5000));
-          nextIndex--;
-          continue;
+          if (response.status === 429) {
+            const wait = Math.min(5000 * 2 ** attempt, 30_000);
+            console.warn(`[fetchGoogleTrends] Rate limited fuer "${keyword}", warte ${wait}ms (Versuch ${attempt + 1}/${MAX_RETRIES + 1})`);
+            await new Promise((r) => setTimeout(r, wait));
+            lastError = "Rate limit";
+            continue;
+          }
+
+          if (response.status >= 500) {
+            const errorText = await response.text().catch(() => "");
+            const wait = Math.min(10_000 * 2 ** attempt, 60_000);
+            console.warn(`[fetchGoogleTrends] HTTP ${response.status} fuer "${keyword}" (Systemlast), Retry in ${wait}ms (Versuch ${attempt + 1}/${MAX_RETRIES + 1}): ${errorText.slice(0, 150)}`);
+            await new Promise((r) => setTimeout(r, wait));
+            lastError = `HTTP ${response.status}`;
+            continue;
+          }
+
+          if (!response.ok) {
+            console.warn(`[fetchGoogleTrends] HTTP ${response.status} fuer "${keyword}"`);
+            lastError = `HTTP ${response.status}`;
+            break;
+          }
+
+          const data = await response.json();
+          const task = data.tasks?.[0];
+
+          if (task?.status_code !== 20000 || !task.result?.[0]?.items?.length) {
+            results.push({ keyword: originalKeyword, trendAvg: null, trendRecent: null, trendDirection: null });
+            success = true;
+            break;
+          }
+
+          const graphItem = task.result[0].items.find(
+            (it: { type: string }) => it.type === "google_trends_graph"
+          );
+
+          if (!graphItem?.data?.length) {
+            results.push({ keyword: originalKeyword, trendAvg: null, trendRecent: null, trendDirection: null });
+            success = true;
+            break;
+          }
+
+          const values: number[] = graphItem.data
+            .map((d: { values: (number | null)[] }) => d.values?.[0])
+            .filter((v: number | null): v is number => v !== null && v !== undefined);
+
+          if (values.length === 0) {
+            results.push({ keyword: originalKeyword, trendAvg: null, trendRecent: null, trendDirection: null });
+            success = true;
+            break;
+          }
+
+          const avg = Math.round(values.reduce((a: number, b: number) => a + b, 0) / values.length);
+          const recentSlice = values.slice(-4);
+          const olderSlice = values.slice(0, 4);
+          const recentAvg = recentSlice.reduce((a, b) => a + b, 0) / recentSlice.length;
+          const olderAvg = olderSlice.length > 0
+            ? olderSlice.reduce((a, b) => a + b, 0) / olderSlice.length
+            : recentAvg;
+
+          const diff = recentAvg - olderAvg;
+          const threshold = Math.max(olderAvg * 0.15, 5);
+          const direction: "up" | "down" | "stable" =
+            diff > threshold ? "up" : diff < -threshold ? "down" : "stable";
+
+          results.push({
+            keyword: originalKeyword,
+            trendAvg: avg,
+            trendRecent: Math.round(recentAvg),
+            trendDirection: direction,
+          });
+          success = true;
+          break;
+        } catch (error) {
+          const isAbort = error instanceof Error && error.name === "AbortError";
+          lastError = isAbort ? `Timeout nach ${FETCH_TIMEOUT_MS / 1000}s` : (error instanceof Error ? error.message : "Unbekannter Fehler");
+
+          if (attempt < MAX_RETRIES) {
+            const wait = Math.min(10_000 * 2 ** attempt, 60_000);
+            console.warn(`[fetchGoogleTrends] ${isAbort ? "Timeout" : "Fehler"} bei "${keyword}", Retry in ${wait}ms (Versuch ${attempt + 1}/${MAX_RETRIES + 1}): ${lastError}`);
+            await new Promise((r) => setTimeout(r, wait));
+          } else {
+            console.error(`[fetchGoogleTrends] Endgueltig fehlgeschlagen fuer "${keyword}" nach ${MAX_RETRIES + 1} Versuchen: ${lastError}`);
+          }
         }
+      }
 
-        if (!response.ok) {
-          console.warn(`[fetchGoogleTrends] HTTP ${response.status} fuer "${keyword}"`);
-          results.push({ keyword: originalKeyword, trendAvg: null, trendRecent: null, trendDirection: null });
-          continue;
-        }
-
-        const data = await response.json();
-        const task = data.tasks?.[0];
-
-        if (task?.status_code !== 20000 || !task.result?.[0]?.items?.length) {
-          results.push({ keyword: originalKeyword, trendAvg: null, trendRecent: null, trendDirection: null });
-          continue;
-        }
-
-        const graphItem = task.result[0].items.find(
-          (it: { type: string }) => it.type === "google_trends_graph"
-        );
-
-        if (!graphItem?.data?.length) {
-          results.push({ keyword: originalKeyword, trendAvg: null, trendRecent: null, trendDirection: null });
-          continue;
-        }
-
-        const values: number[] = graphItem.data
-          .map((d: { values: (number | null)[] }) => d.values?.[0])
-          .filter((v: number | null): v is number => v !== null && v !== undefined);
-
-        if (values.length === 0) {
-          results.push({ keyword: originalKeyword, trendAvg: null, trendRecent: null, trendDirection: null });
-          continue;
-        }
-
-        const avg = Math.round(values.reduce((a: number, b: number) => a + b, 0) / values.length);
-        const recentSlice = values.slice(-4);
-        const olderSlice = values.slice(0, 4);
-        const recentAvg = recentSlice.reduce((a, b) => a + b, 0) / recentSlice.length;
-        const olderAvg = olderSlice.length > 0
-          ? olderSlice.reduce((a, b) => a + b, 0) / olderSlice.length
-          : recentAvg;
-
-        const diff = recentAvg - olderAvg;
-        const threshold = Math.max(olderAvg * 0.15, 5);
-        const direction: "up" | "down" | "stable" =
-          diff > threshold ? "up" : diff < -threshold ? "down" : "stable";
-
-        results.push({
-          keyword: originalKeyword,
-          trendAvg: avg,
-          trendRecent: Math.round(recentAvg),
-          trendDirection: direction,
-        });
-      } catch (error) {
-        console.error(`[fetchGoogleTrends] Fehler bei "${keyword}":`, error);
+      if (!success) {
         results.push({ keyword: originalKeyword, trendAvg: null, trendRecent: null, trendDirection: null });
       }
     }

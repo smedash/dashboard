@@ -19,6 +19,10 @@
     {
       "path": "/api/cron/keyword-volume",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/keyword-urls",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

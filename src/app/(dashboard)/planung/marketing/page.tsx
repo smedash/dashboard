@@ -22,6 +22,22 @@ interface QueryUrlData {
   position: number;
 }
 
+interface CachedUrlData {
+  url: string;
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  position: number;
+}
+
+interface KeywordUrlJob {
+  id: string;
+  status: "pending" | "processing" | "completed" | "failed";
+  totalKeywords: number;
+  processedKeywords: number;
+  createdAt: string;
+}
+
 interface TrendData {
   keyword: string;
   trendAvg: number | null;
@@ -81,6 +97,7 @@ export default function MarketingPlanungPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [intentFilter, setIntentFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [urlCategoryFilter, setUrlCategoryFilter] = useState<string>("all");
   const [trendDirectionFilter, setTrendDirectionFilter] = useState<string>("all");
   const [trendsMap, setTrendsMap] = useState<Map<string, TrendData>>(new Map());
   const [trendJob, setTrendJob] = useState<TrendJob | null>(null);
@@ -96,6 +113,10 @@ export default function MarketingPlanungPage() {
   const volumePollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [queryUrlsCache, setQueryUrlsCache] = useState<Map<string, QueryUrlData[]>>(new Map());
   const [loadingQueryUrls, setLoadingQueryUrls] = useState<Set<string>>(new Set());
+  const [keywordUrlMap, setKeywordUrlMap] = useState<Map<string, CachedUrlData[]>>(new Map());
+  const [keywordUrlJob, setKeywordUrlJob] = useState<KeywordUrlJob | null>(null);
+  const [isStartingKeywordUrlJob, setIsStartingKeywordUrlJob] = useState(false);
+  const keywordUrlPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -213,6 +234,37 @@ export default function MarketingPlanungPage() {
     }
   }, []);
 
+  const loadCachedKeywordUrls = useCallback(async (keywords: string[]) => {
+    if (!selectedProperty || keywords.length === 0) return;
+
+    const batchSize = 2000;
+    const newMap = new Map<string, CachedUrlData[]>();
+
+    for (let i = 0; i < keywords.length; i += batchSize) {
+      const batch = keywords.slice(i, i + batchSize);
+      try {
+        const response = await fetch("/api/keyword-urls", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ keywords: batch, property: selectedProperty, period }),
+        });
+        if (!response.ok) continue;
+        const result = await response.json();
+        if (result.data) {
+          for (const [key, value] of Object.entries(result.data)) {
+            newMap.set(key, value as CachedUrlData[]);
+          }
+        }
+      } catch {
+        console.error("Error loading cached keyword URLs batch");
+      }
+    }
+
+    if (newMap.size > 0) {
+      setKeywordUrlMap(newMap);
+    }
+  }, [selectedProperty, period]);
+
   const checkVolumeJobStatus = useCallback(async (opts?: { loadVolumes?: boolean }) => {
     if (!selectedProperty) return null;
     try {
@@ -235,6 +287,29 @@ export default function MarketingPlanungPage() {
       return null;
     }
   }, [selectedProperty, data, loadCachedVolumes]);
+
+  const checkKeywordUrlJobStatus = useCallback(async (opts?: { loadUrls?: boolean }) => {
+    if (!selectedProperty) return null;
+    try {
+      const response = await fetch(
+        `/api/keyword-urls/jobs?property=${encodeURIComponent(selectedProperty)}`
+      );
+      if (!response.ok) return null;
+      const result = await response.json();
+      const job = result.job as KeywordUrlJob | null;
+      setKeywordUrlJob(job);
+
+      if (opts?.loadUrls && job?.status === "completed" && data.length > 0) {
+        const keywords = data.map((r) => r.keys[0].toLowerCase().trim());
+        loadCachedKeywordUrls(keywords);
+      }
+
+      return job;
+    } catch {
+      console.error("Error checking keyword-url job status");
+      return null;
+    }
+  }, [selectedProperty, data, loadCachedKeywordUrls]);
 
   const checkIntentJobStatus = useCallback(async (opts?: { loadIntents?: boolean }) => {
     if (!selectedProperty) return null;
@@ -287,8 +362,9 @@ export default function MarketingPlanungPage() {
       checkJobStatus({ loadTrends: true });
       checkIntentJobStatus({ loadIntents: true });
       checkVolumeJobStatus({ loadVolumes: true });
+      checkKeywordUrlJobStatus({ loadUrls: true });
     }
-  }, [selectedProperty, data.length, checkJobStatus, checkIntentJobStatus, checkVolumeJobStatus]);
+  }, [selectedProperty, data.length, checkJobStatus, checkIntentJobStatus, checkVolumeJobStatus, checkKeywordUrlJobStatus]);
 
   useEffect(() => {
     if (trendJob?.status === "pending" || trendJob?.status === "processing") {
@@ -376,6 +452,34 @@ export default function MarketingPlanungPage() {
     };
   }, [volumeJob?.status, checkVolumeJobStatus]);
 
+  useEffect(() => {
+    if (keywordUrlJob?.status === "pending" || keywordUrlJob?.status === "processing") {
+      if (!keywordUrlPollRef.current) {
+        keywordUrlPollRef.current = setInterval(async () => {
+          const job = await checkKeywordUrlJobStatus({ loadUrls: true });
+          if (!job || job.status === "completed" || job.status === "failed") {
+            if (keywordUrlPollRef.current) {
+              clearInterval(keywordUrlPollRef.current);
+              keywordUrlPollRef.current = null;
+            }
+          }
+        }, 15_000);
+      }
+    } else {
+      if (keywordUrlPollRef.current) {
+        clearInterval(keywordUrlPollRef.current);
+        keywordUrlPollRef.current = null;
+      }
+    }
+
+    return () => {
+      if (keywordUrlPollRef.current) {
+        clearInterval(keywordUrlPollRef.current);
+        keywordUrlPollRef.current = null;
+      }
+    };
+  }, [keywordUrlJob?.status, checkKeywordUrlJobStatus]);
+
   const validTrendsCount = useMemo(() => {
     let count = 0;
     for (const t of trendsMap.values()) {
@@ -383,6 +487,15 @@ export default function MarketingPlanungPage() {
     }
     return count;
   }, [trendsMap]);
+
+  const URL_CATEGORIES: Record<string, string> = {
+    mortgages: "/mortgages-and-financing",
+    accounts: "/accounts-and-cards",
+    payment: "/payments",
+    pension: "/pension",
+    investments: "/investments",
+    digitalbanking: "/digital-banking",
+  };
 
   const CATEGORY_KEYWORDS: Record<string, string[]> = {
     beratung: ["termin", "vereinbaren", "kontakt", "beratungsgespräch", "terminvereinbarung", "telefon", "email"],
@@ -429,6 +542,11 @@ export default function MarketingPlanungPage() {
           const keywords = CATEGORY_KEYWORDS[categoryFilter];
           if (keywords && !keywords.some((kw) => queryLower.includes(kw))) return false;
         }
+        if (urlCategoryFilter !== "all") {
+          const urlPattern = URL_CATEGORIES[urlCategoryFilter];
+          const topUrl = keywordUrlMap.get(queryLower)?.[0]?.url ?? "";
+          if (!topUrl || !topUrl.includes(urlPattern)) return false;
+        }
         if (trendDirectionFilter !== "all") {
           const trend = trendsMap.get(queryLower);
           const hasRealData = trend && (trend.trendAvg !== null || trend.trendRecent !== null);
@@ -459,9 +577,10 @@ export default function MarketingPlanungPage() {
           intentProbability: intent?.intentProbability ?? null,
           searchVolume: volume?.searchVolume ?? null,
           cpc: volume?.cpc ?? null,
+          topUrl: keywordUrlMap.get(normalizedKey)?.[0]?.url ?? null,
         };
       });
-  }, [data, excludeBrand, brandFilter, searchQuery, trendsMap, intentMap, volumeMap, intentFilter, categoryFilter, trendDirectionFilter]);
+  }, [data, excludeBrand, brandFilter, searchQuery, trendsMap, intentMap, volumeMap, keywordUrlMap, intentFilter, categoryFilter, urlCategoryFilter, trendDirectionFilter]);
 
   const startTrendJob = useCallback(async () => {
     if (!selectedProperty || data.length === 0) return;
@@ -558,6 +677,35 @@ export default function MarketingPlanungPage() {
     }
   }, [selectedProperty, data]);
 
+  const startKeywordUrlJob = useCallback(async () => {
+    if (!selectedProperty || data.length === 0) return;
+
+    setIsStartingKeywordUrlJob(true);
+    try {
+      const response = await fetch("/api/keyword-urls/jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          property: selectedProperty,
+          period,
+        }),
+      });
+
+      const result = await response.json();
+      if (response.ok) {
+        setKeywordUrlJob(result.job);
+      } else {
+        if (result.job) setKeywordUrlJob(result.job);
+        alert(result.error || "Fehler beim Starten des Jobs");
+      }
+    } catch (error) {
+      console.error("Error starting keyword-url job:", error);
+      alert("Fehler beim Starten des Keyword-URL-Jobs");
+    } finally {
+      setIsStartingKeywordUrlJob(false);
+    }
+  }, [selectedProperty, data, period]);
+
   const fetchQueryUrls = useCallback(async (query: string) => {
     if (!selectedProperty || queryUrlsCache.has(query)) return;
 
@@ -596,6 +744,7 @@ export default function MarketingPlanungPage() {
     const hasTrends = trendsMap.size > 0;
     const hasIntents = intentMap.size > 0;
     const hasVolumes = volumeMap.size > 0;
+    const hasUrls = keywordUrlMap.size > 0;
     const rows = tableData.map((r) => {
       const base: Record<string, unknown> = {
         Suchanfrage: r.query,
@@ -607,6 +756,15 @@ export default function MarketingPlanungPage() {
       if (hasVolumes) {
         base["Suchvolumen"] = r.searchVolume ?? "";
         base["CPC (CHF)"] = r.cpc ?? "";
+      }
+      if (hasUrls) {
+        base["Top URL"] = r.topUrl ?? "";
+        const urlCat = Object.entries(URL_CATEGORIES).find(
+          ([, pattern]) => r.topUrl?.includes(pattern)
+        );
+        base["URL-Kategorie"] = urlCat
+          ? { mortgages: "Mortgages", accounts: "Accounts & Cards", payment: "Payment", pension: "Pension", investments: "Investments", digitalbanking: "Digital Banking" }[urlCat[0]] ?? ""
+          : "";
       }
       if (hasIntents) {
         base["Search Intent"] = r.intentLabel ?? "";
@@ -635,7 +793,7 @@ export default function MarketingPlanungPage() {
     })();
     const stamp = new Date().toISOString().slice(0, 10);
     XLSX.writeFile(wb, `gsc-suchanfragen_${host}_${period}_${stamp}.xlsx`);
-  }, [tableData, selectedProperty, period, trendsMap, intentMap, volumeMap]);
+  }, [tableData, selectedProperty, period, trendsMap, intentMap, volumeMap, keywordUrlMap]);
 
   const jobIsActive = trendJob?.status === "pending" || trendJob?.status === "processing";
   const jobProgress = jobIsActive && trendJob
@@ -648,6 +806,10 @@ export default function MarketingPlanungPage() {
   const volumeJobIsActive = volumeJob?.status === "pending" || volumeJob?.status === "processing";
   const volumeJobProgress = volumeJobIsActive && volumeJob
     ? Math.round((volumeJob.processedKeywords / volumeJob.totalKeywords) * 100)
+    : null;
+  const keywordUrlJobIsActive = keywordUrlJob?.status === "pending" || keywordUrlJob?.status === "processing";
+  const keywordUrlJobProgress = keywordUrlJobIsActive && keywordUrlJob && keywordUrlJob.totalKeywords > 0
+    ? Math.round((keywordUrlJob.processedKeywords / keywordUrlJob.totalKeywords) * 100)
     : null;
 
   return (
@@ -703,6 +865,22 @@ export default function MarketingPlanungPage() {
               </svg>
             )}
             Suchvolumen &amp; CPC
+          </button>
+          <button
+            type="button"
+            onClick={startKeywordUrlJob}
+            disabled={isLoading || isStartingKeywordUrlJob || keywordUrlJobIsActive || data.length === 0}
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-rose-600 bg-rose-700 text-rose-100 hover:bg-rose-600 disabled:opacity-50 disabled:pointer-events-none transition-colors"
+            title="Keyword-URL-Mapping fuer alle Keywords aus GSC laden und persistent speichern. Laeuft im Hintergrund."
+          >
+            {isStartingKeywordUrlJob || keywordUrlJobIsActive ? (
+              <div className="w-4 h-4 border-2 border-rose-300 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              </svg>
+            )}
+            Keyword URLs
           </button>
           <button
             type="button"
@@ -842,6 +1020,49 @@ export default function MarketingPlanungPage() {
         </div>
       )}
 
+      {/* Keyword URL Job Status Banner */}
+      {keywordUrlJobIsActive && keywordUrlJob && (
+        <div className="bg-rose-900/50 border border-rose-700 rounded-xl p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-3">
+              <div className="w-5 h-5 border-2 border-rose-400 border-t-transparent rounded-full animate-spin" />
+              <span className="text-sm font-medium text-rose-200">
+                Keyword-URL-Mapping wird geladen...
+              </span>
+            </div>
+            {keywordUrlJobProgress !== null && (
+              <span className="text-sm text-rose-300">
+                {keywordUrlJob.processedKeywords.toLocaleString("de-DE")} / {keywordUrlJob.totalKeywords.toLocaleString("de-DE")} ({keywordUrlJobProgress}%)
+              </span>
+            )}
+          </div>
+          <div className="w-full bg-rose-950 rounded-full h-2">
+            <div
+              className="bg-rose-500 h-2 rounded-full transition-all duration-500"
+              style={{ width: `${keywordUrlJobProgress ?? 0}%` }}
+            />
+          </div>
+          <p className="text-xs text-rose-400 mt-2">
+            Laeuft im Hintergrund — du kannst die Seite verlassen.
+          </p>
+        </div>
+      )}
+
+      {keywordUrlJob?.status === "completed" && keywordUrlMap.size > 0 && (
+        <div className="bg-rose-900/30 border border-rose-800 rounded-xl px-4 py-3 flex items-center justify-between">
+          <span className="text-sm text-rose-300">
+            Keyword-URL-Mapping geladen: {keywordUrlMap.size.toLocaleString("de-DE")} Keywords mit URL-Zuordnung
+          </span>
+          <button
+            onClick={startKeywordUrlJob}
+            disabled={isLoading || isStartingKeywordUrlJob || data.length === 0}
+            className="text-xs text-rose-400 hover:text-rose-200 underline disabled:opacity-50"
+          >
+            Neu laden
+          </button>
+        </div>
+      )}
+
       {/* Search/Filters + Intent Pie Chart */}
       <div className={`grid gap-4 ${intentMap.size > 0 ? "grid-cols-1 lg:grid-cols-[1fr_280px_280px_280px]" : "grid-cols-1"}`}>
       <div className="bg-slate-800 rounded-xl border border-slate-700 p-4 space-y-4">
@@ -946,6 +1167,40 @@ export default function MarketingPlanungPage() {
               ))}
             </div>
           </div>
+          {keywordUrlMap.size > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-slate-300">URL-Kategorie:</span>
+              <div className="flex items-center gap-[5px]">
+                {[
+                  { value: "all", label: "Alle", cls: "border-slate-500 text-slate-300 hover:bg-slate-600" },
+                  { value: "mortgages", label: "Mortgages", cls: "border-teal-500/50 text-teal-300 hover:bg-teal-500/20" },
+                  { value: "accounts", label: "Accounts & Cards", cls: "border-indigo-500/50 text-indigo-300 hover:bg-indigo-500/20" },
+                  { value: "payment", label: "Payment", cls: "border-pink-500/50 text-pink-300 hover:bg-pink-500/20" },
+                  { value: "pension", label: "Pension", cls: "border-amber-500/50 text-amber-300 hover:bg-amber-500/20" },
+                  { value: "investments", label: "Investments", cls: "border-lime-500/50 text-lime-300 hover:bg-lime-500/20" },
+                  { value: "digitalbanking", label: "Digital Banking", cls: "border-sky-500/50 text-sky-300 hover:bg-sky-500/20" },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setUrlCategoryFilter(opt.value)}
+                    className={`px-2.5 py-1 text-xs font-semibold rounded border transition-colors ${opt.cls} ${
+                      urlCategoryFilter === opt.value
+                        ? "ring-2 ring-offset-1 ring-offset-slate-800 ring-blue-500 bg-slate-600"
+                        : ""
+                    }`}
+                    title={
+                      opt.value === "all"
+                        ? "Alle anzeigen"
+                        : `Nur Keywords deren Top-URL "${URL_CATEGORIES[opt.value]}" enthält`
+                    }
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           {trendsMap.size > 0 && (
             <div className="flex items-center gap-2">
               <span className="text-sm text-slate-300">Trend:</span>
@@ -1204,16 +1459,20 @@ export default function MarketingPlanungPage() {
             expandableRow={{
               onExpand: (row) => {
                 const query = String(row.query);
+                const normalizedQuery = query.toLowerCase().trim();
+                if (keywordUrlMap.has(normalizedQuery)) return;
                 if (!queryUrlsCache.has(query) && !loadingQueryUrls.has(query)) {
                   fetchQueryUrls(query);
                 }
               },
               render: (row) => {
                 const query = String(row.query);
-                const urls = queryUrlsCache.get(query);
+                const normalizedQuery = query.toLowerCase().trim();
+                const cachedUrls = keywordUrlMap.get(normalizedQuery);
+                const urls = cachedUrls || queryUrlsCache.get(query);
                 const isUrlLoading = loadingQueryUrls.has(query);
 
-                if (isUrlLoading || !urls) {
+                if (!cachedUrls && (isUrlLoading || !urls)) {
                   return (
                     <div className="flex items-center gap-2 py-2 pl-2">
                       <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
@@ -1222,7 +1481,7 @@ export default function MarketingPlanungPage() {
                   );
                 }
 
-                if (urls.length === 0) {
+                if (!urls || urls.length === 0) {
                   return (
                     <div className="py-2 pl-2 text-sm text-slate-500">Keine URLs gefunden</div>
                   );
@@ -1329,6 +1588,36 @@ export default function MarketingPlanungPage() {
                         const v = value as number | null;
                         if (v === null || v === undefined) return <span className="text-slate-500">–</span>;
                         return <span className="text-amber-300">{v.toFixed(2)} CHF</span>;
+                      },
+                    },
+                  ]
+                : []),
+              ...(keywordUrlMap.size > 0
+                ? [
+                    {
+                      key: "topUrl" as const,
+                      header: "Top URL",
+                      sortable: true,
+                      render: (value: unknown) => {
+                        const url = value as string | null;
+                        if (!url) return <span className="text-slate-500">–</span>;
+                        let displayPath = url;
+                        try {
+                          const parsed = new URL(url);
+                          displayPath = parsed.pathname + parsed.search;
+                        } catch { /* keep full */ }
+                        return (
+                          <a
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-rose-400 hover:text-rose-300 hover:underline truncate block max-w-[250px]"
+                            title={url}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {displayPath}
+                          </a>
+                        );
                       },
                     },
                   ]

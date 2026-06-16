@@ -37,6 +37,7 @@ model User {
   googleTrendJobs   GoogleTrendJob[]
   searchIntentJobs  SearchIntentJob[]
   keywordVolumeJobs KeywordVolumeJob[]
+  keywordUrlJobs    KeywordUrlJob[]
   topicGraphs       TopicGraph[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
@@ -889,6 +890,43 @@ model MarketingAction {
   updatedAt   DateTime          @updatedAt
 
   @@index([strategyId])
+}
+
+// Keyword-URL Mapping — gecachte GSC Query+Page Daten (Keyword → URL Zuordnung)
+model KeywordUrl {
+  id          String   @id @default(cuid())
+  keyword     String
+  url         String   @db.Text
+  property    String
+  period      String   @default("28d")
+  clicks      Int      @default(0)
+  impressions Int      @default(0)
+  ctr         Float    @default(0)
+  position    Float    @default(0)
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+
+  @@unique([keyword, url, property, period])
+  @@index([keyword, property, period])
+  @@index([property, period])
+}
+
+// Keyword-URL Mapping — Background-Job
+model KeywordUrlJob {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status            String   @default("pending") // pending, processing, completed, failed
+  property          String
+  period            String   @default("28d")
+  totalKeywords     Int      @default(0)
+  processedKeywords Int      @default(0)
+  error             String?  @db.Text
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([status])
+  @@index([userId])
 }
 
 // Seed-Keywords — importierte Keywords aus dem UBS-Produktportfolio

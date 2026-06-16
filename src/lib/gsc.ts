@@ -69,6 +69,7 @@ export async function getGSCSearchAnalytics(
     endDate: string;
     dimensions?: string[];
     rowLimit?: number;
+    startRow?: number;
     urlPathFilter?: string;
     queryFilter?: string;
   }
@@ -80,6 +81,7 @@ export async function getGSCSearchAnalytics(
     endDate: string;
     dimensions?: string[];
     rowLimit?: number;
+    startRow?: number;
     dimensionFilterGroups?: Array<{
       filters: Array<{
         dimension: string;
@@ -93,6 +95,10 @@ export async function getGSCSearchAnalytics(
     dimensions: options.dimensions || ["query"],
     rowLimit: options.rowLimit || 1000,
   };
+
+  if (options.startRow !== undefined) {
+    requestBody.startRow = options.startRow;
+  }
 
   const filters: Array<{ dimension: string; operator: string; expression: string }> = [];
 

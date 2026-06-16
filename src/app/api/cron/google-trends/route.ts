@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
           const results = await fetchGoogleTrends(toFetch, {
             location_name: job.location,
             language_name: job.language,
-            concurrency: 20,
+            concurrency: 3,
           });
 
           const validResults = results.filter((r) => r.trendAvg !== null || r.trendRecent !== null);
