@@ -1,5 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import * as path from "path";
 import * as fs from "fs";
 
@@ -20,9 +20,24 @@ async function importSeedKeywords(filePath: string) {
   }
 
   console.log(`📂 Lese Excel-Datei: ${filePath}`);
-  const wb = XLSX.readFile(filePath);
-  const ws = wb.Sheets[wb.SheetNames[0]];
-  const rows = XLSX.utils.sheet_to_json<ExcelRow>(ws);
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.readFile(filePath);
+  const ws = wb.worksheets[0];
+  const headerRow = ws.getRow(1);
+  const headers: string[] = [];
+  headerRow.eachCell((cell, colNumber) => {
+    headers[colNumber - 1] = String(cell.value ?? "");
+  });
+  const rows: ExcelRow[] = [];
+  ws.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) return;
+    const obj: Record<string, string> = {};
+    row.eachCell((cell, colNumber) => {
+      const key = headers[colNumber - 1];
+      if (key) obj[key] = String(cell.value ?? "");
+    });
+    if (Object.keys(obj).length > 0) rows.push(obj as unknown as ExcelRow);
+  });
 
   console.log(`📊 ${rows.length} Zeilen gefunden\n`);
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from "react";
-import * as XLSX from "xlsx";
+import { downloadExcel } from "@/lib/excel-export";
 import {
   KEYWORD_MAPPING_GSC_SITE_URL,
   type GscPageMetrics,
@@ -1384,16 +1384,14 @@ export default function KeywordMappingPage() {
       };
     });
 
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Keyword-Mapping");
-    ws["!cols"] = [
-      { wch: 40 }, { wch: 60 }, { wch: 6 }, { wch: 16 }, { wch: 14 },
-      { wch: 40 }, { wch: 60 }, { wch: 30 }, { wch: 50 }, { wch: 50 },
-      { wch: 12 }, { wch: 14 }, { wch: 10 }, { wch: 12 }, { wch: 40 },
-    ];
     const stamp = new Date().toISOString().slice(0, 10);
-    XLSX.writeFile(wb, `keyword-mapping_${stamp}.xlsx`);
+    downloadExcel(`keyword-mapping_${stamp}.xlsx`, [
+      {
+        name: "Keyword-Mapping",
+        rows,
+        columnWidths: [40, 60, 6, 16, 14, 40, 60, 30, 50, 50, 12, 14, 10, 12, 40],
+      },
+    ]);
   }, [filteredArticles, analysisData, gscByPath, filteredOverlaps]);
 
   const runExport = useCallback(async (mode: "quick" | "cached" | "live") => {

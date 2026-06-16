@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useProperty } from "@/contexts/PropertyContext";
-import * as XLSX from "xlsx";
+import { downloadExcel } from "@/lib/excel-export";
 import CategorySelector from "@/components/planning/CategorySelector";
 import CategoryTotalsChart from "@/components/planning/CategoryTotalsChart";
 
@@ -261,29 +261,25 @@ export default function KeywordsPage() {
   function exportToExcel() {
     if (history.length === 0) return;
 
-    const wb = XLSX.utils.book_new();
-
-    for (const item of history) {
-      if (item.suggestions.length === 0) continue;
-      const rows = item.suggestions.map((s) => ({
-        "Seed-Keyword": item.keyword,
-        Kategorie: item.category ?? "",
-        Keyword: s.keyword,
-        Suchvolumen: s.searchVolume ?? "",
-        Difficulty: s.difficulty ?? "",
-        CPC: s.cpc ?? "",
-        Competition: s.competition != null ? (s.competition * 100).toFixed(0) + "%" : "",
-        "Search Intent": s.searchIntents?.join(", ") ?? "",
-        "GSC Status": gscLoaded ? (isKeywordInGsc(s.keyword) ? "In GSC" : "Gap") : "",
+    const sheets = history
+      .filter((item) => item.suggestions.length > 0)
+      .map((item) => ({
+        name: item.keyword.slice(0, 31).replace(/[/\\?*[\]]/g, ""),
+        rows: item.suggestions.map((s) => ({
+          "Seed-Keyword": item.keyword,
+          Kategorie: item.category ?? "",
+          Keyword: s.keyword,
+          Suchvolumen: s.searchVolume ?? "",
+          Difficulty: s.difficulty ?? "",
+          CPC: s.cpc ?? "",
+          Competition: s.competition != null ? (s.competition * 100).toFixed(0) + "%" : "",
+          "Search Intent": s.searchIntents?.join(", ") ?? "",
+          "GSC Status": gscLoaded ? (isKeywordInGsc(s.keyword) ? "In GSC" : "Gap") : "",
+        })),
       }));
 
-      const ws = XLSX.utils.json_to_sheet(rows);
-      const sheetName = item.keyword.slice(0, 31).replace(/[/\\?*[\]]/g, "");
-      XLSX.utils.book_append_sheet(wb, ws, sheetName);
-    }
-
     const date = new Date().toISOString().slice(0, 10);
-    XLSX.writeFile(wb, `keyword-research-${date}.xlsx`);
+    downloadExcel(`keyword-research-${date}.xlsx`, sheets);
   }
 
   function exportSingleToExcel(item: KeywordSuggestionResult) {
@@ -299,10 +295,9 @@ export default function KeywordsPage() {
       "GSC Status": gscLoaded ? (isKeywordInGsc(s.keyword) ? "In GSC" : "Gap") : "",
     }));
 
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Keywords");
-    XLSX.writeFile(wb, `keywords-${item.keyword.replace(/\s+/g, "-")}.xlsx`);
+    downloadExcel(`keywords-${item.keyword.replace(/\s+/g, "-")}.xlsx`, [
+      { name: "Keywords", rows },
+    ]);
   }
 
   const categoryChartData = useMemo(() => {

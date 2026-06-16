@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import * as XLSX from "xlsx";
+import { downloadExcel } from "@/lib/excel-export";
 import { DataTable } from "@/components/ui/DataTable";
 import { PeriodSelector } from "@/components/ui/PeriodSelector";
 import { useProperty } from "@/contexts/PropertyContext";
@@ -780,10 +780,6 @@ export default function MarketingPlanungPage() {
       return base;
     });
 
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Suchanfragen");
-
     const host = (() => {
       try {
         return new URL(selectedProperty || "").hostname.replace(/[^a-zA-Z0-9._-]/g, "_") || "property";
@@ -792,7 +788,9 @@ export default function MarketingPlanungPage() {
       }
     })();
     const stamp = new Date().toISOString().slice(0, 10);
-    XLSX.writeFile(wb, `gsc-suchanfragen_${host}_${period}_${stamp}.xlsx`);
+    downloadExcel(`gsc-suchanfragen_${host}_${period}_${stamp}.xlsx`, [
+      { name: "Suchanfragen", rows },
+    ]);
   }, [tableData, selectedProperty, period, trendsMap, intentMap, volumeMap, keywordUrlMap]);
 
   const jobIsActive = trendJob?.status === "pending" || trendJob?.status === "processing";

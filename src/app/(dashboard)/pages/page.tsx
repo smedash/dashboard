@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
-import * as XLSX from "xlsx";
+import { downloadExcel } from "@/lib/excel-export";
 import { DataTable } from "@/components/ui/DataTable";
 import { PeriodSelector } from "@/components/ui/PeriodSelector";
 import { useProperty } from "@/contexts/PropertyContext";
@@ -117,10 +117,6 @@ export default function PagesPage() {
       Position: Math.round(r.position * 10) / 10,
     }));
 
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Seiten");
-
     const host = (() => {
       try {
         return new URL(selectedProperty || "").hostname.replace(/[^a-zA-Z0-9._-]/g, "_") || "property";
@@ -129,7 +125,9 @@ export default function PagesPage() {
       }
     })();
     const stamp = new Date().toISOString().slice(0, 10);
-    XLSX.writeFile(wb, `gsc-seiten_${host}_${period}_${stamp}.xlsx`);
+    downloadExcel(`gsc-seiten_${host}_${period}_${stamp}.xlsx`, [
+      { name: "Seiten", rows },
+    ]);
   }, [tableData, selectedProperty, period]);
 
   return (

@@ -8,7 +8,7 @@ import {
   titleMatchKey,
 } from "@/lib/editorial-text-encoding";
 import { languageFromUrlPath } from "@/lib/url-language";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
 const VALID_CATEGORIES = [
   "Mortgages", "Accounts&Cards", "Investing", "Pension", "Digital Banking",
@@ -87,11 +87,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const workbook = XLSX.read(buffer, { type: "buffer", codepage: 65001 });
-    const sheetName = workbook.SheetNames[0];
-    const sheet = workbook.Sheets[sheetName];
-    const rows = XLSX.utils.sheet_to_json<Record<string, string>>(sheet);
+    const arrayBuffer = await file.arrayBuffer();
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(arrayBuffer);
+    const sheet = workbook.worksheets[0];
+    if (!sheet) {
+      return NextResponse.json({ error: "No worksheet found" }, { status: 400 });
+    }
+    const headerRow = sheet.getRow(1);
+    const headers: string[] = [];
+    headerRow.eachCell((cell, colNumber) => {
+      headers[colNumber - 1] = String(cell.value ?? "");
+    });
+    const rows: Record<string, string>[] = [];
+    sheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return;
+      const obj: Record<string, string> = {};
+      row.eachCell((cell, colNumber) => {
+        const key = headers[colNumber - 1];
+        if (key) obj[key] = String(cell.value ?? "");
+      });
+      if (Object.keys(obj).length > 0) rows.push(obj);
+    });
 
     if (rows.length === 0) {
       return NextResponse.json({ error: "File contains no data" }, { status: 400 });

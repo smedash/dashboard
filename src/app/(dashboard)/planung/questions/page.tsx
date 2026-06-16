@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
-import * as XLSX from "xlsx";
+import { downloadExcel } from "@/lib/excel-export";
 import CategorySelector from "@/components/planning/CategorySelector";
 import CategoryTotalsChart from "@/components/planning/CategoryTotalsChart";
 
@@ -113,23 +113,18 @@ export default function QuestionsPage() {
   function exportAllToExcel() {
     if (history.length === 0) return;
 
-    const wb = XLSX.utils.book_new();
-
-    for (const item of history) {
-      const rows = item.questions.map((q, i) => ({
+    const sheets = history.map((item) => ({
+      name: item.keyword.slice(0, 31).replace(/[/\\?*[\]]/g, ""),
+      rows: item.questions.map((q, i) => ({
         "Seed-Keyword": item.keyword,
         Kategorie: item.category ?? "",
         Nr: i + 1,
         Frage: q,
-      }));
-
-      const ws = XLSX.utils.json_to_sheet(rows);
-      const sheetName = item.keyword.slice(0, 31).replace(/[/\\?*[\]]/g, "");
-      XLSX.utils.book_append_sheet(wb, ws, sheetName);
-    }
+      })),
+    }));
 
     const date = new Date().toISOString().slice(0, 10);
-    XLSX.writeFile(wb, `fragen-research-${date}.xlsx`);
+    downloadExcel(`fragen-research-${date}.xlsx`, sheets);
   }
 
   function exportSingleToExcel(item: QuestionResult) {
@@ -140,10 +135,9 @@ export default function QuestionsPage() {
       Frage: q,
     }));
 
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Fragen");
-    XLSX.writeFile(wb, `fragen-${item.keyword.replace(/\s+/g, "-")}.xlsx`);
+    downloadExcel(`fragen-${item.keyword.replace(/\s+/g, "-")}.xlsx`, [
+      { name: "Fragen", rows },
+    ]);
   }
 
   const categoryChartData = useMemo(() => {

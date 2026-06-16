@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
-import * as XLSX from "xlsx";
+import { downloadExcel } from "@/lib/excel-export";
 import { TopicSunburstChart } from "@/components/charts";
 import CategorySelector from "@/components/planning/CategorySelector";
 import CategoryTotalsChart from "@/components/planning/CategoryTotalsChart";
@@ -119,13 +119,14 @@ function TopicContent({ job }: { job: TopicGraphJob }) {
     if (!job.topic_graph) return;
     const meta = { seedKeyword: job.parameters.keyword, kategorie: job.category || "" };
     const rows = flattenForExport(job.topic_graph, [], meta);
-    const header = ["Seed-Keyword", "Kategorie", "topic", "ebene", "pfad"];
-    const ws = XLSX.utils.json_to_sheet(rows, { header });
-    ws["!cols"] = [{ wch: 25 }, { wch: 25 }, { wch: 40 }, { wch: 8 }, { wch: 80 }];
-    XLSX.utils.sheet_add_aoa(ws, [["Seed-Keyword", "Kategorie", "Topic", "Ebene", "Pfad"]], { origin: "A1" });
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Topics");
-    XLSX.writeFile(wb, `topics-${job.parameters.keyword.replace(/\s+/g, "-")}.xlsx`);
+    downloadExcel(`topics-${job.parameters.keyword.replace(/\s+/g, "-")}.xlsx`, [
+      {
+        name: "Topics",
+        rows,
+        columnWidths: [25, 25, 40, 8, 80],
+        headerOverrides: ["Seed-Keyword", "Kategorie", "Topic", "Ebene", "Pfad"],
+      },
+    ]);
   };
 
   return (
@@ -329,23 +330,21 @@ export default function TopicsPage() {
     const succeededJobs = jobs.filter((j) => j.status === "succeeded" && j.topic_graph);
     if (succeededJobs.length === 0) return;
 
-    const wb = XLSX.utils.book_new();
-
-    succeededJobs.forEach((job) => {
-      if (!job.topic_graph) return;
-      const meta = { seedKeyword: job.parameters.keyword, kategorie: job.category || "" };
-      const rows = flattenForExport(job.topic_graph, [], meta);
-      const header = ["Seed-Keyword", "Kategorie", "topic", "ebene", "pfad"];
-      const ws = XLSX.utils.json_to_sheet(rows, { header });
-      ws["!cols"] = [{ wch: 25 }, { wch: 25 }, { wch: 40 }, { wch: 8 }, { wch: 80 }];
-      XLSX.utils.sheet_add_aoa(ws, [["Seed-Keyword", "Kategorie", "Topic", "Ebene", "Pfad"]], { origin: "A1" });
-
-      const sheetName = job.parameters.keyword.slice(0, 31).replace(/[\\/*?[\]:]/g, "");
-      XLSX.utils.book_append_sheet(wb, ws, sheetName);
-    });
+    const sheets = succeededJobs
+      .filter((job) => job.topic_graph)
+      .map((job) => {
+        const meta = { seedKeyword: job.parameters.keyword, kategorie: job.category || "" };
+        const rows = flattenForExport(job.topic_graph!, [], meta);
+        return {
+          name: job.parameters.keyword.slice(0, 31).replace(/[\\/*?[\]:]/g, ""),
+          rows,
+          columnWidths: [25, 25, 40, 8, 80],
+          headerOverrides: ["Seed-Keyword", "Kategorie", "Topic", "Ebene", "Pfad"],
+        };
+      });
 
     const date = new Date().toISOString().split("T")[0];
-    XLSX.writeFile(wb, `alle-topics-${date}.xlsx`);
+    downloadExcel(`alle-topics-${date}.xlsx`, sheets);
   }, [jobs]);
 
   const filteredJobs = filterCategory
