@@ -409,6 +409,51 @@ export default function KeywordOverview() {
   const gapCount = useMemo(() => allKeywords.filter((kw) => !kw.inGsc).length, [allKeywords]);
   const inGscCount = useMemo(() => allKeywords.filter((kw) => kw.inGsc).length, [allKeywords]);
 
+  // Brand-Statistik: Volumen pro Kategorie pro Marke
+  const ALL_BRANDS = useMemo(() => [OWN_BRAND, ...COMPETITOR_BRANDS], []);
+  const brandStats = useMemo(() => {
+    const catMap = new Map<string, Record<string, { volume: number; count: number }>>();
+
+    for (const kw of allKeywords) {
+      const lower = kw.keyword.toLowerCase();
+      const vol = kw.searchVolume ?? 0;
+
+      for (const brand of ALL_BRANDS) {
+        const matches = brand.terms.some((t) => lower.includes(t));
+        if (!matches) continue;
+
+        let catEntry = catMap.get(kw.category);
+        if (!catEntry) {
+          catEntry = {};
+          catMap.set(kw.category, catEntry);
+        }
+
+        if (!catEntry[brand.label]) {
+          catEntry[brand.label] = { volume: 0, count: 0 };
+        }
+        catEntry[brand.label].volume += vol;
+        catEntry[brand.label].count += 1;
+      }
+    }
+
+    const cats = Array.from(catMap.entries())
+      .map(([category, brands]) => ({ category, brands }))
+      .sort((a, b) => a.category.localeCompare(b.category, "de"));
+
+    const totals: Record<string, { volume: number; count: number }> = {};
+    for (const cat of cats) {
+      for (const brand of ALL_BRANDS) {
+        const val = cat.brands[brand.label];
+        if (!val) continue;
+        if (!totals[brand.label]) totals[brand.label] = { volume: 0, count: 0 };
+        totals[brand.label].volume += val.volume;
+        totals[brand.label].count += val.count;
+      }
+    }
+
+    return { categories: cats, totals };
+  }, [allKeywords, ALL_BRANDS]);
+
   function handleCompSort(field: string) {
     if (compSortField === field) {
       setCompSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -614,6 +659,144 @@ export default function KeywordOverview() {
           </>
         )}
       </div>
+
+      {/* Brand-Aufmerksamkeit nach Kategorie */}
+      {selectedBrands.length > 0 && brandStats.categories.length > 0 && (
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden">
+          <div className="px-5 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <svg className="w-4 h-4 text-slate-500 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              <h3 className="text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide">
+                Markenaufmerksamkeit nach Kategorie
+              </h3>
+            </div>
+            <button
+              onClick={() => {
+                const activeBrands = [OWN_BRAND, ...COMPETITOR_BRANDS.filter((b) => selectedBrands.includes(b.label))];
+                const rows = brandStats.categories.map((cat) => {
+                  const obj: Record<string, unknown> = { Kategorie: cat.category };
+                  for (const brand of activeBrands) {
+                    obj[`${brand.label} Suchvolumen`] = cat.brands[brand.label]?.volume ?? 0;
+                    obj[`${brand.label} Keywords`] = cat.brands[brand.label]?.count ?? 0;
+                  }
+                  return obj;
+                });
+                const totalRow: Record<string, unknown> = { Kategorie: "TOTAL" };
+                for (const brand of activeBrands) {
+                  totalRow[`${brand.label} Suchvolumen`] = brandStats.totals[brand.label]?.volume ?? 0;
+                  totalRow[`${brand.label} Keywords`] = brandStats.totals[brand.label]?.count ?? 0;
+                }
+                rows.push(totalRow);
+                const date = new Date().toISOString().slice(0, 10);
+                downloadExcel(`markenaufmerksamkeit-${date}.xlsx`, [{ name: "Markenaufmerksamkeit", rows }]);
+              }}
+              className="px-3 py-1.5 text-xs rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors flex items-center gap-1"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Excel
+            </button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 dark:border-slate-700">
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500 dark:text-slate-400">
+                    Kategorie
+                  </th>
+                  {[OWN_BRAND, ...COMPETITOR_BRANDS.filter((b) => selectedBrands.includes(b.label))].map((brand) => (
+                    <th
+                      key={brand.label}
+                      className={`px-4 py-2.5 text-right text-xs font-semibold ${
+                        brand.label === OWN_BRAND.label
+                          ? "text-blue-600 dark:text-blue-400"
+                          : "text-red-500 dark:text-red-400"
+                      }`}
+                    >
+                      <div>{brand.label}</div>
+                      <div className="font-normal text-[10px] text-slate-400">Vol. / Anz.</div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                {brandStats.categories.map((cat) => {
+                  const activeBrands = [OWN_BRAND, ...COMPETITOR_BRANDS.filter((b) => selectedBrands.includes(b.label))];
+                  const volumes = activeBrands.map((b) => cat.brands[b.label]?.volume ?? 0);
+                  const maxVol = Math.max(...volumes);
+                  return (
+                    <tr key={cat.category} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                      <td className="px-4 py-2 font-medium text-slate-900 dark:text-white text-xs">
+                        <button
+                          onClick={() => setSelectedCategory(cat.category)}
+                          className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors text-left"
+                        >
+                          {cat.category}
+                        </button>
+                      </td>
+                      {activeBrands.map((brand) => {
+                        const val = cat.brands[brand.label];
+                        const vol = val?.volume ?? 0;
+                        const isWinner = vol > 0 && vol === maxVol && volumes.filter((v) => v === maxVol).length === 1;
+                        return (
+                          <td key={brand.label} className="px-4 py-2 text-right tabular-nums">
+                            {val ? (
+                              <div>
+                                <span className={`text-xs font-semibold ${isWinner ? "text-green-600 dark:text-green-400" : "text-slate-700 dark:text-slate-200"}`}>
+                                  {vol.toLocaleString("de-CH")}
+                                </span>
+                                <span className="text-[10px] text-slate-400 dark:text-slate-500 ml-1.5">
+                                  ({val.count})
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-slate-300 dark:text-slate-600">–</span>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/50">
+                  <td className="px-4 py-2.5 font-bold text-xs text-slate-900 dark:text-white">
+                    Total
+                  </td>
+                  {[OWN_BRAND, ...COMPETITOR_BRANDS.filter((b) => selectedBrands.includes(b.label))].map((brand) => {
+                    const val = brandStats.totals[brand.label];
+                    const totalVols = [OWN_BRAND, ...COMPETITOR_BRANDS.filter((b) => selectedBrands.includes(b.label))]
+                      .map((b) => brandStats.totals[b.label]?.volume ?? 0);
+                    const maxTotal = Math.max(...totalVols);
+                    const vol = val?.volume ?? 0;
+                    const isWinner = vol > 0 && vol === maxTotal && totalVols.filter((v) => v === maxTotal).length === 1;
+                    return (
+                      <td key={brand.label} className="px-4 py-2.5 text-right tabular-nums">
+                        {val ? (
+                          <div>
+                            <span className={`text-xs font-bold ${isWinner ? "text-green-600 dark:text-green-400" : "text-slate-900 dark:text-white"}`}>
+                              {vol.toLocaleString("de-CH")}
+                            </span>
+                            <span className="text-[10px] text-slate-400 dark:text-slate-500 ml-1.5">
+                              ({val.count})
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-300 dark:text-slate-600">–</span>
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Statistik + GSC-Filter */}
       <div className="flex flex-wrap items-center gap-3">
