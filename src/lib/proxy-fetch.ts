@@ -1,7 +1,4 @@
-import { ProxyAgent } from "proxy-agent";
-import https from "https";
-import http from "http";
-import zlib from "zlib";
+import { ProxyAgent as UndiciProxyAgent, fetch as undiciFetch } from "undici";
 
 /**
  * Fetches a URL through a Swiss proxy to avoid geo-blocking (403 errors).
@@ -24,113 +21,39 @@ export async function proxyFetch(
 ): Promise<Response> {
   const proxyUrl = process.env.IPROYAL_PROXY_URL;
 
-  // If proxy is configured, use proxy-agent
   if (proxyUrl) {
-    console.log(`[proxyFetch] Using proxy (configured)`);
-    return new Promise((resolve, reject) => {
-      const parsedUrl = new URL(url);
-      const isHttps = parsedUrl.protocol === "https:";
+    console.log(`[proxyFetch] Fetching ${url} through proxy`);
 
-      // Create proxy agent with the proxy URL
-      const agent = new ProxyAgent({ getProxyForUrl: () => proxyUrl });
-
-      // Remove Accept-Encoding from headers to get uncompressed response,
-      // or we handle decompression ourselves
-      const headers = { ...options.headers };
-      // Request compressed content - we'll decompress it
-      headers["Accept-Encoding"] = "gzip, deflate";
-
-      const requestModule = isHttps ? https : http;
-      const requestOptions: https.RequestOptions = {
-        hostname: parsedUrl.hostname,
-        port: parsedUrl.port || (isHttps ? 443 : 80),
-        path: parsedUrl.pathname + parsedUrl.search,
-        method: "GET",
-        headers,
-        agent: agent,
-        timeout: options.timeoutMs || 15000,
-        // Allow self-signed certificates (required for Web Unblocker proxy)
+    const proxyAgent = new UndiciProxyAgent({
+      uri: proxyUrl,
+      requestTls: {
+        // Required for Web Unblocker proxies that use self-signed certs
         rejectUnauthorized: false,
-      };
+      },
+    });
 
-      console.log(`[proxyFetch] Fetching ${url} through proxy`);
+    const timeoutMs = options.timeoutMs || 15000;
 
-      const req = requestModule.request(requestOptions, (res) => {
-        console.log(`[proxyFetch] Response status: ${res.statusCode}, encoding: ${res.headers["content-encoding"]}`);
+    const res = await undiciFetch(url, {
+      dispatcher: proxyAgent,
+      headers: options.headers || {},
+      signal: AbortSignal.timeout(timeoutMs),
+      redirect: "follow",
+    });
 
-        const chunks: Buffer[] = [];
+    console.log(`[proxyFetch] Response status: ${res.status}`);
 
-        // Handle compressed responses
-        let stream: NodeJS.ReadableStream = res;
-        const encoding = res.headers["content-encoding"];
+    // Convert undici Response to standard Web Response for compatibility
+    const body = await res.arrayBuffer();
+    const headers = new Headers();
+    res.headers.forEach((value, key) => {
+      headers.set(key, value);
+    });
 
-        if (encoding === "gzip") {
-          stream = res.pipe(zlib.createGunzip());
-        } else if (encoding === "deflate") {
-          stream = res.pipe(zlib.createInflate());
-        } else if (encoding === "br") {
-          stream = res.pipe(zlib.createBrotliDecompress());
-        }
-
-        stream.on("data", (chunk: Buffer) => {
-          chunks.push(chunk);
-        });
-
-        stream.on("end", () => {
-          let body = Buffer.concat(chunks);
-
-          // Auto-detect gzip compression by checking magic bytes (0x1f, 0x8b)
-          // Some proxies strip the content-encoding header but still send compressed content
-          if (body.length >= 2 && body[0] === 0x1f && body[1] === 0x8b) {
-            console.log(`[proxyFetch] Detected gzip magic bytes despite no content-encoding header, decompressing...`);
-            try {
-              body = zlib.gunzipSync(body);
-              console.log(`[proxyFetch] Decompressed successfully, size: ${body.length} bytes`);
-            } catch (e) {
-              console.error(`[proxyFetch] Gzip decompression failed:`, e);
-            }
-          }
-
-          console.log(`[proxyFetch] Final body size: ${body.length} bytes`);
-
-          // Clean up headers - remove encoding/transfer headers since we handle decompression ourselves
-          // This prevents the Response object from trying to re-decompress or misinterpreting the body
-          const cleanHeaders: Record<string, string> = {};
-          for (const [key, value] of Object.entries(res.headers)) {
-            const lowerKey = key.toLowerCase();
-            if (
-              value &&
-              !["content-encoding", "transfer-encoding", "content-length"].includes(lowerKey)
-            ) {
-              cleanHeaders[key] = Array.isArray(value) ? value.join(", ") : value;
-            }
-          }
-
-          const response = new Response(body, {
-            status: res.statusCode || 500,
-            statusText: res.statusMessage || "",
-            headers: new Headers(cleanHeaders),
-          });
-
-          resolve(response);
-        });
-
-        stream.on("error", (error) => {
-          reject(error);
-        });
-      });
-
-      req.on("error", (error) => {
-        console.error(`[proxyFetch] Request error:`, error);
-        reject(error);
-      });
-
-      req.on("timeout", () => {
-        req.destroy();
-        reject(new Error("Request timeout"));
-      });
-
-      req.end();
+    return new Response(body, {
+      status: res.status,
+      statusText: res.statusText,
+      headers,
     });
   }
 
