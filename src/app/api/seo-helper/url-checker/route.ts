@@ -20,7 +20,9 @@ async function fetchAndAnalyze(
     });
   } catch (proxyError: unknown) {
     const errCode = proxyError instanceof Error && 'code' in proxyError ? (proxyError as { code?: string }).code : '';
-    console.warn(`[url-checker] Proxy failed (${errCode}), falling back to direct fetch for ${finalUrl}`);
+    const errMsg = proxyError instanceof Error ? proxyError.message : String(proxyError);
+    console.warn(`[url-checker] Proxy failed for ${finalUrl}: ${errCode || errMsg}`);
+    console.warn(`[url-checker] Falling back to direct fetch...`);
     response = await fetch(finalUrl, {
       headers: DEFAULT_SCRAPE_HEADERS,
       signal: AbortSignal.timeout(20000),
