@@ -1,7 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { aiRateLimiter } from "@/lib/rate-limit";
+import { proxyFetch, DEFAULT_SCRAPE_HEADERS } from "@/lib/proxy-fetch";
 import OpenAI from "openai";
+
+function extractTextContent(html: string): { text: string; title: string; metaDescription: string; headings: { level: number; text: string }[] } {
+  const titleMatch = html.match(/<title[^>]*>([^<]*)<\/title>/i);
+  const title = titleMatch?.[1]?.trim() || "";
+
+  const metaMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']*)["']/i)
+    || html.match(/<meta[^>]*content=["']([^"']*)["'][^>]*name=["']description["']/i);
+  const metaDescription = metaMatch?.[1]?.trim() || "";
+
+  const headings: { level: number; text: string }[] = [];
+  const headingRegex = /<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/gi;
+  let hMatch;
+  while ((hMatch = headingRegex.exec(html)) !== null) {
+    headings.push({ level: parseInt(hMatch[1]), text: hMatch[2].replace(/<[^>]*>/g, "").trim() });
+  }
+
+  let text = html
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<nav[\s\S]*?<\/nav>/gi, "")
+    .replace(/<footer[\s\S]*?<\/footer>/gi, "")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return { text, title, metaDescription, headings };
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,7 +46,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { url, title, metaDescription, textContent, keyword, headings } = await request.json();
+    let { url, title, metaDescription, textContent, keyword, headings } = await request.json();
+
+    // If no textContent provided, fetch the page ourselves
+    if (!textContent && url) {
+      console.log(`[url-checker/ai-analysis] No textContent provided, fetching ${url}`);
+      try {
+        let response: Response;
+        try {
+          response = await proxyFetch(url, { headers: DEFAULT_SCRAPE_HEADERS, timeoutMs: 15000 });
+        } catch {
+          response = await fetch(url, { headers: DEFAULT_SCRAPE_HEADERS, signal: AbortSignal.timeout(15000), redirect: "follow" });
+        }
+        if (response.ok) {
+          const html = await response.text();
+          const extracted = extractTextContent(html);
+          textContent = extracted.text;
+          if (!title) title = extracted.title;
+          if (!metaDescription) metaDescription = extracted.metaDescription;
+          if (!headings || headings.length === 0) headings = extracted.headings;
+        }
+      } catch (fetchErr) {
+        console.error(`[url-checker/ai-analysis] Failed to fetch ${url}:`, fetchErr);
+      }
+    }
 
     if (!textContent) {
       return NextResponse.json({ error: "Kein Content für KI-Analyse" }, { status: 400 });
