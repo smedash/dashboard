@@ -113,6 +113,62 @@ export default function UrlCheckerPage() {
   const [monitors, setMonitors] = useState<{ id: string; url: string; keyword: string | null; frequency: string; lastScore: number | null; lastCheckAt: string | null }[]>([]);
   const [isMonitorLoading, setIsMonitorLoading] = useState(false);
 
+  // Task creation from checks
+  const [taskUsers, setTaskUsers] = useState<{ id: string; name: string | null; email: string }[]>([]);
+  const [taskCreatingKey, setTaskCreatingKey] = useState<string | null>(null);
+  const [taskAssignee, setTaskAssignee] = useState("");
+  const [taskCreatedKeys, setTaskCreatedKeys] = useState<Set<string>>(new Set());
+
+  const fetchTaskUsers = useCallback(async () => {
+    try {
+      const resp = await fetch("/api/users");
+      const data = await resp.json();
+      setTaskUsers(data.users || []);
+    } catch { /* ignore */ }
+  }, []);
+
+  const handleCreateTask = async (check: CheckResult, categoryName: string) => {
+    const key = `${categoryName}::${check.factor}`;
+    try {
+      const priority = check.status === "fail" ? "high" : "medium";
+      const description = [
+        `**URL:** ${result?.url || url}`,
+        `**Kategorie:** ${categoryName}`,
+        `**Status:** ${check.status === "fail" ? "Fehlgeschlagen" : "Warnung"}`,
+        check.value !== null ? `**Aktueller Wert:** ${check.value}` : "",
+        `**Empfehlung:** ${check.recommendation}`,
+        `**Leak-Attribut:** ${check.leakAttribute}`,
+        keyword ? `**Keyword:** ${keyword}` : "",
+      ].filter(Boolean).join("\n");
+
+      const resp = await fetch("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: `[SEO] ${check.factor}`,
+          description,
+          status: "backlog",
+          priority,
+          category: "SEO",
+          labels: ["url-checker", categoryName],
+          assigneeIds: taskAssignee ? [taskAssignee] : [],
+        }),
+      });
+
+      if (resp.ok) {
+        setTaskCreatedKeys(prev => new Set([...prev, key]));
+        setTaskCreatingKey(null);
+        setTaskAssignee("");
+      }
+    } catch { /* ignore */ }
+  };
+
+  const openTaskForm = (key: string) => {
+    setTaskCreatingKey(key);
+    setTaskAssignee("");
+    if (taskUsers.length === 0) fetchTaskUsers();
+  };
+
   const handleCheck = async () => {
     const trimmed = url.trim();
     if (!trimmed) return;
@@ -568,7 +624,11 @@ export default function UrlCheckerPage() {
               </button>
               {expandedCategories.has(category.name) && (
                 <div className="px-6 pb-4 space-y-3 border-t border-slate-100 dark:border-slate-700 pt-4">
-                  {category.checks.map((check, idx) => (
+                  {category.checks.map((check, idx) => {
+                    const checkKey = `${category.name}::${check.factor}`;
+                    const isTaskCreated = taskCreatedKeys.has(checkKey);
+                    const isFormOpen = taskCreatingKey === checkKey;
+                    return (
                     <div key={idx} className="flex gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-700/50">
                       {getStatusIcon(check.status)}
                       <div className="flex-1 min-w-0">
@@ -577,10 +637,53 @@ export default function UrlCheckerPage() {
                           {check.value !== null && <span className="text-xs font-mono text-slate-500 dark:text-slate-400 bg-slate-200 dark:bg-slate-600 px-2 py-0.5 rounded flex-shrink-0">{String(check.value).slice(0, 50)}</span>}
                         </div>
                         <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">{check.recommendation}</p>
-                        <span className="inline-block mt-1 text-xs text-violet-600 dark:text-violet-400 font-mono">{check.leakAttribute}</span>
+                        <div className="flex items-center gap-2 mt-1.5">
+                          <span className="text-xs text-violet-600 dark:text-violet-400 font-mono">{check.leakAttribute}</span>
+                          {check.status !== "pass" && !isTaskCreated && !isFormOpen && (
+                            <button
+                              onClick={() => openTaskForm(checkKey)}
+                              className="ml-auto text-xs px-2.5 py-1 rounded-lg bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 hover:bg-violet-200 dark:hover:bg-violet-900/50 transition-colors font-medium"
+                            >
+                              Task erstellen
+                            </button>
+                          )}
+                          {isTaskCreated && (
+                            <span className="ml-auto text-xs px-2.5 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium flex items-center gap-1">
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                              Task erstellt
+                            </span>
+                          )}
+                        </div>
+                        {isFormOpen && (
+                          <div className="mt-2 flex items-center gap-2 p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600">
+                            <select
+                              value={taskAssignee}
+                              onChange={e => setTaskAssignee(e.target.value)}
+                              className="flex-1 text-xs px-2 py-1.5 rounded-md border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
+                            >
+                              <option value="">Ohne Zuweisung</option>
+                              {taskUsers.map(u => (
+                                <option key={u.id} value={u.id}>{u.name || u.email}</option>
+                              ))}
+                            </select>
+                            <button
+                              onClick={() => handleCreateTask(check, category.name)}
+                              className="text-xs px-3 py-1.5 rounded-md bg-violet-600 text-white hover:bg-violet-700 font-medium whitespace-nowrap"
+                            >
+                              Erstellen
+                            </button>
+                            <button
+                              onClick={() => setTaskCreatingKey(null)}
+                              className="text-xs px-2 py-1.5 rounded-md text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
