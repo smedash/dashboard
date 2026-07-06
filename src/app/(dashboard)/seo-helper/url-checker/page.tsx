@@ -169,14 +169,18 @@ export default function UrlCheckerPage() {
     if (taskUsers.length === 0) fetchTaskUsers();
   };
 
-  const handleCheck = async () => {
-    const trimmed = url.trim();
-    if (!trimmed) return;
+  const handleCheck = async (overrideUrl?: string, overrideKeyword?: string) => {
+    const checkUrlRaw = overrideUrl || url.trim();
+    const checkKeyword = overrideKeyword ?? keyword.trim();
+    if (!checkUrlRaw) return;
 
-    let checkUrl = trimmed;
+    let checkUrl = checkUrlRaw;
     if (!checkUrl.startsWith("http://") && !checkUrl.startsWith("https://")) {
       checkUrl = "https://" + checkUrl;
     }
+
+    if (overrideUrl) setUrl(overrideUrl);
+    if (overrideKeyword !== undefined) setKeyword(overrideKeyword);
 
     setIsLoading(true);
     setError("");
@@ -190,7 +194,7 @@ export default function UrlCheckerPage() {
       const response = await fetch("/api/seo-helper/url-checker", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: checkUrl, keyword: keyword.trim() || undefined }),
+        body: JSON.stringify({ url: checkUrl, keyword: checkKeyword || undefined }),
       });
 
       const data = await response.json();
@@ -205,7 +209,7 @@ export default function UrlCheckerPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           url: data.url,
-          keyword: keyword.trim() || null,
+          keyword: checkKeyword || null,
           overallScore: data.overallScore,
           categories: data.categories,
           fullResult: data,
@@ -831,13 +835,13 @@ export default function UrlCheckerPage() {
           {history.length > 0 && (
             <div className="space-y-2">
               {history.map(entry => (
-                <div key={entry.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-700/50">
+                <button key={entry.id} onClick={() => handleCheck(entry.url, entry.keyword || "")} className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-left">
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-mono text-slate-700 dark:text-slate-300 truncate">{entry.url}</p>
                     <p className="text-xs text-slate-500">{new Date(entry.createdAt).toLocaleString("de-DE")} {entry.keyword && `• Keyword: ${entry.keyword}`}</p>
                   </div>
                   <span className={`text-lg font-bold ml-4 ${getScoreColor(entry.overallScore)}`}>{entry.overallScore}</span>
-                </div>
+                </button>
               ))}
             </div>
           )}
