@@ -955,3 +955,38 @@ model RankedKeywordsCache {
 
   @@index([fetchedAt])
 }
+
+// URL Checker — Historische Ergebnisse der Ranking-Faktor-Analyse
+model UrlCheckHistory {
+  id             String   @id @default(cuid())
+  userId         String
+  url            String   @db.Text
+  keyword        String?
+  overallScore   Int
+  categoryScores String   @db.Text // JSON: {categoryName: score}
+  fullResult     String   @db.Text // Full JSON result for detail view
+  createdAt      DateTime @default(now())
+
+  @@index([userId, url])
+  @@index([url, createdAt])
+  @@index([userId, createdAt])
+}
+
+// URL Checker — Monitoring-Konfiguration für automatische Checks
+model UrlCheckMonitor {
+  id          String   @id @default(cuid())
+  userId      String
+  url         String   @db.Text
+  keyword     String?
+  frequency   String   @default("weekly") // daily, weekly, monthly
+  isActive    Boolean  @default(true)
+  lastCheckAt DateTime?
+  lastScore   Int?
+  alertThreshold Int @default(10) // Alert wenn Score um X Punkte fällt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, url])
+  @@index([isActive, frequency])
+  @@index([userId])
+}

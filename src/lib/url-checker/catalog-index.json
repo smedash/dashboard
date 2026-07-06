@@ -1,0 +1,96 @@
+{
+  "totalEntries": 452,
+  "categories": {
+    "content_quality": {
+      "count": 66,
+      "direct": 20,
+      "heuristic": 46,
+      "external": 0
+    },
+    "media": {
+      "count": 50,
+      "direct": 26,
+      "heuristic": 22,
+      "external": 2
+    },
+    "structured_data": {
+      "count": 50,
+      "direct": 42,
+      "heuristic": 8,
+      "external": 0
+    },
+    "technical_indexing": {
+      "count": 46,
+      "direct": 37,
+      "heuristic": 8,
+      "external": 1
+    },
+    "entity_semantics": {
+      "count": 45,
+      "direct": 7,
+      "heuristic": 35,
+      "external": 3
+    },
+    "internationalization": {
+      "count": 40,
+      "direct": 36,
+      "heuristic": 4,
+      "external": 0
+    },
+    "anchors_links": {
+      "count": 31,
+      "direct": 17,
+      "heuristic": 11,
+      "external": 3
+    },
+    "authority_trust": {
+      "count": 26,
+      "direct": 12,
+      "heuristic": 4,
+      "external": 10
+    },
+    "local_geo": {
+      "count": 23,
+      "direct": 11,
+      "heuristic": 12,
+      "external": 0
+    },
+    "freshness": {
+      "count": 21,
+      "direct": 15,
+      "heuristic": 6,
+      "external": 0
+    },
+    "page_structure": {
+      "count": 20,
+      "direct": 14,
+      "heuristic": 6,
+      "external": 0
+    },
+    "rendering": {
+      "count": 17,
+      "direct": 10,
+      "heuristic": 4,
+      "external": 3
+    },
+    "spam_safety": {
+      "count": 11,
+      "direct": 5,
+      "heuristic": 4,
+      "external": 2
+    },
+    "mobile": {
+      "count": 4,
+      "direct": 1,
+      "heuristic": 2,
+      "external": 1
+    },
+    "user_signals": {
+      "count": 2,
+      "direct": 0,
+      "heuristic": 0,
+      "external": 2
+    }
+  },
+  "generatedAt": "2026-07-05T18:14:31.242Z"
+}

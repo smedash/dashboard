@@ -11,7 +11,13 @@
     "add-user": "tsx scripts/add-user.ts",
     "set-editorial-url-language": "tsx scripts/set-editorial-url-language.ts",
     "import-seed-keywords": "tsx scripts/import-seed-keywords.ts",
-    "batch-research": "tsx scripts/batch-research.ts"
+    "batch-research": "tsx scripts/batch-research.ts",
+    "leak-catalog:scrape": "tsx scripts/leak-catalog/01-scrape.ts",
+    "leak-catalog:parse": "tsx scripts/leak-catalog/02-parse.ts",
+    "leak-catalog:filter": "tsx scripts/leak-catalog/03-prefilter.ts",
+    "leak-catalog:classify": "tsx scripts/leak-catalog/04-classify.ts",
+    "leak-catalog:generate": "tsx scripts/leak-catalog/05-generate-catalog.ts",
+    "leak-catalog:full": "tsx scripts/leak-catalog/01-scrape.ts && tsx scripts/leak-catalog/02-parse.ts && tsx scripts/leak-catalog/03-prefilter.ts && tsx scripts/leak-catalog/04-classify.ts && tsx scripts/leak-catalog/05-generate-catalog.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
@@ -44,8 +50,10 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "cheerio": "^1.2.0",
     "eslint": "^9",
     "eslint-config-next": "^16.2.9",
+    "p-limit": "^7.3.0",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
     "typescript": "^5"

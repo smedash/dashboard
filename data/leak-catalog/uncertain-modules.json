@@ -1,0 +1,1627 @@
+[
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.AssistantVerticalsHomeautomationProtoCommonStructureBasedRoutine",
+    "shortName": "AssistantVerticalsHomeautomationProtoCommonStructureBasedRoutine",
+    "namespace": "AssistantVerticalsHomeautomationProtoCommonStructureBasedRoutine",
+    "description": "Routines team stores the core Structure Based Routine data as the payload. We will add specific metadata on a per-need basis. LINT.IfChange(proto_structure_based_routine) Next id: 12 These two forms of payload are equivalent data in different formats and both will be stored in Home Graph. 1. The internal format will fan out to the DynamicEntity Footprints for read in Settings flow and Execution. 2. The UI format will be stripped out upon replication to DynamicEntity Footprints due to its redunda",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.AssistantVerticalsHomeautomationProtoConciergeFeatures",
+    "shortName": "AssistantVerticalsHomeautomationProtoConciergeFeatures",
+    "namespace": "AssistantVerticalsHomeautomationProtoConciergeFeatures",
+    "description": "The Concierge features a structure is eligible for. See {@link home.graph.common.ConciergeFeatures}.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.AttentionalEntitiesMentionPropertiesListEntryInfo",
+    "shortName": "AttentionalEntitiesMentionPropertiesListEntryInfo",
+    "namespace": "AttentionalEntitiesMentionPropertiesListEntryInfo",
+    "description": "Contains information about how an entity was presented as part of a list.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.AttentionalEntitiesMentionPropertiesSourceClient",
+    "shortName": "AttentionalEntitiesMentionPropertiesSourceClient",
+    "namespace": "AttentionalEntitiesMentionPropertiesSourceClient",
+    "description": "The client provided this entity. Currently, this exclusively corresponds to an entity that was circulated by the client. See go/on-device-aes for more details.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.AttentionalEntitiesMentionPropertiesSourceSystem",
+    "shortName": "AttentionalEntitiesMentionPropertiesSourceSystem",
+    "namespace": "AttentionalEntitiesMentionPropertiesSourceSystem",
+    "description": "The Assistant mentioned this entity. This corresponds to entities annotated during fulfillment. More specifically, these entities are typically provided by developers either via a Monastery frame or an InteractionBuilder.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.AttentionalEntitiesSurfaceForm",
+    "shortName": "AttentionalEntitiesSurfaceForm",
+    "namespace": "AttentionalEntitiesSurfaceForm",
+    "description": "How the entity was presented in this mention at a surface level. For example, \"President Barack Obama\" or \"Barack Obama\" or \"he\" might all be reasonable surface forms for the MID /m/02mjmr.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.BiasingPerDocData2",
+    "shortName": "BiasingPerDocData2",
+    "namespace": "BiasingPerDocData",
+    "description": "A replacement for BiasingPerDocData that is more efficient wrt size in the index.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.ClassifierPornQueryStats",
+    "shortName": "ClassifierPornQueryStats",
+    "namespace": "ClassifierPornQueryStats",
+    "description": "QuerySats contains the information about the queries that users typed to search for this image.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.ContentAttributions",
+    "shortName": "ContentAttributions",
+    "namespace": "ContentAttributions",
+    "description": "The following protobuf is used to store an attribution from one page to (usually) one other page, giving credit for the content. This information is used during ranking to promote the attributed page. This protobuf is copied from a quality_contra::SelectedAttribution. See //quality/contra/authorship/attribution and https://qwiki.corp.google.com/display/Q/ContentTrackingContentAttribution.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.CopleyPersonalReference",
+    "shortName": "CopleyPersonalReference",
+    "namespace": "CopleyPersonalReference",
+    "description": "Represents a reference made by a user that refers to some personal entity.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.CopleySourceTypeMetadata",
+    "shortName": "CopleySourceTypeMetadata",
+    "namespace": "CopleySourceTypeMetadata",
+    "description": "Contains the source and type information related to a personal entity, for example if it's an hotel or a restaurant (type) and if it comes from gmail, calendar, etc. (source). Next ID: 13",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.CorpusSelectionInfo",
+    "shortName": "CorpusSelectionInfo",
+    "namespace": "CorpusSelectionInfo",
+    "description": "",
+    "attributes": [
+      {
+        "name": "corpus",
+        "type": "String.t",
+        "default": "nil",
+        "description": "",
+        "referencedTypes": []
+      },
+      {
+        "name": "corpusScore",
+        "type": "number(",
+        "default": "nil",
+        "description": ", default: nil) - Corpus specific score for an image",
+        "referencedTypes": []
+      },
+      {
+        "name": "isSelectedForIndexing",
+        "type": "boolean(",
+        "default": "nil",
+        "description": ", default: nil) - Whether an image was selected for indexing.",
+        "referencedTypes": []
+      },
+      {
+        "name": "referrerDocid",
+        "type": "list(String.t",
+        "default": "nil",
+        "description": ", default: nil) - Set of referrers indexed with the image.",
+        "referencedTypes": []
+      },
+      {
+        "name": "referrerUrls",
+        "type": "list(String.t",
+        "default": "nil",
+        "description": ", default: nil) - Set of referrer urls indexed with the image.",
+        "referencedTypes": []
+      }
+    ],
+    "attributeCount": 5
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.CountryClickDistribution",
+    "shortName": "CountryClickDistribution",
+    "namespace": "CountryClickDistribution",
+    "description": "",
+    "attributes": [
+      {
+        "name": "confidence",
+        "type": "float(",
+        "default": "nil",
+        "description": ", default: nil) - To store confidence in the distribution in cases when total is not set.",
+        "referencedTypes": []
+      },
+      {
+        "name": "item",
+        "type": "list(GoogleApi.ContentWarehouse.V1.Model.CountryClickDistributionItem.t",
+        "default": "nil",
+        "description": ", default: nil) -",
+        "referencedTypes": [
+          "CountryClickDistributionItem"
+        ]
+      },
+      {
+        "name": "total",
+        "type": "float(",
+        "default": "nil",
+        "description": ", default: nil) - To store total clicks on this page/domain.",
+        "referencedTypes": []
+      }
+    ],
+    "attributeCount": 3
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.CountryMetroNBFeature",
+    "shortName": "CountryMetroNBFeature",
+    "namespace": "CountryMetro",
+    "description": "A metro feature, keyed by NavBoost feature id V2. This can be a metro id, a boost, or extended in the future to add probabilities or weights.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.DeepCropIndexing",
+    "shortName": "DeepCropIndexing",
+    "namespace": "DeepCropIndexing",
+    "description": "",
+    "attributes": [
+      {
+        "name": "cropBytes",
+        "type": "String.t",
+        "default": "nil",
+        "description": "Compact representation for indexing, see creatism::CropBitmap for details on the packing format.",
+        "referencedTypes": []
+      }
+    ],
+    "attributeCount": 1
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.DeepCropPixels",
+    "shortName": "DeepCropPixels",
+    "namespace": "DeepCropPixels",
+    "description": "",
+    "attributes": [
+      {
+        "name": "x0",
+        "type": "integer(",
+        "default": "nil",
+        "description": ", default: nil) - Pixels version of the DeepCropIndexing bytes, this corresponds to the crop box for a given image (based input image size and desired aspect ratio).",
+        "referencedTypes": []
+      },
+      {
+        "name": "x1",
+        "type": "integer(",
+        "default": "nil",
+        "description": ", default: nil) -",
+        "referencedTypes": []
+      },
+      {
+        "name": "y0",
+        "type": "integer(",
+        "default": "nil",
+        "description": ", default: nil) -",
+        "referencedTypes": []
+      },
+      {
+        "name": "y1",
+        "type": "integer(",
+        "default": "nil",
+        "description": ", default: nil) -",
+        "referencedTypes": []
+      }
+    ],
+    "attributeCount": 4
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.DrishtiIndexedFeatureData",
+    "shortName": "DrishtiIndexedFeatureData",
+    "namespace": "DrishtiIndexedFeatureData",
+    "description": "",
+    "attributes": [
+      {
+        "name": "extra",
+        "type": "list(GoogleApi.ContentWarehouse.V1.Model.DrishtiFeatureExtra.t",
+        "default": "nil",
+        "description": ", default: nil) - If extra is present it must be of the same length as index and value.",
+        "referencedTypes": [
+          "DrishtiFeatureExtra"
+        ]
+      },
+      {
+        "name": "generalExtra",
+        "type": "GoogleApi.ContentWarehouse.V1.Model.DrishtiFeatureExtra.t",
+        "default": "nil",
+        "description": "",
+        "referencedTypes": [
+          "DrishtiFeatureExtra"
+        ]
+      },
+      {
+        "name": "index",
+        "type": "list(String.t",
+        "default": "nil",
+        "description": ", default: nil) - Indexed data. index and value must be of the same length.",
+        "referencedTypes": []
+      },
+      {
+        "name": "value",
+        "type": "list(number(",
+        "default": "nil",
+        "description": "), default: nil) -",
+        "referencedTypes": []
+      }
+    ],
+    "attributeCount": 4
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.DrishtiQuantizedByteIndexedFeatureData",
+    "shortName": "DrishtiQuantizedByteIndexedFeatureData",
+    "namespace": "DrishtiQuantizedByteIndexedFeatureData",
+    "description": "Proto message to store quantized indexed feature data.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.DrishtiSparseFeatureData",
+    "shortName": "DrishtiSparseFeatureData",
+    "namespace": "DrishtiSparseFeatureData",
+    "description": "",
+    "attributes": [
+      {
+        "name": "extra",
+        "type": "list(GoogleApi.ContentWarehouse.V1.Model.DrishtiFeatureExtra.t",
+        "default": "nil",
+        "description": ", default: nil) - If extra is present it must be of the same length as label and value.",
+        "referencedTypes": [
+          "DrishtiFeatureExtra"
+        ]
+      },
+      {
+        "name": "generalExtra",
+        "type": "GoogleApi.ContentWarehouse.V1.Model.DrishtiFeatureExtra.t",
+        "default": "nil",
+        "description": "",
+        "referencedTypes": [
+          "DrishtiFeatureExtra"
+        ]
+      },
+      {
+        "name": "label",
+        "type": "list(String.t",
+        "default": "nil",
+        "description": ", default: nil) - Indexed data. label and value must be of the same length.",
+        "referencedTypes": []
+      },
+      {
+        "name": "value",
+        "type": "list(number(",
+        "default": "nil",
+        "description": "), default: nil) -",
+        "referencedTypes": []
+      }
+    ],
+    "attributeCount": 4
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.DrishtiVesperVideoThumbnail",
+    "shortName": "DrishtiVesperVideoThumbnail",
+    "namespace": "DrishtiVesper",
+    "description": "Video level container for thumbnail with its attributes, e.g., timestamp, id, quality scores, annotations, or features.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.EmbedsPackagingServiceClient",
+    "shortName": "EmbedsPackagingServiceClient",
+    "namespace": "EmbedsPackagingServiceClient",
+    "description": "Developers register a client in Google API Console to get the deep-linking feature on Google+ posts or frames about their apps. The client data is stored in this proto.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.EventIdMessage",
+    "shortName": "EventIdMessage",
+    "namespace": "EventIdMessage",
+    "description": "An EventId is a 128 bit identifier that uniquely identifies an event, such as a query. The event time recorded to the nearest microsecond, along with information about the process generating the event, ensures that all EventIds are unique. Details of this EventId are described in a design document: http://www/eng/designdocs/sawmill/adlogs.html",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.GenericSnippetResponse",
+    "shortName": "GenericSnippetResponse",
+    "namespace": "GenericSnippetResponse",
+    "description": "The generic version of a snippet response",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.GeoOndemandAssistantSupportedActions",
+    "shortName": "GeoOndemandAssistantSupportedActions",
+    "namespace": "GeoOndemandAssistantSupportedActions",
+    "description": "Actions supported by Madden for a local entity.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.GeostoreAppliedSpeedLimitProto",
+    "shortName": "GeostoreAppliedSpeedLimitProto",
+    "namespace": "Geostore",
+    "description": "A container for speed limits that allows tagging with a correctness trust level.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.GeostoreAttachmentsAttachmentProto",
+    "shortName": "GeostoreAttachmentsAttachmentProto",
+    "namespace": "Geostore",
+    "description": "An AttachmentProto contains structured data of a client-specified type. An attachment is uniquely identified by the combination of its attachment_id and client_name_space fields.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.GeostoreAttributeProto",
+    "shortName": "GeostoreAttributeProto",
+    "namespace": "Geostore",
+    "description": "Protocol buffer for attaching attributes and values to instances. This is for assigning a particular attribute and value to a repository item, not for metadata. For protocol buffers that represents metadata about attributes and values, see CanonicalAttribute in itemclass.proto and ValueSpace in valuespace.proto.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.GeostoreBizBuilderReferenceProto",
+    "shortName": "GeostoreBizBuilderReferenceProto",
+    "namespace": "Geostore",
+    "description": "The reference to a BizBuilder listing. For details on BizBuilder see http://g3doc/commerce/bizbuilder/backend/g3doc/index.md",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.GeostoreBoundingMarkerProto",
+    "shortName": "GeostoreBoundingMarkerProto",
+    "namespace": "Geostore",
+    "description": "NOTE: BoundingMarkerProto could be compared against one another by canonicalizing them via GetCanonicalBoundingMarker() in google3/geostore/base/internal/lane.cc. Any fields that don't contribute to the definition of a bounding marker in the real world should be bundled with the annotative fields near the bottom and excluded in GetCanonicalBoundingMarker(). LINT.IfChange",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.GeostoreCanonicalGConceptProto",
+    "shortName": "GeostoreCanonicalGConceptProto",
+    "namespace": "Geostore",
+    "description": "This proto represents a canonical gconcept of a business chain's members.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.GeostoreCityJsonProtoAppearanceMaterial",
+    "shortName": "GeostoreCityJsonProtoAppearanceMaterial",
+    "namespace": "Geostore",
+    "description": "Representation of a single material that can describe a geometry surface. See technical definitions of these fields via the description and link at https://www.cityjson.org/specs/2.0.0/#material-object.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.GeostoreDisplayDataProto",
+    "shortName": "GeostoreDisplayDataProto",
+    "namespace": "Geostore",
+    "description": "This holds data specific to rendering a POI on a map. It's derived from data already in MapFacts, e.g. containing features and the feature's point field. If empty, this proto should be ignored for rendering. See go/maps-render-alignment for motivation and more details.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.GeostoreInternalFeatureProto",
+    "shortName": "GeostoreInternalFeatureProto",
+    "namespace": "Geostore",
+    "description": "InternalFeatureProto represents fields for data that are more about other data within the FeatureProto than about the feature itself. This could be data that's set by editors directly(ish) (e.g. trust or rights data), or data set internally by MapFacts based on other data (e.g. polygon shape IDs).",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.GeostoreInternalFieldMetadataProto",
+    "shortName": "GeostoreInternalFieldMetadataProto",
+    "namespace": "Geostore",
+    "description": "",
+    "attributes": [
+      {
+        "name": "isAuto",
+        "type": "boolean(",
+        "default": "nil",
+        "description": ", default: nil) - Whether or not the piece of data has been generated automatically (i.e., by a bot/automated process based on heuristics/algorithms rather than coming as a fact set by some human user or data provider based on their knowledge). Note that this does NOT imply that the value was set as a result of a bot operation on the repository, since it is conceivable to use a bot/automated process simply as a way of convenience to ingest large amount of canonical/ground truth data.",
+        "referencedTypes": []
+      },
+      {
+        "name": "sourceSummary",
+        "type": "GoogleApi.ContentWarehouse.V1.Model.GeostoreInternalSourceSummaryProto.t",
+        "default": "nil",
+        "description": "Information about the source providing the piece of data this metadata is attached to.",
+        "referencedTypes": [
+          "GeostoreInternalSourceSummaryProto"
+        ]
+      }
+    ],
+    "attributeCount": 2
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.GeostoreKnowledgeGraphReferenceProto",
+    "shortName": "GeostoreKnowledgeGraphReferenceProto",
+    "namespace": "Geostore",
+    "description": "The reference to an entity in the KnowledgeGraph. For details on the KnowledgeGraph see http://goto/kg.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.GeostoreLaneProto",
+    "shortName": "GeostoreLaneProto",
+    "namespace": "Geostore",
+    "description": "Describes an individual road lane. Not only driving lanes, but also parking and biking lanes are covered by this. Note that we may eventually add curbs and walking to this schema. MOTIVATION/DESIGN DISCUSSION The intent of this schema is to model a schematic representation of the road for a bunch of use cases within GMM, navigation, map tiles. For rendering, we do not want to represent the geometry of each lane exactly, but do want to model types/width/gaps/lane markings so that a schematic rend",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.GeostorePhysicalLineProto",
+    "shortName": "GeostorePhysicalLineProto",
+    "namespace": "Geostore",
+    "description": "Describes a single physical marker line. NOTE: PhysicalLineProto could be compared against one another by canonicalizing them via GetCanonicalPhysicalLine() in google3/geostore/base/internal/lane_marker.cc. Any fields that don't contribute to the definition of a physical line in the real world should be bundled with the annotative fields near the bottom and excluded in GetCanonicalPhysicalLine(). LINT.IfChange",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.GeostoreSourceInfoProto",
+    "shortName": "GeostoreSourceInfoProto",
+    "namespace": "Geostore",
+    "description": "Source infos are the canonical way to establish data provenance. They can currently be set on features, edits, and issues. Every feature has a repeated list of SourceInfoProto messages to describe the source data that was used in building this feature. The data includes a feature id that points to additional data about the data source (version, copyright notice, etc), and optional \"raw data\" that is taken directly from the provider's format and has not been converted to a canonical form.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.GeostoreSourceTrustProto",
+    "shortName": "GeostoreSourceTrustProto",
+    "namespace": "Geostore",
+    "description": "Trust related information about the input source (feed or user) to help feature summarization. Typically, the values in this proto are either based on source's previous observations (e.g., a blocked LBC user or a trusted feed) or their status (Google hired operator or admin user). The proto can later contain a more granular trust score or correctness probabilities. A higher enum value indicates a more trusted source. Leaving room in the value space for adding more granular enums, if they become ",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.GeostoreSweepProto",
+    "shortName": "GeostoreSweepProto",
+    "namespace": "Geostore",
+    "description": "This protocol buffer represents the 2D polygon connecting two segments at an intersection. Collectively, sweep polygons represent intersections for real road width rendering. Notes: - Sweeps represent geometry between the end of one segment and the end of the other segment (modulo retraction values). - Sweeps are strongly referenced, meaning geometry is stored on both segments involved in the sweep. For example, in the diagram below, the sweep between A and B would be stored on both segment A an",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.GeostoreThreeDimensionalModelProto",
+    "shortName": "GeostoreThreeDimensionalModelProto",
+    "namespace": "Geostore",
+    "description": "",
+    "attributes": [
+      {
+        "name": "pointIndices",
+        "type": "list(integer(",
+        "default": "nil",
+        "description": "), default: nil) - Triangle vertex indices, each triple defines a triangle.",
+        "referencedTypes": []
+      },
+      {
+        "name": "points",
+        "type": "list(GoogleApi.ContentWarehouse.V1.Model.GeostorePointWithHeightProto.t",
+        "default": "nil",
+        "description": ", default: nil) - We store a triangular mesh in indexed format. Points array.",
+        "referencedTypes": [
+          "GeostorePointWithHeightProto"
+        ]
+      }
+    ],
+    "attributeCount": 2
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.GeostoreTrackProto",
+    "shortName": "GeostoreTrackProto",
+    "namespace": "Geostore",
+    "description": "",
+    "attributes": [
+      {
+        "name": "index",
+        "type": "integer(",
+        "default": "nil",
+        "description": ", default: nil) - The index of this TrackProto in a list of TrackProtos.",
+        "referencedTypes": []
+      },
+      {
+        "name": "pose",
+        "type": "list(GoogleApi.ContentWarehouse.V1.Model.GeostorePoseProto.t",
+        "default": "nil",
+        "description": ", default: nil) - The instantaneous pose of points along this track. The fields set inside each pose must be set consistently along the track.",
+        "referencedTypes": [
+          "GeostorePoseProto"
+        ]
+      }
+    ],
+    "attributeCount": 2
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.GeostoreTrustSignalsProto",
+    "shortName": "GeostoreTrustSignalsProto",
+    "namespace": "Geostore",
+    "description": "",
+    "attributes": [
+      {
+        "name": "sourceTrust",
+        "type": "GoogleApi.ContentWarehouse.V1.Model.GeostoreSourceTrustProto.t",
+        "default": "nil",
+        "description": "Trust signals for the source of a given observation, typically based on historical evidences or status (like internal Google operator).",
+        "referencedTypes": [
+          "GeostoreSourceTrustProto"
+        ]
+      }
+    ],
+    "attributeCount": 1
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.GeostoreUserProto",
+    "shortName": "GeostoreUserProto",
+    "namespace": "Geostore",
+    "description": "UserProto identifies a (human) user of Geo Data. Its primary use is in describing the source of pieces of data (e.g. edits). It could be a simple identifier, but isn't so that we can store it in the clear while still preventing correlation between a user's contribution.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.HomeGraphCommonRoute",
+    "shortName": "HomeGraphCommonRoute",
+    "namespace": "HomeGraphCommonRoute",
+    "description": "",
+    "attributes": [
+      {
+        "name": "agentDeviceId",
+        "type": "String.t",
+        "default": "nil",
+        "description": "The device ID defined by the agent.",
+        "referencedTypes": []
+      },
+      {
+        "name": "agentId",
+        "type": "String.t",
+        "default": "nil",
+        "description": "The agent's ID. Generally it is the agent's Google cloud project id.",
+        "referencedTypes": []
+      },
+      {
+        "name": "chipEndpoint",
+        "type": "list(integer(",
+        "default": "nil",
+        "description": "), default: nil) - chip endpoint index (if the target is CHIP). Set packed = true to handle error caused by b/32953375 when exporting this data. Note that we should never change this to non-repeated: a packed field will not work properly if you change the field to non-repeated later.",
+        "referencedTypes": []
+      },
+      {
+        "name": "targetType",
+        "type": "String.t",
+        "default": "nil",
+        "description": "Execution routing target.",
+        "referencedTypes": []
+      }
+    ],
+    "attributeCount": 4
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.ImageBaseVideoPreviewMetadata",
+    "shortName": "ImageBaseVideoPreviewMetadata",
+    "namespace": "ImageBaseVideoPreviewMetadata",
+    "description": "This message is used internally in Amarna and is also used to store information in the VideoWebAttachment portion of the websearch index. Only the following fields will be used in the index: VideoPreviewType type int32 width int32 height byte byte_size If more fields are added, please update this list.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.ImageExactBoost",
+    "shortName": "ImageExactBoost",
+    "namespace": "ImageExactBoost",
+    "description": "",
+    "attributes": [
+      {
+        "name": "navquery",
+        "type": "list(GoogleApi.ContentWarehouse.V1.Model.ImageExactBoostNavQuery.t",
+        "default": "nil",
+        "description": ", default: nil) -",
+        "referencedTypes": [
+          "ImageExactBoostNavQuery"
+        ]
+      }
+    ],
+    "attributeCount": 1
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.ImageExifIPTCMetadata",
+    "shortName": "ImageExifIPTCMetadata",
+    "namespace": "ImageExif",
+    "description": "This proto holds IPTC metadata. http://www.iptc.org/cms/site/index.html?channel=CH0099 Proto field name is same with IPTC property name except which is clearly stated. Next Id: 64",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.ImageRepositoryCrawlStatusInfo",
+    "shortName": "ImageRepositoryCrawlStatusInfo",
+    "namespace": "ImageRepositoryCrawlStatusInfo",
+    "description": "Fields for crawl-status-related debugging information.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.ImageRepositoryShoppingProductInformationEntity",
+    "shortName": "ImageRepositoryShoppingProductInformationEntity",
+    "namespace": "ImageRepositoryShoppingProductInformationEntity",
+    "description": "The recognized entity.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.ImageRepositoryShoppingProductInformationProductInformation",
+    "shortName": "ImageRepositoryShoppingProductInformationProductInformation",
+    "namespace": "ImageRepositoryShoppingProductInformationProductInformation",
+    "description": "Information about a single product. For ProductNet models, each product has one label with a detection score. The label is mapped to one or multiple category ids. For PRIMI generic feature models, each product can have multiple entities, and each entity has a score. The category_id and detection_score fields are not populated for PRIMI generic feature models.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.ImageRepositoryUnwantedContent",
+    "shortName": "ImageRepositoryUnwantedContent",
+    "namespace": "ImageRepositoryUnwantedContent",
+    "description": "To indicate whether the image or video is to be deleted from the repository due to legal reasons or hidden from search results.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.ImageRepositoryVenomProcessingInfo",
+    "shortName": "ImageRepositoryVenomProcessingInfo",
+    "namespace": "ImageRepositoryVenomProcessingInfo",
+    "description": "",
+    "attributes": [
+      {
+        "name": "venomStatus",
+        "type": "list(GoogleApi.ContentWarehouse.V1.Model.ImageRepositoryVenomStatus.t",
+        "default": "nil",
+        "description": ", default: nil) - Contains one status for each Genus that this video belongs to in Venom. For example, a video that is both 1) Found on the web, and 2) Opted-in by an Interest Feed partner would have two entries, one for GENUS_CRAWL and one for GENUS_VIDEO_INTEREST_FEED",
+        "referencedTypes": [
+          "ImageRepositoryVenomStatus"
+        ]
+      }
+    ],
+    "attributeCount": 1
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.ImageRepositoryVideoLinkIndexingInfo",
+    "shortName": "ImageRepositoryVideoLinkIndexingInfo",
+    "namespace": "ImageRepositoryVideoLinkIndexingInfo",
+    "description": "",
+    "attributes": [
+      {
+        "name": "crawlStatusInfo",
+        "type": "GoogleApi.ContentWarehouse.V1.Model.ImageRepositoryCrawlStatusInfo.t",
+        "default": "nil",
+        "description": "Fields for crawl-status-related debugging information.",
+        "referencedTypes": [
+          "ImageRepositoryCrawlStatusInfo"
+        ]
+      },
+      {
+        "name": "url",
+        "type": "String.t",
+        "default": "nil",
+        "description": "The video URL.",
+        "referencedTypes": []
+      }
+    ],
+    "attributeCount": 2
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.ImageSearchImageSelectionInfo",
+    "shortName": "ImageSearchImageSelectionInfo",
+    "namespace": "ImageSearch",
+    "description": "",
+    "attributes": [
+      {
+        "name": "imageLinkSelectionInfo",
+        "type": "GoogleApi.ContentWarehouse.V1.Model.ImageMustangImageLinkSelectionInfo.t",
+        "default": "nil",
+        "description": "Image Selection Info.",
+        "referencedTypes": [
+          "ImageMustangImageLinkSelectionInfo"
+        ]
+      },
+      {
+        "name": "url",
+        "type": "String.t",
+        "default": "nil",
+        "description": "The image URL.",
+        "referencedTypes": []
+      }
+    ],
+    "attributeCount": 2
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.KnowledgeGraphTripleObj",
+    "shortName": "KnowledgeGraphTripleObj",
+    "namespace": "KnowledgeGraph",
+    "description": "",
+    "attributes": [
+      {
+        "name": "boolValue",
+        "type": "boolean(",
+        "default": "nil",
+        "description": ", default: nil) -",
+        "referencedTypes": []
+      },
+      {
+        "name": "datetimeValue",
+        "type": "GoogleApi.ContentWarehouse.V1.Model.KnowledgeGraphDateTimeProto.t",
+        "default": "nil",
+        "description": "",
+        "referencedTypes": [
+          "KnowledgeGraphDateTimeProto"
+        ]
+      },
+      {
+        "name": "doubleValue",
+        "type": "float(",
+        "default": "nil",
+        "description": ", default: nil) -",
+        "referencedTypes": []
+      },
+      {
+        "name": "durationValue",
+        "type": "String.t",
+        "default": "nil",
+        "description": "seconds",
+        "referencedTypes": []
+      },
+      {
+        "name": "idValue",
+        "type": "String.t",
+        "default": "nil",
+        "description": "An id representing an entity (mid or hrid)",
+        "referencedTypes": []
+      },
+      {
+        "name": "int64Value",
+        "type": "String.t",
+        "default": "nil",
+        "description": "",
+        "referencedTypes": []
+      },
+      {
+        "name": "locale",
+        "type": "String.t",
+        "default": "nil",
+        "description": "The language code for the object value. It must be a BCP 47-compliant language tag (b/10005172). See also go/kg-data-l10n.",
+        "referencedTypes": []
+      },
+      {
+        "name": "nestedStructValue",
+        "type": "GoogleApi.ContentWarehouse.V1.Model.KnowledgeGraphNestedStruct.t",
+        "default": "nil",
+        "description": "",
+        "referencedTypes": [
+          "KnowledgeGraphNestedStruct"
+        ]
+      },
+      {
+        "name": "protoValue",
+        "type": "GoogleApi.ContentWarehouse.V1.Model.KnowledgeGraphTripleObjProto.t",
+        "default": "nil",
+        "description": "",
+        "referencedTypes": [
+          "KnowledgeGraphTripleObjProto"
+        ]
+      },
+      {
+        "name": "s2cellId",
+        "type": "String.t",
+        "default": "nil",
+        "description": "",
+        "referencedTypes": []
+      },
+      {
+        "name": "stringValue",
+        "type": "String.t",
+        "default": "nil",
+        "description": "A UTF-8 string value to be used for the following expected schema types: - /type/rawstring - /type/text - /type/key",
+        "referencedTypes": []
+      },
+      {
+        "name": "uint64Value",
+        "type": "String.t",
+        "default": "nil",
+        "description": "",
+        "referencedTypes": []
+      },
+      {
+        "name": "uriValue",
+        "type": "String.t",
+        "default": "nil",
+        "description": "A UTF-8 string value to be used for expected type /type/uri - b/68760994.",
+        "referencedTypes": []
+      }
+    ],
+    "attributeCount": 13
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.LensDiscoveryStyleAestheticsScoreSignals",
+    "shortName": "LensDiscoveryStyleAestheticsScoreSignals",
+    "namespace": "LensDiscoveryStyleAestheticsScoreSignals",
+    "description": "Aesthetics score of a style image. Check http://go/styleai-indexing-g3doc#aesthetic-model for more details about the Style AI Aesthetics Model.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.LensDiscoveryStylePersonAttributes",
+    "shortName": "LensDiscoveryStylePersonAttributes",
+    "namespace": "LensDiscoveryStylePersonAttributes",
+    "description": "This message holds person attributes from the Person Interpreter model (go/person-interpreter) and the Style AI Iconic Person Scorer (go/styleai-indexing-g3doc#iconic-person-scorer) for the most iconic person in a style image. Discretization of float values is recommended by CDS for cheaper and more efficient storage. Next ID: 11",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.ListSnippetResponse",
+    "shortName": "ListSnippetResponse",
+    "namespace": "ListSnippetResponse",
+    "description": "Data to generate the list snippets UI.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.LocalWWWInfoAddress",
+    "shortName": "LocalWWWInfoAddress",
+    "namespace": "Local",
+    "description": "These are the addresses, phone numbers, and opening hours related to this document, or the local businesses mentioned on this document. We currently populate these fields from web extractions, i.e, from the data present explicitly on the document, but in future, they can also be filled with data coming from the local index. We populate addresses and phone numbers only if there are <= 4 addresses and phone numbers on the document, respectively. This is primarily for space reasons.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.LocalsearchChainId",
+    "shortName": "LocalsearchChainId",
+    "namespace": "LocalsearchChainId",
+    "description": "An unique identification of a chain. The following are the possible chain id forms: 1) prominent_entity_id only: The entity uniquely represents a chain, which may have multiple sitechunks. 2) sitechunk only: The sitechunk uniquely represents a chain while the chain currently does not have an entity in KG. 3) prominent_entity_id + sitechunk: The chain could be represented by the entity, but not merged at last, and the sitechunks represents the chain better. 4) prominent_entity_id + category: Ther",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.LogsSemanticInterpretationIntentQueryLinkKindFlags",
+    "shortName": "LogsSemanticInterpretationIntentQueryLinkKindFlags",
+    "namespace": "LogsSemanticInterpretationIntentQueryLinkKindFlags",
+    "description": "Logs version of the repository_webref.LinkKindFlags proto Used to represent QRef implications Next available tag: 8",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.LogsSemanticInterpretationIntentQueryLinkKindInfo",
+    "shortName": "LogsSemanticInterpretationIntentQueryLinkKindInfo",
+    "namespace": "LogsSemanticInterpretationIntentQueryLinkKindInfo",
+    "description": "Logs version of the repository_webref.LinkKindInfo proto Used to represent QRef implications",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.LogsSemanticInterpretationIntentQueryWebrefEntityRelationship",
+    "shortName": "LogsSemanticInterpretationIntentQueryWebrefEntityRelationship",
+    "namespace": "LogsSemanticInterpretationIntentQueryWebrefEntityRelationship",
+    "description": "Logs version of the repository_webref.WebrefEntityRelationship proto Used to represent QRef implications",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.LongStructuredSnippet",
+    "shortName": "LongStructuredSnippet",
+    "namespace": "LongStructuredSnippet",
+    "description": "An experimental long snippet. The protocol allows any permutation of headers and plain text paragraphs, but typical responses are just paragraphs or alternating headers and paragraphs.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.NlxDataSchemaEntity",
+    "shortName": "NlxDataSchemaEntity",
+    "namespace": "NlxDataSchemaEntity",
+    "description": "An entity, which may occur multiple times in the text.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.NlxDataSchemaMention",
+    "shortName": "NlxDataSchemaMention",
+    "namespace": "NlxDataSchemaMention",
+    "description": "A mention of an entity. A single entity might be mentioned multiple times.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.OceanGEPriceLocale",
+    "shortName": "OceanGEPriceLocale",
+    "namespace": "Ocean",
+    "description": "",
+    "attributes": [
+      {
+        "name": "locale",
+        "type": "String.t",
+        "default": "nil",
+        "description": "The two character ISO country code",
+        "referencedTypes": []
+      },
+      {
+        "name": "offerPrice",
+        "type": "GoogleApi.ContentWarehouse.V1.Model.OceanGEMoney.t",
+        "default": "nil",
+        "description": "Price used for sale by the OFE",
+        "referencedTypes": [
+          "OceanGEMoney"
+        ]
+      },
+      {
+        "name": "onSaleTimeSecs",
+        "type": "String.t",
+        "default": "nil",
+        "description": "The time (in secs from epoch) the content goes on sale (only set when the book is not already sellable at the time of indexing).",
+        "referencedTypes": []
+      }
+    ],
+    "attributeCount": 3
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.OceanPerDocData",
+    "shortName": "OceanPerDocData",
+    "namespace": "Ocean",
+    "description": "Per-doc data in the Ocean index. Ocean indexing details are in https://www/eng/designdocs/scanning/ocean-indexing.html",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.OceanVolumeDisplayDetails",
+    "shortName": "OceanVolumeDisplayDetails",
+    "namespace": "Ocean",
+    "description": "This message describes display attributes. The attributes which are applicable to OFE not indexing (mustang), should be added in this proto.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.OceanVolumeViewability",
+    "shortName": "OceanVolumeViewability",
+    "namespace": "Ocean",
+    "description": "",
+    "attributes": [
+      {
+        "name": "DEPRECATEDDefaultViewType",
+        "type": "integer(",
+        "default": "nil",
+        "description": ", default: nil) -",
+        "referencedTypes": []
+      },
+      {
+        "name": "defaultViewability",
+        "type": "GoogleApi.ContentWarehouse.V1.Model.OceanLocaleViewability.t",
+        "default": "nil",
+        "description": "The viewability for any locale that is not explicitly listed.",
+        "referencedTypes": [
+          "OceanLocaleViewability"
+        ]
+      },
+      {
+        "name": "inViewabilityLimbo",
+        "type": "boolean(",
+        "default": "nil",
+        "description": ", default: nil) - DEPRECATED: Viewability-Limbo was a state that prevented indexing from running if the viewability of a volume had dropped significantly. It was removed during viewability refactoring: http://go/viewability",
+        "referencedTypes": []
+      },
+      {
+        "name": "locale",
+        "type": "list(GoogleApi.ContentWarehouse.V1.Model.OceanVolumeViewabilityLocale.t",
+        "default": "nil",
+        "description": ", default: nil) -",
+        "referencedTypes": [
+          "OceanVolumeViewabilityLocale"
+        ]
+      },
+      {
+        "name": "updatedByIndexer",
+        "type": "boolean(",
+        "default": "nil",
+        "description": ", default: nil) - Whether the volume viewability was updated by the indexer as opposed to a direct update in goovols. The absense of this bit will indicate to the indexer that it should not short-circuit indexing side effects that should occur when viewability changes.",
+        "referencedTypes": []
+      }
+    ],
+    "attributeCount": 5
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.OrionDocEntitiesProto",
+    "shortName": "OrionDocEntitiesProto",
+    "namespace": "OrionDocEntitiesProto",
+    "description": "",
+    "attributes": [
+      {
+        "name": "docid",
+        "type": "String.t",
+        "default": "nil",
+        "description": "",
+        "referencedTypes": []
+      },
+      {
+        "name": "encodedEntity",
+        "type": "list(integer(",
+        "default": "nil",
+        "description": "), default: nil) - This is encoded using EntityCandidate::Encode",
+        "referencedTypes": []
+      }
+    ],
+    "attributeCount": 2
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.PersonalizationSettingsApiProtoLocalDiscoveryOpaRecipesContext",
+    "shortName": "PersonalizationSettingsApiProtoLocalDiscoveryOpaRecipesContext",
+    "namespace": "PersonalizationSettingsApiProtoLocalDiscoveryOpaRecipesContext",
+    "description": "LINT.IfChange Contexts regarding the preferences from OPA_RECIPES. For example, users can click a recipes and say they don't like one cuisine. OpaRecipesContext will contain the doc_id/url of that recipes.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.PrecomputedRestricts",
+    "shortName": "PrecomputedRestricts",
+    "namespace": "PrecomputedRestricts",
+    "description": "The restricts that are computed before building a Mustang index.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.PremiumPerDocData",
+    "shortName": "PremiumPerDocData",
+    "namespace": "PremiumPerDocData",
+    "description": "Per-doc data for premium documents in the Google index.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.PseudoVideoDataTranscriptTimestamp",
+    "shortName": "PseudoVideoDataTranscriptTimestamp",
+    "namespace": "PseudoVideoDataTranscriptTimestamp",
+    "description": "Mapping of time/character correspondences. Used to map found snippets to the time and thumbnail nearest that snippet.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.ResearchScienceSearchSourceUrlDocjoinInfoWebrefEntityInfo",
+    "shortName": "ResearchScienceSearchSourceUrlDocjoinInfoWebrefEntityInfo",
+    "namespace": "Research",
+    "description": "The mid and description of a WebRefEntity.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.ScienceCitationAnchor",
+    "shortName": "ScienceCitationAnchor",
+    "namespace": "ScienceCitationAnchor",
+    "description": "The anchor class holds content relevant to a citation, for example, the text before or after the citation that explains what the citation is about.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.SearchPolicyRankableSensitivityAttentionalEntity",
+    "shortName": "SearchPolicyRankableSensitivityAttentionalEntity",
+    "namespace": "SearchPolicyRankableSensitivityAttentionalEntity",
+    "description": "Attentional entities (AE) can be pulled from arguments of interpretations, entities annotated by Aqua or QRef annotators, and entities mentioned in Assistant's response and annotated by the fulfillment logic (see https://g3doc.corp.google.com/quality/dialog_manager/attentional_entities/g3doc/overview.md#overview). Sensitivity of AEs can be marked by (1) feature developers in a Monastery frame, (2) code to infer the sensitivity from Argument provenance, and (3) entity annotators, such as Aqua ann",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.SentenceBoundaryAnnotationsInstance",
+    "shortName": "SentenceBoundaryAnnotationsInstance",
+    "namespace": "SentenceBoundaryAnnotationsInstance",
+    "description": "",
+    "attributes": [
+      {
+        "name": "begin",
+        "type": "integer(",
+        "default": "nil",
+        "description": ", default: nil) -",
+        "referencedTypes": []
+      },
+      {
+        "name": "cleanText",
+        "type": "String.t",
+        "default": "nil",
+        "description": "A clean version of .text() generated by using CleanText() and stripping unnecessary whitespace.",
+        "referencedTypes": []
+      },
+      {
+        "name": "context",
+        "type": "String.t",
+        "default": "nil",
+        "description": "Plain text context from the page within which the annotation occurred.",
+        "referencedTypes": []
+      },
+      {
+        "name": "contextBegin",
+        "type": "integer(",
+        "default": "nil",
+        "description": ", default: nil) - Byte offsets for the clean text context above.",
+        "referencedTypes": []
+      },
+      {
+        "name": "contextEnd",
+        "type": "integer(",
+        "default": "nil",
+        "description": ", default: nil) -",
+        "referencedTypes": []
+      },
+      {
+        "name": "end",
+        "type": "integer(",
+        "default": "nil",
+        "description": ", default: nil) -",
+        "referencedTypes": []
+      },
+      {
+        "name": "info",
+        "type": "GoogleApi.ContentWarehouse.V1.Model.Proto2BridgeMessageSet.t",
+        "default": "nil",
+        "description": "Used for application-specific information about this annotation.",
+        "referencedTypes": [
+          "Proto2BridgeMessageSet"
+        ]
+      },
+      {
+        "name": "text",
+        "type": "String.t",
+        "default": "nil",
+        "description": "Original UTF-8 document text occurring in the range [begin, end).",
+        "referencedTypes": []
+      },
+      {
+        "name": "toIndex",
+        "type": "boolean(",
+        "default": "nil",
+        "description": ", default: nil) - Used to mark the annotations selected to be indexed.",
+        "referencedTypes": []
+      }
+    ],
+    "attributeCount": 9
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.SentimentSentiment",
+    "shortName": "SentimentSentiment",
+    "namespace": "SentimentSentiment",
+    "description": "This proto contains the sentiment and emotions that the user is exhibiting at the time of the query. NEXT ID: 4",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.Sitemap",
+    "shortName": "Sitemap",
+    "namespace": "Sitemap",
+    "description": "Note: If you are going to populate any new field in this proto, you probably need to go through the go/dj-new-field and go/index-changes process.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.SitemapDEPRECATED_Target",
+    "shortName": "SitemapDEPRECATED_Target",
+    "namespace": "Sitemap",
+    "description": "",
+    "attributes": [
+      {
+        "name": "DEPRECATEDAnchor",
+        "type": "String.t",
+        "default": "nil",
+        "description": "",
+        "referencedTypes": []
+      },
+      {
+        "name": "DEPRECATEDRunningAnchor",
+        "type": "boolean(",
+        "default": "nil",
+        "description": ", default: nil) -",
+        "referencedTypes": []
+      },
+      {
+        "name": "DEPRECATEDTitle",
+        "type": "String.t",
+        "default": "nil",
+        "description": "",
+        "referencedTypes": []
+      },
+      {
+        "name": "displaytitle",
+        "type": "String.t",
+        "default": "nil",
+        "description": "",
+        "referencedTypes": []
+      },
+      {
+        "name": "score",
+        "type": "integer(",
+        "default": "nil",
+        "description": ", default: nil) - optional, exclude to save space",
+        "referencedTypes": []
+      },
+      {
+        "name": "url",
+        "type": "String.t",
+        "default": "nil",
+        "description": "",
+        "referencedTypes": []
+      }
+    ],
+    "attributeCount": 6
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.SnapshotImageNode",
+    "shortName": "SnapshotImageNode",
+    "namespace": "SnapshotImageNode",
+    "description": "",
+    "attributes": [
+      {
+        "name": "boundingBox",
+        "type": "GoogleApi.ContentWarehouse.V1.Model.SnapshotBox.t",
+        "default": "nil",
+        "description": "",
+        "referencedTypes": [
+          "SnapshotBox"
+        ]
+      },
+      {
+        "name": "isExternal",
+        "type": "boolean(",
+        "default": "nil",
+        "description": ", default: nil) - An image is considered external iff both: 1. The image appears in a link that is not in the same org as the document, or the target URL is in a different org. 2. The image src is not in the same org as the document.",
+        "referencedTypes": []
+      },
+      {
+        "name": "url",
+        "type": "String.t",
+        "default": "nil",
+        "description": "The absolute url of the image as present in the page.",
+        "referencedTypes": []
+      }
+    ],
+    "attributeCount": 3
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.SnapshotSnapshotDocument",
+    "shortName": "SnapshotSnapshotDocument",
+    "namespace": "SnapshotSnapshotDocument",
+    "description": "",
+    "attributes": [
+      {
+        "name": "imageNode",
+        "type": "list(GoogleApi.ContentWarehouse.V1.Model.SnapshotImageNode.t",
+        "default": "nil",
+        "description": ", default: nil) -",
+        "referencedTypes": [
+          "SnapshotImageNode"
+        ]
+      },
+      {
+        "name": "metaNoPreview",
+        "type": "boolean(",
+        "default": "nil",
+        "description": ", default: nil) -",
+        "referencedTypes": []
+      },
+      {
+        "name": "metaNoSnippet",
+        "type": "boolean(",
+        "default": "nil",
+        "description": ", default: nil) - These are set from tags in the web page:",
+        "referencedTypes": []
+      },
+      {
+        "name": "teradoc",
+        "type": "GoogleApi.ContentWarehouse.V1.Model.TeragoogleDocumentInfo.t",
+        "default": "nil",
+        "description": "If this is present it supercedes all the above data.",
+        "referencedTypes": [
+          "TeragoogleDocumentInfo"
+        ]
+      },
+      {
+        "name": "textNode",
+        "type": "list(GoogleApi.ContentWarehouse.V1.Model.SnapshotTextNode.t",
+        "default": "nil",
+        "description": ", default: nil) -",
+        "referencedTypes": [
+          "SnapshotTextNode"
+        ]
+      },
+      {
+        "name": "title",
+        "type": "String.t",
+        "default": "nil",
+        "description": "",
+        "referencedTypes": []
+      }
+    ],
+    "attributeCount": 6
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.SnapshotTextNode",
+    "shortName": "SnapshotTextNode",
+    "namespace": "SnapshotTextNode",
+    "description": "The SnapshotDocument contains a list of TextNode's. Each node contains a string of text of the webpage, its bounding box in the agove snapshot image, and its font size (in number of pixels in the snapshot, which could be a fraction number since the snapshot image is typically shrinked). This list of text nodes are extracted from the output from the rendering service: htmlrender_webkit_headless_proto.Document The extraction is done by TrimDocument defined in ./shared/doctrimmer.cc",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.SnippetExtraInfoSnippetCandidateInfoExtendedSnippet",
+    "shortName": "SnippetExtraInfoSnippetCandidateInfoExtendedSnippet",
+    "namespace": "SnippetExtraInfoSnippetCandidateInfoExtendedSnippet",
+    "description": "The extended version of this snippet.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.SnippetExtraInfoSnippetsBrainModelInfo",
+    "shortName": "SnippetExtraInfoSnippetsBrainModelInfo",
+    "namespace": "SnippetExtraInfoSnippetsBrainModelInfo",
+    "description": "Log model name, partition and input processor used to generate SnippetsBrain scores, if SnippetsBrain debugging is enabled.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.SocialDiscoveryExternalEntityKey",
+    "shortName": "SocialDiscoveryExternalEntityKey",
+    "namespace": "Social",
+    "description": "An entity key with an obfuscated gaia id that can be used externally.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.SocialStanzaDeliveryRestriction",
+    "shortName": "SocialStanzaDeliveryRestriction",
+    "namespace": "Social",
+    "description": "Restrictions that affect the delivery of the stanza. By default, Stanzas are publishable, which means that they are eligible for indexing, aggregation, and other delivery options (Goops, Moonshine, notifications). A stanza can be created in a \"do not publish\" state; the stanza will not be published anywhere. The restriction can subsequently be removed with an UpdateStanza call, at which point the post will be treated as if it were newly created. A few notes/limitations about this option: 1. Clie",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.ToolBarPerDocData",
+    "shortName": "ToolBarPerDocData",
+    "namespace": "ToolBarPerDocData",
+    "description": "DO NOT USE THIS FOR ANYTHING LIVE WITHOUT PERMISSION! If you want to use this for anything user-facing file a logs-access ticket describing what you want to do. This data is currently only available in the freshdocs pipeline, so it will only be present in instant mustang and certain librarian shards. Email freshdocs-indexing with questions.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.TrawlerMultiverseClientIdentifier",
+    "shortName": "TrawlerMultiverseClientIdentifier",
+    "namespace": "Trawler",
+    "description": "Contain Multiverse client information, such as topic name. Can include other information such as crawl policy id in the future.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.VendingConsumerProtoTrustedGenomePolicyTargetRegion",
+    "shortName": "VendingConsumerProtoTrustedGenomePolicyTargetRegion",
+    "namespace": "VendingConsumerProtoTrustedGenomePolicyTargetRegion",
+    "description": "",
+    "attributes": [
+      {
+        "name": "localizedRegion",
+        "type": "String.t",
+        "default": "nil",
+        "description": "Localized name for targeted regions. e.g. San Francisco Bay Area Required.",
+        "referencedTypes": []
+      },
+      {
+        "name": "mid",
+        "type": "String.t",
+        "default": "nil",
+        "description": "Associated KG entity mid for region. e.g. /m/06pvr",
+        "referencedTypes": []
+      }
+    ],
+    "attributeCount": 2
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.VideoAmbisonicsAmbisonicsMetadata",
+    "shortName": "VideoAmbisonicsAmbisonicsMetadata",
+    "namespace": "Video",
+    "description": "",
+    "attributes": [
+      {
+        "name": "channelMap",
+        "type": "list(integer(",
+        "default": "nil",
+        "description": "), default: nil) - Maps channel indexes of an audio stream to indexes corresponding to the specified ambisonics channel ordering scheme. For example: A 1st order pheriphonic ambisonics format is configured with 4 audio channels corresponding to ambisonic components W, X, Y, Z respectively. The channel_ordering scheme is specified as CHANNEL_ORDERING_ACN (which implies a W, Y, Z, X ordering). Therefore the channel_map is [0, 3, 1, 2].",
+        "referencedTypes": []
+      },
+      {
+        "name": "channelOrdering",
+        "type": "String.t",
+        "default": "nil",
+        "description": "",
+        "referencedTypes": []
+      },
+      {
+        "name": "nonDiegeticStereo",
+        "type": "boolean(",
+        "default": "nil",
+        "description": ", default: nil) -",
+        "referencedTypes": []
+      },
+      {
+        "name": "normalization",
+        "type": "String.t",
+        "default": "nil",
+        "description": "",
+        "referencedTypes": []
+      },
+      {
+        "name": "numChannels",
+        "type": "integer(",
+        "default": "nil",
+        "description": ", default: nil) -",
+        "referencedTypes": []
+      },
+      {
+        "name": "order",
+        "type": "integer(",
+        "default": "nil",
+        "description": ", default: nil) -",
+        "referencedTypes": []
+      },
+      {
+        "name": "type",
+        "type": "String.t",
+        "default": "nil",
+        "description": "",
+        "referencedTypes": []
+      },
+      {
+        "name": "version",
+        "type": "integer(",
+        "default": "nil",
+        "description": ", default: nil) -",
+        "referencedTypes": []
+      }
+    ],
+    "attributeCount": 8
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.VideoAssetsVenomSettings",
+    "shortName": "VideoAssetsVenomSettings",
+    "namespace": "Video",
+    "description": "Describes ingredient level settings. Clients are authoritative in defining Settings. See go/venom-trustme for how Settings and ProcessingCharacteristics work together. If your Settings extension contains PII fields, please 1) Annotate them appropriately with DataPol, and 2) Add your BUILD target to google3/video/assets/venom/proto/settings/BUILD:pii See google3/video/assets/venom/proto/settings/ for extension messages.",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.VideoCrawlVideoInlinePlaybackMetadata",
+    "shortName": "VideoCrawlVideoInlinePlaybackMetadata",
+    "namespace": "Video",
+    "description": "This message is used to store information about Inline Playback in the VideoWebAttachment portion of the websearch index. LINT.IfChange",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.VideoVideoStream",
+    "shortName": "VideoVideoStream",
+    "namespace": "Video",
+    "description": "",
+    "attributes": [
+      {
+        "name": "bitrate",
+        "type": "String.t",
+        "default": "nil",
+        "description": "Video bitrate in bits/s.",
+        "referencedTypes": []
+      },
+      {
+        "name": "codecId",
+        "type": "integer(",
+        "default": "nil",
+        "description": ", default: nil) - Video codec ID. Uses the numeric value corresponding to the CodecId enum object, in order to avoid the dependency on vsi/videostreaminfo.proto. http://cs/symbol:CodecId%20f:google3/video/vidproc/vsi/videostreaminfo.proto",
+        "referencedTypes": []
+      },
+      {
+        "name": "fps",
+        "type": "float(",
+        "default": "nil",
+        "description": ", default: nil) - Video frame per second, obtained by parsing video header information. The value can be inaccurate for some types of codecs. See comments at http://cs/symbol:video_fps%20f:google3/video/vidproc/vsi/videostreaminfo.proto",
+        "referencedTypes": []
+      },
+      {
+        "name": "height",
+        "type": "integer(",
+        "default": "nil",
+        "description": ", default: nil) -",
+        "referencedTypes": []
+      },
+      {
+        "name": "lengthSec",
+        "type": "float(",
+        "default": "nil",
+        "description": ", default: nil) - Video length, in seconds. This value is derived from metadata in the source video, and often differs from the actual duration of any given transcode. In videos without valid timestamps, this value is not calculable, and is reported as zero.",
+        "referencedTypes": []
+      },
+      {
+        "name": "streamIndex",
+        "type": "String.t",
+        "default": "nil",
+        "description": "Index of the stream in the file, 0-based.",
+        "referencedTypes": []
+      },
+      {
+        "name": "width",
+        "type": "integer(",
+        "default": "nil",
+        "description": ", default: nil) - The video stream's width and height. Important notes: 1) These are the coded dimensions of the video stream and DO NOT take into account any rotation metadata that may be present in the video container. Prefer to use the MediaOverview::resolution and MediaOverview::orientation when possible. 2) In the case you want detailed displayed width/height information, you can use the MediaOverview::orientation to determine the displayed dimensions. E.g., in the case of PORTRAIT orientation: displayed_width = min(width, height) displayed_height = max(width, height) And for LANDSCAPE orientation: displayed_width = max(width, height) displayed_height = min(width, height)",
+        "referencedTypes": []
+      }
+    ],
+    "attributeCount": 7
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.VideoYoutubeCommentsClassificationProtoSmartSuggestion",
+    "shortName": "VideoYoutubeCommentsClassificationProtoSmartSuggestion",
+    "namespace": "Video",
+    "description": "",
+    "attributes": [
+      {
+        "name": "diversificationThreshold",
+        "type": "number(",
+        "default": "nil",
+        "description": ", default: nil) - Diversification threshold used in prediction. Additional responses which are closer than the threshold to the already selected responses will be skipped.",
+        "referencedTypes": []
+      },
+      {
+        "name": "likelihoodBiasWeight",
+        "type": "number(",
+        "default": "nil",
+        "description": ", default: nil) - Bias weight used in prediction.",
+        "referencedTypes": []
+      },
+      {
+        "name": "replyContent",
+        "type": "String.t",
+        "default": "nil",
+        "description": "Content of the reply snippet (could include emoji as well as text).",
+        "referencedTypes": []
+      },
+      {
+        "name": "score",
+        "type": "float(",
+        "default": "nil",
+        "description": ", default: nil) - Model score for the predicted reply snippet.",
+        "referencedTypes": []
+      }
+    ],
+    "attributeCount": 4
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.WWWResultInfoSubImageDocInfo",
+    "shortName": "WWWResultInfoSubImageDocInfo",
+    "namespace": "WWWResultInfoSubImageDocInfo",
+    "description": "The following message contains info of sub image docs, it is populated in query_state and consumed in web image boost twiddler: (go/WebImageBoostTwiddler). NextID: 26",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.WeboftrustTimeRange",
+    "shortName": "WeboftrustTimeRange",
+    "namespace": "WeboftrustTimeRange",
+    "description": "Time range (start time and end time). Used to indicate the times in which a LiveResult is considered \"hot\" and thus a potential for boosting. Specified as Unix time (seconds since midnight, January 1, 1970). Time zone is same as that for query_start_time (i.e., GMT). Next ID: 3",
+    "attributes": [],
+    "attributeCount": 0
+  },
+  {
+    "fullName": "GoogleApi.ContentWarehouse.V1.Model.WebutilHtmlTypesSafeHtmlProto",
+    "shortName": "WebutilHtmlTypesSafeHtmlProto",
+    "namespace": "WebutilHtmlTypesSafeHtmlProto",
+    "description": "IMPORTANT: It is unsafe to accept this message from an untrusted source, since it's trivial for an attacker to forge serialized messages that don't fulfill the type's safety contract -- for example, it could contain attacker controlled script. A system which receives a SafeHtmlProto implicitly trusts the producer of the SafeHtmlProto. So, it's generally safe to return this message in RPC responses, but generally unsafe to accept it in RPC requests.",
+    "attributes": [],
+    "attributeCount": 0
+  }
+]

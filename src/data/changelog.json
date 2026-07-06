@@ -1,7 +1,546 @@
 {
-  "generatedAt": "2026-04-07T13:24:31.852Z",
-  "totalCommits": 108,
+  "generatedAt": "2026-06-16T13:36:27.552Z",
+  "totalCommits": 157,
   "commits": [
+    {
+      "hash": "d1c102cb1c4bd65ad70a2cc0686699b5fa6c49b9",
+      "shortHash": "d1c102c",
+      "author": "smedash",
+      "date": "2026-06-16 11:31:17 +0200",
+      "subject": "Pie-Chart für URL-Kategorie-Verteilung auf Marketing-Planung",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Pie-Chart für URL-Kategorie-Verteilung auf Marketing-Planung"
+    },
+    {
+      "hash": "a4ecaf7c14ec40fec45722e3873056730c8d4f4b",
+      "shortHash": "a4ecaf7",
+      "author": "smedash",
+      "date": "2026-06-16 10:44:15 +0200",
+      "subject": "Claude Sonnet 4 → 4.6 Migration, dynamisches Jahr im Marketing-AI-Prompt",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Claude Sonnet 4 → 4.6 Migration, dynamisches Jahr im Marketing-AI-Prompt"
+    },
+    {
+      "hash": "e062a2da2c8e13c38af598b627bba59e8df4df2f",
+      "shortHash": "e062a2d",
+      "author": "smedash",
+      "date": "2026-06-16 10:22:40 +0200",
+      "subject": "URL-Kategorie-Filter für Marketing-Planung und Keyword-URL-Mapping",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "URL-Kategorie-Filter für Marketing-Planung und Keyword-URL-Mapping"
+    },
+    {
+      "hash": "a61f0cf85b4737eba1ffaf6a04da2e92cf2eac37",
+      "shortHash": "a61f0cf",
+      "author": "smedash",
+      "date": "2026-06-15 12:18:41 +0200",
+      "subject": "Kategorie-Totals Charts: Topics, Questions, Keywords",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Kategorie-Totals Charts: Topics, Questions, Keywords"
+    },
+    {
+      "hash": "7568f50081195ffa05f35f0fda8b722c5a98b3f2",
+      "shortHash": "7568f50",
+      "author": "smedash",
+      "date": "2026-06-15 11:38:46 +0200",
+      "subject": "Keyword-URLs: Aufklappbare Zeilen in GSC Marketing-Tabelle",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Keyword-URLs: Aufklappbare Zeilen in GSC Marketing-Tabelle"
+    },
+    {
+      "hash": "3830efed1e1e65bfc0ce05146e77dfd18990a93e",
+      "shortHash": "3830efe",
+      "author": "smedash",
+      "date": "2026-06-12 11:11:50 +0200",
+      "subject": "Marketing AI: GSC-Positionsdaten integrieren, Keyword-Empfehlungen verbessern",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Marketing AI: GSC-Positionsdaten integrieren, Keyword-Empfehlungen verbessern"
+    },
+    {
+      "hash": "1e6f5cf5643efc2af9e34c3ed8c37ffaf19db064",
+      "shortHash": "1e6f5cf",
+      "author": "smedash",
+      "date": "2026-06-12 10:54:39 +0200",
+      "subject": "ReFiner: Human-in-the-Loop Chat für Marketing-Strategien",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Human-in-the-Loop Chat für Marketing-Strategien"
+    },
+    {
+      "hash": "90b18fc3ce0c36b9b8448cf5ef87a55e6ceaad90",
+      "shortHash": "90b18fc",
+      "author": "smedash",
+      "date": "2026-06-12 10:41:05 +0200",
+      "subject": "Marketing AI: KI-gestützte Kanal-Strategien mit Claude",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Marketing AI: KI-gestützte Kanal-Strategien mit Claude"
+    },
+    {
+      "hash": "2227158cd17da1c5914beff40bad1fca5eb03605",
+      "shortHash": "2227158",
+      "author": "smedash",
+      "date": "2026-06-12 10:14:12 +0200",
+      "subject": "Excel-Exports: Kategorie + Seed-Keyword ergänzt, leere Sheets ausgeschlossen",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Excel-Exports: Kategorie + Seed-Keyword ergänzt, leere Sheets ausgeschlossen"
+    },
+    {
+      "hash": "c0868fa175acb50bce8a85141c4ce5c6ac3edc51",
+      "shortHash": "c0868fa",
+      "author": "smedash",
+      "date": "2026-06-11 17:41:19 +0200",
+      "subject": "Kategorie-Selektor + Batch-Research-Skript für Seed-Keywords",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Kategorie-Selektor + Batch-Research-Skript für Seed-Keywords"
+    },
+    {
+      "hash": "b8ada25ed68c43561bca9520830d5f6f62bd5aef",
+      "shortHash": "b8ada25",
+      "author": "smedash",
+      "date": "2026-06-11 17:10:45 +0200",
+      "subject": "Question based: Excel-Export (alle + einzeln) hinzugefügt",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Question based: Excel-Export (alle + einzeln) hinzugefügt"
+    },
+    {
+      "hash": "7f6f7b5b1b9cf49f33b305edec1a5aece7fd10cd",
+      "shortHash": "7f6f7b5",
+      "author": "smedash",
+      "date": "2026-06-11 17:08:56 +0200",
+      "subject": "Keyword based: Excel-Export-Button oben rechts in grün (konsistent mit Topics)",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Keyword based: Excel-Export-Button oben rechts in grün (konsistent mit Topics)"
+    },
+    {
+      "hash": "907081a61a8e7bfa7514bd4506d3c5330ad2019d",
+      "shortHash": "907081a",
+      "author": "smedash",
+      "date": "2026-06-11 17:01:49 +0200",
+      "subject": "Keyword based → Question based: Ein-Klick-Übernahme von Keywords",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Keyword based → Question based: Ein-Klick-Übernahme von Keywords"
+    },
+    {
+      "hash": "6b2fb15e1d7f253769acae729c1eec58ea5849c4",
+      "shortHash": "6b2fb15",
+      "author": "smedash",
+      "date": "2026-06-11 16:55:34 +0200",
+      "subject": "Keyword based: Einzelne Abfragen als Excel downloadbar",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Keyword based: Einzelne Abfragen als Excel downloadbar"
+    },
+    {
+      "hash": "85b82b5db3ffbb0a44398764c673233eb8664a27",
+      "shortHash": "85b82b5",
+      "author": "smedash",
+      "date": "2026-06-11 16:53:35 +0200",
+      "subject": "Keyword based: Excel-Export für alle gespeicherten Abfragen",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Keyword based: Excel-Export für alle gespeicherten Abfragen"
+    },
+    {
+      "hash": "782a6c9d54fe09f00a0d704cde6972b9b287e079",
+      "shortHash": "782a6c9",
+      "author": "smedash",
+      "date": "2026-06-11 16:50:22 +0200",
+      "subject": "Keyword based: Gap-Matching auf exakten Match umgestellt",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Keyword based: Gap-Matching auf exakten Match umgestellt"
+    },
+    {
+      "hash": "fbfed2e43346e0fbceff80ecff12d7c3b94078d3",
+      "shortHash": "fbfed2e",
+      "author": "smedash",
+      "date": "2026-06-11 16:47:54 +0200",
+      "subject": "Keyword based: Gap-Analyse nutzt Impressions statt Clicks als Kriterium",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Keyword based: Gap-Analyse nutzt Impressions statt Clicks als Kriterium"
+    },
+    {
+      "hash": "0081ceb9a89461cfb9d9c141d6a14f4040811de0",
+      "shortHash": "0081ceb",
+      "author": "smedash",
+      "date": "2026-06-11 16:43:05 +0200",
+      "subject": "Keyword based: GSC Gap-Analyse nutzt automatisch Property aus Top Bar",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Keyword based: GSC Gap-Analyse nutzt automatisch Property aus Top Bar"
+    },
+    {
+      "hash": "47db2a51afcc1b459c42c3efdec6c44427e35678",
+      "shortHash": "47db2a5",
+      "author": "smedash",
+      "date": "2026-06-11 16:37:31 +0200",
+      "subject": "Keyword based: GSC Gap-Analyse integriert",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Keyword based: GSC Gap-Analyse integriert"
+    },
+    {
+      "hash": "c0d40769ce38b4142a46228e365ec43cae0453fd",
+      "shortHash": "c0d4076",
+      "author": "smedash",
+      "date": "2026-06-11 16:32:29 +0200",
+      "subject": "Keyword based: Land- und Sprach-Auswahl ergänzt (analog Topics)",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Keyword based: Land- und Sprach-Auswahl ergänzt (analog Topics)"
+    },
+    {
+      "hash": "3de39d5ab5ac83c96e8ef72c60e01ce9c86e15c3",
+      "shortHash": "3de39d5",
+      "author": "smedash",
+      "date": "2026-06-11 16:30:21 +0200",
+      "subject": "Keyword based: Page size von 50 auf 100 erhöht",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Keyword based: Page size von 50 auf 100 erhöht"
+    },
+    {
+      "hash": "3ec62c0bfeabdcd145e2a3db0bbb45efe3f1826d",
+      "shortHash": "3ec62c0",
+      "author": "smedash",
+      "date": "2026-06-11 16:28:44 +0200",
+      "subject": "Marketing Planung: Neue Seite \"Keyword based\" mit SEOspark-Integration",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Marketing Planung: Neue Seite \"Keyword based\" mit SEOspark-Integration"
+    },
+    {
+      "hash": "f073c8dfaa631b6068d86f46d6c9cc6dd8efba1e",
+      "shortHash": "f073c8d",
+      "author": "smedash",
+      "date": "2026-06-11 13:02:13 +0200",
+      "subject": "Marketing Planung: Neue Seite \"Question based\" mit Anthropic-Integration",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Marketing Planung: Neue Seite \"Question based\" mit Anthropic-Integration"
+    },
+    {
+      "hash": "725ffdf71ba5cd86d4140a94b5f4bd39fb827226",
+      "shortHash": "725ffdf",
+      "author": "smedash",
+      "date": "2026-06-11 12:53:22 +0200",
+      "subject": "Topic Research: Neue Seite mit TopicLoops API Integration",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Topic Research: Neue Seite mit TopicLoops API Integration"
+    },
+    {
+      "hash": "fabf6acf1eec3834042506629a45b462981a595f",
+      "shortHash": "fabf6ac",
+      "author": "smedash",
+      "date": "2026-06-11 12:12:00 +0200",
+      "subject": "Marketing Planung: Neue Seite mit Suchvolumen & CPC Integration",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Marketing Planung: Neue Seite mit Suchvolumen & CPC Integration"
+    },
+    {
+      "hash": "546d814114b8f082d4dc940f2e823fe87ca89e14",
+      "shortHash": "546d814",
+      "author": "smedash",
+      "date": "2026-06-08 15:02:08 +0200",
+      "subject": "Suchanfragen: Kategorie-Filter \"Produkte\" hinzugefügt",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Kategorie-Filter \"Produkte\" hinzugefügt"
+    },
+    {
+      "hash": "c557194aa2db295cc75ab1c20d86e965130a2719",
+      "shortHash": "c557194",
+      "author": "smedash",
+      "date": "2026-06-08 09:53:09 +0200",
+      "subject": "Suchanfragen: Prozentuale Verteilung in Impressionen/Klicks Pie-Charts",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Prozentuale Verteilung in Impressionen/Klicks Pie-Charts"
+    },
+    {
+      "hash": "1cf6880af0bf12227cd69c42e88af7c1f658bd65",
+      "shortHash": "1cf6880",
+      "author": "smedash",
+      "date": "2026-06-08 09:50:12 +0200",
+      "subject": "Suchanfragen: Trend-Daten Null-Einträge (API-Fehler) korrekt behandeln",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Trend-Daten Null-Einträge (API-Fehler) korrekt behandeln"
+    },
+    {
+      "hash": "8b651e38a30ff5231fae28ae779fcb9859b5642f",
+      "shortHash": "8b651e3",
+      "author": "smedash",
+      "date": "2026-06-08 09:41:30 +0200",
+      "subject": "Suchanfragen: Trend-Filter um \"Keine Richtung\" erweitert",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Trend-Filter um \"Keine Richtung\" erweitert"
+    },
+    {
+      "hash": "e5e4227756e378aa389b6e8b90fc58496d5b2f84",
+      "shortHash": "e5e4227",
+      "author": "smedash",
+      "date": "2026-06-08 09:39:05 +0200",
+      "subject": "Suchanfragen: Google Trends Richtungs-Filter (steigend/stagniert/fallend)",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Google Trends Richtungs-Filter (steigend/stagniert/fallend)"
+    },
+    {
+      "hash": "fb3c7334d7b8aae8497a723cd01b19d20db640e9",
+      "shortHash": "fb3c733",
+      "author": "smedash",
+      "date": "2026-06-08 09:35:22 +0200",
+      "subject": "Suchanfragen: Impressionen-Donut-Chart + Trend/Intent-Lookup-Fix",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Impressionen-Donut-Chart + Trend/Intent-Lookup-Fix"
+    },
+    {
+      "hash": "23617760eb0189a9527843bb6237d9089ccdc50a",
+      "shortHash": "2361776",
+      "author": "smedash",
+      "date": "2026-06-08 09:27:51 +0200",
+      "subject": "Suchanfragen: Donut-Chart für Klicks je Intent-Kategorie",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Donut-Chart für Klicks je Intent-Kategorie"
+    },
+    {
+      "hash": "fc1410f714899ffc1ebbb12cee397d3b26b588ad",
+      "shortHash": "fc1410f",
+      "author": "smedash",
+      "date": "2026-06-05 13:01:08 +0200",
+      "subject": "Suchanfragen: Kategorie-Filter für Beratung und Abschluss Keywords",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Kategorie-Filter für Beratung und Abschluss Keywords"
+    },
+    {
+      "hash": "ab71cb72bdf15b12df377cd885920fb320ffe0ea",
+      "shortHash": "ab71cb7",
+      "author": "smedash",
+      "date": "2026-06-05 12:49:50 +0200",
+      "subject": "Suchanfragen: Keywords ohne Intent kennzeichnen, filtern und im Pie Chart anzeigen",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Keywords ohne Intent kennzeichnen, filtern und im Pie Chart anzeigen"
+    },
+    {
+      "hash": "bceee51c32968213d1793c398b0719d0b757bb7f",
+      "shortHash": "bceee51",
+      "author": "smedash",
+      "date": "2026-06-05 12:20:04 +0200",
+      "subject": "Suchanfragen: Intent-Verteilung Donut-Chart neben Filterbereich",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Intent-Verteilung Donut-Chart neben Filterbereich"
+    },
+    {
+      "hash": "821f5caf41363812888e2ec7e229c435269d48cc",
+      "shortHash": "821f5ca",
+      "author": "smedash",
+      "date": "2026-06-05 12:15:47 +0200",
+      "subject": "Suchanfragen: Search Intent via DataForSEO Labs (persistent, Background-Job)",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Search Intent via DataForSEO Labs (persistent, Background-Job)"
+    },
+    {
+      "hash": "94c7f76c06d9848203afbb9f52257dda6ebdc520",
+      "shortHash": "94c7f76",
+      "author": "smedash",
+      "date": "2026-06-05 10:53:30 +0200",
+      "subject": "Suchanfragen: Google Trends Integration via DataForSEO (Background-Job)",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Google Trends Integration via DataForSEO (Background-Job)"
+    },
+    {
+      "hash": "dbe5d9e3b80484a319f00f319e39ff25540aee45",
+      "shortHash": "dbe5d9e",
+      "author": "smedash",
+      "date": "2026-06-05 10:22:51 +0200",
+      "subject": "Suchanfragen: Excel-Export (.xlsx) für gefilterte GSC-Tabellendaten",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Excel-Export (.xlsx) für gefilterte GSC-Tabellendaten"
+    },
+    {
+      "hash": "13c7801b667cbd28ceaa82d0fd16b9ac27d3f0e1",
+      "shortHash": "13c7801",
+      "author": "smedash",
+      "date": "2026-05-07 13:10:45 +0200",
+      "subject": "feat(keyword-mapping): XLSX-Export mit persistentem Top Ranked Keywords Cache",
+      "type": "feat",
+      "typeLabel": "Feature",
+      "scope": "keyword-mapping",
+      "message": "XLSX-Export mit persistentem Top Ranked Keywords Cache"
+    },
+    {
+      "hash": "935e0abac419bf11a80adcf6b640daa0bb66cfdf",
+      "shortHash": "935e0ab",
+      "author": "smedash",
+      "date": "2026-05-04 11:28:30 +0200",
+      "subject": "README: veraltetes Snapshot-Modell aus Datenbank-Tabelle entfernt",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "veraltetes Snapshot-Modell aus Datenbank-Tabelle entfernt"
+    },
+    {
+      "hash": "57b7903898ea26a28e1a2792c427abd04504ef80",
+      "shortHash": "57b7903",
+      "author": "smedash",
+      "date": "2026-05-04 11:26:24 +0200",
+      "subject": "README: veraltetes GSCProperty-Modell aus Datenbank-Tabelle entfernt",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "veraltetes GSCProperty-Modell aus Datenbank-Tabelle entfernt"
+    },
+    {
+      "hash": "fe779f3fbfd1f6a0ab6be2789e98ef3796ef4d18",
+      "shortHash": "fe779f3",
+      "author": "smedash",
+      "date": "2026-05-04 11:22:04 +0200",
+      "subject": "PropertySelector: hardcodierte Property-Filterung entfernt",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "hardcodierte Property-Filterung entfernt"
+    },
+    {
+      "hash": "f13ac43a2a567ea53df8aa75dbd041eaa10abf55",
+      "shortHash": "f13ac43",
+      "author": "smedash",
+      "date": "2026-04-08 09:26:14 +0200",
+      "subject": "Seiten: Excel-Export (.xlsx) für gefilterte GSC-Tabellendaten",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Excel-Export (.xlsx) für gefilterte GSC-Tabellendaten"
+    },
+    {
+      "hash": "52932491df25606cb8b6ce113197111b56a5fb29",
+      "shortHash": "5293249",
+      "author": "smedash",
+      "date": "2026-04-07 18:03:35 +0200",
+      "subject": "feat(keyword-mapping): DataForSEO Labs Top-Rank-Keywords pro URL",
+      "type": "feat",
+      "typeLabel": "Feature",
+      "scope": "keyword-mapping",
+      "message": "DataForSEO Labs Top-Rank-Keywords pro URL"
+    },
+    {
+      "hash": "e0f7e412e35c583055f25401feea95cc07bf0778",
+      "shortHash": "e0f7e41",
+      "author": "smedash",
+      "date": "2026-04-07 17:45:58 +0200",
+      "subject": "feat(keyword-mapping): GSC-Klicks-Filter mit Mindest- und Obergrenze",
+      "type": "feat",
+      "typeLabel": "Feature",
+      "scope": "keyword-mapping",
+      "message": "GSC-Klicks-Filter mit Mindest- und Obergrenze"
+    },
+    {
+      "hash": "10b4f1785baf7f80390bce8c1d17c5ee231a9bc5",
+      "shortHash": "10b4f17",
+      "author": "smedash",
+      "date": "2026-04-07 17:36:24 +0200",
+      "subject": "Keyword-Mapping: GSC-Trafficdaten für Property https://www.ubs.com/",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Keyword-Mapping: GSC-Trafficdaten für Property https://www.ubs.com/"
+    },
+    {
+      "hash": "3f97b176acf66a917761dd59045100b1b6dd810e",
+      "shortHash": "3f97b17",
+      "author": "smedash",
+      "date": "2026-04-07 17:21:24 +0200",
+      "subject": "Keyword-Mapping: URL-Pfad-Overlap mit Erklärung, aufklappbaren Karten und 10/20-Artikel-Laden",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Keyword-Mapping: URL-Pfad-Overlap mit Erklärung, aufklappbaren Karten und 10/20-Artikel-Laden"
+    },
+    {
+      "hash": "9ba3ac834aeae6a8dff0998ffe71516f2f065187",
+      "shortHash": "9ba3ac8",
+      "author": "smedash",
+      "date": "2026-04-07 16:37:43 +0200",
+      "subject": "Redaktionsplan: Sprache aus URL inkl. Microsites-Pfad",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Sprache aus URL inkl. Microsites-Pfad"
+    },
+    {
+      "hash": "7975478fe7af03f3208f6188db307965d1cc0670",
+      "shortHash": "7975478",
+      "author": "smedash",
+      "date": "2026-04-07 15:29:17 +0200",
+      "subject": "Keyword-Mapping: Tab URL-Pfad-Overlap für Pfadpräfix-Vergleich",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Keyword-Mapping: Tab URL-Pfad-Overlap für Pfadpräfix-Vergleich"
+    },
     {
       "hash": "bcffb3fe7327b2964dd93660bc0a559baba3d9a1",
       "shortHash": "bcffb3f",
@@ -1192,7 +1731,564 @@
     }
   ],
   "groupedByDate": {
+    "2026-06-16": [
+      {
+        "hash": "d1c102cb1c4bd65ad70a2cc0686699b5fa6c49b9",
+        "shortHash": "d1c102c",
+        "author": "smedash",
+        "date": "2026-06-16 11:31:17 +0200",
+        "subject": "Pie-Chart für URL-Kategorie-Verteilung auf Marketing-Planung",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Pie-Chart für URL-Kategorie-Verteilung auf Marketing-Planung"
+      },
+      {
+        "hash": "a4ecaf7c14ec40fec45722e3873056730c8d4f4b",
+        "shortHash": "a4ecaf7",
+        "author": "smedash",
+        "date": "2026-06-16 10:44:15 +0200",
+        "subject": "Claude Sonnet 4 → 4.6 Migration, dynamisches Jahr im Marketing-AI-Prompt",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Claude Sonnet 4 → 4.6 Migration, dynamisches Jahr im Marketing-AI-Prompt"
+      },
+      {
+        "hash": "e062a2da2c8e13c38af598b627bba59e8df4df2f",
+        "shortHash": "e062a2d",
+        "author": "smedash",
+        "date": "2026-06-16 10:22:40 +0200",
+        "subject": "URL-Kategorie-Filter für Marketing-Planung und Keyword-URL-Mapping",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "URL-Kategorie-Filter für Marketing-Planung und Keyword-URL-Mapping"
+      }
+    ],
+    "2026-06-15": [
+      {
+        "hash": "a61f0cf85b4737eba1ffaf6a04da2e92cf2eac37",
+        "shortHash": "a61f0cf",
+        "author": "smedash",
+        "date": "2026-06-15 12:18:41 +0200",
+        "subject": "Kategorie-Totals Charts: Topics, Questions, Keywords",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Kategorie-Totals Charts: Topics, Questions, Keywords"
+      },
+      {
+        "hash": "7568f50081195ffa05f35f0fda8b722c5a98b3f2",
+        "shortHash": "7568f50",
+        "author": "smedash",
+        "date": "2026-06-15 11:38:46 +0200",
+        "subject": "Keyword-URLs: Aufklappbare Zeilen in GSC Marketing-Tabelle",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Keyword-URLs: Aufklappbare Zeilen in GSC Marketing-Tabelle"
+      }
+    ],
+    "2026-06-12": [
+      {
+        "hash": "3830efed1e1e65bfc0ce05146e77dfd18990a93e",
+        "shortHash": "3830efe",
+        "author": "smedash",
+        "date": "2026-06-12 11:11:50 +0200",
+        "subject": "Marketing AI: GSC-Positionsdaten integrieren, Keyword-Empfehlungen verbessern",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Marketing AI: GSC-Positionsdaten integrieren, Keyword-Empfehlungen verbessern"
+      },
+      {
+        "hash": "1e6f5cf5643efc2af9e34c3ed8c37ffaf19db064",
+        "shortHash": "1e6f5cf",
+        "author": "smedash",
+        "date": "2026-06-12 10:54:39 +0200",
+        "subject": "ReFiner: Human-in-the-Loop Chat für Marketing-Strategien",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Human-in-the-Loop Chat für Marketing-Strategien"
+      },
+      {
+        "hash": "90b18fc3ce0c36b9b8448cf5ef87a55e6ceaad90",
+        "shortHash": "90b18fc",
+        "author": "smedash",
+        "date": "2026-06-12 10:41:05 +0200",
+        "subject": "Marketing AI: KI-gestützte Kanal-Strategien mit Claude",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Marketing AI: KI-gestützte Kanal-Strategien mit Claude"
+      },
+      {
+        "hash": "2227158cd17da1c5914beff40bad1fca5eb03605",
+        "shortHash": "2227158",
+        "author": "smedash",
+        "date": "2026-06-12 10:14:12 +0200",
+        "subject": "Excel-Exports: Kategorie + Seed-Keyword ergänzt, leere Sheets ausgeschlossen",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Excel-Exports: Kategorie + Seed-Keyword ergänzt, leere Sheets ausgeschlossen"
+      }
+    ],
+    "2026-06-11": [
+      {
+        "hash": "c0868fa175acb50bce8a85141c4ce5c6ac3edc51",
+        "shortHash": "c0868fa",
+        "author": "smedash",
+        "date": "2026-06-11 17:41:19 +0200",
+        "subject": "Kategorie-Selektor + Batch-Research-Skript für Seed-Keywords",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Kategorie-Selektor + Batch-Research-Skript für Seed-Keywords"
+      },
+      {
+        "hash": "b8ada25ed68c43561bca9520830d5f6f62bd5aef",
+        "shortHash": "b8ada25",
+        "author": "smedash",
+        "date": "2026-06-11 17:10:45 +0200",
+        "subject": "Question based: Excel-Export (alle + einzeln) hinzugefügt",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Question based: Excel-Export (alle + einzeln) hinzugefügt"
+      },
+      {
+        "hash": "7f6f7b5b1b9cf49f33b305edec1a5aece7fd10cd",
+        "shortHash": "7f6f7b5",
+        "author": "smedash",
+        "date": "2026-06-11 17:08:56 +0200",
+        "subject": "Keyword based: Excel-Export-Button oben rechts in grün (konsistent mit Topics)",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Keyword based: Excel-Export-Button oben rechts in grün (konsistent mit Topics)"
+      },
+      {
+        "hash": "907081a61a8e7bfa7514bd4506d3c5330ad2019d",
+        "shortHash": "907081a",
+        "author": "smedash",
+        "date": "2026-06-11 17:01:49 +0200",
+        "subject": "Keyword based → Question based: Ein-Klick-Übernahme von Keywords",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Keyword based → Question based: Ein-Klick-Übernahme von Keywords"
+      },
+      {
+        "hash": "6b2fb15e1d7f253769acae729c1eec58ea5849c4",
+        "shortHash": "6b2fb15",
+        "author": "smedash",
+        "date": "2026-06-11 16:55:34 +0200",
+        "subject": "Keyword based: Einzelne Abfragen als Excel downloadbar",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Keyword based: Einzelne Abfragen als Excel downloadbar"
+      },
+      {
+        "hash": "85b82b5db3ffbb0a44398764c673233eb8664a27",
+        "shortHash": "85b82b5",
+        "author": "smedash",
+        "date": "2026-06-11 16:53:35 +0200",
+        "subject": "Keyword based: Excel-Export für alle gespeicherten Abfragen",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Keyword based: Excel-Export für alle gespeicherten Abfragen"
+      },
+      {
+        "hash": "782a6c9d54fe09f00a0d704cde6972b9b287e079",
+        "shortHash": "782a6c9",
+        "author": "smedash",
+        "date": "2026-06-11 16:50:22 +0200",
+        "subject": "Keyword based: Gap-Matching auf exakten Match umgestellt",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Keyword based: Gap-Matching auf exakten Match umgestellt"
+      },
+      {
+        "hash": "fbfed2e43346e0fbceff80ecff12d7c3b94078d3",
+        "shortHash": "fbfed2e",
+        "author": "smedash",
+        "date": "2026-06-11 16:47:54 +0200",
+        "subject": "Keyword based: Gap-Analyse nutzt Impressions statt Clicks als Kriterium",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Keyword based: Gap-Analyse nutzt Impressions statt Clicks als Kriterium"
+      },
+      {
+        "hash": "0081ceb9a89461cfb9d9c141d6a14f4040811de0",
+        "shortHash": "0081ceb",
+        "author": "smedash",
+        "date": "2026-06-11 16:43:05 +0200",
+        "subject": "Keyword based: GSC Gap-Analyse nutzt automatisch Property aus Top Bar",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Keyword based: GSC Gap-Analyse nutzt automatisch Property aus Top Bar"
+      },
+      {
+        "hash": "47db2a51afcc1b459c42c3efdec6c44427e35678",
+        "shortHash": "47db2a5",
+        "author": "smedash",
+        "date": "2026-06-11 16:37:31 +0200",
+        "subject": "Keyword based: GSC Gap-Analyse integriert",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Keyword based: GSC Gap-Analyse integriert"
+      },
+      {
+        "hash": "c0d40769ce38b4142a46228e365ec43cae0453fd",
+        "shortHash": "c0d4076",
+        "author": "smedash",
+        "date": "2026-06-11 16:32:29 +0200",
+        "subject": "Keyword based: Land- und Sprach-Auswahl ergänzt (analog Topics)",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Keyword based: Land- und Sprach-Auswahl ergänzt (analog Topics)"
+      },
+      {
+        "hash": "3de39d5ab5ac83c96e8ef72c60e01ce9c86e15c3",
+        "shortHash": "3de39d5",
+        "author": "smedash",
+        "date": "2026-06-11 16:30:21 +0200",
+        "subject": "Keyword based: Page size von 50 auf 100 erhöht",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Keyword based: Page size von 50 auf 100 erhöht"
+      },
+      {
+        "hash": "3ec62c0bfeabdcd145e2a3db0bbb45efe3f1826d",
+        "shortHash": "3ec62c0",
+        "author": "smedash",
+        "date": "2026-06-11 16:28:44 +0200",
+        "subject": "Marketing Planung: Neue Seite \"Keyword based\" mit SEOspark-Integration",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Marketing Planung: Neue Seite \"Keyword based\" mit SEOspark-Integration"
+      },
+      {
+        "hash": "f073c8dfaa631b6068d86f46d6c9cc6dd8efba1e",
+        "shortHash": "f073c8d",
+        "author": "smedash",
+        "date": "2026-06-11 13:02:13 +0200",
+        "subject": "Marketing Planung: Neue Seite \"Question based\" mit Anthropic-Integration",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Marketing Planung: Neue Seite \"Question based\" mit Anthropic-Integration"
+      },
+      {
+        "hash": "725ffdf71ba5cd86d4140a94b5f4bd39fb827226",
+        "shortHash": "725ffdf",
+        "author": "smedash",
+        "date": "2026-06-11 12:53:22 +0200",
+        "subject": "Topic Research: Neue Seite mit TopicLoops API Integration",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Topic Research: Neue Seite mit TopicLoops API Integration"
+      },
+      {
+        "hash": "fabf6acf1eec3834042506629a45b462981a595f",
+        "shortHash": "fabf6ac",
+        "author": "smedash",
+        "date": "2026-06-11 12:12:00 +0200",
+        "subject": "Marketing Planung: Neue Seite mit Suchvolumen & CPC Integration",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Marketing Planung: Neue Seite mit Suchvolumen & CPC Integration"
+      }
+    ],
+    "2026-06-08": [
+      {
+        "hash": "546d814114b8f082d4dc940f2e823fe87ca89e14",
+        "shortHash": "546d814",
+        "author": "smedash",
+        "date": "2026-06-08 15:02:08 +0200",
+        "subject": "Suchanfragen: Kategorie-Filter \"Produkte\" hinzugefügt",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Kategorie-Filter \"Produkte\" hinzugefügt"
+      },
+      {
+        "hash": "c557194aa2db295cc75ab1c20d86e965130a2719",
+        "shortHash": "c557194",
+        "author": "smedash",
+        "date": "2026-06-08 09:53:09 +0200",
+        "subject": "Suchanfragen: Prozentuale Verteilung in Impressionen/Klicks Pie-Charts",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Prozentuale Verteilung in Impressionen/Klicks Pie-Charts"
+      },
+      {
+        "hash": "1cf6880af0bf12227cd69c42e88af7c1f658bd65",
+        "shortHash": "1cf6880",
+        "author": "smedash",
+        "date": "2026-06-08 09:50:12 +0200",
+        "subject": "Suchanfragen: Trend-Daten Null-Einträge (API-Fehler) korrekt behandeln",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Trend-Daten Null-Einträge (API-Fehler) korrekt behandeln"
+      },
+      {
+        "hash": "8b651e38a30ff5231fae28ae779fcb9859b5642f",
+        "shortHash": "8b651e3",
+        "author": "smedash",
+        "date": "2026-06-08 09:41:30 +0200",
+        "subject": "Suchanfragen: Trend-Filter um \"Keine Richtung\" erweitert",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Trend-Filter um \"Keine Richtung\" erweitert"
+      },
+      {
+        "hash": "e5e4227756e378aa389b6e8b90fc58496d5b2f84",
+        "shortHash": "e5e4227",
+        "author": "smedash",
+        "date": "2026-06-08 09:39:05 +0200",
+        "subject": "Suchanfragen: Google Trends Richtungs-Filter (steigend/stagniert/fallend)",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Google Trends Richtungs-Filter (steigend/stagniert/fallend)"
+      },
+      {
+        "hash": "fb3c7334d7b8aae8497a723cd01b19d20db640e9",
+        "shortHash": "fb3c733",
+        "author": "smedash",
+        "date": "2026-06-08 09:35:22 +0200",
+        "subject": "Suchanfragen: Impressionen-Donut-Chart + Trend/Intent-Lookup-Fix",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Impressionen-Donut-Chart + Trend/Intent-Lookup-Fix"
+      },
+      {
+        "hash": "23617760eb0189a9527843bb6237d9089ccdc50a",
+        "shortHash": "2361776",
+        "author": "smedash",
+        "date": "2026-06-08 09:27:51 +0200",
+        "subject": "Suchanfragen: Donut-Chart für Klicks je Intent-Kategorie",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Donut-Chart für Klicks je Intent-Kategorie"
+      }
+    ],
+    "2026-06-05": [
+      {
+        "hash": "fc1410f714899ffc1ebbb12cee397d3b26b588ad",
+        "shortHash": "fc1410f",
+        "author": "smedash",
+        "date": "2026-06-05 13:01:08 +0200",
+        "subject": "Suchanfragen: Kategorie-Filter für Beratung und Abschluss Keywords",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Kategorie-Filter für Beratung und Abschluss Keywords"
+      },
+      {
+        "hash": "ab71cb72bdf15b12df377cd885920fb320ffe0ea",
+        "shortHash": "ab71cb7",
+        "author": "smedash",
+        "date": "2026-06-05 12:49:50 +0200",
+        "subject": "Suchanfragen: Keywords ohne Intent kennzeichnen, filtern und im Pie Chart anzeigen",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Keywords ohne Intent kennzeichnen, filtern und im Pie Chart anzeigen"
+      },
+      {
+        "hash": "bceee51c32968213d1793c398b0719d0b757bb7f",
+        "shortHash": "bceee51",
+        "author": "smedash",
+        "date": "2026-06-05 12:20:04 +0200",
+        "subject": "Suchanfragen: Intent-Verteilung Donut-Chart neben Filterbereich",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Intent-Verteilung Donut-Chart neben Filterbereich"
+      },
+      {
+        "hash": "821f5caf41363812888e2ec7e229c435269d48cc",
+        "shortHash": "821f5ca",
+        "author": "smedash",
+        "date": "2026-06-05 12:15:47 +0200",
+        "subject": "Suchanfragen: Search Intent via DataForSEO Labs (persistent, Background-Job)",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Search Intent via DataForSEO Labs (persistent, Background-Job)"
+      },
+      {
+        "hash": "94c7f76c06d9848203afbb9f52257dda6ebdc520",
+        "shortHash": "94c7f76",
+        "author": "smedash",
+        "date": "2026-06-05 10:53:30 +0200",
+        "subject": "Suchanfragen: Google Trends Integration via DataForSEO (Background-Job)",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Google Trends Integration via DataForSEO (Background-Job)"
+      },
+      {
+        "hash": "dbe5d9e3b80484a319f00f319e39ff25540aee45",
+        "shortHash": "dbe5d9e",
+        "author": "smedash",
+        "date": "2026-06-05 10:22:51 +0200",
+        "subject": "Suchanfragen: Excel-Export (.xlsx) für gefilterte GSC-Tabellendaten",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Excel-Export (.xlsx) für gefilterte GSC-Tabellendaten"
+      }
+    ],
+    "2026-05-07": [
+      {
+        "hash": "13c7801b667cbd28ceaa82d0fd16b9ac27d3f0e1",
+        "shortHash": "13c7801",
+        "author": "smedash",
+        "date": "2026-05-07 13:10:45 +0200",
+        "subject": "feat(keyword-mapping): XLSX-Export mit persistentem Top Ranked Keywords Cache",
+        "type": "feat",
+        "typeLabel": "Feature",
+        "scope": "keyword-mapping",
+        "message": "XLSX-Export mit persistentem Top Ranked Keywords Cache"
+      }
+    ],
+    "2026-05-04": [
+      {
+        "hash": "935e0abac419bf11a80adcf6b640daa0bb66cfdf",
+        "shortHash": "935e0ab",
+        "author": "smedash",
+        "date": "2026-05-04 11:28:30 +0200",
+        "subject": "README: veraltetes Snapshot-Modell aus Datenbank-Tabelle entfernt",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "veraltetes Snapshot-Modell aus Datenbank-Tabelle entfernt"
+      },
+      {
+        "hash": "57b7903898ea26a28e1a2792c427abd04504ef80",
+        "shortHash": "57b7903",
+        "author": "smedash",
+        "date": "2026-05-04 11:26:24 +0200",
+        "subject": "README: veraltetes GSCProperty-Modell aus Datenbank-Tabelle entfernt",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "veraltetes GSCProperty-Modell aus Datenbank-Tabelle entfernt"
+      },
+      {
+        "hash": "fe779f3fbfd1f6a0ab6be2789e98ef3796ef4d18",
+        "shortHash": "fe779f3",
+        "author": "smedash",
+        "date": "2026-05-04 11:22:04 +0200",
+        "subject": "PropertySelector: hardcodierte Property-Filterung entfernt",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "hardcodierte Property-Filterung entfernt"
+      }
+    ],
+    "2026-04-08": [
+      {
+        "hash": "f13ac43a2a567ea53df8aa75dbd041eaa10abf55",
+        "shortHash": "f13ac43",
+        "author": "smedash",
+        "date": "2026-04-08 09:26:14 +0200",
+        "subject": "Seiten: Excel-Export (.xlsx) für gefilterte GSC-Tabellendaten",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Excel-Export (.xlsx) für gefilterte GSC-Tabellendaten"
+      }
+    ],
     "2026-04-07": [
+      {
+        "hash": "52932491df25606cb8b6ce113197111b56a5fb29",
+        "shortHash": "5293249",
+        "author": "smedash",
+        "date": "2026-04-07 18:03:35 +0200",
+        "subject": "feat(keyword-mapping): DataForSEO Labs Top-Rank-Keywords pro URL",
+        "type": "feat",
+        "typeLabel": "Feature",
+        "scope": "keyword-mapping",
+        "message": "DataForSEO Labs Top-Rank-Keywords pro URL"
+      },
+      {
+        "hash": "e0f7e412e35c583055f25401feea95cc07bf0778",
+        "shortHash": "e0f7e41",
+        "author": "smedash",
+        "date": "2026-04-07 17:45:58 +0200",
+        "subject": "feat(keyword-mapping): GSC-Klicks-Filter mit Mindest- und Obergrenze",
+        "type": "feat",
+        "typeLabel": "Feature",
+        "scope": "keyword-mapping",
+        "message": "GSC-Klicks-Filter mit Mindest- und Obergrenze"
+      },
+      {
+        "hash": "10b4f1785baf7f80390bce8c1d17c5ee231a9bc5",
+        "shortHash": "10b4f17",
+        "author": "smedash",
+        "date": "2026-04-07 17:36:24 +0200",
+        "subject": "Keyword-Mapping: GSC-Trafficdaten für Property https://www.ubs.com/",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Keyword-Mapping: GSC-Trafficdaten für Property https://www.ubs.com/"
+      },
+      {
+        "hash": "3f97b176acf66a917761dd59045100b1b6dd810e",
+        "shortHash": "3f97b17",
+        "author": "smedash",
+        "date": "2026-04-07 17:21:24 +0200",
+        "subject": "Keyword-Mapping: URL-Pfad-Overlap mit Erklärung, aufklappbaren Karten und 10/20-Artikel-Laden",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Keyword-Mapping: URL-Pfad-Overlap mit Erklärung, aufklappbaren Karten und 10/20-Artikel-Laden"
+      },
+      {
+        "hash": "9ba3ac834aeae6a8dff0998ffe71516f2f065187",
+        "shortHash": "9ba3ac8",
+        "author": "smedash",
+        "date": "2026-04-07 16:37:43 +0200",
+        "subject": "Redaktionsplan: Sprache aus URL inkl. Microsites-Pfad",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Sprache aus URL inkl. Microsites-Pfad"
+      },
+      {
+        "hash": "7975478fe7af03f3208f6188db307965d1cc0670",
+        "shortHash": "7975478",
+        "author": "smedash",
+        "date": "2026-04-07 15:29:17 +0200",
+        "subject": "Keyword-Mapping: Tab URL-Pfad-Overlap für Pfadpräfix-Vergleich",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Keyword-Mapping: Tab URL-Pfad-Overlap für Pfadpräfix-Vergleich"
+      },
       {
         "hash": "bcffb3fe7327b2964dd93660bc0a559baba3d9a1",
         "shortHash": "bcffb3f",
