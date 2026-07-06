@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 
 interface CheckResult {
@@ -75,7 +75,7 @@ export default function UrlCheckerPage() {
   const [error, setError] = useState("");
   const [result, setResult] = useState<UrlCheckResult | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState<TabId>("results");
+  const [activeTab, setActiveTab] = useState<TabId>("history");
 
   // AI Analysis
   const [aiAnalysis, setAiAnalysis] = useState<AiAnalysis | null>(null);
@@ -285,9 +285,9 @@ export default function UrlCheckerPage() {
     }
   };
 
-  const handleLoadHistory = useCallback(async () => {
+  const handleLoadHistory = useCallback(async (switchTab = true) => {
     setIsHistoryLoading(true);
-    setActiveTab("history");
+    if (switchTab) setActiveTab("history");
     try {
       const resp = await fetch("/api/seo-helper/url-checker/history?limit=30");
       const data = await resp.json();
@@ -299,6 +299,10 @@ export default function UrlCheckerPage() {
       setIsHistoryLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    handleLoadHistory(false);
+  }, [handleLoadHistory]);
 
   const handleBatch = async () => {
     const urls = batchUrls.split("\n").map(u => u.trim()).filter(u => u.length > 0);
@@ -549,15 +553,13 @@ export default function UrlCheckerPage() {
       )}
 
       {/* Tabs */}
-      {(result || activeTab === "batch" || activeTab === "history") && (
-        <div className="flex gap-1 p-1 bg-slate-100 dark:bg-slate-700 rounded-xl overflow-x-auto">
+      <div className="flex gap-1 p-1 bg-slate-100 dark:bg-slate-700 rounded-xl overflow-x-auto">
           {tabs.filter(t => t.show).map(tab => (
             <button key={tab.id} onClick={() => { setActiveTab(tab.id); if (tab.id === "history") handleLoadHistory(); if (tab.id === "ai" && !aiAnalysis && !isAiLoading) handleAiAnalysis(); if (tab.id === "speed" && !pageSpeed && !isSpeedLoading) handlePageSpeed(); if (tab.id === "backlinks" && !backlinks && !isBacklinksLoading) handleBacklinks(); if (tab.id === "monitor") handleLoadMonitors(); }} className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${activeTab === tab.id ? "bg-white dark:bg-slate-600 text-slate-900 dark:text-white shadow-sm" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"}`}>
               {tab.label}
             </button>
           ))}
-        </div>
-      )}
+      </div>
 
       {/* Tab: Results */}
       {activeTab === "results" && result && (
