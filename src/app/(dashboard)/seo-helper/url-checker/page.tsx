@@ -403,6 +403,22 @@ export default function UrlCheckerPage() {
     return "from-red-500 to-rose-500";
   };
 
+  const getCategoryExplanation = (name: string): string => {
+    const explanations: Record<string, string> = {
+      "Technical / Indexing": "Technische Grundlagen wie Canonical-Tags, Robots-Direktiven und Ladegeschwindigkeit. Ohne korrekte Indexierung können Seiten gar nicht ranken — hier zuerst optimieren.",
+      "Content Quality": "Qualität und Tiefe deines Contents nach Googles NSR- und QualityBoost-Metriken. Umfassende, einzigartige Inhalte mit klarem Mehrwert werden bevorzugt.",
+      "Entity & Topicality": "Wie klar deine Seite mit bestimmten Themen und Entitäten verknüpft ist (WebRef). Verwende klare Definitionen, verlinke relevante Konzepte und stärke die semantische Klarheit.",
+      "Freshness": "Aktualität des Contents. Google misst das letzte signifikante Update — regelmässig überarbeitete Inhalte mit neuen Erkenntnissen werden belohnt.",
+      "Authority & Trust": "Vertrauenswürdigkeit der Domain und Seite (PageRank, NSR). Baue Authority durch hochwertige Backlinks, konsistente Qualität und transparente Absender-Informationen auf.",
+      "User Experience": "Nutzererfahrung gemessen an NavBoost-Signalen (Klickverhalten) und ClutterScore (visuelle Überladung). Klare Navigation, wenig Ablenkung und schnelle Interaktion verbessern diesen Score.",
+      "Hreflang & i18n": "Internationale Ausrichtung und Sprachauszeichnung. Für mehrsprachige Seiten sind korrekte hreflang-Tags entscheidend, damit Google die richtige Sprachversion anzeigt.",
+      "Spam-Risiko": "Risikobewertung durch SpamBrain. Vermeide überaggressive Keyword-Stuffing, versteckte Inhalte, Link-Schemes und andere manipulative Taktiken.",
+      "Keyword-Relevanz": "Wie gut dein Fokus-Keyword in Title, Headings und Content integriert ist — natürlich und semantisch breit, nicht nur exakte Matches.",
+      "Structured Data": "Schema.org Markup für Rich Snippets. Strukturierte Daten helfen Google, den Inhalt zu verstehen und prominent in den Suchergebnissen darzustellen.",
+    };
+    return explanations[name] || "Optimiere diesen Bereich, um dein Gesamtranking zu verbessern.";
+  };
+
   const getStatusIcon = (status: "pass" | "warn" | "fail") => {
     const configs = {
       pass: { bg: "bg-emerald-100 dark:bg-emerald-900/30", color: "text-emerald-600 dark:text-emerald-400", path: "M5 13l4 4L19 7" },
@@ -788,40 +804,69 @@ export default function UrlCheckerPage() {
             </button>
           </div>
           {siteScore && (
-            <div className="space-y-4 mt-4">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-700/50 text-center">
-                  <div className="text-xs text-slate-500">NSR Score</div>
-                  <div className={`text-3xl font-bold ${getScoreColor(siteScore.nsrScore)}`}>{siteScore.nsrScore}</div>
-                </div>
-                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-700/50 text-center">
-                  <div className="text-xs text-slate-500">Site Focus</div>
-                  <div className={`text-3xl font-bold ${getScoreColor(siteScore.siteFocusScore)}`}>{siteScore.siteFocusScore}</div>
-                </div>
-                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-700/50 text-center">
-                  <div className="text-xs text-slate-500">Site Radius</div>
-                  <div className="text-3xl font-bold text-slate-700 dark:text-slate-300">{siteScore.siteRadius}</div>
-                </div>
-                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-700/50 text-center">
-                  <div className="text-xs text-slate-500">Seiten</div>
-                  <div className="text-3xl font-bold text-slate-700 dark:text-slate-300">{siteScore.pagesAnalyzed}</div>
-                </div>
-              </div>
-              <div>
-                <h3 className="font-medium text-slate-700 dark:text-slate-300 mb-2">Schwächste Kategorien</h3>
-                {siteScore.weakestCategories.map(cat => (
-                  <div key={cat.name} className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-700 last:border-0">
-                    <span className="text-sm text-slate-600 dark:text-slate-400">{cat.name}</span>
-                    <span className={`font-bold ${getScoreColor(cat.score)}`}>{cat.score}</span>
+            <div className="space-y-6 mt-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-700/50">
+                  <div className="text-center">
+                    <div className="text-xs text-slate-500 font-medium uppercase tracking-wide">NSR Score</div>
+                    <div className={`text-3xl font-bold ${getScoreColor(siteScore.nsrScore)}`}>{siteScore.nsrScore}</div>
                   </div>
-                ))}
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 text-center">Gesamtqualität der Domain (0–100). Basiert auf Googles Normalized Site Rank — je höher, desto autoritärer stuft Google die Seite ein.</p>
+                </div>
+                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-700/50">
+                  <div className="text-center">
+                    <div className="text-xs text-slate-500 font-medium uppercase tracking-wide">Site Focus</div>
+                    <div className={`text-3xl font-bold ${getScoreColor(siteScore.siteFocusScore)}`}>{siteScore.siteFocusScore}</div>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 text-center">Thematische Konsistenz (0–100). Ein hoher Wert bedeutet, dass alle Seiten einer klaren Themenlinie folgen — wichtig für Topical Authority.</p>
+                </div>
+                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-700/50">
+                  <div className="text-center">
+                    <div className="text-xs text-slate-500 font-medium uppercase tracking-wide">Site Radius</div>
+                    <div className="text-3xl font-bold text-slate-700 dark:text-slate-300">{siteScore.siteRadius}</div>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 text-center">Qualitäts-Streuung zwischen Seiten. Niedrig = gleichmässig gute Qualität. Hoch = grosse Schwankungen — schwache Seiten ziehen die Domain runter.</p>
+                </div>
+                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-700/50">
+                  <div className="text-center">
+                    <div className="text-xs text-slate-500 font-medium uppercase tracking-wide">Seiten</div>
+                    <div className="text-3xl font-bold text-slate-700 dark:text-slate-300">{siteScore.pagesAnalyzed}</div>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 text-center">Anzahl erfolgreich analysierter Unterseiten. Mehr analysierte Seiten = zuverlässigere Gesamtbewertung.</p>
+                </div>
               </div>
+
+              <div className="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-4">
+                <h3 className="font-medium text-slate-700 dark:text-slate-300 mb-1">Schwächste Kategorien</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">Diese Bereiche haben den grössten negativen Einfluss auf dein Ranking. Fokussiere deine Optimierung hier.</p>
+                <div className="space-y-3">
+                  {siteScore.weakestCategories.map(cat => (
+                    <div key={cat.name} className="p-3 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{cat.name}</span>
+                        <span className={`text-lg font-bold ${getScoreColor(cat.score)}`}>{cat.score}</span>
+                      </div>
+                      <div className="w-full bg-slate-200 dark:bg-slate-600 rounded-full h-1.5 mb-2">
+                        <div className={`h-1.5 rounded-full ${cat.score >= 70 ? 'bg-emerald-500' : cat.score >= 40 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${cat.score}%` }} />
+                      </div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">{getCategoryExplanation(cat.name)}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               <div>
-                <h3 className="font-medium text-slate-700 dark:text-slate-300 mb-2">Analysierte Seiten</h3>
+                <h3 className="font-medium text-slate-700 dark:text-slate-300 mb-1">Analysierte Seiten</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">Einzelergebnisse der geprüften Unterseiten — grosse Score-Unterschiede deuten auf inkonsistente Qualität hin.</p>
                 {siteScore.pages.map((p, i) => (
-                  <div key={i} className="flex items-center justify-between py-1.5">
-                    <span className="text-xs font-mono text-slate-500 truncate max-w-[250px]">{p.url}</span>
-                    <span className={`text-sm font-bold ${getScoreColor(p.score)}`}>{p.score}</span>
+                  <div key={i} className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-700 last:border-0">
+                    <span className="text-xs font-mono text-slate-500 truncate max-w-[300px]">{p.url}</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-16 bg-slate-200 dark:bg-slate-600 rounded-full h-1.5">
+                        <div className={`h-1.5 rounded-full ${p.score >= 70 ? 'bg-emerald-500' : p.score >= 40 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${p.score}%` }} />
+                      </div>
+                      <span className={`text-sm font-bold w-8 text-right ${getScoreColor(p.score)}`}>{p.score}</span>
+                    </div>
                   </div>
                 ))}
               </div>
