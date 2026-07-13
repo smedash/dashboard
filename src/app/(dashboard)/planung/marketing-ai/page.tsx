@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { jsPDF } from "jspdf";
 
 interface RefinementMessage {
   id: string;
@@ -173,6 +174,177 @@ export default function MarketingAIPage() {
       }
       return next;
     });
+  };
+
+  const downloadStrategyPdf = (strategy: MarketingStrategy) => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 20;
+    const contentWidth = pageWidth - 2 * margin;
+    let y = margin;
+
+    const channelLabel = CHANNELS.find((c) => c.id === strategy.channel)?.label || strategy.channel;
+
+    const checkPageBreak = (needed: number) => {
+      if (y + needed > pageHeight - margin) {
+        doc.addPage();
+        y = margin;
+      }
+    };
+
+    const addSectionTitle = (title: string) => {
+      checkPageBreak(20);
+      y += 8;
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(60, 60, 60);
+      doc.text(title, margin, y);
+      y += 2;
+      doc.setDrawColor(200, 200, 200);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 8;
+    };
+
+    const addWrappedText = (text: string, fontSize = 10, bold = false) => {
+      doc.setFontSize(fontSize);
+      doc.setFont("helvetica", bold ? "bold" : "normal");
+      doc.setTextColor(40, 40, 40);
+      const lines = doc.splitTextToSize(text, contentWidth);
+      checkPageBreak(lines.length * (fontSize * 0.5) + 4);
+      doc.text(lines, margin, y);
+      y += lines.length * (fontSize * 0.5) + 4;
+    };
+
+    // Header
+    doc.setFontSize(18);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(30, 30, 30);
+    doc.text(strategy.title, margin, y);
+    y += 8;
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Kanal: ${channelLabel}`, margin, y);
+    if (strategy.dataContext?.generatedAt) {
+      const date = new Date(strategy.dataContext.generatedAt).toLocaleDateString("de-CH", {
+        day: "2-digit", month: "2-digit", year: "numeric",
+      });
+      doc.text(`Generiert: ${date}`, margin + 60, y);
+    }
+    y += 10;
+
+    // Summary
+    addWrappedText(strategy.summary, 11);
+    y += 4;
+
+    // Details
+    const details = strategy.details;
+
+    if (details.targetAudience) {
+      addSectionTitle("Zielgruppe");
+      addWrappedText(details.targetAudience);
+    }
+
+    if (details.goals && details.goals.length > 0) {
+      addSectionTitle("Ziele");
+      for (const goal of details.goals) {
+        checkPageBreak(10);
+        const lines = doc.splitTextToSize(`\u2022 ${goal}`, contentWidth - 5);
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(40, 40, 40);
+        doc.text(lines, margin + 3, y);
+        y += lines.length * 5 + 3;
+      }
+    }
+
+    if (details.keyInsights && details.keyInsights.length > 0) {
+      addSectionTitle("Daten-Insights");
+      for (const insight of details.keyInsights) {
+        checkPageBreak(10);
+        const lines = doc.splitTextToSize(`\u2022 ${insight}`, contentWidth - 5);
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(40, 40, 40);
+        doc.text(lines, margin + 3, y);
+        y += lines.length * 5 + 3;
+      }
+    }
+
+    if (details.recommendations && details.recommendations.length > 0) {
+      addSectionTitle("Empfehlungen");
+      details.recommendations.forEach((rec, i) => {
+        checkPageBreak(10);
+        const lines = doc.splitTextToSize(`${i + 1}. ${rec}`, contentWidth - 5);
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(40, 40, 40);
+        doc.text(lines, margin + 3, y);
+        y += lines.length * 5 + 3;
+      });
+    }
+
+    if (details.timeline) {
+      addSectionTitle("Timeline");
+      addWrappedText(details.timeline);
+    }
+
+    if (details.kpis && details.kpis.length > 0) {
+      addSectionTitle("KPIs");
+      addWrappedText(details.kpis.join("  |  "));
+    }
+
+    // Actions
+    if (strategy.actions.length > 0) {
+      addSectionTitle("Massnahmen");
+      for (const action of strategy.actions) {
+        checkPageBreak(20);
+        const priorityLabel = PRIORITY_CONFIG[action.priority]?.label || action.priority;
+        const status = action.completed ? "[x]" : "[ ]";
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(40, 40, 40);
+        const titleLine = `${status} ${action.title}`;
+        const titleLines = doc.splitTextToSize(titleLine, contentWidth - 5);
+        doc.text(titleLines, margin + 3, y);
+        y += titleLines.length * 5 + 2;
+
+        const meta: string[] = [`Prioritaet: ${priorityLabel}`];
+        if (action.effort) meta.push(`Aufwand: ${EFFORT_LABELS[action.effort] || action.effort}`);
+        if (action.impact) meta.push(`Impact: ${IMPACT_LABELS[action.impact] || action.impact}`);
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(120, 120, 120);
+        doc.text(meta.join("  |  "), margin + 8, y);
+        y += 5;
+
+        doc.setFontSize(9);
+        doc.setTextColor(60, 60, 60);
+        const descLines = doc.splitTextToSize(action.description, contentWidth - 10);
+        checkPageBreak(descLines.length * 4.5 + 4);
+        doc.text(descLines, margin + 8, y);
+        y += descLines.length * 4.5 + 6;
+      }
+    }
+
+    // Footer
+    const totalPages = doc.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(150, 150, 150);
+      doc.text(
+        `Marketing AI - ${channelLabel} | Seite ${i}/${totalPages}`,
+        margin,
+        pageHeight - 10
+      );
+    }
+
+    const filename = `Marketing-AI_${channelLabel.replace(/\s+/g, "-")}_${new Date().toISOString().slice(0, 10)}.pdf`;
+    doc.save(filename);
   };
 
   const loadRefinements = useCallback(async (strategyId: string) => {
@@ -363,25 +535,37 @@ export default function MarketingAIPage() {
                     </p>
                   )}
                 </div>
-                <button
-                  onClick={() => generateStrategy(activeTab)}
-                  disabled={generating === activeTab}
-                  className="ml-4 flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-sm text-slate-200 rounded-lg transition-colors disabled:opacity-50"
-                >
-                  {generating === activeTab ? (
-                    <>
-                      <div className="animate-spin h-4 w-4 border-2 border-slate-400 border-t-transparent rounded-full" />
-                      Generiert...
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                      </svg>
-                      Neu generieren
-                    </>
-                  )}
-                </button>
+                <div className="ml-4 flex items-center gap-2">
+                  <button
+                    onClick={() => downloadStrategyPdf(activeStrategy)}
+                    className="flex items-center gap-2 px-4 py-2 bg-emerald-700/50 hover:bg-emerald-600/50 text-sm text-emerald-200 rounded-lg transition-colors"
+                    title="Als PDF herunterladen"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    PDF
+                  </button>
+                  <button
+                    onClick={() => generateStrategy(activeTab)}
+                    disabled={generating === activeTab}
+                    className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-sm text-slate-200 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    {generating === activeTab ? (
+                      <>
+                        <div className="animate-spin h-4 w-4 border-2 border-slate-400 border-t-transparent rounded-full" />
+                        Generiert...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Neu generieren
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
 
