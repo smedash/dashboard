@@ -220,8 +220,9 @@ export default function MarketingAIPage() {
     doc.setFontSize(18);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(30, 30, 30);
-    doc.text(strategy.title, margin, y);
-    y += 8;
+    const titleLines = doc.splitTextToSize(strategy.title, contentWidth);
+    doc.text(titleLines, margin, y);
+    y += titleLines.length * 8;
 
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
