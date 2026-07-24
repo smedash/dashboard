@@ -80,6 +80,7 @@ const COMPETITOR_BRANDS = [
   { label: "Raiffeisen", terms: ["raiffeisen"] },
   { label: "Migros", terms: ["migros"] },
   { label: "Comparis", terms: ["comparis"] },
+  { label: "VZ", terms: ["vz", "vermögenszentrum"] },
 ];
 
 interface BrandVolume {
