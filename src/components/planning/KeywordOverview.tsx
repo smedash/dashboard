@@ -808,6 +808,30 @@ export default function KeywordOverview() {
             </svg>
             {filteredKeywords.length.toLocaleString("de-CH")} von {allKeywords.length.toLocaleString("de-CH")} Keywords
           </span>
+          <button
+            onClick={() => {
+              const rows = filteredKeywords.map((kw) => ({
+                Keyword: kw.keyword,
+                "Seed-Keyword": kw.seedKeyword,
+                Kategorie: kw.category,
+                Suchvolumen: kw.searchVolume ?? "",
+                Difficulty: kw.difficulty ?? "",
+                CPC: kw.cpc ?? "",
+                Competition: kw.competition ?? "",
+                Intent: kw.searchIntents?.join(", ") ?? "",
+                "In GSC": kw.inGsc ? "Ja" : "Nein",
+                ...(kw.inGsc ? { "GSC Clicks": kw.gscClicks ?? "", "GSC Impressions": kw.gscImpressions ?? "", "GSC Position": kw.gscPosition != null ? Math.round(kw.gscPosition * 10) / 10 : "" } : {}),
+              }));
+              const date = new Date().toISOString().slice(0, 10);
+              downloadExcel(`keywords-export-${date}.xlsx`, [{ name: "Keywords", rows }]);
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-xs font-medium text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200 dark:hover:bg-emerald-800/40 transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Excel-Export
+          </button>
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-xs font-medium text-amber-700 dark:text-amber-300">
             {categories.length} Kategorien
           </span>
