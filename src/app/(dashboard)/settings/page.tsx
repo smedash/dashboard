@@ -1,7 +1,7 @@
 "use client";
 
 import { signOut, useSession } from "next-auth/react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 
 interface Property {
@@ -16,6 +16,38 @@ export default function SettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [hasGoogleConnection, setHasGoogleConnection] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  // Conductor Monitoring State
+  const [cmSyncing, setCmSyncing] = useState(false);
+  const [cmLastSync, setCmLastSync] = useState<string | null>(null);
+  const [cmSyncResult, setCmSyncResult] = useState<{ pages: number; issues: number; durationMs: number } | null>(null);
+
+  useEffect(() => {
+    async function fetchCmStatus() {
+      try {
+        const res = await fetch("/api/conductor-monitoring/pages-enrichment");
+        const data = await res.json();
+        setCmLastSync(data.lastSyncAt || null);
+      } catch { /* ignore */ }
+    }
+    fetchCmStatus();
+  }, []);
+
+  const handleCmSync = useCallback(async () => {
+    setCmSyncing(true);
+    setCmSyncResult(null);
+    try {
+      const res = await fetch("/api/conductor-monitoring/sync", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Sync fehlgeschlagen");
+      setCmSyncResult({ pages: data.pagesProcessed, issues: data.issuesProcessed, durationMs: data.durationMs });
+      setCmLastSync(new Date().toISOString());
+    } catch (err) {
+      setMessage({ type: "error", text: err instanceof Error ? err.message : "Conductor Sync fehlgeschlagen" });
+    } finally {
+      setCmSyncing(false);
+    }
+  }, []);
 
   // Check for success/error messages from OAuth callback
   useEffect(() => {
@@ -159,6 +191,56 @@ export default function SettingsPage() {
             </button>
           </div>
         )}
+      </div>
+
+      {/* Conductor Monitoring Section */}
+      <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+        <h2 className="text-lg font-semibold text-white mb-4">Conductor Monitoring</h2>
+        <p className="text-sm text-slate-400 mb-4">
+          Synchronisiert SEO-Health, Indexierbarkeit, Lighthouse-Metriken und Crawler-Frequenz-Daten 
+          von Conductor Monitoring (ehem. ContentKing) und reichert damit die Seiten-Analyse an.
+        </p>
+
+        <div className="space-y-4">
+          {cmLastSync && (
+            <div className="flex items-center gap-2 text-sm text-slate-400">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Letzter Sync: {new Date(cmLastSync).toLocaleString("de-DE")}
+            </div>
+          )}
+
+          {cmSyncResult && (
+            <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg text-sm text-emerald-400">
+              Sync abgeschlossen: {cmSyncResult.pages} Seiten, {cmSyncResult.issues} Issues 
+              ({(cmSyncResult.durationMs / 1000).toFixed(1)}s)
+            </div>
+          )}
+
+          <button
+            onClick={handleCmSync}
+            disabled={cmSyncing}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 text-white font-medium rounded-lg transition-colors"
+          >
+            {cmSyncing ? (
+              <>
+                <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Synchronisiere...
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Jetzt synchronisieren
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Logout Section */}

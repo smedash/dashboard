@@ -990,3 +990,121 @@ model UrlCheckMonitor {
   @@index([isActive, frequency])
   @@index([userId])
 }
+
+// Conductor Monitoring — Website-Konfiguration
+model ConductorWebsite {
+  id            String   @id @default(cuid())
+  conductorId   String   @unique // z.B. "1-234"
+  domain        String
+  name          String?
+  pageCapacity  Int      @default(0)
+  pages         ConductorPage[]
+  issues        ConductorIssue[]
+  syncLogs      ConductorSyncLog[]
+  lastSyncAt    DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// Conductor Monitoring — Per-URL-Daten (Kern der Datenanreicherung)
+model ConductorPage {
+  id                    String   @id @default(cuid())
+  websiteId             String
+  website               ConductorWebsite @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+  url                   String   @db.Text
+
+  // Health & Status
+  health                Int?     // 0–1000
+  statusCode            Int?
+  type                  String?  // page, redirect, missing
+  relevance             Float?
+
+  // Indexierbarkeit
+  isIndexable           Boolean  @default(false)
+  isInSitemap           Boolean  @default(false)
+  isDisallowedInRobotsTxt Boolean @default(false)
+  isLinked              Boolean  @default(true)
+  isHttps               Boolean  @default(true)
+  urlDepth              Int?
+
+  // Content
+  title                 String?  @db.Text
+  h1                    String?  @db.Text
+  metaDescription       String?  @db.Text
+
+  // Lighthouse / Core Web Vitals (value + range als JSON)
+  lighthousePerformance Json?
+  lighthouseCls         Json?
+  lighthouseFcp         Json?
+  lighthouseLcp         Json?
+  lighthouseSi          Json?
+  lighthouseTbt         Json?
+  lighthouseTti         Json?
+
+  // Crawler-Frequenz (LFA) — wichtigste Werte einzeln, Rest gebündelt
+  lfaGoogleFrequency    Json?
+  lfaGoogleLastVisit    DateTime?
+  lfaBingFrequency      Json?
+  lfaBingLastVisit      DateTime?
+  lfaOpenaiFrequency    Json?
+  lfaOpenaiLastVisit    DateTime?
+  lfaPerplexityFrequency Json?
+  lfaPerplexityLastVisit DateTime?
+
+  // Interne Verlinkung
+  incomingInternalLinks Int      @default(0)
+  outgoingInternalLinks Int      @default(0)
+  outgoingExternalLinks Int      @default(0)
+
+  // Meta
+  segments              Json?    // JSON-Array von Segment-IDs
+  timeDocumentDownload  Int?     // ms
+
+  dataCapturedAt        DateTime?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@unique([websiteId, url])
+  @@index([websiteId])
+  @@index([url])
+  @@index([health])
+  @@index([statusCode])
+}
+
+// Conductor Monitoring — Aggregierte Issues
+model ConductorIssue {
+  id             String   @id @default(cuid())
+  websiteId      String
+  website        ConductorWebsite @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+  name           String   // z.B. "title/missing", "links/broken"
+  type           String   // critical, fix, opportunity
+  tags           String?  // komma-separiert: "aeo,seo"
+  pagesOpen      Int      @default(0)
+  pagesClosed    Int      @default(0)
+  pagesIgnored   Int      @default(0)
+  pointsGained   Int      @default(0)
+  pointsToGain   Int      @default(0)
+  dataCapturedAt DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([websiteId, name])
+  @@index([websiteId])
+  @@index([type])
+}
+
+// Conductor Monitoring — Sync-Protokoll
+model ConductorSyncLog {
+  id              String   @id @default(cuid())
+  websiteId       String
+  website         ConductorWebsite @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+  type            String   // manual, cron
+  status          String   @default("running") // running, completed, failed
+  pagesProcessed  Int      @default(0)
+  issuesProcessed Int      @default(0)
+  durationMs      Int?
+  error           String?  @db.Text
+  createdAt       DateTime @default(now())
+
+  @@index([websiteId, createdAt])
+}

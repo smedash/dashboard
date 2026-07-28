@@ -21,6 +21,24 @@ interface KVPUrl {
   focusKeyword: string;
 }
 
+interface ConductorPageInfo {
+  url: string;
+  health: number | null;
+  statusCode: number | null;
+  type: string | null;
+  isIndexable: boolean;
+  isInSitemap: boolean;
+  isDisallowedInRobotsTxt: boolean;
+  isLinked: boolean;
+  lighthousePerformance: { value: number; range: string } | null;
+  lighthouseLcp: { value: number; range: string } | null;
+  lighthouseCls: { value: number; range: string } | null;
+  relevance: number | null;
+  incomingInternalLinks: number;
+  timeDocumentDownload: number | null;
+  dataCapturedAt: string | null;
+}
+
 export default function PagesPage() {
   const { selectedProperty } = useProperty();
   const [period, setPeriod] = useState("28d");
@@ -29,6 +47,27 @@ export default function PagesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [kvpFilter, setKvpFilter] = useState<"all" | "with" | "without">("all");
+  const [conductorPages, setConductorPages] = useState<Record<string, ConductorPageInfo>>({});
+  const [conductorLastSync, setConductorLastSync] = useState<string | null>(null);
+
+  // Lade Conductor Monitoring Daten
+  useEffect(() => {
+    async function fetchConductorData() {
+      try {
+        const domain = selectedProperty
+          ? new URL(selectedProperty).hostname
+          : undefined;
+        const qs = domain ? `?domain=${encodeURIComponent(domain)}` : "";
+        const response = await fetch(`/api/conductor-monitoring/pages-enrichment${qs}`);
+        const result = await response.json();
+        setConductorPages(result.pages || {});
+        setConductorLastSync(result.lastSyncAt || null);
+      } catch (error) {
+        console.error("Error fetching Conductor data:", error);
+      }
+    }
+    fetchConductorData();
+  }, [selectedProperty]);
 
   // Lade KVP-URLs einmalig
   useEffect(() => {
@@ -85,16 +124,25 @@ export default function PagesPage() {
         if (kvpFilter === "without" && hasKvp) return false;
         return true;
       })
-      .map((row, index) => ({
-        id: index,
-        page: row.keys[0],
-        clicks: row.clicks,
-        impressions: row.impressions,
-        ctr: row.ctr,
-        position: row.position,
-        hasKvp: kvpUrlSet.has(row.keys[0]),
-      }));
-  }, [data, searchQuery, kvpUrlSet, kvpFilter]);
+      .map((row, index) => {
+        const cm = conductorPages[row.keys[0]] || null;
+        return {
+          id: index,
+          page: row.keys[0],
+          clicks: row.clicks,
+          impressions: row.impressions,
+          ctr: row.ctr,
+          position: row.position,
+          hasKvp: kvpUrlSet.has(row.keys[0]),
+          cmHealth: cm?.health ?? null,
+          cmIndexable: cm?.isIndexable ?? null,
+          cmInSitemap: cm?.isInSitemap ?? null,
+          cmStatusCode: cm?.statusCode ?? null,
+          cmLighthousePerf: cm?.lighthousePerformance ?? null,
+          cmLighthouseLcp: cm?.lighthouseLcp ?? null,
+        };
+      });
+  }, [data, searchQuery, kvpUrlSet, kvpFilter, conductorPages]);
 
   const formatUrl = (url: string) => {
     try {
@@ -115,6 +163,13 @@ export default function PagesPage() {
       Impressionen: r.impressions,
       "CTR (%)": Math.round(r.ctr * 10000) / 100,
       Position: Math.round(r.position * 10) / 10,
+      "Health Score": r.cmHealth ?? "",
+      Indexierbar: r.cmIndexable === null ? "" : r.cmIndexable ? "Ja" : "Nein",
+      "In Sitemap": r.cmInSitemap === null ? "" : r.cmInSitemap ? "Ja" : "Nein",
+      "Status Code": r.cmStatusCode ?? "",
+      "Performance": r.cmLighthousePerf
+        ? (r.cmLighthousePerf as { value: number }).value
+        : "",
     }));
 
     const host = (() => {
@@ -210,6 +265,12 @@ export default function PagesPage() {
           <span className="text-sm text-slate-600 dark:text-slate-400">
             {tableData.length} von {data.length} Seiten
           </span>
+
+          {conductorLastSync && (
+            <span className="text-xs text-slate-500 dark:text-slate-500" title="Letzter Conductor Monitoring Sync">
+              CM: {new Date(conductorLastSync).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+            </span>
+          )}
 
           <button
             type="button"
@@ -313,6 +374,113 @@ export default function PagesPage() {
                 header: "Position",
                 sortable: true,
                 render: (value) => Number(value).toFixed(1),
+              },
+              {
+                key: "cmHealth",
+                header: "Health",
+                sortable: true,
+                render: (value) => {
+                  if (value === null || value === undefined) return <span className="text-slate-400">–</span>;
+                  const score = Number(value);
+                  const color =
+                    score >= 800
+                      ? "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20"
+                      : score >= 500
+                        ? "text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20"
+                        : "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20";
+                  return (
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${color}`}>
+                      {score}
+                    </span>
+                  );
+                },
+              },
+              {
+                key: "cmIndexable",
+                header: "Index",
+                sortable: true,
+                render: (value) => {
+                  if (value === null || value === undefined) return <span className="text-slate-400">–</span>;
+                  return value ? (
+                    <span className="inline-flex items-center justify-center w-5 h-5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full" title="Indexierbar">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center justify-center w-5 h-5 bg-red-100 dark:bg-red-900/30 text-red-500 dark:text-red-400 rounded-full" title="Nicht indexierbar">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                    </span>
+                  );
+                },
+              },
+              {
+                key: "cmInSitemap",
+                header: "Sitemap",
+                sortable: true,
+                render: (value) => {
+                  if (value === null || value === undefined) return <span className="text-slate-400">–</span>;
+                  return value ? (
+                    <span className="inline-flex items-center justify-center w-5 h-5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full" title="In Sitemap">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center justify-center w-5 h-5 bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 rounded-full" title="Nicht in Sitemap">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                    </span>
+                  );
+                },
+              },
+              {
+                key: "cmStatusCode",
+                header: "Status",
+                sortable: true,
+                render: (value) => {
+                  if (value === null || value === undefined) return <span className="text-slate-400">–</span>;
+                  const code = Number(value);
+                  const color =
+                    code >= 200 && code < 300
+                      ? "text-green-600 dark:text-green-400"
+                      : code >= 300 && code < 400
+                        ? "text-yellow-600 dark:text-yellow-400"
+                        : "text-red-600 dark:text-red-400";
+                  return <span className={`font-mono text-xs font-semibold ${color}`}>{code}</span>;
+                },
+              },
+              {
+                key: "cmLighthousePerf",
+                header: "Perf.",
+                sortable: true,
+                render: (value) => {
+                  if (!value || value === null) return <span className="text-slate-400">–</span>;
+                  const perf = value as { value: number; range: string };
+                  const color =
+                    perf.range === "good"
+                      ? "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20"
+                      : perf.range === "needsImprovement"
+                        ? "text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20"
+                        : "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20";
+                  return (
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${color}`}>
+                      {perf.value}
+                    </span>
+                  );
+                },
+              },
+              {
+                key: "cmLighthouseLcp",
+                header: "LCP",
+                sortable: true,
+                render: (value) => {
+                  if (!value || value === null) return <span className="text-slate-400">–</span>;
+                  const lcp = value as { value: number; range: string };
+                  const color =
+                    lcp.range === "good"
+                      ? "text-green-600 dark:text-green-400"
+                      : lcp.range === "needsImprovement"
+                        ? "text-yellow-600 dark:text-yellow-400"
+                        : "text-red-600 dark:text-red-400";
+                  const seconds = (lcp.value / 1000).toFixed(1);
+                  return <span className={`text-xs font-semibold ${color}`}>{seconds}s</span>;
+                },
               },
             ]}
           />

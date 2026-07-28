@@ -92,6 +92,11 @@ GOOGLE_GENERATIVE_AI_API_KEY="..."
 
 # Proxy für Web Scraping (optional)
 IPROYAL_PROXY_URL="http://user:pass@host:port"
+
+# Conductor Monitoring (ehem. ContentKing)
+CONDUCTOR_REPORTING_TOKEN="dein-reporting-api-v2-token"
+CONDUCTOR_CMS_TOKEN="dein-cms-api-token"
+CONDUCTOR_WEBSITE_ID=""  # Optional – wird beim ersten Sync auto-ermittelt
 ```
 
 ### 2. Google Cloud Console Setup
