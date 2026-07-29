@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { hasFullAdminRights } from "@/lib/rbac";
-import { syncConductorData, syncAllConductorWebsites } from "@/lib/conductor-sync";
+import { syncConductorData, findConductorWebsiteByDomain } from "@/lib/conductor-sync";
 
 export const maxDuration = 300;
 
@@ -17,22 +17,31 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json().catch(() => ({}));
     const websiteId = body.websiteId as string | undefined;
+    const domain = body.domain as string | undefined;
 
-    if (websiteId) {
-      const result = await syncConductorData("manual", websiteId);
-      return NextResponse.json({ success: true, results: [result] });
+    let targetWebsiteId = websiteId;
+
+    if (!targetWebsiteId && domain) {
+      targetWebsiteId = await findConductorWebsiteByDomain(domain);
+      if (!targetWebsiteId) {
+        return NextResponse.json(
+          { error: `Keine Conductor-Website fuer Domain "${domain}" gefunden` },
+          { status: 404 }
+        );
+      }
     }
 
-    const results = await syncAllConductorWebsites("manual");
-    const totalPages = results.reduce((s, r) => s + r.pagesProcessed, 0);
-    const totalIssues = results.reduce((s, r) => s + r.issuesProcessed, 0);
-    const totalDuration = results.reduce((s, r) => s + r.durationMs, 0);
+    if (!targetWebsiteId) {
+      return NextResponse.json(
+        { error: "Bitte Property auswaehlen (domain Parameter fehlt)" },
+        { status: 400 }
+      );
+    }
+
+    const result = await syncConductorData("manual", targetWebsiteId);
     return NextResponse.json({
       success: true,
-      results,
-      pagesProcessed: totalPages,
-      issuesProcessed: totalIssues,
-      durationMs: totalDuration,
+      ...result,
     });
   } catch (error) {
     console.error("[Conductor Sync]", error);

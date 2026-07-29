@@ -3,15 +3,28 @@
 import { signOut, useSession } from "next-auth/react";
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
+import { useProperty } from "@/contexts/PropertyContext";
 
 interface Property {
   siteUrl: string;
   permissionLevel?: string;
 }
 
+function extractDomain(property: string): string {
+  if (property.startsWith("sc-domain:")) {
+    return property.replace("sc-domain:", "").replace(/^www\./, "");
+  }
+  try {
+    return new URL(property).hostname.replace(/^www\./, "");
+  } catch {
+    return property.replace(/^www\./, "");
+  }
+}
+
 export default function SettingsPage() {
   const { data: session } = useSession();
   const searchParams = useSearchParams();
+  const { selectedProperty } = useProperty();
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasGoogleConnection, setHasGoogleConnection] = useState(false);
@@ -22,22 +35,30 @@ export default function SettingsPage() {
   const [cmLastSync, setCmLastSync] = useState<string | null>(null);
   const [cmSyncResult, setCmSyncResult] = useState<{ pages: number; issues: number; durationMs: number } | null>(null);
 
+  const currentDomain = selectedProperty ? extractDomain(selectedProperty) : null;
+
   useEffect(() => {
     async function fetchCmStatus() {
+      if (!currentDomain) return;
       try {
-        const res = await fetch("/api/conductor-monitoring/pages-enrichment");
+        const res = await fetch(`/api/conductor-monitoring/pages-enrichment?domain=${encodeURIComponent(currentDomain)}`);
         const data = await res.json();
         setCmLastSync(data.lastSyncAt || null);
       } catch { /* ignore */ }
     }
     fetchCmStatus();
-  }, []);
+  }, [currentDomain]);
 
   const handleCmSync = useCallback(async () => {
+    if (!currentDomain) return;
     setCmSyncing(true);
     setCmSyncResult(null);
     try {
-      const res = await fetch("/api/conductor-monitoring/sync", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+      const res = await fetch("/api/conductor-monitoring/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domain: currentDomain }),
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Sync fehlgeschlagen");
       setCmSyncResult({ pages: data.pagesProcessed, issues: data.issuesProcessed, durationMs: data.durationMs });
@@ -47,7 +68,7 @@ export default function SettingsPage() {
     } finally {
       setCmSyncing(false);
     }
-  }, []);
+  }, [currentDomain]);
 
   // Check for success/error messages from OAuth callback
   useEffect(() => {
@@ -198,8 +219,17 @@ export default function SettingsPage() {
         <h2 className="text-lg font-semibold text-white mb-4">Conductor Monitoring</h2>
         <p className="text-sm text-slate-400 mb-4">
           Synchronisiert SEO-Health, Indexierbarkeit, Lighthouse-Metriken und Crawler-Frequenz-Daten 
-          von Conductor Monitoring (ehem. ContentKing) und reichert damit die Seiten-Analyse an.
+          von Conductor Monitoring (ehem. ContentKing) fuer die ausgewaehlte Property.
         </p>
+
+        {currentDomain && (
+          <div className="flex items-center gap-2 text-sm text-blue-400 mb-4">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+            </svg>
+            Aktive Property: {currentDomain}
+          </div>
+        )}
 
         <div className="space-y-4">
           {cmLastSync && (
@@ -220,7 +250,7 @@ export default function SettingsPage() {
 
           <button
             onClick={handleCmSync}
-            disabled={cmSyncing}
+            disabled={cmSyncing || !currentDomain}
             className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 text-white font-medium rounded-lg transition-colors"
           >
             {cmSyncing ? (

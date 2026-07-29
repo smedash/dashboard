@@ -30,7 +30,7 @@ export interface SyncResult {
 
 /**
  * Sync ALL websites from the Conductor account.
- * Used by cron and the manual "sync all" button.
+ * Each website is wrapped in try/catch so one failure doesn't abort the rest.
  */
 export async function syncAllConductorWebsites(
   syncType: "manual" | "cron"
@@ -41,10 +41,29 @@ export async function syncAllConductorWebsites(
   }
   const results: SyncResult[] = [];
   for (const ws of websites) {
-    const result = await syncConductorData(syncType, ws.id);
-    results.push(result);
+    try {
+      const result = await syncConductorData(syncType, ws.id);
+      results.push(result);
+    } catch (error) {
+      console.error(`[Conductor Sync] Failed for ${ws.domain} (${ws.id}):`, error);
+    }
   }
   return results;
+}
+
+/**
+ * Find the Conductor website ID that matches a given domain string.
+ * Returns undefined if no match found.
+ */
+export async function findConductorWebsiteByDomain(
+  domain: string
+): Promise<string | undefined> {
+  const websites = await getWebsites();
+  const normalized = domain.toLowerCase().replace(/^www\./, "");
+  const match = websites.find((w) =>
+    w.domain.toLowerCase().includes(normalized)
+  );
+  return match?.id;
 }
 
 export async function syncConductorData(
