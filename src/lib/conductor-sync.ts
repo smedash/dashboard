@@ -104,29 +104,37 @@ export async function syncConductorData(
   });
 
   try {
-    // 1. Sync pages
+    // 1. Fetch pages from API
     console.log(`[Conductor Sync] Fetching all pages for ${cId}...`);
     const { pages, capturedAt } = await getAllPages(cId);
     console.log(`[Conductor Sync] Received ${pages.length} pages`);
 
-    const BATCH_SIZE = 50;
-    for (let i = 0; i < pages.length; i += BATCH_SIZE) {
-      const batch = pages.slice(i, i + BATCH_SIZE);
-      await Promise.all(batch.map((p) => upsertPage(website.id, p, capturedAt)));
-    }
-
-    // 2. Sync issues
+    // 2. Fetch issues from API
     console.log(`[Conductor Sync] Fetching issues for ${cId}...`);
     const { issues, capturedAt: issuesCapturedAt } = await getIssues(cId);
     console.log(`[Conductor Sync] Received ${issues.length} issues`);
 
-    for (const issue of issues) {
-      await upsertIssue(website.id, issue, issuesCapturedAt);
-    }
+    // 3. Bulk write: delete old data + insert new in a transaction
+    console.log(`[Conductor Sync] Writing ${pages.length} pages + ${issues.length} issues to DB...`);
+
+    const pageRecords = pages.map((p) => buildPageRecord(website.id, p, capturedAt));
+    const issueRecords = issues.map((i) => buildIssueRecord(website.id, i, issuesCapturedAt));
+
+    const CHUNK_SIZE = 500;
+    await prisma.$transaction(async (tx) => {
+      await tx.conductorPage.deleteMany({ where: { websiteId: website.id } });
+      for (let i = 0; i < pageRecords.length; i += CHUNK_SIZE) {
+        await tx.conductorPage.createMany({ data: pageRecords.slice(i, i + CHUNK_SIZE) });
+      }
+
+      await tx.conductorIssue.deleteMany({ where: { websiteId: website.id } });
+      if (issueRecords.length > 0) {
+        await tx.conductorIssue.createMany({ data: issueRecords });
+      }
+    }, { timeout: 120_000 });
 
     const durationMs = Date.now() - startTime;
 
-    // Update sync log & website
     await prisma.conductorSyncLog.update({
       where: { id: syncLog.id },
       data: {
@@ -174,12 +182,10 @@ function parseDateSafe(value: string | null | undefined): Date | null {
   return isNaN(d.getTime()) ? null : d;
 }
 
-async function upsertPage(
-  websiteId: string,
-  p: ConductorPageData,
-  capturedAt: string
-) {
-  const data = {
+function buildPageRecord(websiteId: string, p: ConductorPageData, capturedAt: string) {
+  return {
+    websiteId,
+    url: p.url,
     health: p.health ?? null,
     statusCode: p.status_code ?? null,
     type: p.type ?? null,
@@ -221,29 +227,15 @@ async function upsertPage(
         : null,
     dataCapturedAt: parseDateSafe(capturedAt),
   };
-
-  await prisma.conductorPage.upsert({
-    where: {
-      websiteId_url: { websiteId, url: p.url },
-    },
-    update: data,
-    create: {
-      websiteId,
-      url: p.url,
-      ...data,
-    },
-  });
 }
 
-async function upsertIssue(
-  websiteId: string,
-  issue: ConductorIssueData,
-  capturedAt: string
-) {
+function buildIssueRecord(websiteId: string, issue: ConductorIssueData, capturedAt: string) {
   const tags = Array.isArray(issue.tags) ? issue.tags.join(",") : issue.tags;
   const abs = issue.pages_per_issue_state?.absolute_number;
 
-  const data = {
+  return {
+    websiteId,
+    name: issue.name,
     type: issue.type,
     tags: tags || null,
     pagesOpen: abs?.open ?? 0,
@@ -253,16 +245,4 @@ async function upsertIssue(
     pointsToGain: issue.points_to_gain ?? 0,
     dataCapturedAt: parseDateSafe(capturedAt),
   };
-
-  await prisma.conductorIssue.upsert({
-    where: {
-      websiteId_name: { websiteId, name: issue.name },
-    },
-    update: data,
-    create: {
-      websiteId,
-      name: issue.name,
-      ...data,
-    },
-  });
 }
