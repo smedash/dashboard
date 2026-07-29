@@ -333,7 +333,7 @@ export async function streamAllPages(
 
   // eslint-disable-next-line no-constant-condition
   while (true) {
-    const result = await getPages(websiteId, 5000, cursor);
+    const result = await getPages(websiteId, 1000, cursor);
     if (result.pages.length > 0) {
       await onBatch(result.pages, result.capturedAt);
       total += result.pages.length;
