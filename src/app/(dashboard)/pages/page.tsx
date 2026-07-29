@@ -39,6 +39,30 @@ interface ConductorPageInfo {
   dataCapturedAt: string | null;
 }
 
+function normalizeUrl(url: string): string {
+  return url.replace(/\/+$/, "").replace(/^https?:\/\/www\./, "https://");
+}
+
+function buildNormalizedMap(
+  map: Record<string, ConductorPageInfo>
+): Map<string, ConductorPageInfo> {
+  const normalized = new Map<string, ConductorPageInfo>();
+  for (const [url, info] of Object.entries(map)) {
+    normalized.set(normalizeUrl(url), info);
+  }
+  return normalized;
+}
+
+function lookupConductor(
+  gscUrl: string,
+  map: Record<string, ConductorPageInfo>,
+  normalizedMap?: Map<string, ConductorPageInfo>
+): ConductorPageInfo | null {
+  if (map[gscUrl]) return map[gscUrl];
+  const nm = normalizedMap || buildNormalizedMap(map);
+  return nm.get(normalizeUrl(gscUrl)) || null;
+}
+
 export default function PagesPage() {
   const { selectedProperty } = useProperty();
   const [period, setPeriod] = useState("28d");
@@ -54,11 +78,7 @@ export default function PagesPage() {
   useEffect(() => {
     async function fetchConductorData() {
       try {
-        const domain = selectedProperty
-          ? new URL(selectedProperty).hostname
-          : undefined;
-        const qs = domain ? `?domain=${encodeURIComponent(domain)}` : "";
-        const response = await fetch(`/api/conductor-monitoring/pages-enrichment${qs}`);
+        const response = await fetch("/api/conductor-monitoring/pages-enrichment");
         const result = await response.json();
         setConductorPages(result.pages || {});
         setConductorLastSync(result.lastSyncAt || null);
@@ -67,7 +87,7 @@ export default function PagesPage() {
       }
     }
     fetchConductorData();
-  }, [selectedProperty]);
+  }, []);
 
   // Lade KVP-URLs einmalig
   useEffect(() => {
@@ -109,6 +129,11 @@ export default function PagesPage() {
     return new Set(kvpUrls.map((kvp) => kvp.url));
   }, [kvpUrls]);
 
+  const conductorNormMap = useMemo(
+    () => buildNormalizedMap(conductorPages),
+    [conductorPages]
+  );
+
   const tableData = useMemo(() => {
     const searchLower = searchQuery.toLowerCase().trim();
 
@@ -125,7 +150,7 @@ export default function PagesPage() {
         return true;
       })
       .map((row, index) => {
-        const cm = conductorPages[row.keys[0]] || null;
+        const cm = lookupConductor(row.keys[0], conductorPages, conductorNormMap);
         return {
           id: index,
           page: row.keys[0],
@@ -142,7 +167,7 @@ export default function PagesPage() {
           cmLighthouseLcp: cm?.lighthouseLcp ?? null,
         };
       });
-  }, [data, searchQuery, kvpUrlSet, kvpFilter, conductorPages]);
+  }, [data, searchQuery, kvpUrlSet, kvpFilter, conductorPages, conductorNormMap]);
 
   const formatUrl = (url: string) => {
     try {
