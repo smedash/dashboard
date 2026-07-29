@@ -6,7 +6,7 @@
 import { prisma } from "./prisma";
 import { Prisma } from "@prisma/client";
 import {
-  getAllPages,
+  streamAllPages,
   getIssues,
   getWebsites,
   resolveWebsiteId,
@@ -104,34 +104,31 @@ export async function syncConductorData(
   });
 
   try {
-    // 1. Fetch pages from API
-    console.log(`[Conductor Sync] Fetching all pages for ${cId}...`);
-    const { pages, capturedAt } = await getAllPages(cId);
-    console.log(`[Conductor Sync] Received ${pages.length} pages`);
+    // 1. Clear old page data upfront (single fast query)
+    console.log(`[Conductor Sync] Clearing old pages for ${cId}...`);
+    await prisma.conductorPage.deleteMany({ where: { websiteId: website.id } });
 
-    // 2. Fetch issues from API
+    // 2. Stream pages: fetch each batch from API and write to DB immediately
+    console.log(`[Conductor Sync] Streaming pages for ${cId}...`);
+    let pagesProcessed = 0;
+    const totalPages = await streamAllPages(cId, async (batch, capturedAt) => {
+      const records = batch.map((p) => buildPageRecord(website.id, p, capturedAt));
+      await prisma.conductorPage.createMany({ data: records });
+      pagesProcessed += batch.length;
+      console.log(`[Conductor Sync] Written ${pagesProcessed} pages so far...`);
+    });
+    console.log(`[Conductor Sync] All ${totalPages} pages written`);
+
+    // 3. Sync issues (small dataset, single request)
     console.log(`[Conductor Sync] Fetching issues for ${cId}...`);
     const { issues, capturedAt: issuesCapturedAt } = await getIssues(cId);
     console.log(`[Conductor Sync] Received ${issues.length} issues`);
 
-    // 3. Bulk write: delete old data + insert new in a transaction
-    console.log(`[Conductor Sync] Writing ${pages.length} pages + ${issues.length} issues to DB...`);
-
-    const pageRecords = pages.map((p) => buildPageRecord(website.id, p, capturedAt));
-    const issueRecords = issues.map((i) => buildIssueRecord(website.id, i, issuesCapturedAt));
-
-    const CHUNK_SIZE = 500;
-    await prisma.$transaction(async (tx) => {
-      await tx.conductorPage.deleteMany({ where: { websiteId: website.id } });
-      for (let i = 0; i < pageRecords.length; i += CHUNK_SIZE) {
-        await tx.conductorPage.createMany({ data: pageRecords.slice(i, i + CHUNK_SIZE) });
-      }
-
-      await tx.conductorIssue.deleteMany({ where: { websiteId: website.id } });
-      if (issueRecords.length > 0) {
-        await tx.conductorIssue.createMany({ data: issueRecords });
-      }
-    }, { timeout: 120_000 });
+    await prisma.conductorIssue.deleteMany({ where: { websiteId: website.id } });
+    if (issues.length > 0) {
+      const issueRecords = issues.map((i) => buildIssueRecord(website.id, i, issuesCapturedAt));
+      await prisma.conductorIssue.createMany({ data: issueRecords });
+    }
 
     const durationMs = Date.now() - startTime;
 
@@ -139,7 +136,7 @@ export async function syncConductorData(
       where: { id: syncLog.id },
       data: {
         status: "completed",
-        pagesProcessed: pages.length,
+        pagesProcessed: totalPages,
         issuesProcessed: issues.length,
         durationMs,
       },
@@ -151,14 +148,14 @@ export async function syncConductorData(
     });
 
     console.log(
-      `[Conductor Sync] Completed: ${pages.length} pages, ${issues.length} issues in ${durationMs}ms`
+      `[Conductor Sync] Completed: ${totalPages} pages, ${issues.length} issues in ${durationMs}ms`
     );
 
     return {
       websiteId: website.id,
       conductorId: cId,
       domain: websiteData.domain,
-      pagesProcessed: pages.length,
+      pagesProcessed: totalPages,
       issuesProcessed: issues.length,
       durationMs,
     };

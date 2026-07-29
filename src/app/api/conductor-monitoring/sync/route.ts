@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { hasFullAdminRights } from "@/lib/rbac";
 import { syncConductorData, findConductorWebsiteByDomain } from "@/lib/conductor-sync";
 
-export const maxDuration = 300;
+export const maxDuration = 800;
 
 export async function POST(request: NextRequest) {
   try {

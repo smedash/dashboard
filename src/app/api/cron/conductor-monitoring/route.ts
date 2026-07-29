@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { syncAllConductorWebsites } from "@/lib/conductor-sync";
 
-export const maxDuration = 600;
+export const maxDuration = 800;
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {

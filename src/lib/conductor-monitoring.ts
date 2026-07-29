@@ -13,7 +13,7 @@ const CMS_TOKEN = () => process.env.CONDUCTOR_CMS_TOKEN;
 const USER_AGENT =
   "Mozilla/5.0 (compatible; SMEDashboard/1.0; +https://smedash.com)";
 
-const MIN_REQUEST_INTERVAL_MS = 200; // 5 req/s with buffer
+const MIN_REQUEST_INTERVAL_MS = 170; // ~6 req/s (API limit)
 let lastRequestTime = 0;
 
 async function throttle(): Promise<void> {
@@ -312,20 +312,37 @@ export async function getAllPages(
   websiteId: string
 ): Promise<{ pages: ConductorPageData[]; capturedAt: string }> {
   const allPages: ConductorPageData[] = [];
-  let cursor: string | undefined;
   let capturedAt = "";
+  await streamAllPages(websiteId, (batch, ca) => {
+    allPages.push(...batch);
+    capturedAt = ca;
+  });
+  return { pages: allPages, capturedAt };
+}
+
+/**
+ * Streams pages in batches via callback, so callers can process/write each
+ * batch immediately instead of waiting for the full dataset.
+ */
+export async function streamAllPages(
+  websiteId: string,
+  onBatch: (pages: ConductorPageData[], capturedAt: string) => void | Promise<void>
+): Promise<number> {
+  let cursor: string | undefined;
+  let total = 0;
 
   // eslint-disable-next-line no-constant-condition
   while (true) {
-    const result = await getPages(websiteId, 1000, cursor);
-    allPages.push(...result.pages);
-    capturedAt = result.capturedAt;
-
+    const result = await getPages(websiteId, 5000, cursor);
+    if (result.pages.length > 0) {
+      await onBatch(result.pages, result.capturedAt);
+      total += result.pages.length;
+    }
     if (!result.nextCursor || result.pages.length === 0) break;
     cursor = result.nextCursor;
   }
 
-  return { pages: allPages, capturedAt };
+  return total;
 }
 
 export async function getPageDetail(
