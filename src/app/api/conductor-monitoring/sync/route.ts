@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { hasFullAdminRights } from "@/lib/rbac";
-import { syncConductorData } from "@/lib/conductor-sync";
+import { syncConductorData, syncAllConductorWebsites } from "@/lib/conductor-sync";
 
 export const maxDuration = 300;
 
@@ -18,8 +18,22 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}));
     const websiteId = body.websiteId as string | undefined;
 
-    const result = await syncConductorData("manual", websiteId);
-    return NextResponse.json({ success: true, ...result });
+    if (websiteId) {
+      const result = await syncConductorData("manual", websiteId);
+      return NextResponse.json({ success: true, results: [result] });
+    }
+
+    const results = await syncAllConductorWebsites("manual");
+    const totalPages = results.reduce((s, r) => s + r.pagesProcessed, 0);
+    const totalIssues = results.reduce((s, r) => s + r.issuesProcessed, 0);
+    const totalDuration = results.reduce((s, r) => s + r.durationMs, 0);
+    return NextResponse.json({
+      success: true,
+      results,
+      pagesProcessed: totalPages,
+      issuesProcessed: totalIssues,
+      durationMs: totalDuration,
+    });
   } catch (error) {
     console.error("[Conductor Sync]", error);
     return NextResponse.json(

@@ -1,17 +1,26 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const website = await prisma.conductorWebsite.findFirst({
-      orderBy: { lastSyncAt: "desc" },
-    });
+    const { searchParams } = new URL(request.url);
+    const domain = searchParams.get("domain");
+
+    let website;
+    if (domain) {
+      // Match Conductor website whose domain contains the requested domain
+      // e.g. domain="sevdesk.de" matches Conductor domain "https://sevdesk.de"
+      website = await prisma.conductorWebsite.findFirst({
+        where: { domain: { contains: domain, mode: "insensitive" } },
+        orderBy: { lastSyncAt: "desc" },
+      });
+    }
 
     if (!website) {
       return NextResponse.json({ pages: {}, lastSyncAt: null });

@@ -22,9 +22,29 @@ function toJson(value: unknown): Prisma.InputJsonValue | undefined {
 export interface SyncResult {
   websiteId: string;
   conductorId: string;
+  domain: string;
   pagesProcessed: number;
   issuesProcessed: number;
   durationMs: number;
+}
+
+/**
+ * Sync ALL websites from the Conductor account.
+ * Used by cron and the manual "sync all" button.
+ */
+export async function syncAllConductorWebsites(
+  syncType: "manual" | "cron"
+): Promise<SyncResult[]> {
+  const websites = await getWebsites();
+  if (websites.length === 0) {
+    throw new Error("No websites found in Conductor Monitoring account");
+  }
+  const results: SyncResult[] = [];
+  for (const ws of websites) {
+    const result = await syncConductorData(syncType, ws.id);
+    results.push(result);
+  }
+  return results;
 }
 
 export async function syncConductorData(
@@ -34,7 +54,6 @@ export async function syncConductorData(
   const startTime = Date.now();
   const cId = conductorWebsiteId || (await resolveWebsiteId());
 
-  // Ensure the website record exists locally
   const websites = await getWebsites();
   const websiteData = websites.find((w) => w.id === cId);
   if (!websiteData) {
@@ -111,6 +130,7 @@ export async function syncConductorData(
     return {
       websiteId: website.id,
       conductorId: cId,
+      domain: websiteData.domain,
       pagesProcessed: pages.length,
       issuesProcessed: issues.length,
       durationMs,

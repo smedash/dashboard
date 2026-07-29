@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { syncConductorData } from "@/lib/conductor-sync";
+import { syncAllConductorWebsites } from "@/lib/conductor-sync";
 
 export const maxDuration = 600;
 export const dynamic = "force-dynamic";
@@ -22,19 +22,23 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    console.log("[Cron Conductor] ====== Starte täglichen Conductor Sync ======");
+    console.log("[Cron Conductor] ====== Starte taeglichen Conductor Sync (alle Websites) ======");
     console.log("[Cron Conductor] Zeitpunkt:", new Date().toISOString());
 
-    const result = await syncConductorData("cron");
+    const results = await syncAllConductorWebsites("cron");
+    const totalPages = results.reduce((s, r) => s + r.pagesProcessed, 0);
+    const totalIssues = results.reduce((s, r) => s + r.issuesProcessed, 0);
 
     console.log("[Cron Conductor] ====== Sync abgeschlossen ======");
     console.log(
-      `[Cron Conductor] Pages: ${result.pagesProcessed}, Issues: ${result.issuesProcessed}, Dauer: ${result.durationMs}ms`
+      `[Cron Conductor] ${results.length} Websites, Pages: ${totalPages}, Issues: ${totalIssues}`
     );
 
     return NextResponse.json({
       success: true,
-      ...result,
+      results,
+      totalPages,
+      totalIssues,
       timestamp: new Date().toISOString(),
     });
   } catch (error) {

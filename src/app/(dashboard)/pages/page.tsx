@@ -39,6 +39,18 @@ interface ConductorPageInfo {
   dataCapturedAt: string | null;
 }
 
+function extractDomain(property: string): string {
+  // Handle "sc-domain:example.com" format
+  if (property.startsWith("sc-domain:")) {
+    return property.replace("sc-domain:", "").replace(/^www\./, "");
+  }
+  try {
+    return new URL(property).hostname.replace(/^www\./, "");
+  } catch {
+    return property.replace(/^www\./, "");
+  }
+}
+
 function normalizeUrl(url: string): string {
   return url.replace(/\/+$/, "").replace(/^https?:\/\/www\./, "https://");
 }
@@ -74,11 +86,14 @@ export default function PagesPage() {
   const [conductorPages, setConductorPages] = useState<Record<string, ConductorPageInfo>>({});
   const [conductorLastSync, setConductorLastSync] = useState<string | null>(null);
 
-  // Lade Conductor Monitoring Daten
+  // Lade Conductor Monitoring Daten passend zur ausgewaehlten Property
   useEffect(() => {
     async function fetchConductorData() {
+      if (!selectedProperty) return;
       try {
-        const response = await fetch("/api/conductor-monitoring/pages-enrichment");
+        const domain = extractDomain(selectedProperty);
+        const qs = domain ? `?domain=${encodeURIComponent(domain)}` : "";
+        const response = await fetch(`/api/conductor-monitoring/pages-enrichment${qs}`);
         const result = await response.json();
         setConductorPages(result.pages || {});
         setConductorLastSync(result.lastSyncAt || null);
@@ -87,7 +102,7 @@ export default function PagesPage() {
       }
     }
     fetchConductorData();
-  }, []);
+  }, [selectedProperty]);
 
   // Lade KVP-URLs einmalig
   useEffect(() => {
