@@ -1,7 +1,9 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { fetchRankings, findRankingPosition } from "@/lib/dataforseo";
+import { DEFAULT_TARGET_DOMAIN, runRankingFetch } from "@/lib/rank-tracker";
 import { NextRequest, NextResponse } from "next/server";
+
+export const maxDuration = 800; // Maximum mit Fluid Compute (ohne Fluid Compute: 300)
 
 // POST - Rankings für alle oder ein einzelnes Keyword abrufen
 export async function POST(request: NextRequest) {
@@ -34,88 +36,36 @@ export async function POST(request: NextRequest) {
 
     // Stelle sicher, dass Location auf Switzerland gesetzt ist
     if (tracker.location !== "Switzerland") {
-      console.log(`[fetchRankings] Aktualisiere Location von "${tracker.location}" auf "Switzerland"`);
+      console.log(`[rank-tracker/fetch] Aktualisiere Location von "${tracker.location}" auf "Switzerland"`);
       tracker = await prisma.rankTracker.update({
         where: { id: tracker.id },
         data: { location: "Switzerland" },
         include: {
-          keywords: true,
+          keywords: keywordId
+            ? { where: { id: keywordId } }
+            : true,
         },
       });
     }
 
-    // Bereite Keywords für DataForSEO vor
-    const keywords = tracker.keywords.map((k) => ({
-      keyword: k.keyword,
-      targetUrl: k.targetUrl,
-    }));
-    
-    // ERZWINGE IMMER Schweiz für Rankings
-    const forcedLocation = "Switzerland";
-    const forcedLanguage = tracker.language || "German";
-    
-    console.log(`[fetchRankings] Starte Ranking-Abruf für ${tracker.keywords.length} Keywords`);
-    console.log(`[fetchRankings] Location: ${forcedLocation} (ERZWUNGEN), Language: ${forcedLanguage}`);
-    console.log(`[fetchRankings] Keywords:`, tracker.keywords.map(k => ({ keyword: k.keyword, targetUrl: k.targetUrl || "ubs.com (Standard)" })));
-    
-    // Rufe Rankings ab - IMMER für die Schweiz
-    const results = await fetchRankings(
-      keywords,
-      forcedLocation,
-      forcedLanguage
+    console.log(`[rank-tracker/fetch] Starte Ranking-Abruf für ${tracker.keywords.length} Keywords`);
+    console.log(
+      `[rank-tracker/fetch] Keywords:`,
+      tracker.keywords.map((k) => ({
+        keyword: k.keyword,
+        targetUrl: k.targetUrl || `${DEFAULT_TARGET_DOMAIN} (Standard)`,
+      }))
     );
 
-    console.log(`[fetchRankings] DataForSEO API hat ${results.length} Results zurückgegeben`);
-    console.log(`[fetchRankings] Results:`, results.map(r => ({
-      keyword: r.keyword,
-      itemsCount: r.items_count,
-      firstItem: r.items?.[0] ? {
-        rank: r.items[0].rank_absolute,
-        url: r.items[0].url,
-        domain: r.items[0].domain,
-      } : null,
-    })));
-
-    // Speichere Rankings in Datenbank
-    const savedRankings = [];
-    for (const keyword of tracker.keywords) {
-      // Wenn keine targetUrl angegeben, verwende automatisch ubs.com
-      const targetUrl = keyword.targetUrl || "ubs.com";
-      console.log(`[fetchRankings] Verarbeite Keyword: "${keyword.keyword}" mit Target: "${targetUrl}"`);
-      
-      const rankingData = findRankingPosition(results, keyword.keyword, targetUrl);
-      
-      console.log(`[fetchRankings] Ranking-Daten für "${keyword.keyword}":`, rankingData);
-      
-      // Speichere Ranking (auch wenn position null ist - zeigt an, dass wir geprüft haben)
-      const ranking = await prisma.rankTrackerRanking.create({
-        data: {
-          keywordId: keyword.id,
-          position: rankingData.position, // null wenn nicht in Top 100
-          url: rankingData.url,
-          date: new Date(),
-        },
-      });
-
-      savedRankings.push({
-        keyword: keyword.keyword,
-        ranking,
-      });
-      
-      if (rankingData.position === null) {
-        console.log(`[fetchRankings] "${keyword.keyword}" nicht in Top 100 gefunden - Zeitstempel gespeichert`);
-      }
-    }
-    
-    console.log(`[fetchRankings] Gespeicherte Rankings:`, savedRankings.map(s => ({
-      keyword: s.keyword,
-      position: s.ranking.position,
-      url: s.ranking.url,
-    })));
+    const { savedRankings, errors } = await runRankingFetch(tracker.keywords, {
+      location: tracker.location,
+      language: tracker.language,
+    });
 
     return NextResponse.json({
       success: true,
       rankings: savedRankings,
+      errors: errors.length > 0 ? errors : undefined,
       message: `${savedRankings.length} Rankings erfolgreich abgerufen`,
     });
   } catch (error) {

@@ -1,12 +1,12 @@
 import { prisma } from "@/lib/prisma";
-import { fetchRankings, findRankingPosition } from "@/lib/dataforseo";
+import { runRankingFetch } from "@/lib/rank-tracker";
 import { NextRequest, NextResponse } from "next/server";
 
 // Cron-Job Route zum automatischen Abrufen aller Rankings
 // Wird täglich um 00:30 Uhr aufgerufen (konfiguriert in vercel.json)
 // Geschützt durch CRON_SECRET
 
-export const maxDuration = 600; // 10 Minuten Timeout für den Cron-Job (Pro Plan: max 800s)
+export const maxDuration = 800; // Maximum mit Fluid Compute (ohne Fluid Compute: 300)
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
@@ -68,52 +68,20 @@ export async function GET(request: NextRequest) {
       totalKeywords += tracker.keywords.length;
 
       try {
-        // Bereite Keywords für DataForSEO vor
-        const keywords = tracker.keywords.map((k) => ({
-          keyword: k.keyword,
-          targetUrl: k.targetUrl,
-        }));
-
-        // ERZWINGE IMMER Schweiz für Rankings
-        const forcedLocation = "Switzerland";
-        const forcedLanguage = tracker.language || "German";
-
-        console.log(`[Cron Rank Tracker] Location: ${forcedLocation}, Language: ${forcedLanguage}`);
-
-        // Rufe Rankings ab
-        const results = await fetchRankings(
-          keywords,
-          forcedLocation,
-          forcedLanguage
+        const { savedRankings, errors: keywordErrors } = await runRankingFetch(
+          tracker.keywords,
+          { location: tracker.location, language: tracker.language }
         );
 
-        console.log(`[Cron Rank Tracker] DataForSEO hat ${results.length} Results zurückgegeben`);
+        totalRankings += savedRankings.length;
 
-        // Speichere Rankings in Datenbank
-        for (const keyword of tracker.keywords) {
-          const targetUrl = keyword.targetUrl || "ubs.com";
-          const rankingData = findRankingPosition(results, keyword.keyword, targetUrl);
-
-          // Speichere Ranking (auch wenn position null ist)
-          await prisma.rankTrackerRanking.create({
-            data: {
-              keywordId: keyword.id,
-              position: rankingData.position,
-              url: rankingData.url,
-              date: new Date(),
-            },
-          });
-
-          totalRankings++;
-
-          if (rankingData.position === null) {
-            console.log(`[Cron Rank Tracker] "${keyword.keyword}" nicht in Top 100`);
-          } else {
-            console.log(`[Cron Rank Tracker] "${keyword.keyword}" auf Position ${rankingData.position}`);
-          }
+        for (const keywordError of keywordErrors) {
+          errors.push(`Tracker "${tracker.name}" – ${keywordError}`);
         }
 
-        console.log(`[Cron Rank Tracker] Tracker "${tracker.name}" erfolgreich verarbeitet`);
+        console.log(
+          `[Cron Rank Tracker] Tracker "${tracker.name}": ${savedRankings.length}/${tracker.keywords.length} Rankings gespeichert`
+        );
       } catch (trackerError) {
         const errorMessage = trackerError instanceof Error ? trackerError.message : "Unbekannter Fehler";
         console.error(`[Cron Rank Tracker] Fehler bei Tracker "${tracker.name}":`, errorMessage);

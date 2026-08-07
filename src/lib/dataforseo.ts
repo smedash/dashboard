@@ -1,5 +1,7 @@
 // DataForSEO API Integration für Rank Tracking
 
+import { mapWithConcurrency } from "@/lib/concurrency";
+
 const DATAFORSEO_API_URL = "https://api.dataforseo.com/v3";
 
 const ALLOWED_CHARS_RE = /[^\p{L}\p{N}\s\-.:\/]/gu;
@@ -132,25 +134,27 @@ export async function getRankTrackerResults(
 }
 
 /**
- * Ruft Rankings für Keywords ab - verwendet den LIVE Endpunkt für sofortige Ergebnisse
+ * DataForSEO erlaubt bis zu 30 gleichzeitige Requests - 5 hält sicheren Abstand zum Rate-Limit.
  */
-export async function fetchRankings(
-  keywords: Array<{ keyword: string; targetUrl?: string | null }>,
+export const RANKING_FETCH_CONCURRENCY = 5;
+
+/**
+ * Ermittelt Location- und Language-Code für den Ranking-Abruf.
+ * HINWEIS: Location wird IMMER auf Schweiz gesetzt, unabhängig vom übergebenen Parameter.
+ */
+export function resolveRankingLocale(
   location: string = "Switzerland",
   language: string = "German"
-): Promise<RankTrackerResult[]> {
-  // ERZWINGE IMMER Schweiz - ignoriere übergebene Location
+): { locationCode: number; languageCode: string } {
   const forcedLocation = "Switzerland";
   const forcedLanguage = language || "German";
-  
-  console.log(`[fetchRankings] Location Parameter: "${location}", ERZWUNGEN: "${forcedLocation}"`);
-  
+
   const locationCodeMap: Record<string, number> = {
     Switzerland: 2756,
     Germany: 2276,
     "United States": 2840,
   };
-  
+
   const languageCodeMap: Record<string, string> = {
     German: "de",
     English: "en",
@@ -158,93 +162,100 @@ export async function fetchRankings(
     Italian: "it",
   };
 
-  const locationCode = locationCodeMap[forcedLocation] || 2756;
-  const languageCode = languageCodeMap[forcedLanguage] || "de";
-  
-  console.log(`[fetchRankings] Verwende Location Code: ${locationCode} (Schweiz), Language Code: ${languageCode}`);
-  console.log(`[fetchRankings] Verarbeite ${keywords.length} Keywords mit LIVE API...`);
+  console.log(`[resolveRankingLocale] Location Parameter: "${location}", ERZWUNGEN: "${forcedLocation}"`);
 
-  const allResults: RankTrackerResult[] = [];
-  
-  // Verarbeite jedes Keyword einzeln mit dem Live-Endpunkt
-  for (let i = 0; i < keywords.length; i++) {
-    const item = keywords[i];
-    console.log(`[fetchRankings] ====== Keyword ${i + 1}/${keywords.length}: "${item.keyword}" ======`);
-    
-    try {
-      const requestBody = [{
-        keyword: item.keyword,
-        location_code: locationCode,
-        language_code: languageCode,
-        depth: 50,
-      }];
-      
-      console.log(`[fetchRankings] Sende Live-Request für "${item.keyword}"...`);
-      
-      const response = await fetch(`${DATAFORSEO_API_URL}/serp/google/organic/live/advanced`, {
-        method: "POST",
-        headers: {
-          Authorization: getAuthHeader(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestBody),
-      });
+  return {
+    locationCode: locationCodeMap[forcedLocation] || 2756,
+    languageCode: languageCodeMap[forcedLanguage] || "de",
+  };
+}
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`[fetchRankings] API Fehler für "${item.keyword}": ${response.status} - ${errorText}`);
-        continue; // Weiter mit nächstem Keyword
-      }
+/**
+ * Ruft das Ranking für ein einzelnes Keyword über den LIVE Endpunkt ab.
+ * Gibt `null` zurück, wenn DataForSEO kein Ergebnis liefert.
+ */
+export async function fetchRankingForKeyword(
+  keyword: string,
+  locationCode: number,
+  languageCode: string
+): Promise<RankTrackerResult | null> {
+  const requestBody = [{
+    keyword,
+    location_code: locationCode,
+    language_code: languageCode,
+    depth: 50,
+  }];
 
-      const data = await response.json();
-      
-      if (data.tasks && data.tasks.length > 0) {
-        const task = data.tasks[0];
-        console.log(`[fetchRankings] Response für "${item.keyword}": Status ${task.status_code} (${task.status_message})`);
-        
-        if (task.status_code === 20000 && task.result && task.result.length > 0) {
-          const result = task.result[0];
-          console.log(`[fetchRankings] ✓ "${item.keyword}": ${result.items_count} Items gefunden`);
-          
-          // Logge die ersten 5 Items
-          if (result.items && result.items.length > 0) {
-            console.log(`[fetchRankings] Top 5 Items für "${item.keyword}":`, 
-              result.items.slice(0, 5).map((item: { rank_absolute: number; domain: string; url: string }) => ({
-                rank: item.rank_absolute,
-                domain: item.domain,
-                url: item.url?.substring(0, 60)
-              }))
-            );
-          }
-          
-          allResults.push(result);
-        } else {
-          console.warn(`[fetchRankings] ✗ Keine Ergebnisse für "${item.keyword}": ${task.status_message}`);
-        }
+  const response = await fetch(`${DATAFORSEO_API_URL}/serp/google/organic/live/advanced`, {
+    method: "POST",
+    headers: {
+      Authorization: getAuthHeader(),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(requestBody),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`[fetchRankingForKeyword] API Fehler für "${keyword}": ${response.status} - ${errorText.slice(0, 200)}`);
+    return null;
+  }
+
+  const data = await response.json();
+  const task = data.tasks?.[0];
+
+  if (!task) {
+    console.warn(`[fetchRankingForKeyword] Keine Task-Antwort für "${keyword}"`);
+    return null;
+  }
+
+  if (task.status_code !== 20000 || !task.result?.length) {
+    console.warn(`[fetchRankingForKeyword] ✗ Keine Ergebnisse für "${keyword}": ${task.status_message}`);
+    return null;
+  }
+
+  const result = task.result[0] as RankTrackerResult;
+  console.log(`[fetchRankingForKeyword] ✓ "${keyword}": ${result.items_count} Items gefunden`);
+
+  return result;
+}
+
+/**
+ * Ruft Rankings für mehrere Keywords ab - verwendet den LIVE Endpunkt für sofortige Ergebnisse.
+ * Die Abrufe laufen parallel in einem Pool, ein Fehler bei einem Keyword bricht den Lauf nicht ab.
+ */
+export async function fetchRankings(
+  keywords: Array<{ keyword: string; targetUrl?: string | null }>,
+  location: string = "Switzerland",
+  language: string = "German"
+): Promise<RankTrackerResult[]> {
+  const { locationCode, languageCode } = resolveRankingLocale(location, language);
+
+  console.log(`[fetchRankings] Verarbeite ${keywords.length} Keywords mit LIVE API (Concurrency ${RANKING_FETCH_CONCURRENCY})...`);
+
+  const results = await mapWithConcurrency(
+    keywords,
+    RANKING_FETCH_CONCURRENCY,
+    async (item) => {
+      try {
+        return await fetchRankingForKeyword(item.keyword, locationCode, languageCode);
+      } catch (error) {
+        console.error(`[fetchRankings] Fehler bei "${item.keyword}":`, error);
+        return null;
       }
-      
-      // Kurze Pause zwischen Requests um Rate-Limits zu vermeiden
-      if (i < keywords.length - 1) {
-        await new Promise((resolve) => setTimeout(resolve, 500));
-      }
-      
-    } catch (error) {
-      console.error(`[fetchRankings] Fehler bei "${item.keyword}":`, error);
-      // Weiter mit nächstem Keyword
     }
-  }
-  
-  console.log(`[fetchRankings] ====== Alle Keywords verarbeitet ======`);
+  );
+
+  const allResults = results.filter((r): r is RankTrackerResult => r !== null);
+
   console.log(`[fetchRankings] Gesamt Results: ${allResults.length} für ${keywords.length} Keywords`);
-  console.log(`[fetchRankings] Results Keywords:`, allResults.map(r => r.keyword));
-  
-  if (allResults.length > 0) {
-    console.log(`[fetchRankings] ✓ Erfolgreich ${allResults.length} Results abgerufen`);
-    return allResults;
+
+  if (allResults.length === 0) {
+    console.error(`[fetchRankings] ✗ Keine Results abgerufen`);
+    throw new Error("Keine Rankings gefunden");
   }
 
-  console.error(`[fetchRankings] ✗ Keine Results abgerufen`);
-  throw new Error("Keine Rankings gefunden");
+  return allResults;
 }
 
 // ==========================================
