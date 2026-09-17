@@ -1,7 +1,282 @@
 {
-  "generatedAt": "2026-06-16T13:36:27.552Z",
-  "totalCommits": 157,
+  "generatedAt": "2026-08-07T09:31:52.616Z",
+  "totalCommits": 182,
   "commits": [
+    {
+      "hash": "c443dd3af8775647fddd171a2e51a5e7a8b040e2",
+      "shortHash": "c443dd3",
+      "author": "smedash",
+      "date": "2026-08-07 11:13:36 +0200",
+      "subject": "fix(rank-tracker): Ranking-Abruf parallelisieren und inkrementell speichern",
+      "type": "fix",
+      "typeLabel": "Bugfix",
+      "scope": "rank-tracker",
+      "message": "Ranking-Abruf parallelisieren und inkrementell speichern"
+    },
+    {
+      "hash": "16883788ec2779ed51fe8f7b7c289d7663ba2ad4",
+      "shortHash": "1688378",
+      "author": "smedash",
+      "date": "2026-07-29 11:34:07 +0200",
+      "subject": "fix: Conductor API per_page auf 1000 begrenzen (API Maximum)",
+      "type": "fix",
+      "typeLabel": "Bugfix",
+      "scope": null,
+      "message": "Conductor API per_page auf 1000 begrenzen (API Maximum)"
+    },
+    {
+      "hash": "a6bf3b4570c2e3b784ad8ed531dc662de7a10101",
+      "shortHash": "a6bf3b4",
+      "author": "smedash",
+      "date": "2026-07-29 11:26:44 +0200",
+      "subject": "perf: Conductor Sync auf Streaming-Pipeline umgestellt",
+      "type": "perf",
+      "typeLabel": "Performance",
+      "scope": null,
+      "message": "Conductor Sync auf Streaming-Pipeline umgestellt"
+    },
+    {
+      "hash": "04f23b692713f5bd28ae17329688429454900bc5",
+      "shortHash": "04f23b6",
+      "author": "smedash",
+      "date": "2026-07-29 11:03:11 +0200",
+      "subject": "perf: Conductor Sync von Einzel-Upserts auf Bulk-Insert umgestellt",
+      "type": "perf",
+      "typeLabel": "Performance",
+      "scope": null,
+      "message": "Conductor Sync von Einzel-Upserts auf Bulk-Insert umgestellt"
+    },
+    {
+      "hash": "cd2dd79f28cafeed28b2fa0178c2e8f325a3d507",
+      "shortHash": "cd2dd79",
+      "author": "smedash",
+      "date": "2026-07-29 10:34:29 +0200",
+      "subject": "fix: Conductor Sync nur für ausgewählte Property statt alle Websites",
+      "type": "fix",
+      "typeLabel": "Bugfix",
+      "scope": null,
+      "message": "Conductor Sync nur für ausgewählte Property statt alle Websites"
+    },
+    {
+      "hash": "7e7a6affb383c3f63327de9c0fcd33591b031b52",
+      "shortHash": "7e7a6af",
+      "author": "smedash",
+      "date": "2026-07-29 10:15:22 +0200",
+      "subject": "fix: Conductor-Daten nur für ausgewählte GSC Property laden",
+      "type": "fix",
+      "typeLabel": "Bugfix",
+      "scope": null,
+      "message": "Conductor-Daten nur für ausgewählte GSC Property laden"
+    },
+    {
+      "hash": "b9d61e7cc0a5d8f70de52b4d2beaf13c49189ecb",
+      "shortHash": "b9d61e7",
+      "author": "smedash",
+      "date": "2026-07-29 10:10:49 +0200",
+      "subject": "fix: Conductor-Daten Matching auf Pages-Seite reparieren",
+      "type": "fix",
+      "typeLabel": "Bugfix",
+      "scope": null,
+      "message": "Conductor-Daten Matching auf Pages-Seite reparieren"
+    },
+    {
+      "hash": "129068ad8396315daa3031b7bf95d483cdf3f1ac",
+      "shortHash": "129068a",
+      "author": "smedash",
+      "date": "2026-07-28 16:12:16 +0200",
+      "subject": "feat: Conductor Monitoring API Integration",
+      "type": "feat",
+      "typeLabel": "Feature",
+      "scope": null,
+      "message": "Conductor Monitoring API Integration"
+    },
+    {
+      "hash": "01ca60b9335ed97c88568e5b08d821a93d26f1f8",
+      "shortHash": "01ca60b",
+      "author": "smedash",
+      "date": "2026-07-24 11:11:32 +0200",
+      "subject": "feat: Excel-Export Button für Keywords auf /planung/keywords",
+      "type": "feat",
+      "typeLabel": "Feature",
+      "scope": null,
+      "message": "Excel-Export Button für Keywords auf /planung/keywords"
+    },
+    {
+      "hash": "d99984750649ffdbc07dca8e5d1d6e063b96d1c1",
+      "shortHash": "d999847",
+      "author": "smedash",
+      "date": "2026-07-24 11:05:35 +0200",
+      "subject": "feat: VZ als Wettbewerber-Filter auf /planung/keywords hinzufügen",
+      "type": "feat",
+      "typeLabel": "Feature",
+      "scope": null,
+      "message": "VZ als Wettbewerber-Filter auf /planung/keywords hinzufügen"
+    },
+    {
+      "hash": "f727d46cf8336b6d1d5e91b7aa3fab4c8b7ee01e",
+      "shortHash": "f727d46",
+      "author": "smedash",
+      "date": "2026-07-13 13:39:27 +0200",
+      "subject": "fix: PDF-Titel bricht bei langen Strategienamen korrekt um",
+      "type": "fix",
+      "typeLabel": "Bugfix",
+      "scope": null,
+      "message": "PDF-Titel bricht bei langen Strategienamen korrekt um"
+    },
+    {
+      "hash": "e75fd4c4dfbc0474ccb0b3c6052a7620ce02311e",
+      "shortHash": "e75fd4c",
+      "author": "smedash",
+      "date": "2026-07-13 13:10:00 +0200",
+      "subject": "feat: PDF-Download für Marketing-AI Strategien",
+      "type": "feat",
+      "typeLabel": "Feature",
+      "scope": null,
+      "message": "PDF-Download für Marketing-AI Strategien"
+    },
+    {
+      "hash": "94c2133c1e80967c6b8bcd8d5b964085882fe6f1",
+      "shortHash": "94c2133",
+      "author": "smedash",
+      "date": "2026-07-06 12:07:49 +0200",
+      "subject": "fix: TypeScript-Fehler bei handleCheck onClick",
+      "type": "fix",
+      "typeLabel": "Bugfix",
+      "scope": null,
+      "message": "TypeScript-Fehler bei handleCheck onClick"
+    },
+    {
+      "hash": "ebf315238e9dd500429ab0da26d29efc6a5a1744",
+      "shortHash": "ebf3152",
+      "author": "smedash",
+      "date": "2026-07-06 12:04:30 +0200",
+      "subject": "feat: Verlauf-Einträge klickbar zum Re-Check",
+      "type": "feat",
+      "typeLabel": "Feature",
+      "scope": null,
+      "message": "Verlauf-Einträge klickbar zum Re-Check"
+    },
+    {
+      "hash": "055580c1b901d0874694b0a023e4fb84720c7a41",
+      "shortHash": "055580c",
+      "author": "smedash",
+      "date": "2026-07-06 12:00:41 +0200",
+      "subject": "feat: Verlauf standardmässig sichtbar auf /seo-helper/url-checker",
+      "type": "feat",
+      "typeLabel": "Feature",
+      "scope": null,
+      "message": "Verlauf standardmässig sichtbar auf /seo-helper/url-checker"
+    },
+    {
+      "hash": "464778afe22c06181e775b87ed3c5617dd684002",
+      "shortHash": "464778a",
+      "author": "smedash",
+      "date": "2026-07-06 11:46:02 +0200",
+      "subject": "feat: \"Task erstellen\" Button bei jedem Check-Ergebnis",
+      "type": "feat",
+      "typeLabel": "Feature",
+      "scope": null,
+      "message": "\"Task erstellen\" Button bei jedem Check-Ergebnis"
+    },
+    {
+      "hash": "f6e9af9e419cd89a6759a04abad7a0991bc5d647",
+      "shortHash": "f6e9af9",
+      "author": "smedash",
+      "date": "2026-07-06 11:35:07 +0200",
+      "subject": "feat: Site Score mit erklärenden Beschreibungen & Optimierungstipps",
+      "type": "feat",
+      "typeLabel": "Feature",
+      "scope": null,
+      "message": "Site Score mit erklärenden Beschreibungen & Optimierungstipps"
+    },
+    {
+      "hash": "36767f579b6234abe907b3a1441b40b3d28dfd2f",
+      "shortHash": "36767f5",
+      "author": "smedash",
+      "date": "2026-07-06 11:15:33 +0200",
+      "subject": "fix: KI-Analyse fetcht Content selbst wenn textContent leer",
+      "type": "fix",
+      "typeLabel": "Bugfix",
+      "scope": null,
+      "message": "KI-Analyse fetcht Content selbst wenn textContent leer"
+    },
+    {
+      "hash": "0f8a44659e4dac3e7241a5103b5f6dc3dd3dc679",
+      "shortHash": "0f8a446",
+      "author": "smedash",
+      "date": "2026-07-06 10:51:24 +0200",
+      "subject": "fix: proxy-fetch Retry bei 403 + besseres Logging",
+      "type": "fix",
+      "typeLabel": "Bugfix",
+      "scope": null,
+      "message": "proxy-fetch Retry bei 403 + besseres Logging"
+    },
+    {
+      "hash": "bb5644d96f3f3344bb76f74dde1214300eda8f9c",
+      "shortHash": "bb5644d",
+      "author": "smedash",
+      "date": "2026-07-06 10:02:45 +0200",
+      "subject": "fix: proxy-fetch auf undici umstellen (ERR_SSL_BAD_RECORD_TYPE)",
+      "type": "fix",
+      "typeLabel": "Bugfix",
+      "scope": null,
+      "message": "proxy-fetch auf undici umstellen (ERR_SSL_BAD_RECORD_TYPE)"
+    },
+    {
+      "hash": "6175cd17b708dd11b5b2daac1e568020a795d625",
+      "shortHash": "6175cd1",
+      "author": "smedash",
+      "date": "2026-07-06 08:58:01 +0200",
+      "subject": "fix: scripts/ aus tsconfig excluden (ES2017 vs /s regex flag)",
+      "type": "fix",
+      "typeLabel": "Bugfix",
+      "scope": null,
+      "message": "scripts/ aus tsconfig excluden (ES2017 vs /s regex flag)"
+    },
+    {
+      "hash": "06c32a541b1a3ca607e75d3f01c5d10d937da17c",
+      "shortHash": "06c32a5",
+      "author": "smedash",
+      "date": "2026-07-06 08:52:48 +0200",
+      "subject": "URL Ranking Factor Checker mit Google API Leak Katalog-Integration",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "URL Ranking Factor Checker mit Google API Leak Katalog-Integration"
+    },
+    {
+      "hash": "0080932b31b3b6c197304ae13c39f6a8ba384c7d",
+      "shortHash": "0080932",
+      "author": "smedash",
+      "date": "2026-06-22 11:45:10 +0200",
+      "subject": "Markenaufmerksamkeit-Statistik: Suchvolumen-Matrix nach Kategorie und Brand",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Markenaufmerksamkeit-Statistik: Suchvolumen-Matrix nach Kategorie und Brand"
+    },
+    {
+      "hash": "c4f1af129345a71f3ded5c89deba66d6b23b5de2",
+      "shortHash": "c4f1af1",
+      "author": "smedash",
+      "date": "2026-06-22 11:35:25 +0200",
+      "subject": "Keyword-Übersicht als Standardansicht mit filterbarer Tabelle und Brand-Vergleich",
+      "type": "other",
+      "typeLabel": "Sonstiges",
+      "scope": null,
+      "message": "Keyword-Übersicht als Standardansicht mit filterbarer Tabelle und Brand-Vergleich"
+    },
+    {
+      "hash": "7926ee1ac99ca98402527a30e4eff859c17e9d2e",
+      "shortHash": "7926ee1",
+      "author": "smedash",
+      "date": "2026-06-16 15:38:17 +0200",
+      "subject": "fix: resolve all 26 Dependabot security vulnerabilities",
+      "type": "fix",
+      "typeLabel": "Bugfix",
+      "scope": null,
+      "message": "resolve all 26 Dependabot security vulnerabilities"
+    },
     {
       "hash": "d1c102cb1c4bd65ad70a2cc0686699b5fa6c49b9",
       "shortHash": "d1c102c",
@@ -1731,7 +2006,296 @@
     }
   ],
   "groupedByDate": {
+    "2026-08-07": [
+      {
+        "hash": "c443dd3af8775647fddd171a2e51a5e7a8b040e2",
+        "shortHash": "c443dd3",
+        "author": "smedash",
+        "date": "2026-08-07 11:13:36 +0200",
+        "subject": "fix(rank-tracker): Ranking-Abruf parallelisieren und inkrementell speichern",
+        "type": "fix",
+        "typeLabel": "Bugfix",
+        "scope": "rank-tracker",
+        "message": "Ranking-Abruf parallelisieren und inkrementell speichern"
+      }
+    ],
+    "2026-07-29": [
+      {
+        "hash": "16883788ec2779ed51fe8f7b7c289d7663ba2ad4",
+        "shortHash": "1688378",
+        "author": "smedash",
+        "date": "2026-07-29 11:34:07 +0200",
+        "subject": "fix: Conductor API per_page auf 1000 begrenzen (API Maximum)",
+        "type": "fix",
+        "typeLabel": "Bugfix",
+        "scope": null,
+        "message": "Conductor API per_page auf 1000 begrenzen (API Maximum)"
+      },
+      {
+        "hash": "a6bf3b4570c2e3b784ad8ed531dc662de7a10101",
+        "shortHash": "a6bf3b4",
+        "author": "smedash",
+        "date": "2026-07-29 11:26:44 +0200",
+        "subject": "perf: Conductor Sync auf Streaming-Pipeline umgestellt",
+        "type": "perf",
+        "typeLabel": "Performance",
+        "scope": null,
+        "message": "Conductor Sync auf Streaming-Pipeline umgestellt"
+      },
+      {
+        "hash": "04f23b692713f5bd28ae17329688429454900bc5",
+        "shortHash": "04f23b6",
+        "author": "smedash",
+        "date": "2026-07-29 11:03:11 +0200",
+        "subject": "perf: Conductor Sync von Einzel-Upserts auf Bulk-Insert umgestellt",
+        "type": "perf",
+        "typeLabel": "Performance",
+        "scope": null,
+        "message": "Conductor Sync von Einzel-Upserts auf Bulk-Insert umgestellt"
+      },
+      {
+        "hash": "cd2dd79f28cafeed28b2fa0178c2e8f325a3d507",
+        "shortHash": "cd2dd79",
+        "author": "smedash",
+        "date": "2026-07-29 10:34:29 +0200",
+        "subject": "fix: Conductor Sync nur für ausgewählte Property statt alle Websites",
+        "type": "fix",
+        "typeLabel": "Bugfix",
+        "scope": null,
+        "message": "Conductor Sync nur für ausgewählte Property statt alle Websites"
+      },
+      {
+        "hash": "7e7a6affb383c3f63327de9c0fcd33591b031b52",
+        "shortHash": "7e7a6af",
+        "author": "smedash",
+        "date": "2026-07-29 10:15:22 +0200",
+        "subject": "fix: Conductor-Daten nur für ausgewählte GSC Property laden",
+        "type": "fix",
+        "typeLabel": "Bugfix",
+        "scope": null,
+        "message": "Conductor-Daten nur für ausgewählte GSC Property laden"
+      },
+      {
+        "hash": "b9d61e7cc0a5d8f70de52b4d2beaf13c49189ecb",
+        "shortHash": "b9d61e7",
+        "author": "smedash",
+        "date": "2026-07-29 10:10:49 +0200",
+        "subject": "fix: Conductor-Daten Matching auf Pages-Seite reparieren",
+        "type": "fix",
+        "typeLabel": "Bugfix",
+        "scope": null,
+        "message": "Conductor-Daten Matching auf Pages-Seite reparieren"
+      }
+    ],
+    "2026-07-28": [
+      {
+        "hash": "129068ad8396315daa3031b7bf95d483cdf3f1ac",
+        "shortHash": "129068a",
+        "author": "smedash",
+        "date": "2026-07-28 16:12:16 +0200",
+        "subject": "feat: Conductor Monitoring API Integration",
+        "type": "feat",
+        "typeLabel": "Feature",
+        "scope": null,
+        "message": "Conductor Monitoring API Integration"
+      }
+    ],
+    "2026-07-24": [
+      {
+        "hash": "01ca60b9335ed97c88568e5b08d821a93d26f1f8",
+        "shortHash": "01ca60b",
+        "author": "smedash",
+        "date": "2026-07-24 11:11:32 +0200",
+        "subject": "feat: Excel-Export Button für Keywords auf /planung/keywords",
+        "type": "feat",
+        "typeLabel": "Feature",
+        "scope": null,
+        "message": "Excel-Export Button für Keywords auf /planung/keywords"
+      },
+      {
+        "hash": "d99984750649ffdbc07dca8e5d1d6e063b96d1c1",
+        "shortHash": "d999847",
+        "author": "smedash",
+        "date": "2026-07-24 11:05:35 +0200",
+        "subject": "feat: VZ als Wettbewerber-Filter auf /planung/keywords hinzufügen",
+        "type": "feat",
+        "typeLabel": "Feature",
+        "scope": null,
+        "message": "VZ als Wettbewerber-Filter auf /planung/keywords hinzufügen"
+      }
+    ],
+    "2026-07-13": [
+      {
+        "hash": "f727d46cf8336b6d1d5e91b7aa3fab4c8b7ee01e",
+        "shortHash": "f727d46",
+        "author": "smedash",
+        "date": "2026-07-13 13:39:27 +0200",
+        "subject": "fix: PDF-Titel bricht bei langen Strategienamen korrekt um",
+        "type": "fix",
+        "typeLabel": "Bugfix",
+        "scope": null,
+        "message": "PDF-Titel bricht bei langen Strategienamen korrekt um"
+      },
+      {
+        "hash": "e75fd4c4dfbc0474ccb0b3c6052a7620ce02311e",
+        "shortHash": "e75fd4c",
+        "author": "smedash",
+        "date": "2026-07-13 13:10:00 +0200",
+        "subject": "feat: PDF-Download für Marketing-AI Strategien",
+        "type": "feat",
+        "typeLabel": "Feature",
+        "scope": null,
+        "message": "PDF-Download für Marketing-AI Strategien"
+      }
+    ],
+    "2026-07-06": [
+      {
+        "hash": "94c2133c1e80967c6b8bcd8d5b964085882fe6f1",
+        "shortHash": "94c2133",
+        "author": "smedash",
+        "date": "2026-07-06 12:07:49 +0200",
+        "subject": "fix: TypeScript-Fehler bei handleCheck onClick",
+        "type": "fix",
+        "typeLabel": "Bugfix",
+        "scope": null,
+        "message": "TypeScript-Fehler bei handleCheck onClick"
+      },
+      {
+        "hash": "ebf315238e9dd500429ab0da26d29efc6a5a1744",
+        "shortHash": "ebf3152",
+        "author": "smedash",
+        "date": "2026-07-06 12:04:30 +0200",
+        "subject": "feat: Verlauf-Einträge klickbar zum Re-Check",
+        "type": "feat",
+        "typeLabel": "Feature",
+        "scope": null,
+        "message": "Verlauf-Einträge klickbar zum Re-Check"
+      },
+      {
+        "hash": "055580c1b901d0874694b0a023e4fb84720c7a41",
+        "shortHash": "055580c",
+        "author": "smedash",
+        "date": "2026-07-06 12:00:41 +0200",
+        "subject": "feat: Verlauf standardmässig sichtbar auf /seo-helper/url-checker",
+        "type": "feat",
+        "typeLabel": "Feature",
+        "scope": null,
+        "message": "Verlauf standardmässig sichtbar auf /seo-helper/url-checker"
+      },
+      {
+        "hash": "464778afe22c06181e775b87ed3c5617dd684002",
+        "shortHash": "464778a",
+        "author": "smedash",
+        "date": "2026-07-06 11:46:02 +0200",
+        "subject": "feat: \"Task erstellen\" Button bei jedem Check-Ergebnis",
+        "type": "feat",
+        "typeLabel": "Feature",
+        "scope": null,
+        "message": "\"Task erstellen\" Button bei jedem Check-Ergebnis"
+      },
+      {
+        "hash": "f6e9af9e419cd89a6759a04abad7a0991bc5d647",
+        "shortHash": "f6e9af9",
+        "author": "smedash",
+        "date": "2026-07-06 11:35:07 +0200",
+        "subject": "feat: Site Score mit erklärenden Beschreibungen & Optimierungstipps",
+        "type": "feat",
+        "typeLabel": "Feature",
+        "scope": null,
+        "message": "Site Score mit erklärenden Beschreibungen & Optimierungstipps"
+      },
+      {
+        "hash": "36767f579b6234abe907b3a1441b40b3d28dfd2f",
+        "shortHash": "36767f5",
+        "author": "smedash",
+        "date": "2026-07-06 11:15:33 +0200",
+        "subject": "fix: KI-Analyse fetcht Content selbst wenn textContent leer",
+        "type": "fix",
+        "typeLabel": "Bugfix",
+        "scope": null,
+        "message": "KI-Analyse fetcht Content selbst wenn textContent leer"
+      },
+      {
+        "hash": "0f8a44659e4dac3e7241a5103b5f6dc3dd3dc679",
+        "shortHash": "0f8a446",
+        "author": "smedash",
+        "date": "2026-07-06 10:51:24 +0200",
+        "subject": "fix: proxy-fetch Retry bei 403 + besseres Logging",
+        "type": "fix",
+        "typeLabel": "Bugfix",
+        "scope": null,
+        "message": "proxy-fetch Retry bei 403 + besseres Logging"
+      },
+      {
+        "hash": "bb5644d96f3f3344bb76f74dde1214300eda8f9c",
+        "shortHash": "bb5644d",
+        "author": "smedash",
+        "date": "2026-07-06 10:02:45 +0200",
+        "subject": "fix: proxy-fetch auf undici umstellen (ERR_SSL_BAD_RECORD_TYPE)",
+        "type": "fix",
+        "typeLabel": "Bugfix",
+        "scope": null,
+        "message": "proxy-fetch auf undici umstellen (ERR_SSL_BAD_RECORD_TYPE)"
+      },
+      {
+        "hash": "6175cd17b708dd11b5b2daac1e568020a795d625",
+        "shortHash": "6175cd1",
+        "author": "smedash",
+        "date": "2026-07-06 08:58:01 +0200",
+        "subject": "fix: scripts/ aus tsconfig excluden (ES2017 vs /s regex flag)",
+        "type": "fix",
+        "typeLabel": "Bugfix",
+        "scope": null,
+        "message": "scripts/ aus tsconfig excluden (ES2017 vs /s regex flag)"
+      },
+      {
+        "hash": "06c32a541b1a3ca607e75d3f01c5d10d937da17c",
+        "shortHash": "06c32a5",
+        "author": "smedash",
+        "date": "2026-07-06 08:52:48 +0200",
+        "subject": "URL Ranking Factor Checker mit Google API Leak Katalog-Integration",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "URL Ranking Factor Checker mit Google API Leak Katalog-Integration"
+      }
+    ],
+    "2026-06-22": [
+      {
+        "hash": "0080932b31b3b6c197304ae13c39f6a8ba384c7d",
+        "shortHash": "0080932",
+        "author": "smedash",
+        "date": "2026-06-22 11:45:10 +0200",
+        "subject": "Markenaufmerksamkeit-Statistik: Suchvolumen-Matrix nach Kategorie und Brand",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Markenaufmerksamkeit-Statistik: Suchvolumen-Matrix nach Kategorie und Brand"
+      },
+      {
+        "hash": "c4f1af129345a71f3ded5c89deba66d6b23b5de2",
+        "shortHash": "c4f1af1",
+        "author": "smedash",
+        "date": "2026-06-22 11:35:25 +0200",
+        "subject": "Keyword-Übersicht als Standardansicht mit filterbarer Tabelle und Brand-Vergleich",
+        "type": "other",
+        "typeLabel": "Sonstiges",
+        "scope": null,
+        "message": "Keyword-Übersicht als Standardansicht mit filterbarer Tabelle und Brand-Vergleich"
+      }
+    ],
     "2026-06-16": [
+      {
+        "hash": "7926ee1ac99ca98402527a30e4eff859c17e9d2e",
+        "shortHash": "7926ee1",
+        "author": "smedash",
+        "date": "2026-06-16 15:38:17 +0200",
+        "subject": "fix: resolve all 26 Dependabot security vulnerabilities",
+        "type": "fix",
+        "typeLabel": "Bugfix",
+        "scope": null,
+        "message": "resolve all 26 Dependabot security vulnerabilities"
+      },
       {
         "hash": "d1c102cb1c4bd65ad70a2cc0686699b5fa6c49b9",
         "shortHash": "d1c102c",
