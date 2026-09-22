@@ -1,26 +1,13 @@
 import { auth } from "@/lib/auth";
 import { fetchRankedKeywordsForPageTargets } from "@/lib/dataforseo";
 import { prisma } from "@/lib/prisma";
+import { normalizeUbsPageUrl } from "@/lib/url-cleanup/normalize";
 import { NextRequest, NextResponse } from "next/server";
 
 /** Bis zu MAX_BATCH einzelne DataForSEO-Calls (je URL), Parallelität im Client-Lib. */
 export const maxDuration = 120;
 
 const MAX_BATCH = 100;
-
-/** Nur öffentliche Redaktions-URLs unter www.ubs.com (kein SSRF). */
-function normalizeUbsPageUrl(input: string): string | null {
-  const t = input.trim();
-  if (!t) return null;
-  try {
-    const u = new URL(/^https?:\/\//i.test(t) ? t : `https://www.ubs.com${t.startsWith("/") ? t : `/${t}`}`);
-    const host = u.hostname.toLowerCase();
-    if (host !== "www.ubs.com" && host !== "ubs.com") return null;
-    return `https://www.ubs.com${u.pathname}${u.search}`;
-  } catch {
-    return null;
-  }
-}
 
 type RowPayload = {
   keywords: Array<{

@@ -156,6 +156,9 @@ export function getDateRange(period: string): { startDate: string; endDate: stri
     case "8m":
       startDate.setMonth(startDate.getMonth() - 8);
       break;
+    case "12m":
+      startDate.setMonth(startDate.getMonth() - 12);
+      break;
     default:
       startDate.setDate(startDate.getDate() - 28);
   }

@@ -11,6 +11,7 @@
     "add-user": "tsx scripts/add-user.ts",
     "set-editorial-url-language": "tsx scripts/set-editorial-url-language.ts",
     "import-seed-keywords": "tsx scripts/import-seed-keywords.ts",
+    "seed-url-cleanup": "tsx scripts/seed-url-cleanup.ts",
     "batch-research": "tsx scripts/batch-research.ts",
     "leak-catalog:scrape": "tsx scripts/leak-catalog/01-scrape.ts",
     "leak-catalog:parse": "tsx scripts/leak-catalog/02-parse.ts",
@@ -27,6 +28,8 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@google/genai": "^1.39.0",
     "@prisma/client": "^5.22.0",
+    "@react-three/drei": "^10.7.8",
+    "@react-three/fiber": "^9.7.0",
     "@vercel/blob": "^2.0.1",
     "dotenv": "^17.2.3",
     "exceljs": "^4.4.0",
@@ -43,6 +46,7 @@
     "react-dom": "19.2.1",
     "recharts": "^3.5.1",
     "resend": "^6.6.0",
+    "three": "0.182.0",
     "undici": "^7.20.0"
   },
   "devDependencies": {
@@ -50,6 +54,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/three": "0.182.0",
     "cheerio": "^1.2.0",
     "eslint": "^9",
     "eslint-config-next": "^16.2.9",
@@ -63,6 +68,7 @@
   },
   "overrides": {
     "uuid": "^11.1.1",
-    "postcss": "^8.5.10"
+    "postcss": "^8.5.10",
+    "three": "0.182.0"
   }
 }

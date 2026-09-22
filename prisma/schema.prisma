@@ -1108,3 +1108,157 @@ model ConductorSyncLog {
 
   @@index([websiteId, createdAt])
 }
+
+// ==========================================
+// URL Cleanup — Sitemap-Inventar + Dimensionen
+// ==========================================
+
+model UrlSitemap {
+  id           String                 @id @default(cuid())
+  sitemapUrl   String                 @unique @db.Text
+  countryPath  String?
+  language     String?
+  number       Int?
+  inventoryLinks UrlInventorySitemap[]
+  createdAt    DateTime               @default(now())
+}
+
+model UrlInventory {
+  id          String   @id @default(cuid())
+  url         String   @db.Text
+  urlKey      String   @unique
+  urlKeyNoHtml String
+  country     String?
+  language    String?
+  section     String?
+  pathDepth   Int?
+  lastmod     DateTime?
+  newsPublicationDate DateTime?
+  newsTitle   String?  @db.Text
+  hreflangs   Json?
+
+  gscClicks      Int       @default(0)
+  gscImpressions Int       @default(0)
+  gscCtr         Float     @default(0)
+  gscPosition    Float     @default(0)
+  gscHasData     Boolean   @default(false)
+  gscPeriod      String?
+  gscSyncedAt    DateTime?
+
+  aaPageViews       Int      @default(0)
+  aaVisits          Int      @default(0)
+  aaUniqueVisitors  Int      @default(0)
+  aaFormStart       Int      @default(0)
+  aaFormSuccess     Int      @default(0)
+  aaHasData         Boolean  @default(false)
+  aaSegments        String[] @default([])
+
+  hasFocusKeywords   Boolean  @default(false)
+  focusKeywords      String[] @default([])
+  inEditorialPlan    Boolean  @default(false)
+  editorialH1        String?  @db.Text
+  editorialMeta      String?  @db.Text
+  editorialCategory  String?
+  editorialLocation  String?
+
+  labsHasData          Boolean   @default(false)
+  labsKeywordCount     Int       @default(0)
+  labsBestRank         Int?
+  labsMaxSearchVolume  Int?
+  labsKeywords         String[]  @default([])
+  labsFetchedAt        DateTime?
+
+  cleanupStatus String  @default("none")
+  cleanupNote   String? @db.Text
+
+  killConfidence Int    @default(0)
+  killReason     String @default("") @db.Text
+  killBand       String @default("keep")
+
+  sitemaps        UrlInventorySitemap[]
+  dimensionValues UrlDimensionValue[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([urlKeyNoHtml])
+  @@index([country])
+  @@index([language])
+  @@index([gscHasData])
+  @@index([aaHasData])
+  @@index([cleanupStatus])
+  @@index([gscImpressions])
+  @@index([aaVisits])
+  @@index([hasFocusKeywords])
+  @@index([labsHasData])
+  @@index([killConfidence])
+  @@index([killBand])
+  @@index([inEditorialPlan])
+  @@index([section])
+}
+
+model UrlInventorySitemap {
+  id          String       @id @default(cuid())
+  inventoryId String
+  inventory   UrlInventory @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+  sitemapId   String
+  sitemap     UrlSitemap   @relation(fields: [sitemapId], references: [id], onDelete: Cascade)
+
+  @@unique([inventoryId, sitemapId])
+  @@index([sitemapId])
+}
+
+model UrlDimension {
+  id             String              @id @default(cuid())
+  slug           String              @unique
+  name           String
+  sourceType     String
+  segment        String?
+  periodStart    DateTime?
+  periodEnd      DateTime?
+  columns        Json
+  matchedCount   Int                 @default(0)
+  unmatchedCount Int                 @default(0)
+  unmatchedSample Json?
+  importedAt     DateTime            @default(now())
+  values         UrlDimensionValue[]
+}
+
+model UrlDimensionValue {
+  id          String       @id @default(cuid())
+  inventoryId String
+  inventory   UrlInventory @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+  dimensionId String
+  dimension   UrlDimension @relation(fields: [dimensionId], references: [id], onDelete: Cascade)
+  values      Json
+
+  @@unique([inventoryId, dimensionId])
+  @@index([dimensionId])
+}
+
+model UrlCleanupSettings {
+  id                 String   @id @default("default")
+  gscPeriod          String   @default("28d")
+  maxGscClicks       Int      @default(10)
+  maxGscImpressions  Int      @default(100)
+  maxAaVisits        Int      @default(50)
+  maxAaLeads         Int      @default(0)
+  lastmodMonths      Int      @default(24)
+  capMissingLabs     Int      @default(70)
+  capMissingAdobe    Int      @default(85)
+  vetoGscClicks      Int      @default(500)
+  vetoAaVisits       Int      @default(1000)
+  updatedAt          DateTime @updatedAt
+}
+
+model UrlCleanupJob {
+  id        String   @id @default(cuid())
+  type      String
+  status    String   @default("running")
+  progress  Json?
+  error     String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type, createdAt])
+}
