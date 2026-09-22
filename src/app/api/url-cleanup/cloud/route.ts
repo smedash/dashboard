@@ -6,7 +6,9 @@ import {
   parseInventoryQuery,
 } from "@/lib/url-cleanup/filters";
 
-export const maxDuration = 60;
+export const maxDuration = 120;
+
+const POINT_LIMIT = 70_000;
 
 export async function GET(request: NextRequest) {
   const session = await auth();
@@ -19,7 +21,7 @@ export async function GET(request: NextRequest) {
 
   const rows = await prisma.urlInventory.findMany({
     where,
-    take: 40000,
+    take: POINT_LIMIT,
     select: {
       id: true,
       url: true,
@@ -36,7 +38,7 @@ export async function GET(request: NextRequest) {
   });
 
   return NextResponse.json({
-    truncated: rows.length >= 40000,
+    truncated: rows.length >= POINT_LIMIT,
     points: rows.map((r) => ({
       id: r.id,
       url: r.url,

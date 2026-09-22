@@ -84,6 +84,17 @@ export async function recomputeKillScores(options?: { ids?: string[] }): Promise
   return { updated };
 }
 
+export async function markZeroConfidenceAsKeep(): Promise<{ updated: number }> {
+  const result = await prisma.urlInventory.updateMany({
+    where: {
+      killConfidence: 0,
+      cleanupStatus: { notIn: ["keep", "kill"] },
+    },
+    data: { cleanupStatus: "keep" },
+  });
+  return { updated: result.count };
+}
+
 async function applyBatch(
   rows: ScoreRow[],
   settings: Awaited<ReturnType<typeof getKillSettings>>
@@ -92,15 +103,18 @@ async function applyBatch(
 
   const tuples = rows.map((row) => {
     const score = computeKillScore(row, settings);
-    return Prisma.sql`(${score.killConfidence}::int, ${score.killReason}::text, ${score.killBand}::text, ${row.id}::text)`;
+    const status =
+      score.killConfidence === 0 && row.cleanupStatus !== "kill" ? "keep" : row.cleanupStatus;
+    return Prisma.sql`(${score.killConfidence}::int, ${score.killReason}::text, ${score.killBand}::text, ${status}::text, ${row.id}::text)`;
   });
 
   await prisma.$executeRaw`
     UPDATE "UrlInventory" AS u SET
       "killConfidence" = v.confidence,
       "killReason" = v.reason,
-      "killBand" = v.band
-    FROM (VALUES ${Prisma.join(tuples)}) AS v(confidence, reason, band, id)
+      "killBand" = v.band,
+      "cleanupStatus" = v.status
+    FROM (VALUES ${Prisma.join(tuples)}) AS v(confidence, reason, band, status, id)
     WHERE u.id = v.id
   `;
 }

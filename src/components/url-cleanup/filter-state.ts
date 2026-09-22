@@ -14,8 +14,11 @@ export type InventoryFilters = {
   preset: string;
   minKillConfidence: string;
   maxKillConfidence: string;
+  minGscClicks: string;
   maxGscClicks: string;
+  minAaVisits: string;
   maxAaVisits: string;
+  minAaFormSuccess: string;
   sort: string;
   sortDir: string;
 };
@@ -36,8 +39,11 @@ export const EMPTY_FILTERS: InventoryFilters = {
   preset: "",
   minKillConfidence: "",
   maxKillConfidence: "",
+  minGscClicks: "",
   maxGscClicks: "",
+  minAaVisits: "",
   maxAaVisits: "",
+  minAaFormSuccess: "",
   sort: "killConfidence",
   sortDir: "desc",
 };
@@ -56,7 +62,7 @@ export function filtersFromSearchParams(sp: URLSearchParams): InventoryFilters {
   const next = { ...EMPTY_FILTERS };
   (Object.keys(EMPTY_FILTERS) as Array<keyof InventoryFilters>).forEach((k) => {
     const v = sp.get(k);
-    if (v) next[k] = v;
+    if (v != null && v !== "") next[k] = v;
   });
   return next;
 }

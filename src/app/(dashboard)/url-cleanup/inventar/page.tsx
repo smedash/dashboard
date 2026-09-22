@@ -270,7 +270,17 @@ export default function InventarPage() {
                     <span className="text-slate-400">—</span>
                   )}
                 </td>
-                <td className="px-3 py-2 text-xs align-top overflow-hidden">{r.cleanupStatus}</td>
+                <td
+                  className={`px-3 py-2 text-xs align-top overflow-hidden ${
+                    r.cleanupStatus === "keep"
+                      ? "text-green-700 dark:text-green-400 font-medium"
+                      : r.cleanupStatus === "kill"
+                        ? "text-red-700 dark:text-red-400 font-medium"
+                        : ""
+                  }`}
+                >
+                  {r.cleanupStatus}
+                </td>
               </tr>
             ))}
           </tbody>

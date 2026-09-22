@@ -6,12 +6,15 @@ import {
   buildInventoryWhere,
   parseInventoryQuery,
 } from "@/lib/url-cleanup/filters";
+import { markZeroConfidenceAsKeep } from "@/lib/url-cleanup/recompute";
 
 export async function GET(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  await markZeroConfidenceAsKeep();
 
   const q = parseInventoryQuery(request.nextUrl.searchParams);
   const where = buildInventoryWhere(q);

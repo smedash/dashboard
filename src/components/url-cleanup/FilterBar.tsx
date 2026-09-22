@@ -133,6 +133,36 @@ export function FilterBar({
             className="px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
           />
         </div>
+        <input
+          type="number"
+          min={0}
+          inputMode="numeric"
+          value={filters.minGscClicks}
+          onChange={(e) => set("minGscClicks", nonNegInt(e.target.value))}
+          placeholder="Min. GSC-Klicks"
+          aria-label="Mindestens GSC-Klicks"
+          className="px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
+        />
+        <input
+          type="number"
+          min={0}
+          inputMode="numeric"
+          value={filters.minAaVisits}
+          onChange={(e) => set("minAaVisits", nonNegInt(e.target.value))}
+          placeholder="Min. Adobe-Visits"
+          aria-label="Mindestens Adobe-Visits"
+          className="px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
+        />
+        <input
+          type="number"
+          min={0}
+          inputMode="numeric"
+          value={filters.minAaFormSuccess}
+          onChange={(e) => set("minAaFormSuccess", nonNegInt(e.target.value))}
+          placeholder="Min. Leads"
+          aria-label="Mindestens Adobe-Leads"
+          className="px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
+        />
         <Tri label="Fokuskeyword" value={filters.hasFocusKeywords} onChange={(v) => set("hasFocusKeywords", v)} />
         <Tri label="Redaktionsplan" value={filters.inEditorialPlan} onChange={(v) => set("inEditorialPlan", v)} />
         <select
@@ -158,6 +188,13 @@ export function FilterBar({
       </div>
     </div>
   );
+}
+
+function nonNegInt(raw: string): string {
+  if (raw === "") return "";
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return "";
+  return String(Math.max(0, Math.round(n)));
 }
 
 function clampScore(raw: string): string {

@@ -16,7 +16,7 @@ const Cloud3D = dynamic(
 );
 
 export default function WolkePage() {
-  const [filters, setFilters] = useState<InventoryFilters>({ ...EMPTY_FILTERS, preset: "high" });
+  const [filters, setFilters] = useState<InventoryFilters>(EMPTY_FILTERS);
   const [debounced, setDebounced] = useState(filters);
   const [points, setPoints] = useState<CloudPoint[]>([]);
   const [truncated, setTruncated] = useState(false);
@@ -64,7 +64,7 @@ export default function WolkePage() {
       <FilterBar filters={filters} onChange={setFilters} facets={facets} sitemaps={sitemaps} />
       {truncated && (
         <p className="text-xs text-amber-700 dark:text-amber-300">
-          Anzeige auf 40.000 Punkte begrenzt — Filter enger setzen für die volle Menge.
+          Anzeige auf 70.000 Punkte begrenzt — Filter enger setzen für die volle Menge.
         </p>
       )}
       {loading ? (
