@@ -1,5 +1,5 @@
 // Role-Based Access Control (RBAC) Helper
-// Rollen: superadmin/agentur > seo_manager/content_manager/segment_manager/legal/member > viewer
+// Rollen: superadmin/agentur > seo_manager/content_manager/segment_manager/compliance_manager/legal/member > viewer
 
 export type Role =
   | "superadmin"
@@ -7,6 +7,7 @@ export type Role =
   | "seo_manager"
   | "content_manager"
   | "segment_manager"
+  | "compliance_manager"
   | "legal"
   | "member"
   | "viewer";
@@ -17,6 +18,7 @@ export const ALL_ROLES: Role[] = [
   "seo_manager",
   "content_manager",
   "segment_manager",
+  "compliance_manager",
   "legal",
   "member",
   "viewer",
@@ -26,6 +28,7 @@ export const REVIEW_ROLES: Role[] = [
   "seo_manager",
   "content_manager",
   "segment_manager",
+  "compliance_manager",
   "legal",
 ];
 
@@ -35,6 +38,7 @@ const ROLE_LEVELS: Record<Role, number> = {
   seo_manager: 2,
   content_manager: 2,
   segment_manager: 2,
+  compliance_manager: 2,
   legal: 2,
   superadmin: 3,
   agentur: 3,
@@ -81,6 +85,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   seo_manager: "SEO Manager",
   content_manager: "Content Manager",
   segment_manager: "Segment Manager",
+  compliance_manager: "Compliance Manager",
   legal: "Legal",
   member: "Mitglied",
   viewer: "Betrachter",
@@ -92,6 +97,7 @@ export const ROLE_DESCRIPTIONS: Record<Role, string> = {
   seo_manager: "Erste Freigabestufe im Content-Check",
   content_manager: "Zweite Freigabestufe im Content-Check",
   segment_manager: "Dritte Freigabestufe im Content-Check",
+  compliance_manager: "Vierte Freigabestufe im Content-Check",
   legal: "Letzte Freigabestufe im Content-Check",
   member: "Kann alle Inhalte sehen und bearbeiten",
   viewer: "Kann alle Inhalte nur ansehen",

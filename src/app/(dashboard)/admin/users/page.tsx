@@ -149,6 +149,8 @@ export default function AdminUsersPage() {
         return "bg-rose-500/20 text-rose-400 border-rose-500/30";
       case "segment_manager":
         return "bg-amber-500/20 text-amber-400 border-amber-500/30";
+      case "compliance_manager":
+        return "bg-violet-500/20 text-violet-400 border-violet-500/30";
       case "legal":
         return "bg-orange-500/20 text-orange-400 border-orange-500/30";
       default:
@@ -262,7 +264,8 @@ export default function AdminUsersPage() {
                 <option value="seo_manager">SEO Manager - Content-Check Stufe 1</option>
                 <option value="content_manager">Content Manager - Content-Check Stufe 2</option>
                 <option value="segment_manager">Segment Manager - Content-Check Stufe 3</option>
-                <option value="legal">Legal - Content-Check Stufe 4</option>
+                <option value="compliance_manager">Compliance Manager - Content-Check Stufe 4</option>
+                <option value="legal">Legal - Content-Check Stufe 5</option>
                 <option value="agentur">Agentur - Volle Rechte</option>
                 <option value="superadmin">Superadmin - Volle Rechte</option>
               </select>
@@ -297,7 +300,7 @@ export default function AdminUsersPage() {
 
       {/* Rollen-Übersicht */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {(["superadmin", "agentur", "seo_manager", "content_manager", "segment_manager", "legal", "member", "viewer"] as Role[]).map((role) => {
+        {(["superadmin", "agentur", "seo_manager", "content_manager", "segment_manager", "compliance_manager", "legal", "member", "viewer"] as Role[]).map((role) => {
           const count = users.filter((u) => u.role === role).length;
           return (
             <div
@@ -363,6 +366,7 @@ export default function AdminUsersPage() {
                       <option value="seo_manager">SEO Manager</option>
                       <option value="content_manager">Content Manager</option>
                       <option value="segment_manager">Segment Manager</option>
+                      <option value="compliance_manager">Compliance Manager</option>
                       <option value="legal">Legal</option>
                       <option value="agentur">Agentur</option>
                       <option value="superadmin">Superadmin</option>

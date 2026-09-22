@@ -5,6 +5,7 @@ export const REVIEW_STATUSES = [
   "seo_review",
   "content_review",
   "segment_review",
+  "compliance_review",
   "legal_review",
   "approved",
   "published",
@@ -16,6 +17,7 @@ export const COMMENT_ROLES = [
   "seo_manager",
   "content_manager",
   "segment_manager",
+  "compliance_manager",
   "legal",
 ] as const;
 
@@ -25,7 +27,8 @@ export const VALID_TRANSITIONS: Record<string, string[]> = {
   draft: ["seo_review"],
   seo_review: ["content_review"],
   content_review: ["segment_review"],
-  segment_review: ["legal_review"],
+  segment_review: ["compliance_review"],
+  compliance_review: ["legal_review"],
   legal_review: ["approved"],
   approved: ["published"],
   published: [],
@@ -35,6 +38,7 @@ export const STATUS_NOTIFY_ROLES: Record<string, string[]> = {
   seo_review: ["seo_manager"],
   content_review: ["content_manager"],
   segment_review: ["segment_manager"],
+  compliance_review: ["compliance_manager"],
   legal_review: ["legal"],
   approved: ["agentur", "superadmin"],
   published: ["agentur", "superadmin"],
@@ -44,6 +48,7 @@ export const STATUS_RESPONSIBLE_ROLE: Record<string, string> = {
   seo_review: "seo_manager",
   content_review: "content_manager",
   segment_review: "segment_manager",
+  compliance_review: "compliance_manager",
   legal_review: "legal",
 };
 
@@ -70,6 +75,11 @@ export const STATUS_CONFIG: Record<
     label: "Segment Manager",
     color: "text-amber-700 dark:text-amber-300",
     bg: "bg-amber-100 dark:bg-amber-900/40",
+  },
+  compliance_review: {
+    label: "Compliance Manager",
+    color: "text-violet-700 dark:text-violet-300",
+    bg: "bg-violet-100 dark:bg-violet-900/40",
   },
   legal_review: {
     label: "Legal",
@@ -108,6 +118,11 @@ export const NEXT_STATUS: Record<
     color: "bg-amber-600 hover:bg-amber-700",
   },
   segment_review: {
+    status: "compliance_review",
+    label: "An Compliance Manager senden",
+    color: "bg-violet-600 hover:bg-violet-700",
+  },
+  compliance_review: {
     status: "legal_review",
     label: "An Legal senden",
     color: "bg-orange-600 hover:bg-orange-700",
@@ -171,6 +186,8 @@ export function defaultCommentRole(status: string): CommentRole {
       return "content_manager";
     case "segment_review":
       return "segment_manager";
+    case "compliance_review":
+      return "compliance_manager";
     case "legal_review":
     case "approved":
     case "published":
