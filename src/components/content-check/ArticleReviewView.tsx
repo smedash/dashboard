@@ -14,6 +14,7 @@ import {
 } from "@/lib/content-workflow";
 import { formatReviewDueDateDe } from "@/lib/review-deadline";
 import { downloadContentReviewPdf } from "@/lib/content-review-pdf";
+import { downloadArticleHtml, downloadArticlePdf } from "@/lib/article-download";
 import { applyCanonicalArticleStyles } from "@/lib/article-html";
 
 export interface ReviewComment {
@@ -435,6 +436,22 @@ export function ArticleReviewView({
             ))}
           </select>
         )}
+        <button
+          type="button"
+          onClick={() => downloadArticleHtml(article)}
+          className="px-3 py-1.5 text-sm rounded-lg border border-slate-200 dark:border-slate-600"
+          title="Artikel als HTML herunterladen"
+        >
+          HTML
+        </button>
+        <button
+          type="button"
+          onClick={() => downloadArticlePdf(article)}
+          className="px-3 py-1.5 text-sm rounded-lg border border-slate-200 dark:border-slate-600"
+          title="Artikel als PDF herunterladen"
+        >
+          PDF
+        </button>
         {showPdfActions && (
           <>
             <button

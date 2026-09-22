@@ -8,6 +8,7 @@ import { canEditContentRole, hasFullAdminRights } from "@/lib/rbac";
 import { REVIEW_STATUSES, STATUS_CONFIG } from "@/lib/content-workflow";
 import { formatReviewDueDateDe, isReviewStepPastDue } from "@/lib/review-deadline";
 import { ArticleReviewView, type ReviewArticle } from "@/components/content-check/ArticleReviewView";
+import { downloadArticleHtml, downloadArticlePdf } from "@/lib/article-download";
 
 interface ListArticle extends ReviewArticle {
   _count?: { comments: number; unresolvedComments: number; resolvedComments: number };
@@ -153,44 +154,61 @@ function ContentCheckInner() {
             const statusConfig = STATUS_CONFIG[article.reviewStatus] || STATUS_CONFIG.draft;
             const pastDue = isReviewStepPastDue(article.reviewStepDueAt ? new Date(article.reviewStepDueAt) : null);
             return (
-              <button
+              <div
                 key={article.id}
-                onClick={async () => {
-                  const res = await fetch(`/api/content-reviews/${article.id}`);
-                  if (res.ok) setSelected(await res.json());
-                }}
-                className="w-full text-left px-5 py-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                className="flex items-start gap-3 px-5 py-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
               >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
-                      {article.title}
-                    </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                      {article.category}
-                      {article.location ? ` · ${article.location}` : ""}
-                      {" · "}
-                      {article.wordCount} Wörter
-                      {article._count?.unresolvedComments ? ` · ${article._count.unresolvedComments} offene Kommentare` : ""}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {article.revisionRequestedAt && (
-                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">
-                        Überarbeitung
-                      </span>
-                    )}
-                    {article.reviewStepDueAt && article.reviewStatus !== "published" && (
-                      <span className={`text-[10px] ${pastDue ? "text-red-600" : "text-slate-400"}`}>
-                        bis {formatReviewDueDateDe(article.reviewStepDueAt)}
-                      </span>
-                    )}
-                    <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${statusConfig.bg} ${statusConfig.color}`}>
-                      {statusConfig.label}
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const res = await fetch(`/api/content-reviews/${article.id}`);
+                    if (res.ok) setSelected(await res.json());
+                  }}
+                  className="min-w-0 flex-1 text-left"
+                >
+                  <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
+                    {article.title}
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    {article.category}
+                    {article.location ? ` · ${article.location}` : ""}
+                    {" · "}
+                    {article.wordCount} Wörter
+                    {article._count?.unresolvedComments ? ` · ${article._count.unresolvedComments} offene Kommentare` : ""}
+                  </p>
+                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => downloadArticleHtml(article)}
+                    className="px-2 py-1 text-[11px] rounded-md border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800"
+                    title="Als HTML herunterladen"
+                  >
+                    HTML
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => downloadArticlePdf(article)}
+                    className="px-2 py-1 text-[11px] rounded-md border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800"
+                    title="Als PDF herunterladen"
+                  >
+                    PDF
+                  </button>
+                  {article.revisionRequestedAt && (
+                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">
+                      Überarbeitung
                     </span>
-                  </div>
+                  )}
+                  {article.reviewStepDueAt && article.reviewStatus !== "published" && (
+                    <span className={`text-[10px] ${pastDue ? "text-red-600" : "text-slate-400"}`}>
+                      bis {formatReviewDueDateDe(article.reviewStepDueAt)}
+                    </span>
+                  )}
+                  <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${statusConfig.bg} ${statusConfig.color}`}>
+                    {statusConfig.label}
+                  </span>
                 </div>
-              </button>
+              </div>
             );
           })}
         </div>
