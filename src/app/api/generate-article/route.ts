@@ -11,7 +11,7 @@ function languageInstruction(language?: string): string {
     case "it":
       return "Scrivi l'intero articolo in italiano. Usa il lei formale.";
     default:
-      return "Schreibe den gesamten Artikel auf Deutsch. Immer 'Sie' (formell).";
+      return "Schreibe den gesamten Artikel auf Deutsch. Immer 'Sie' (formell). Verwende Schweizer Rechtschreibung: niemals ß, immer ss (Strasse, gross, heiss, Fussball, Massnahme).";
   }
 }
 
@@ -29,7 +29,7 @@ STIL: KLAR UND VERSTÄNDLICH
 - Verben statt Nominalisierungen
 - Aktiv statt Passiv
 - Präsens statt Futur
-- Kein Konjunktiv, keine Ausrufezeichen, keine Abkürzungen im Fließtext
+- Kein Konjunktiv, keine Ausrufezeichen, keine Abkürzungen im Fliesstext
 - Keine Verweise auf "oben/unten" im Text
 - Positiv formulieren: Was geht – nicht was nicht geht
 
@@ -42,10 +42,11 @@ STIL: KUNDENNAH UND SERIÖS
 SCHREIBWEISEN
 - Beträge: "350.000 Euro" bzw. CHF-Beträge mit Apostroph: "CHF 350'000"
 - Immer formelle Anrede
+- SCHWEIZER RECHTSCHREIBUNG (zwingend): Das Eszett (ß) wird in der Schweiz nicht verwendet. Schreibe ausnahmslos ss statt ß. Beispiele: Strasse (nicht Straße), gross (nicht groß), heiss (nicht heiß), Fussball (nicht Fußball), Massnahme (nicht Maßnahme). Gilt für Titel, Fliesstext, Meta-Tags, FAQ und alle HTML-Inhalte.
 
 ## HTML-STRUKTUR (immer einhalten)
 
-Gib ausschließlich valides HTML aus – kein Markdown, kein erklärender Text davor oder danach. Das komplette Dokument beginnt mit <!DOCTYPE html>.
+Gib ausschliesslich valides HTML aus – kein Markdown, kein erklärender Text davor oder danach. Das komplette Dokument beginnt mit <!DOCTYPE html>.
 
 Pflichtbestandteile:
 1. <head> mit title (Format: "[Titel] | UBS"), meta description (140–160 Zeichen, mit Haupt-Keyword), charset, viewport
@@ -59,7 +60,7 @@ Pflichtbestandteile:
 9. FAQ-Sektion mit 3–5 Fragen und Antworten
 10. Kurzes Fazit
 
-Ziel-Länge: 1.200 bis 2.000 Wörter Fließtext.
+Ziel-Länge: 1.200 bis 2.000 Wörter Fliesstext.
 
 CSS-Klassen die du verwenden und im Inline-CSS definieren sollst:
 - .intro (Einleitungsabsatz mit farbigem Linksrand)
@@ -68,7 +69,7 @@ CSS-Klassen die du verwenden und im Inline-CSS definieren sollst:
 - .tip-box (grüner Rand, für Tipps)
 - .warning-box (gelber Rand, für Warnungen)
 - .example-box (hellgrauer Hintergrund, für Beispiele)
-- .cta-box (dunkler Hintergrund, weißer Button)
+- .cta-box (dunkler Hintergrund, weisser Button)
 - .faq-item + .faq-question (für FAQ-Bereich)
 - Tabellen mit <th> in dunklem Grau
 
@@ -133,9 +134,11 @@ Sprache: ${language || "de"}
 ${descriptionHint}
 ${languageInstruction(language)}
 
-Achte besonders auf eine natürliche, fließende Satzlänge mit durchschnittlich 20 Wörtern pro Satz. Vermeide zu kurze, abgehackte Sätze.
+Achte besonders auf eine natürliche, fliessende Satzlänge mit durchschnittlich 20 Wörtern pro Satz. Vermeide zu kurze, abgehackte Sätze.
 
-Gib ausschließlich das vollständige HTML-Dokument aus. Kein Text davor oder danach.`;
+Wichtig: Verwende niemals ß – in der Schweiz gilt ss (Strasse, gross, heiss).
+
+Gib ausschliesslich das vollständige HTML-Dokument aus. Kein Text davor oder danach.`;
 
   const anthropicResponse = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -197,8 +200,9 @@ Gib ausschließlich das vollständige HTML-Dokument aus. Kein Text davor oder da
                 event.type === "content_block_delta" &&
                 event.delta?.type === "text_delta"
               ) {
+                const text = String(event.delta.text).replace(/ß/g, "ss");
                 controller.enqueue(
-                  encoder.encode(`data: ${JSON.stringify({ text: event.delta.text })}\n\n`)
+                  encoder.encode(`data: ${JSON.stringify({ text })}\n\n`)
                 );
               }
 
