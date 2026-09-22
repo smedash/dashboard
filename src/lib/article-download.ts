@@ -79,6 +79,8 @@ export function buildArticleHtmlDocument(article: ArticleDownloadSource): string
     createdAt: article.createdAt,
     language: article.language,
     category: article.category,
+    metaTitle: article.metaTitle,
+    metaDescription: article.metaDescription,
   });
   const lang = normalizeContentLanguage(article.language);
   const pageTitle = article.metaTitle?.trim() || article.title;

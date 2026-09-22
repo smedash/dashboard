@@ -186,13 +186,26 @@ export async function PATCH(
     }
 
     const data: Record<string, unknown> = {};
+    const nextMetaTitle = metaTitle !== undefined ? metaTitle : article.metaTitle;
+    const nextMetaDescription = metaDescription !== undefined ? metaDescription : article.metaDescription;
+
     if (htmlContent !== undefined) {
       data.htmlContent = applyCanonicalArticleStyles(htmlContent, {
         createdAt: article.createdAt,
         language: article.language,
         category: article.category,
+        metaTitle: nextMetaTitle,
+        metaDescription: nextMetaDescription,
       });
       data.wordCount = countWords(htmlContent);
+    } else if (metaTitle !== undefined || metaDescription !== undefined) {
+      data.htmlContent = applyCanonicalArticleStyles(article.htmlContent, {
+        createdAt: article.createdAt,
+        language: article.language,
+        category: article.category,
+        metaTitle: nextMetaTitle,
+        metaDescription: nextMetaDescription,
+      });
     }
     if (metaTitle !== undefined) data.metaTitle = metaTitle;
     if (metaDescription !== undefined) data.metaDescription = metaDescription;

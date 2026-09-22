@@ -15,7 +15,8 @@ import {
 import { formatReviewDueDateDe } from "@/lib/review-deadline";
 import { downloadContentReviewPdf } from "@/lib/content-review-pdf";
 import { downloadArticleHtml, downloadArticlePdf } from "@/lib/article-download";
-import { applyCanonicalArticleStyles } from "@/lib/article-html";
+import { applyCanonicalArticleStyles, extractArticleMeta } from "@/lib/article-html";
+import { SeoMetaPanel } from "@/components/content-check/SeoMetaPanel";
 
 export interface ReviewComment {
   id: string;
@@ -107,6 +108,10 @@ export function ArticleReviewView({
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [pdfApprovalUpdating, setPdfApprovalUpdating] = useState(false);
+  const [metaTitleDraft, setMetaTitleDraft] = useState(article.metaTitle || "");
+  const [metaDescriptionDraft, setMetaDescriptionDraft] = useState(article.metaDescription || "");
+  const [metaSaving, setMetaSaving] = useState(false);
+  const [metaSaveSuccess, setMetaSaveSuccess] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const editHtmlRef = useRef(article.htmlContent);
@@ -128,11 +133,22 @@ export function ArticleReviewView({
     createdAt: article.createdAt,
     language: article.language,
     category: article.category,
+    metaTitle: article.metaTitle,
+    metaDescription: article.metaDescription,
   });
+  const metaDirty =
+    metaTitleDraft !== (article.metaTitle || "") ||
+    metaDescriptionDraft !== (article.metaDescription || "");
 
   useEffect(() => {
     setCommentRole(defaultCommentRole(article.reviewStatus));
   }, [article.reviewStatus]);
+
+  useEffect(() => {
+    const extracted = extractArticleMeta(article.htmlContent);
+    setMetaTitleDraft(article.metaTitle || extracted.metaTitle || "");
+    setMetaDescriptionDraft(article.metaDescription || extracted.metaDescription || "");
+  }, [article.id, article.metaTitle, article.metaDescription, article.htmlContent]);
 
   useEffect(() => {
     const styleMatches = article.htmlContent.match(/<style[^>]*>[\s\S]*?<\/style>/gi);
@@ -245,12 +261,18 @@ export function ArticleReviewView({
         createdAt: article.createdAt,
         language: article.language,
         category: article.category,
+        metaTitle: metaTitleDraft,
+        metaDescription: metaDescriptionDraft,
       });
 
       const res = await fetch(`/api/content-reviews/${article.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ htmlContent: fullHtml }),
+        body: JSON.stringify({
+          htmlContent: fullHtml,
+          metaTitle: metaTitleDraft,
+          metaDescription: metaDescriptionDraft,
+        }),
       });
       if (res.ok) {
         const updated = await res.json();
@@ -296,6 +318,31 @@ export function ArticleReviewView({
       }
     } finally {
       setPdfApprovalUpdating(false);
+    }
+  };
+
+  const handleSaveMeta = async () => {
+    setMetaSaving(true);
+    setMetaSaveSuccess(false);
+    try {
+      const res = await fetch(`/api/content-reviews/${article.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          metaTitle: metaTitleDraft,
+          metaDescription: metaDescriptionDraft,
+        }),
+      });
+      if (res.ok) {
+        onUpdate(await res.json());
+        setMetaSaveSuccess(true);
+        setTimeout(() => setMetaSaveSuccess(false), 2000);
+      } else {
+        const data = await res.json();
+        alert(data.error || "SEO-Daten konnten nicht gespeichert werden");
+      }
+    } finally {
+      setMetaSaving(false);
     }
   };
 
@@ -513,6 +560,18 @@ export function ArticleReviewView({
           </button>
         )}
       </div>
+
+      <SeoMetaPanel
+        metaTitle={metaTitleDraft}
+        metaDescription={metaDescriptionDraft}
+        onMetaTitleChange={setMetaTitleDraft}
+        onMetaDescriptionChange={setMetaDescriptionDraft}
+        readOnly={!canEditContent}
+        onSave={canEditContent ? handleSaveMeta : undefined}
+        saving={metaSaving}
+        saveSuccess={metaSaveSuccess}
+        dirty={metaDirty}
+      />
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
         <div className="xl:col-span-2 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col min-h-[520px]">

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { hasFullAdminRights } from "@/lib/rbac";
 import { slugify, countWords } from "@/lib/content-workflow";
-import { applyCanonicalArticleStyles } from "@/lib/article-html";
+import { applyCanonicalArticleStyles, extractArticleMeta } from "@/lib/article-html";
 
 export async function GET() {
   const session = await auth();
@@ -72,6 +72,10 @@ export async function POST(request: NextRequest) {
   });
   const nextNumber = (lastArticle?.contentNumber ?? 0) + 1;
 
+  const extracted = extractArticleMeta(htmlContent);
+  const resolvedMetaTitle = String(metaTitle || extracted.metaTitle || `${title} | UBS`).trim();
+  const resolvedMetaDescription = String(metaDescription || extracted.metaDescription || "").trim() || null;
+
   const article = await prisma.generatedArticle.create({
     data: {
       title,
@@ -85,9 +89,11 @@ export async function POST(request: NextRequest) {
         createdAt: new Date(),
         language: language || null,
         category,
+        metaTitle: resolvedMetaTitle,
+        metaDescription: resolvedMetaDescription,
       }),
-      metaTitle: metaTitle || null,
-      metaDescription: metaDescription || null,
+      metaTitle: resolvedMetaTitle,
+      metaDescription: resolvedMetaDescription,
       wordCount: countWords(htmlContent),
       creatorId: user.id,
       contentNumber: nextNumber,

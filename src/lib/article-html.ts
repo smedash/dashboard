@@ -155,7 +155,74 @@ export type ArticleStyleOptions = {
   createdAt?: Date | string | null;
   language?: string | null;
   category?: string | null;
+  metaTitle?: string | null;
+  metaDescription?: string | null;
 };
+
+function decodeBasicEntities(value: string): string {
+  return value
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
+}
+
+export function extractArticleMeta(html: string): { metaTitle: string; metaDescription: string } {
+  if (!html?.trim()) return { metaTitle: "", metaDescription: "" };
+
+  const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  const descMatch =
+    html.match(/<meta[^>]*\bname=["']description["'][^>]*\bcontent=["']([^"']*)["'][^>]*>/i) ||
+    html.match(/<meta[^>]*\bcontent=["']([^"']*)["'][^>]*\bname=["']description["'][^>]*>/i);
+
+  return {
+    metaTitle: decodeBasicEntities(titleMatch?.[1]?.replace(/\s+/g, " ").trim() || ""),
+    metaDescription: decodeBasicEntities(descMatch?.[1]?.trim() || ""),
+  };
+}
+
+export function upsertArticleMeta(
+  html: string,
+  opts: { title?: string | null; description?: string | null; language?: string | null }
+): string {
+  if (!html?.trim()) return html;
+
+  let next = html;
+  const lang = heroLanguage(opts.language);
+
+  if (/<html[^>]*>/i.test(next)) {
+    next = next.replace(/<html[^>]*>/i, `<html lang="${lang}">`);
+  }
+
+  const title = opts.title?.trim();
+  if (title) {
+    const titleTag = `<title>${escapeHtmlText(title)}</title>`;
+    if (/<title[^>]*>[\s\S]*?<\/title>/i.test(next)) {
+      next = next.replace(/<title[^>]*>[\s\S]*?<\/title>/i, titleTag);
+    } else if (/<head[^>]*>/i.test(next)) {
+      next = next.replace(/<head[^>]*>/i, (open) => `${open}\n${titleTag}`);
+    }
+  }
+
+  const description = opts.description?.trim();
+  if (description) {
+    const metaTag = `<meta name="description" content="${escapeHtmlText(description)}">`;
+    if (/<meta[^>]*\bname=["']description["'][^>]*>/i.test(next)) {
+      next = next.replace(/<meta[^>]*\bname=["']description["'][^>]*>/i, metaTag);
+    } else if (/<title[^>]*>[\s\S]*?<\/title>/i.test(next)) {
+      next = next.replace(
+        /<title[^>]*>[\s\S]*?<\/title>/i,
+        (existing) => `${existing}\n${metaTag}`
+      );
+    } else if (/<head[^>]*>/i.test(next)) {
+      next = next.replace(/<head[^>]*>/i, (open) => `${open}\n${metaTag}`);
+    }
+  }
+
+  return next;
+}
 
 function heroLanguage(language?: string | null): "de" | "en" | "fr" | "it" {
   const raw = (language || "de").trim().toLowerCase();
@@ -238,25 +305,30 @@ export function ensureHeroCreatedDate(html: string, opts?: ArticleStyleOptions):
 export function applyCanonicalArticleStyles(html: string, opts?: ArticleStyleOptions): string {
   if (!html?.trim()) return html;
 
+  const extracted = extractArticleMeta(html);
+  const pageTitle = (opts?.metaTitle ?? extracted.metaTitle).trim();
+  const description = (opts?.metaDescription ?? extracted.metaDescription).trim();
+
   const withoutStyle = html.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "").trim();
   const withTitleBlock = ensureTitleBlock(withoutStyle);
   const withHeroDate = ensureHeroCreatedDate(withTitleBlock, opts);
+  const lang = heroLanguage(opts?.language);
 
+  let result: string;
   if (/<\/head>/i.test(withHeroDate)) {
-    return withHeroDate.replace(/<\/head>/i, `${ARTICLE_STYLE_BLOCK}\n</head>`);
-  }
+    result = withHeroDate.replace(/<\/head>/i, `${ARTICLE_STYLE_BLOCK}\n</head>`);
+  } else {
+    const bodyMatch = withHeroDate.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+    const inner = bodyMatch
+      ? bodyMatch[1].trim()
+      : withHeroDate
+          .replace(/<!DOCTYPE[^>]*>/i, "")
+          .replace(/<\/?html[^>]*>/gi, "")
+          .replace(/<head[^>]*>[\s\S]*<\/head>/i, "")
+          .trim();
 
-  const bodyMatch = withHeroDate.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-  const inner = bodyMatch
-    ? bodyMatch[1].trim()
-    : withHeroDate
-        .replace(/<!DOCTYPE[^>]*>/i, "")
-        .replace(/<\/?html[^>]*>/gi, "")
-        .replace(/<head[^>]*>[\s\S]*<\/head>/i, "")
-        .trim();
-
-  return `<!DOCTYPE html>
-<html lang="de">
+    result = `<!DOCTYPE html>
+<html lang="${lang}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -266,6 +338,13 @@ ${ARTICLE_STYLE_BLOCK}
 ${inner}
 </body>
 </html>`;
+  }
+
+  return upsertArticleMeta(result, {
+    title: pageTitle,
+    description,
+    language: opts?.language,
+  });
 }
 
 function ensureTitleBlock(html: string): string {

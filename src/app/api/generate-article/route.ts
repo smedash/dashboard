@@ -53,8 +53,32 @@ Der visuelle Stil folgt den UBS-Guide-Artikeln (Frutiger/Arial, helles Grau, rot
 
 ${ARTICLE_STYLE_BLOCK}
 
+## SEO TITLE UND META DESCRIPTION (verbindlich)
+
+Erstelle im <head> immer einen eigenständigen Title-Tag und eine Meta Description. Das ist Pflicht – nicht weglassen.
+
+TITLE-TAG
+- Format: "[SEO-Titel] | UBS"
+- 50–60 Zeichen inklusive " | UBS". Lieber etwas kürzer als abschneiden.
+- Eigenständiger SEO-Title, nicht 1:1 die H1, wenn die H1 länger oder redaktioneller ist
+- Haupt-Keyword möglichst am Anfang
+- Klickstark durch Klarheit, Nutzen und Präzision – nicht durch Lautstärke
+- Ton: sachlich, vertrauenswürdig, Bank-Sprech (präzise Begriffe, ruhig, Sie-Form)
+- Verboten: Ausrufezeichen, Emojis, Superlative (beste, einzigartig, revolutionär, unschlagbar), Clickbait, "Jetzt", "Top", "Geheimtipp", "Muss man wissen", "Entdecken Sie"
+- Gut: "Hypothek vergleichen: Zinsen, Amortisation, Tragbarkeit | UBS"
+- Schlecht: "Die beste Hypothek – jetzt sparen! | UBS"
+
+META DESCRIPTION
+- 140–160 Zeichen, mit Haupt-Keyword natürlich eingebaut
+- Ein knapper Satz zum Inhalt, ein Satz zum konkreten Nutzen für die Zielgruppe
+- Ton: beratend, banküblich, sachlich. Kein Werbeslogan.
+- Kein lauter CTA. Höchstens ein ruhiger Hinweis wie "Worauf Sie vor dem Entscheid achten sollten."
+- Verboten: Ausrufezeichen, Superlative, Werbeadjektive, "Jetzt klicken", "Mehr erfahren!"
+- Gut: "Wie Sie Zinsen, Amortisation und Tragbarkeit einer Hypothek einordnen – und welche Fragen vor dem Abschluss klären sollten."
+- Schlecht: "Sichern Sie sich jetzt die beste Hypothek! Entdecken Sie Top-Zinsen und sparen Sie bares Geld."
+
 Pflichtbestandteile (in dieser Reihenfolge):
-1. <head> mit charset, viewport, title (Format: "[Titel] | UBS"), meta description (140–160 Zeichen, mit Haupt-Keyword) und dem Style-Block oben
+1. <head> mit charset, viewport, title (siehe SEO-Regeln oben), meta description (140–160 Zeichen) und dem Style-Block oben
 2. <header class="title-block"> mit:
    - <h1> = Artikeltitel
    - <p class="intro"> = Lead-Absatz (1–2 Saetze, groessere Einleitung)
@@ -138,6 +162,7 @@ Achte besonders auf eine natürliche, fliessende Satzlänge mit durchschnittlich
 
 Wichtig: Verwende niemals ß – in der Schweiz gilt ss (Strasse, gross, heiss).
 Wichtig: Im meta-Absatz unter dem Lead muss das Datum exakt "${heroDate}" stehen.
+Wichtig: Title-Tag und Meta Description sind Pflicht. Klickstark, aber sachlich im Bank-Sprech – keine Werbesprache, keine Ausrufezeichen, keine Superlative.
 
 Gib ausschliesslich das vollständige HTML-Dokument aus. Kein Text davor oder danach.`;
 

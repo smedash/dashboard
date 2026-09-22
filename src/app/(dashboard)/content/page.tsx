@@ -14,7 +14,8 @@ import {
   normalizeContentLanguage,
   slugify,
 } from "@/lib/content-workflow";
-import { applyCanonicalArticleStyles } from "@/lib/article-html";
+import { applyCanonicalArticleStyles, extractArticleMeta } from "@/lib/article-html";
+import { SeoMetaPanel } from "@/components/content-check/SeoMetaPanel";
 
 interface SavedArticle {
   id: string;
@@ -87,11 +88,10 @@ function ContentPageInner() {
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const extractMeta = useCallback((html: string) => {
-    const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-    setMetaTitle(titleMatch ? titleMatch[1].trim() : "");
-    const descMatch = html.match(/<meta\s+name=["']description["']\s+content=["']([\s\S]*?)["']/i);
-    setMetaDescription(descMatch ? descMatch[1].trim() : "");
+  const extractMeta = useCallback((html: string, fallbackTitle?: string) => {
+    const extracted = extractArticleMeta(html);
+    setMetaTitle(extracted.metaTitle || (fallbackTitle ? `${fallbackTitle} | UBS` : ""));
+    setMetaDescription(extracted.metaDescription);
   }, []);
 
   const loadArticles = useCallback(async () => {
@@ -189,7 +189,7 @@ function ContentPageInner() {
         accumulated.replace(/^```html\s*\n?/, "").replace(/\n?```\s*$/, ""),
         { createdAt: new Date(), language, category }
       );
-      extractMeta(cleaned);
+      extractMeta(cleaned, title);
       setHtmlContent(cleaned);
     } catch (err) {
       if (!(err instanceof DOMException && err.name === "AbortError")) {
@@ -217,7 +217,13 @@ function ContentPageInner() {
           location,
           language,
           targetAudience: targetAudiences.join(", "),
-          htmlContent,
+          htmlContent: applyCanonicalArticleStyles(htmlContent, {
+            createdAt: new Date(),
+            language,
+            category,
+            metaTitle,
+            metaDescription,
+          }),
           metaTitle: metaTitle || undefined,
           metaDescription: metaDescription || undefined,
           editorialPlanArticleId: editorialPlanArticleId || undefined,
@@ -246,7 +252,14 @@ function ContentPageInner() {
 
   const handleDownload = () => {
     if (!htmlContent) return;
-    const blob = new Blob([htmlContent], { type: "text/html" });
+    const html = applyCanonicalArticleStyles(htmlContent, {
+      createdAt: new Date(),
+      language,
+      category,
+      metaTitle,
+      metaDescription,
+    });
+    const blob = new Blob([html], { type: "text/html" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -326,6 +339,15 @@ function ContentPageInner() {
             </div>
           )}
         </div>
+      )}
+
+      {htmlContent && !isGenerating && (
+        <SeoMetaPanel
+          metaTitle={metaTitle}
+          metaDescription={metaDescription}
+          onMetaTitleChange={setMetaTitle}
+          onMetaDescriptionChange={setMetaDescription}
+        />
       )}
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
