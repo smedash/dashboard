@@ -11,14 +11,14 @@ datasource db {
 }
 
 // NextAuth.js Models
-// Rollen: superadmin/agentur (volle Rechte), seo_manager/content_manager/segment_manager/compliance_manager/legal (Content-Check), member (bearbeiten), viewer (nur lesen)
+// Rollen: superadmin/agentur (volle Rechte), seo_manager/content_manager/segment_manager/compliance_manager/legal/translation_manager (Content-Check), member (bearbeiten), viewer (nur lesen)
 model User {
   id            String        @id @default(cuid())
   name          String?
   email         String        @unique
   emailVerified DateTime?
   image         String?
-  role          String        @default("member") // superadmin, agentur, seo_manager, content_manager, segment_manager, compliance_manager, legal, member, viewer
+  role          String        @default("member") // superadmin, agentur, seo_manager, content_manager, segment_manager, compliance_manager, legal, translation_manager, member, viewer
   accounts      Account[]
   sessions      Session[]
   gscProperties GSCProperty[]
@@ -603,7 +603,7 @@ model GeneratedArticle {
   metaTitle            String?   @db.Text
   metaDescription      String?   @db.Text
   wordCount            Int       @default(0)
-  reviewStatus         String    @default("draft") // draft, seo_review, content_review, segment_review, compliance_review, legal_review, approved, published
+  reviewStatus         String    @default("draft") // draft, seo_review, content_review, segment_review, compliance_review, legal_review, translation_review, approved, published
   revisionRequestedAt  DateTime?
   revisionRequestedBy  String?
   reviewStepDueAt      DateTime?
@@ -651,7 +651,7 @@ model ContentComment {
   author               User             @relation("ContentCommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
   selectedText         String           @db.Text
   commentText          String           @db.Text
-  role                 String           // seo_manager, content_manager, segment_manager, compliance_manager, legal
+  role                 String           // seo_manager, content_manager, segment_manager, compliance_manager, legal, translation_manager
   resolved             Boolean          @default(false)
   resolvedById         String?
   resolvedBy           User?            @relation("ContentCommentResolver", fields: [resolvedById], references: [id], onDelete: SetNull)

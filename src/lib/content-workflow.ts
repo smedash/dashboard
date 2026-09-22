@@ -7,6 +7,7 @@ export const REVIEW_STATUSES = [
   "segment_review",
   "compliance_review",
   "legal_review",
+  "translation_review",
   "approved",
   "published",
 ] as const;
@@ -19,6 +20,7 @@ export const COMMENT_ROLES = [
   "segment_manager",
   "compliance_manager",
   "legal",
+  "translation_manager",
 ] as const;
 
 export type CommentRole = (typeof COMMENT_ROLES)[number];
@@ -29,7 +31,8 @@ export const VALID_TRANSITIONS: Record<string, string[]> = {
   content_review: ["segment_review"],
   segment_review: ["compliance_review"],
   compliance_review: ["legal_review"],
-  legal_review: ["approved"],
+  legal_review: ["translation_review"],
+  translation_review: ["approved"],
   approved: ["published"],
   published: [],
 };
@@ -40,6 +43,7 @@ export const STATUS_NOTIFY_ROLES: Record<string, string[]> = {
   segment_review: ["segment_manager"],
   compliance_review: ["compliance_manager"],
   legal_review: ["legal"],
+  translation_review: ["translation_manager"],
   approved: ["agentur", "superadmin"],
   published: ["agentur", "superadmin"],
 };
@@ -50,6 +54,7 @@ export const STATUS_RESPONSIBLE_ROLE: Record<string, string> = {
   segment_review: "segment_manager",
   compliance_review: "compliance_manager",
   legal_review: "legal",
+  translation_review: "translation_manager",
 };
 
 export const STATUS_CONFIG: Record<
@@ -85,6 +90,11 @@ export const STATUS_CONFIG: Record<
     label: "Legal",
     color: "text-orange-700 dark:text-orange-300",
     bg: "bg-orange-100 dark:bg-orange-900/40",
+  },
+  translation_review: {
+    label: "Translation Manager",
+    color: "text-teal-700 dark:text-teal-300",
+    bg: "bg-teal-100 dark:bg-teal-900/40",
   },
   approved: {
     label: "Freigegeben",
@@ -128,8 +138,13 @@ export const NEXT_STATUS: Record<
     color: "bg-orange-600 hover:bg-orange-700",
   },
   legal_review: {
+    status: "translation_review",
+    label: "An Translation Manager senden",
+    color: "bg-teal-600 hover:bg-teal-700",
+  },
+  translation_review: {
     status: "approved",
-    label: "Legal freigeben",
+    label: "Translation freigeben",
     color: "bg-indigo-600 hover:bg-indigo-700",
   },
   approved: {
@@ -189,9 +204,11 @@ export function defaultCommentRole(status: string): CommentRole {
     case "compliance_review":
       return "compliance_manager";
     case "legal_review":
+      return "legal";
+    case "translation_review":
     case "approved":
     case "published":
-      return "legal";
+      return "translation_manager";
     default:
       return "seo_manager";
   }
