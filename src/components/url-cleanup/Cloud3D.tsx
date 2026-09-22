@@ -37,6 +37,11 @@ function bandColor(b: string): THREE.Color {
   return new THREE.Color(bandHex(b));
 }
 
+const POINT_RAYCASTER_PARAMS: THREE.RaycasterParameters = {
+  ...new THREE.Raycaster().params,
+  Points: { threshold: 0.2 },
+};
+
 const BAND_DRAW_RANK: Record<string, number> = {
   high: 0,
   medium: 1,
@@ -363,7 +368,7 @@ export function Cloud3D({
       >
         <Canvas
           camera={{ position: [0, 4, 18], fov: 55 }}
-          raycaster={{ params: { Points: { threshold: 0.2 } } }}
+          raycaster={{ params: POINT_RAYCASTER_PARAMS }}
           onPointerMissed={() => setSelected(null)}
         >
           <ambientLight intensity={0.8} />

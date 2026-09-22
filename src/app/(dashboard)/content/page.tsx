@@ -387,7 +387,7 @@ function ContentPageInner() {
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Sprache</label>
               <select
                 value={language}
-                onChange={(e) => setLanguage(e.target.value)}
+                onChange={(e) => setLanguage(normalizeContentLanguage(e.target.value))}
                 className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
               >
                 {CONTENT_LANGUAGES.map((l) => (
