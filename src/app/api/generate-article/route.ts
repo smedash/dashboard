@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { NextRequest } from "next/server";
 import { hasFullAdminRights } from "@/lib/rbac";
-import { ARTICLE_STYLE_BLOCK } from "@/lib/article-html";
+import { ARTICLE_STYLE_BLOCK, formatArticleHeroDate } from "@/lib/article-html";
 
 function languageInstruction(language?: string): string {
   switch ((language || "de").toLowerCase()) {
@@ -16,7 +16,7 @@ function languageInstruction(language?: string): string {
   }
 }
 
-function buildSystemPrompt(location?: string): string {
+function buildSystemPrompt(location: string | undefined, opts: { category: string; heroDate: string }): string {
   const isInsights = (location || "").toLowerCase().includes("insight");
   const contentKind = isInsights ? "Insights-Artikel" : "Guide-Artikel";
 
@@ -58,7 +58,8 @@ Pflichtbestandteile (in dieser Reihenfolge):
 2. <header class="title-block"> mit:
    - <h1> = Artikeltitel
    - <p class="intro"> = Lead-Absatz (1–2 Saetze, groessere Einleitung)
-   - optional <p class="meta"><span class="category">Thema</span> Datum</p>
+   - <p class="meta"><span class="category">${opts.category}</span> ${opts.heroDate}</p>
+     Das Datum MUSS exakt "${opts.heroDate}" sein (Monat und Jahr der Contenterstellung). Kein anderes Datum, kein Tag, kein Platzhalter.
 3. Navigierbares Inhaltsverzeichnis: <nav class="toc"><h2>Inhalt:</h2><ul>…</ul></nav> mit Anker-Links zu allen H2
 4. 5–8 <h2>-Abschnitte mit praxisnahem Inhalt, konkreten Beispielen und klaren Zwischenüberschriften (h3)
 5. Mindestens eine Box: highlight-box, tip-box, warning-box oder example-box
@@ -119,6 +120,7 @@ export async function POST(request: NextRequest) {
 
   const descriptionHint = description ? `\nInhaltliche Beschreibung / Briefing: ${description}\n` : "";
   const loc = location || "Guide";
+  const heroDate = formatArticleHeroDate(language);
 
   const userMessage = `Schreibe einen langen, ausführlichen Artikel mit folgenden Parametern:
 
@@ -128,12 +130,14 @@ Kategorie: ${category}
 Location / Content-Typ: ${loc}
 Zielgruppe: ${targetAudience}
 Sprache: ${language || "de"}
+Datum unter der Hero-Section: ${heroDate}
 ${descriptionHint}
 ${languageInstruction(language)}
 
 Achte besonders auf eine natürliche, fliessende Satzlänge mit durchschnittlich 20 Wörtern pro Satz. Vermeide zu kurze, abgehackte Sätze.
 
 Wichtig: Verwende niemals ß – in der Schweiz gilt ss (Strasse, gross, heiss).
+Wichtig: Im meta-Absatz unter dem Lead muss das Datum exakt "${heroDate}" stehen.
 
 Gib ausschliesslich das vollständige HTML-Dokument aus. Kein Text davor oder danach.`;
 
@@ -148,7 +152,7 @@ Gib ausschliesslich das vollständige HTML-Dokument aus. Kein Text davor oder da
       model: "claude-sonnet-4-6",
       max_tokens: 12000,
       stream: true,
-      system: buildSystemPrompt(loc),
+      system: buildSystemPrompt(loc, { category, heroDate }),
       messages: [{ role: "user", content: userMessage }],
     }),
   });

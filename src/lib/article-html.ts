@@ -151,20 +151,105 @@ export const ARTICLE_STYLE_BLOCK = `<style id="ubs-article-styles">
   }
 </style>`;
 
-export function applyCanonicalArticleStyles(html: string): string {
+export type ArticleStyleOptions = {
+  createdAt?: Date | string | null;
+  language?: string | null;
+  category?: string | null;
+};
+
+function heroLanguage(language?: string | null): "de" | "en" | "fr" | "it" {
+  const raw = (language || "de").trim().toLowerCase();
+  if (raw === "en" || raw.startsWith("en-") || raw === "english" || raw === "englisch") return "en";
+  if (raw === "fr" || raw.startsWith("fr-") || raw === "french" || raw === "französisch" || raw === "francais" || raw === "français") return "fr";
+  if (raw === "it" || raw.startsWith("it-") || raw === "italian" || raw === "italienisch" || raw === "italiano") return "it";
+  return "de";
+}
+
+function parseHeroDate(value?: Date | string | null): Date {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
+  return new Date();
+}
+
+function escapeHtmlText(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+export function formatArticleHeroDate(language?: string | null, date: Date | string | null = new Date()): string {
+  const lang = heroLanguage(language);
+  const locale = lang === "en" ? "en-GB" : lang === "fr" ? "fr-CH" : lang === "it" ? "it-CH" : "de-CH";
+  const formatted = new Intl.DateTimeFormat(locale, {
+    month: "long",
+    year: "numeric",
+    timeZone: "Europe/Zurich",
+  }).format(parseHeroDate(date));
+  return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+}
+
+export function ensureHeroCreatedDate(html: string, opts?: ArticleStyleOptions): string {
+  if (!html?.trim()) return html;
+  const dateLabel = formatArticleHeroDate(opts?.language, opts?.createdAt);
+  const category = (opts?.category || "").trim();
+
+  const metaRe = /<p([^>]*class=["'][^"']*\bmeta\b[^"']*["'][^>]*)>([\s\S]*?)<\/p>/i;
+  if (metaRe.test(html)) {
+    return html.replace(metaRe, (_full, attrs: string, inner: string) => {
+      const catMatch = inner.match(/<span([^>]*class=["'][^"']*\bcategory\b[^"']*["'][^>]*)>([\s\S]*?)<\/span>/i);
+      if (catMatch) {
+        const catLabel = category || catMatch[2].replace(/\s+/g, " ").trim();
+        return `<p${attrs}><span${catMatch[1]}>${catLabel}</span> ${dateLabel}</p>`;
+      }
+      const catSpan = category ? `<span class="category">${escapeHtmlText(category)}</span> ` : "";
+      return `<p${attrs}>${catSpan}${dateLabel}</p>`;
+    });
+  }
+
+  const catSpan = category ? `<span class="category">${escapeHtmlText(category)}</span> ` : "";
+  const metaP = `<p class="meta">${catSpan}${dateLabel}</p>`;
+
+  if (/<header[^>]*class=["'][^"']*\btitle-block\b[^"']*["'][^>]*>[\s\S]*?<\/header>/i.test(html)) {
+    return html.replace(
+      /(<header[^>]*class=["'][^"']*\btitle-block\b[^"']*["'][^>]*>)([\s\S]*?)(<\/header>)/i,
+      (_m, open: string, inner: string, close: string) => {
+        if (/class=["'][^"']*\bintro\b/.test(inner)) {
+          return `${open}${inner.replace(
+            /(<p[^>]*class=["'][^"']*\bintro\b[^"']*["'][^>]*>[\s\S]*?<\/p>)/i,
+            `$1\n    ${metaP}`
+          )}${close}`;
+        }
+        return `${open}${inner}\n    ${metaP}${close}`;
+      }
+    );
+  }
+
+  return html.replace(
+    /(<h1[^>]*>[\s\S]*?<\/h1>)(\s*<p class=["']intro["'][\s\S]*?<\/p>)?/i,
+    (m) => `${m}\n${metaP}`
+  );
+}
+
+export function applyCanonicalArticleStyles(html: string, opts?: ArticleStyleOptions): string {
   if (!html?.trim()) return html;
 
   const withoutStyle = html.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "").trim();
   const withTitleBlock = ensureTitleBlock(withoutStyle);
+  const withHeroDate = ensureHeroCreatedDate(withTitleBlock, opts);
 
-  if (/<\/head>/i.test(withTitleBlock)) {
-    return withTitleBlock.replace(/<\/head>/i, `${ARTICLE_STYLE_BLOCK}\n</head>`);
+  if (/<\/head>/i.test(withHeroDate)) {
+    return withHeroDate.replace(/<\/head>/i, `${ARTICLE_STYLE_BLOCK}\n</head>`);
   }
 
-  const bodyMatch = withTitleBlock.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+  const bodyMatch = withHeroDate.match(/<body[^>]*>([\s\S]*)<\/body>/i);
   const inner = bodyMatch
     ? bodyMatch[1].trim()
-    : withTitleBlock
+    : withHeroDate
         .replace(/<!DOCTYPE[^>]*>/i, "")
         .replace(/<\/?html[^>]*>/gi, "")
         .replace(/<head[^>]*>[\s\S]*<\/head>/i, "")

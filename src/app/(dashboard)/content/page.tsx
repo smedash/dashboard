@@ -186,7 +186,8 @@ function ContentPageInner() {
       }
 
       const cleaned = applyCanonicalArticleStyles(
-        accumulated.replace(/^```html\s*\n?/, "").replace(/\n?```\s*$/, "")
+        accumulated.replace(/^```html\s*\n?/, "").replace(/\n?```\s*$/, ""),
+        { createdAt: new Date(), language, category }
       );
       extractMeta(cleaned);
       setHtmlContent(cleaned);

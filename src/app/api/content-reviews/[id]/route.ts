@@ -187,7 +187,11 @@ export async function PATCH(
 
     const data: Record<string, unknown> = {};
     if (htmlContent !== undefined) {
-      data.htmlContent = applyCanonicalArticleStyles(htmlContent);
+      data.htmlContent = applyCanonicalArticleStyles(htmlContent, {
+        createdAt: article.createdAt,
+        language: article.language,
+        category: article.category,
+      });
       data.wordCount = countWords(htmlContent);
     }
     if (metaTitle !== undefined) data.metaTitle = metaTitle;

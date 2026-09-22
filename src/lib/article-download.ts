@@ -7,6 +7,8 @@ export type ArticleDownloadSource = {
   slug?: string;
   htmlContent: string;
   language?: string | null;
+  category?: string;
+  createdAt?: string;
   metaTitle?: string | null;
   metaDescription?: string | null;
 };
@@ -73,7 +75,11 @@ function triggerDownload(filename: string, blob: Blob) {
 }
 
 export function buildArticleHtmlDocument(article: ArticleDownloadSource): string {
-  let html = applyCanonicalArticleStyles(article.htmlContent || "");
+  let html = applyCanonicalArticleStyles(article.htmlContent || "", {
+    createdAt: article.createdAt,
+    language: article.language,
+    category: article.category,
+  });
   const lang = normalizeContentLanguage(article.language);
   const pageTitle = article.metaTitle?.trim() || article.title;
   const description = article.metaDescription?.trim();

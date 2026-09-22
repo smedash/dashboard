@@ -5,11 +5,15 @@ const prisma = new PrismaClient();
 
 async function main() {
   const articles = await prisma.generatedArticle.findMany({
-    select: { id: true, title: true, htmlContent: true },
+    select: { id: true, title: true, htmlContent: true, createdAt: true, language: true, category: true },
   });
 
   for (const article of articles) {
-    const next = applyCanonicalArticleStyles(article.htmlContent);
+    const next = applyCanonicalArticleStyles(article.htmlContent, {
+      createdAt: article.createdAt,
+      language: article.language,
+      category: article.category,
+    });
     if (next === article.htmlContent) {
       console.log(`unverändert: ${article.title}`);
       continue;

@@ -124,7 +124,11 @@ export function ArticleReviewView({
   const showPdfActions = article.reviewStatus === "approved" || article.reviewStatus === "published";
   const canDownloadPdf = canEditContent || !!article.pdfApprovedAt;
   const history = article.statusHistory || [];
-  const styledHtml = applyCanonicalArticleStyles(article.htmlContent);
+  const styledHtml = applyCanonicalArticleStyles(article.htmlContent, {
+    createdAt: article.createdAt,
+    language: article.language,
+    category: article.category,
+  });
 
   useEffect(() => {
     setCommentRole(defaultCommentRole(article.reviewStatus));
@@ -237,7 +241,11 @@ export function ArticleReviewView({
         }
       }
 
-      const fullHtml = applyCanonicalArticleStyles(bodyContent);
+      const fullHtml = applyCanonicalArticleStyles(bodyContent, {
+        createdAt: article.createdAt,
+        language: article.language,
+        category: article.category,
+      });
 
       const res = await fetch(`/api/content-reviews/${article.id}`, {
         method: "PATCH",

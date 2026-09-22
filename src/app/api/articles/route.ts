@@ -81,7 +81,11 @@ export async function POST(request: NextRequest) {
       location: location || null,
       language: language || null,
       targetAudience,
-      htmlContent: applyCanonicalArticleStyles(htmlContent),
+      htmlContent: applyCanonicalArticleStyles(htmlContent, {
+        createdAt: new Date(),
+        language: language || null,
+        category,
+      }),
       metaTitle: metaTitle || null,
       metaDescription: metaDescription || null,
       wordCount: countWords(htmlContent),
