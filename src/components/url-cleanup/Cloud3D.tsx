@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber";
 import { OrbitControls, Html } from "@react-three/drei";
 import * as THREE from "three";
 
@@ -25,13 +25,24 @@ function hash(s: string): number {
   return Math.abs(h);
 }
 
-function bandColor(b: string): THREE.Color {
-  if (b === "high") return new THREE.Color("#ef4444");
-  if (b === "medium") return new THREE.Color("#f97316");
-  if (b === "low") return new THREE.Color("#f59e0b");
-  if (b === "keep") return new THREE.Color("#22c55e");
-  return new THREE.Color("#94a3b8");
+function bandHex(b: string): string {
+  if (b === "high") return "#ef4444";
+  if (b === "medium") return "#f97316";
+  if (b === "low") return "#f59e0b";
+  if (b === "keep") return "#22c55e";
+  return "#94a3b8";
 }
+
+function bandColor(b: string): THREE.Color {
+  return new THREE.Color(bandHex(b));
+}
+
+const BAND_DRAW_RANK: Record<string, number> = {
+  high: 0,
+  medium: 1,
+  low: 2,
+  keep: 3,
+};
 
 const CLUSTER_RADIUS = 8;
 
@@ -56,10 +67,10 @@ function countryLabel(code: string): string {
 
 function positionsFor(
   points: CloudPoint[],
-  mode: "cluster" | "scatter"
+  mode: "cluster" | "scatter",
+  countries: string[]
 ): Float32Array {
   const arr = new Float32Array(points.length * 3);
-  const countries = countryCodes(points);
   for (let i = 0; i < points.length; i++) {
     const p = points[i];
     if (mode === "scatter") {
@@ -67,7 +78,7 @@ function positionsFor(
       arr[i * 3 + 1] = Math.log1p(p.av) * 1.2 - 6;
       arr[i * 3 + 2] = Math.log1p(p.ld) * 2 - 2;
     } else {
-      const ci = countries.indexOf(p.c || "?");
+      const ci = Math.max(0, countries.indexOf(p.c || "?"));
       const [cx, , cz] = clusterCenter(ci, countries.length);
       const langOff = ((hash(p.l || "") % 100) / 100 - 0.5) * 3;
       const secOff = ((hash(p.s || "") % 100) / 100 - 0.5) * 2;
@@ -159,35 +170,69 @@ function PointCloud({
   mode: "cluster" | "scatter";
   onSelect: (selection: Selection) => void;
 }) {
-  const pos = useMemo(() => positionsFor(points, mode), [points, mode]);
+  const { camera, size } = useThree();
+  const countries = useMemo(() => countryCodes(points), [points]);
+  const drawn = useMemo(
+    () =>
+      [...points].sort(
+        (a, b) => (BAND_DRAW_RANK[a.b] ?? 4) - (BAND_DRAW_RANK[b.b] ?? 4)
+      ),
+    [points]
+  );
+  const pos = useMemo(() => positionsFor(drawn, mode, countries), [drawn, mode, countries]);
   const colors = useMemo(() => {
-    const c = new Float32Array(points.length * 3);
-    for (let i = 0; i < points.length; i++) {
-      const col = bandColor(points[i].b);
+    const c = new Float32Array(drawn.length * 3);
+    for (let i = 0; i < drawn.length; i++) {
+      const col = bandColor(drawn[i].b);
       c[i * 3] = col.r;
       c[i * 3 + 1] = col.g;
       c[i * 3 + 2] = col.b;
     }
     return c;
-  }, [points]);
+  }, [drawn]);
+
+  const drawnRef = useRef(drawn);
+  const posRef = useRef(pos);
+  drawnRef.current = drawn;
+  posRef.current = pos;
+
+  const pick = useCallback(
+    (e: ThreeEvent<MouseEvent>) => {
+      e.stopPropagation();
+      const pts = drawnRef.current;
+      const p = posRef.current;
+      const v = new THREE.Vector3();
+      const maxNdc = (14 * 2) / Math.max(1, size.width);
+      const maxD = maxNdc * maxNdc;
+      let best = -1;
+      let bestD = maxD;
+      for (let i = 0; i < pts.length; i++) {
+        v.set(p[i * 3], p[i * 3 + 1], p[i * 3 + 2]).project(camera);
+        if (v.z < -1 || v.z > 1) continue;
+        const dx = v.x - e.pointer.x;
+        const dy = v.y - e.pointer.y;
+        const d = dx * dx + dy * dy;
+        if (d < bestD) {
+          bestD = d;
+          best = i;
+        }
+      }
+      if (best < 0) return;
+      onSelect({
+        point: pts[best],
+        position: [p[best * 3], p[best * 3 + 1], p[best * 3 + 2]],
+      });
+    },
+    [camera, onSelect, size.width]
+  );
 
   return (
-    <points
-      onClick={(e) => {
-        e.stopPropagation();
-        const idx = e.index;
-        if (idx == null || !points[idx]) return;
-        onSelect({
-          point: points[idx],
-          position: [e.point.x, e.point.y, e.point.z],
-        });
-      }}
-    >
+    <points onClick={pick} frustumCulled={false}>
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" args={[pos, 3]} />
         <bufferAttribute attach="attributes-color" args={[colors, 3]} />
       </bufferGeometry>
-      <pointsMaterial size={0.08} vertexColors sizeAttenuation />
+      <pointsMaterial size={0.08} vertexColors sizeAttenuation toneMapped={false} />
     </points>
   );
 }
@@ -318,6 +363,7 @@ export function Cloud3D({
       >
         <Canvas
           camera={{ position: [0, 4, 18], fov: 55 }}
+          raycaster={{ params: { Points: { threshold: 0.2 } } }}
           onPointerMissed={() => setSelected(null)}
         >
           <ambientLight intensity={0.8} />
@@ -345,7 +391,9 @@ export function Cloud3D({
                   {selected.point.url.replace("https://www.ubs.com", "")}
                 </a>
                 <div className="mt-1.5 space-y-0.5 text-slate-500 dark:text-slate-400">
-                  <div>Konfidenz {selected.point.k} ({selected.point.b})</div>
+                  <div>
+                    Konfidenz {selected.point.k} ({selected.point.b})
+                  </div>
                   <div>GSC Impressions {selected.point.gi.toLocaleString("de-CH")}</div>
                   <div>GSC Klicks {selected.point.gc.toLocaleString("de-CH")}</div>
                   <div>Adobe Visits {selected.point.av.toLocaleString("de-CH")}</div>
