@@ -104,11 +104,35 @@ export function FilterBar({
           className="px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
         >
           <option value="">Konfidenz-Band</option>
-          <option value="high">high</option>
-          <option value="medium">medium</option>
-          <option value="low">low</option>
-          <option value="keep">keep</option>
+          <option value="high">high (≥ 75)</option>
+          <option value="medium">medium (50–74)</option>
+          <option value="low">low (1–49)</option>
+          <option value="keep">keep (0)</option>
         </select>
+        <div className="grid grid-cols-2 gap-2">
+          <input
+            type="number"
+            min={0}
+            max={100}
+            inputMode="numeric"
+            value={filters.minKillConfidence}
+            onChange={(e) => set("minKillConfidence", clampScore(e.target.value))}
+            placeholder="Konfidenz ab"
+            aria-label="Konfidenz mindestens"
+            className="px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
+          />
+          <input
+            type="number"
+            min={0}
+            max={100}
+            inputMode="numeric"
+            value={filters.maxKillConfidence}
+            onChange={(e) => set("maxKillConfidence", clampScore(e.target.value))}
+            placeholder="Konfidenz bis"
+            aria-label="Konfidenz höchstens"
+            className="px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
+          />
+        </div>
         <Tri label="Fokuskeyword" value={filters.hasFocusKeywords} onChange={(v) => set("hasFocusKeywords", v)} />
         <Tri label="Redaktionsplan" value={filters.inEditorialPlan} onChange={(v) => set("inEditorialPlan", v)} />
         <select
@@ -134,6 +158,13 @@ export function FilterBar({
       </div>
     </div>
   );
+}
+
+function clampScore(raw: string): string {
+  if (raw === "") return "";
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return "";
+  return String(Math.min(100, Math.max(0, Math.round(n))));
 }
 
 function Tri({

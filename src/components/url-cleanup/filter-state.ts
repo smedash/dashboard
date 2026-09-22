@@ -13,6 +13,7 @@ export type InventoryFilters = {
   killBand: string;
   preset: string;
   minKillConfidence: string;
+  maxKillConfidence: string;
   maxGscClicks: string;
   maxAaVisits: string;
   sort: string;
@@ -34,6 +35,7 @@ export const EMPTY_FILTERS: InventoryFilters = {
   killBand: "",
   preset: "",
   minKillConfidence: "",
+  maxKillConfidence: "",
   maxGscClicks: "",
   maxAaVisits: "",
   sort: "killConfidence",
@@ -43,7 +45,7 @@ export const EMPTY_FILTERS: InventoryFilters = {
 export function filtersToParams(f: InventoryFilters, page: number, pageSize = 25): URLSearchParams {
   const p = new URLSearchParams();
   for (const [k, v] of Object.entries(f)) {
-    if (v) p.set(k, v);
+    if (v !== "") p.set(k, v);
   }
   p.set("page", String(page));
   p.set("pageSize", String(pageSize));

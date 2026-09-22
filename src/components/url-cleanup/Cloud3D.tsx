@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Html } from "@react-three/drei";
 import * as THREE from "three";
@@ -29,6 +29,7 @@ function bandColor(b: string): THREE.Color {
   if (b === "high") return new THREE.Color("#ef4444");
   if (b === "medium") return new THREE.Color("#f97316");
   if (b === "low") return new THREE.Color("#f59e0b");
+  if (b === "keep") return new THREE.Color("#22c55e");
   return new THREE.Color("#94a3b8");
 }
 
@@ -191,6 +192,11 @@ function PointCloud({
   );
 }
 
+function fullscreenElement(): Element | null {
+  const doc = document as Document & { webkitFullscreenElement?: Element | null };
+  return document.fullscreenElement ?? doc.webkitFullscreenElement ?? null;
+}
+
 export function Cloud3D({
   points,
   country,
@@ -202,17 +208,82 @@ export function Cloud3D({
 }) {
   const [mode, setMode] = useState<"cluster" | "scatter">("cluster");
   const [selected, setSelected] = useState<Selection | null>(null);
+  const [fullscreen, setFullscreen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  const exitFullscreen = useCallback(async () => {
+    const el = rootRef.current;
+    if (el && fullscreenElement() === el) {
+      const doc = document as Document & { webkitExitFullscreen?: () => Promise<void> };
+      await (document.exitFullscreen ?? doc.webkitExitFullscreen)?.call(document);
+    }
+    setFullscreen(false);
+  }, []);
+
+  const toggleFullscreen = useCallback(async () => {
+    if (fullscreen) {
+      await exitFullscreen();
+      return;
+    }
+    const el = rootRef.current;
+    if (!el) return;
+    try {
+      const req =
+        el.requestFullscreen ??
+        (el as HTMLElement & { webkitRequestFullscreen?: () => Promise<void> }).webkitRequestFullscreen;
+      if (req) await req.call(el);
+      setFullscreen(true);
+    } catch {
+      setFullscreen(true);
+    }
+  }, [exitFullscreen, fullscreen]);
+
+  useEffect(() => {
+    const onChange = () => {
+      const el = rootRef.current;
+      if (fullscreenElement() === el) setFullscreen(true);
+      else if (fullscreenElement()) return;
+      else setFullscreen(false);
+    };
+    document.addEventListener("fullscreenchange", onChange);
+    document.addEventListener("webkitfullscreenchange", onChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", onChange);
+      document.removeEventListener("webkitfullscreenchange", onChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!fullscreen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") void exitFullscreen();
+    };
+    window.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    if (!fullscreenElement()) document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [exitFullscreen, fullscreen]);
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap gap-2 items-center">
+    <div
+      ref={rootRef}
+      className={
+        fullscreen
+          ? "fixed inset-0 z-[100] flex h-dvh flex-col gap-3 bg-slate-950 p-3"
+          : "flex flex-col gap-3"
+      }
+    >
+      <div className={`flex flex-wrap gap-2 items-center ${fullscreen ? "text-slate-200" : ""}`}>
         <button
           type="button"
           onClick={() => {
             setMode("cluster");
             setSelected(null);
           }}
-          className={`px-3 py-1.5 text-sm rounded-lg ${mode === "cluster" ? "bg-blue-600 text-white" : "border border-slate-300 dark:border-slate-600"}`}
+          className={`px-3 py-1.5 text-sm rounded-lg ${mode === "cluster" ? "bg-blue-600 text-white" : `border ${fullscreen ? "border-slate-500 text-slate-100" : "border-slate-300 dark:border-slate-600"}`}`}
         >
           Pfad-Cluster
         </button>
@@ -222,15 +293,29 @@ export function Cloud3D({
             setMode("scatter");
             setSelected(null);
           }}
-          className={`px-3 py-1.5 text-sm rounded-lg ${mode === "scatter" ? "bg-blue-600 text-white" : "border border-slate-300 dark:border-slate-600"}`}
+          className={`px-3 py-1.5 text-sm rounded-lg ${mode === "scatter" ? "bg-blue-600 text-white" : `border ${fullscreen ? "border-slate-500 text-slate-100" : "border-slate-300 dark:border-slate-600"}`}`}
         >
           Metrik-Scatter
         </button>
         <span className="text-xs text-slate-500">
-          {points.length.toLocaleString("de-CH")} Punkte · rot = high Konfidenz
+          {points.length.toLocaleString("de-CH")} Punkte · rot = high Konfidenz · grün = keep
         </span>
+        <button
+          type="button"
+          onClick={() => void toggleFullscreen()}
+          className={`ml-auto px-3 py-1.5 text-sm rounded-lg border ${fullscreen ? "border-slate-500 text-slate-100" : "border-slate-300 dark:border-slate-600"}`}
+          title={fullscreen ? "Esc zum Beenden" : "Wolke im Vollbild öffnen"}
+        >
+          {fullscreen ? "Vollbild beenden" : "Vollbild"}
+        </button>
       </div>
-      <div className="h-[calc(100vh-13rem)] min-h-[720px] rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden bg-slate-950">
+      <div
+        className={
+          fullscreen
+            ? "min-h-0 flex-1 overflow-hidden rounded-xl border border-slate-700 bg-slate-950"
+            : "h-[calc(100vh-13rem)] min-h-[720px] overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-950"
+        }
+      >
         <Canvas
           camera={{ position: [0, 4, 18], fov: 55 }}
           onPointerMissed={() => setSelected(null)}
@@ -248,9 +333,17 @@ export function Cloud3D({
           {selected && (
             <Html position={selected.position} sprite zIndexRange={[100, 0]}>
               <div className="pointer-events-auto translate-x-3 -translate-y-2 w-72 max-w-[70vw] rounded-lg bg-white/95 dark:bg-slate-800/95 p-3 text-xs shadow-lg ring-1 ring-black/10 dark:ring-white/10">
-                <div className="font-medium break-all text-slate-900 dark:text-white">
+                <a
+                  href={selected.point.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                  className="font-medium break-all text-blue-600 dark:text-blue-400 hover:underline"
+                  title={selected.point.url}
+                >
                   {selected.point.url.replace("https://www.ubs.com", "")}
-                </div>
+                </a>
                 <div className="mt-1.5 space-y-0.5 text-slate-500 dark:text-slate-400">
                   <div>Konfidenz {selected.point.k} ({selected.point.b})</div>
                   <div>GSC Impressions {selected.point.gi.toLocaleString("de-CH")}</div>
