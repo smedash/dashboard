@@ -89,6 +89,7 @@ export async function PATCH(
     resolveRevision,
     claim,
     resetToStatus,
+    pdfApproved,
   } = body;
 
   const article = await prisma.generatedArticle.findUnique({ where: { id } });
@@ -191,9 +192,74 @@ export async function PATCH(
     if (metaTitle !== undefined) data.metaTitle = metaTitle;
     if (metaDescription !== undefined) data.metaDescription = metaDescription;
 
-    const updated = await prisma.generatedArticle.update({
+    const changedByUser = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { name: true, email: true },
+    });
+    const changedByName = changedByUser?.name || changedByUser?.email || "Unbekannt";
+
+    await prisma.generatedArticle.update({
       where: { id },
       data,
+    });
+
+    await prisma.articleStatusHistory.create({
+      data: {
+        articleId: id,
+        fromStatus: article.reviewStatus,
+        toStatus: article.reviewStatus,
+        changedByEmail: session.user.email,
+        changedByName,
+        comment: "content_updated",
+      },
+    });
+
+    const updated = await prisma.generatedArticle.findUnique({
+      where: { id },
+      include: articleDetailInclude,
+    });
+
+    return NextResponse.json(updated);
+  }
+
+  if (pdfApproved !== undefined && !reviewStatus) {
+    if (!canEditContentRole(session.user.role)) {
+      return NextResponse.json(
+        { error: "Nur Agentur- und Superadmin-User können das Revisions-PDF freigeben" },
+        { status: 403 }
+      );
+    }
+
+    if (article.reviewStatus !== "approved" && article.reviewStatus !== "published") {
+      return NextResponse.json(
+        { error: "PDF-Freigabe kann nur im Status Freigegeben oder Publiziert gesetzt werden" },
+        { status: 400 }
+      );
+    }
+
+    const userName = session.user.name || session.user.email || "Unbekannt";
+
+    await prisma.generatedArticle.update({
+      where: { id },
+      data: {
+        pdfApprovedAt: pdfApproved ? new Date() : null,
+        pdfApprovedBy: pdfApproved ? userName : null,
+      },
+    });
+
+    await prisma.articleStatusHistory.create({
+      data: {
+        articleId: id,
+        fromStatus: article.reviewStatus,
+        toStatus: article.reviewStatus,
+        changedByEmail: session.user.email,
+        changedByName: userName,
+        comment: pdfApproved ? "pdf_approved" : "pdf_unapproved",
+      },
+    });
+
+    const updated = await prisma.generatedArticle.findUnique({
+      where: { id },
       include: articleDetailInclude,
     });
 

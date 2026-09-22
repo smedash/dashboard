@@ -124,6 +124,37 @@ export const NEXT_STATUS: Record<
   },
 };
 
+export function describeHistoryEntry(entry: {
+  fromStatus: string;
+  toStatus: string;
+  comment: string | null;
+}): { action: string; status: string } {
+  const from = STATUS_CONFIG[entry.fromStatus]?.label || entry.fromStatus;
+  const to = STATUS_CONFIG[entry.toStatus]?.label || entry.toStatus;
+
+  switch (entry.comment) {
+    case "revision_requested":
+      return { action: "Überarbeitung angefordert", status: from };
+    case "revision_resolved":
+      return { action: "Überarbeitet", status: from };
+    case "status_reset":
+      return { action: "Zurückgesetzt", status: `${from} → ${to}` };
+    case "content_updated":
+      return { action: "Inhalt gespeichert", status: from };
+    case "pdf_approved":
+      return { action: "PDF freigegeben", status: from };
+    case "pdf_unapproved":
+      return { action: "PDF-Freigabe entfernt", status: from };
+    case "implicit_approval":
+      return { action: "Freigegeben (o. Recheck)", status: from };
+    default:
+      if (entry.toStatus === "approved" || entry.toStatus.endsWith("_approved")) {
+        return { action: "Freigegeben", status: `${from} → ${to}` };
+      }
+      return { action: "Weitergereicht", status: `${from} → ${to}` };
+  }
+}
+
 export function canTransitionStatus(
   userRole: string | undefined | null,
   fromStatus: string

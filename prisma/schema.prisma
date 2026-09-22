@@ -610,6 +610,8 @@ model GeneratedArticle {
   claimedAt            DateTime?
   claimedByUserId      String?
   claimedByName        String?
+  pdfApprovedAt        DateTime?
+  pdfApprovedBy        String?
   editorialPlanArticle EditorialPlanArticle? @relation("GeneratedFromEditorialPlan")
   creatorId            String
   creator              User      @relation("ArticleCreator", fields: [creatorId], references: [id], onDelete: Cascade)
