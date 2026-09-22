@@ -62,7 +62,7 @@ export const STATUS_CONFIG: Record<
     bg: "bg-slate-100 dark:bg-slate-700",
   },
   seo_review: {
-    label: "SEO Manager",
+    label: "Search Manager",
     color: "text-cyan-700 dark:text-cyan-300",
     bg: "bg-cyan-100 dark:bg-cyan-900/40",
   },
@@ -104,7 +104,7 @@ export const NEXT_STATUS: Record<
 > = {
   draft: {
     status: "seo_review",
-    label: "An SEO Manager senden",
+    label: "An Search Manager senden",
     color: "bg-cyan-600 hover:bg-cyan-700",
   },
   seo_review: {

@@ -261,7 +261,7 @@ export default function AdminUsersPage() {
               >
                 <option value="viewer">Betrachter - Kann nur lesen</option>
                 <option value="member">Mitglied - Kann bearbeiten</option>
-                <option value="seo_manager">SEO Manager - Content-Check Stufe 1</option>
+                <option value="seo_manager">Search Manager - Content-Check Stufe 1</option>
                 <option value="content_manager">Content Manager - Content-Check Stufe 2</option>
                 <option value="segment_manager">Segment Manager - Content-Check Stufe 3</option>
                 <option value="compliance_manager">Compliance Manager - Content-Check Stufe 4</option>
@@ -363,7 +363,7 @@ export default function AdminUsersPage() {
                     >
                       <option value="viewer">Betrachter</option>
                       <option value="member">Mitglied</option>
-                      <option value="seo_manager">SEO Manager</option>
+                      <option value="seo_manager">Search Manager</option>
                       <option value="content_manager">Content Manager</option>
                       <option value="segment_manager">Segment Manager</option>
                       <option value="compliance_manager">Compliance Manager</option>

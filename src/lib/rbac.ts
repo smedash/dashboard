@@ -82,7 +82,7 @@ export function canView(userRole: string | undefined | null): boolean {
 export const ROLE_LABELS: Record<Role, string> = {
   superadmin: "Superadmin",
   agentur: "Agentur",
-  seo_manager: "SEO Manager",
+  seo_manager: "Search Manager",
   content_manager: "Content Manager",
   segment_manager: "Segment Manager",
   compliance_manager: "Compliance Manager",
