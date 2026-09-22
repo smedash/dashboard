@@ -8,6 +8,7 @@ import {
   titleMatchKey,
 } from "@/lib/editorial-text-encoding";
 import { languageFromUrlPath } from "@/lib/url-language";
+import { normalizeContentLanguage } from "@/lib/content-workflow";
 import ExcelJS from "exceljs";
 
 const VALID_CATEGORIES = [
@@ -203,7 +204,7 @@ export async function POST(request: NextRequest) {
             chunk.map((p) =>
               prisma.editorialPlanArticle.update({
                 where: { id: p.id },
-                data: { url: p.url, language: languageFromUrlPath(p.url) },
+                data: { url: p.url },
               })
             )
           );
@@ -272,7 +273,7 @@ export async function POST(request: NextRequest) {
       batch.push({
         title,
         url: rowUrl,
-        language: languageFromUrlPath(rowUrl),
+        language: normalizeContentLanguage(languageFromUrlPath(rowUrl)),
         metaDescription: cleanImportedOptionalText(row[headerMap.metaDescription]?.toString()),
         h1: cleanImportedOptionalText(row[headerMap.h1]?.toString()),
         schemaMarkup: cleanImportedOptionalText(row[headerMap.schemaMarkup]?.toString()),

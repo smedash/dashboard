@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { canEdit } from "@/lib/rbac";
-import { languageFromUrlPath } from "@/lib/url-language";
+import { normalizeContentLanguage } from "@/lib/content-workflow";
 
 export async function GET(request: NextRequest) {
   try {
@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { title, description, url, category, status, plannedDate, metaDescription, h1, schemaMarkup, location, journeyPhase } = body;
+    const { title, description, url, category, status, plannedDate, metaDescription, h1, schemaMarkup, location, journeyPhase, language } = body;
 
     if (!title?.trim()) {
       return NextResponse.json({ error: "Title is required" }, { status: 400 });
@@ -179,7 +179,7 @@ export async function POST(request: NextRequest) {
         title: title.trim(),
         description: description?.trim() || null,
         url: urlTrimmed,
-        language: languageFromUrlPath(urlTrimmed),
+        language: normalizeContentLanguage(language),
         category: category || null,
         status: status || "idea",
         plannedDate: plannedDate ? new Date(plannedDate) : null,
@@ -216,7 +216,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { id, title, description, url, category, status, plannedDate, metaDescription, h1, schemaMarkup, location, journeyPhase } = body;
+    const { id, title, description, url, category, status, plannedDate, metaDescription, h1, schemaMarkup, location, journeyPhase, language } = body;
 
     if (!id) {
       return NextResponse.json({ error: "ID is required" }, { status: 400 });
@@ -230,10 +230,9 @@ export async function PUT(request: NextRequest) {
     if (title !== undefined) updateData.title = title.trim();
     if (description !== undefined) updateData.description = description?.trim() || null;
     if (url !== undefined) {
-      const nextUrl = url?.trim() || null;
-      updateData.url = nextUrl;
-      updateData.language = languageFromUrlPath(nextUrl);
+      updateData.url = url?.trim() || null;
     }
+    if (language !== undefined) updateData.language = normalizeContentLanguage(language);
     if (category !== undefined) updateData.category = category || null;
     if (status !== undefined) updateData.status = status || "idea";
     if (plannedDate !== undefined) updateData.plannedDate = plannedDate ? new Date(plannedDate) : null;

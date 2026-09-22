@@ -238,6 +238,23 @@ export const CONTENT_LANGUAGES = [
   { value: "it", label: "Italienisch" },
 ] as const;
 
+export type ContentLanguage = (typeof CONTENT_LANGUAGES)[number]["value"];
+
+export function normalizeContentLanguage(value: string | null | undefined): ContentLanguage {
+  if (!value) return "de";
+  const raw = value.trim().toLowerCase();
+  if (raw === "de" || raw.startsWith("de-") || raw === "german" || raw === "deutsch") return "de";
+  if (raw === "en" || raw.startsWith("en-") || raw === "english" || raw === "englisch") return "en";
+  if (raw === "fr" || raw.startsWith("fr-") || raw === "french" || raw === "französisch" || raw === "francais" || raw === "français") return "fr";
+  if (raw === "it" || raw.startsWith("it-") || raw === "italian" || raw === "italienisch" || raw === "italiano") return "it";
+  return "de";
+}
+
+export function contentLanguageLabel(value: string | null | undefined): string {
+  const code = normalizeContentLanguage(value);
+  return CONTENT_LANGUAGES.find((l) => l.value === code)?.label ?? "Deutsch";
+}
+
 export function slugify(text: string): string {
   return text
     .toLowerCase()

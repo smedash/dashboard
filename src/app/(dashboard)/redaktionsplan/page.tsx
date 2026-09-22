@@ -4,7 +4,12 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { canEdit, hasFullAdminRights } from "@/lib/rbac";
-import { journeyPhaseToFunnel } from "@/lib/content-workflow";
+import {
+  CONTENT_LANGUAGES,
+  contentLanguageLabel,
+  journeyPhaseToFunnel,
+  normalizeContentLanguage,
+} from "@/lib/content-workflow";
 
 interface ArticleUser {
   id: string;
@@ -153,6 +158,7 @@ export default function RedaktionsplanPage() {
     h1: "",
     schemaMarkup: "",
     location: "",
+    language: "de",
   });
 
   const fetchArticles = useCallback(async (year: number, month: number) => {
@@ -192,7 +198,7 @@ export default function RedaktionsplanPage() {
   }, [currentYear, currentMonth, fetchArticles]);
 
   const resetForm = () => {
-    setFormData({ title: "", description: "", url: "", category: "", status: "idea", plannedDate: "", metaDescription: "", h1: "", schemaMarkup: "", location: "" });
+    setFormData({ title: "", description: "", url: "", category: "", status: "idea", plannedDate: "", metaDescription: "", h1: "", schemaMarkup: "", location: "", language: "de" });
     setEditingArticle(null);
     setShowForm(false);
   };
@@ -234,6 +240,7 @@ export default function RedaktionsplanPage() {
       h1: article.h1 || "",
       schemaMarkup: article.schemaMarkup || "",
       location: article.location || "",
+      language: normalizeContentLanguage(article.language),
     });
     setEditingArticle(article);
     setSelectedArticle(null);
@@ -267,7 +274,7 @@ export default function RedaktionsplanPage() {
       params.set("title", article.title);
       if (article.category) params.set("category", article.category);
       if (article.location) params.set("location", article.location);
-      if (article.language) params.set("language", article.language);
+      params.set("language", normalizeContentLanguage(article.language));
       if (article.journeyPhase) params.set("journeyPhase", article.journeyPhase);
       const funnel = journeyPhaseToFunnel(article.journeyPhase);
       if (funnel) params.set("funnel", funnel);
@@ -672,6 +679,9 @@ export default function RedaktionsplanPage() {
                             >
                               <span className={`inline-block w-1.5 h-1.5 rounded-full mr-1 ${statusInfo.dot}`} />
                               {article.title}
+                              {normalizeContentLanguage(article.language) !== "de" && (
+                                <span className="ml-1 uppercase opacity-70">{normalizeContentLanguage(article.language)}</span>
+                              )}
                             </button>
                           );
                         })}
@@ -792,13 +802,9 @@ export default function RedaktionsplanPage() {
                           )}
                         </td>
                         <td className="px-4 py-3">
-                          {article.language ? (
-                            <span className="inline-flex px-2 py-0.5 rounded text-xs font-mono font-medium bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200 uppercase">
-                              {article.language}
-                            </span>
-                          ) : (
-                            <span className="text-xs text-slate-400">–</span>
-                          )}
+                          <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200">
+                            {contentLanguageLabel(article.language)}
+                          </span>
                         </td>
                         <td className="px-4 py-3 text-xs text-slate-600 dark:text-slate-400">
                           {article.creator.name || article.creator.email}
@@ -920,14 +926,12 @@ export default function RedaktionsplanPage() {
                 </div>
               )}
 
-              {selectedArticle.language && (
-                <div className="mb-4">
-                  <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Sprache (URL)</h3>
-                  <span className="inline-flex px-2.5 py-1 rounded text-xs font-mono font-medium bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-200 uppercase">
-                    {selectedArticle.language}
-                  </span>
-                </div>
-              )}
+              <div className="mb-4">
+                <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Sprache</h3>
+                <span className="inline-flex px-2.5 py-1 rounded text-xs font-medium bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-200">
+                  {contentLanguageLabel(selectedArticle.language)}
+                </span>
+              </div>
 
               {(selectedArticle.h1 || selectedArticle.metaDescription || selectedArticle.schemaMarkup) && (
                 <div className="mb-4 pt-3 border-t border-slate-100 dark:border-slate-700 space-y-3">
@@ -1103,6 +1107,22 @@ export default function RedaktionsplanPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Sprache
+                    </label>
+                    <select
+                      value={formData.language}
+                      onChange={(e) => setFormData({ ...formData, language: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      {CONTENT_LANGUAGES.map((l) => (
+                        <option key={l.value} value={l.value}>{l.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                       Geplantes Datum
                     </label>
                     <input
@@ -1111,7 +1131,6 @@ export default function RedaktionsplanPage() {
                       onChange={(e) => setFormData({ ...formData, plannedDate: e.target.value })}
                       className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
-                  </div>
                 </div>
 
                 {/* SEO-Felder */}

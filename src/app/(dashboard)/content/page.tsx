@@ -11,6 +11,7 @@ import {
   FUNNEL_OPTIONS,
   ZIELGRUPPEN,
   journeyPhaseToFunnel,
+  normalizeContentLanguage,
   slugify,
 } from "@/lib/content-workflow";
 
@@ -62,7 +63,7 @@ function ContentPageInner() {
   );
   const [category, setCategory] = useState(searchParams.get("category") || "");
   const [location, setLocation] = useState(searchParams.get("location") || "Guide");
-  const [language, setLanguage] = useState(searchParams.get("language") || "de");
+  const [language, setLanguage] = useState(normalizeContentLanguage(searchParams.get("language")));
   const [targetAudiences, setTargetAudiences] = useState<string[]>([]);
   const [customAudience, setCustomAudience] = useState("");
   const [showCustomInput, setShowCustomInput] = useState(false);
