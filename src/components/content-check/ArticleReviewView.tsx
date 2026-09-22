@@ -14,6 +14,7 @@ import {
 } from "@/lib/content-workflow";
 import { formatReviewDueDateDe } from "@/lib/review-deadline";
 import { downloadContentReviewPdf } from "@/lib/content-review-pdf";
+import { applyCanonicalArticleStyles } from "@/lib/article-html";
 
 export interface ReviewComment {
   id: string;
@@ -122,6 +123,7 @@ export function ArticleReviewView({
   const showPdfActions = article.reviewStatus === "approved" || article.reviewStatus === "published";
   const canDownloadPdf = canEditContent || !!article.pdfApprovedAt;
   const history = article.statusHistory || [];
+  const styledHtml = applyCanonicalArticleStyles(article.htmlContent);
 
   useEffect(() => {
     setCommentRole(defaultCommentRole(article.reviewStatus));
@@ -234,9 +236,7 @@ export function ArticleReviewView({
         }
       }
 
-      const fullHtml = styleBlocksRef.current
-        ? `${styleBlocksRef.current}\n${bodyContent}`
-        : bodyContent;
+      const fullHtml = applyCanonicalArticleStyles(bodyContent);
 
       const res = await fetch(`/api/content-reviews/${article.id}`, {
         method: "PATCH",
@@ -595,7 +595,7 @@ export function ArticleReviewView({
                 <div className={isHtmlView ? "hidden" : "block absolute inset-0"}>
                   <ContentEditor
                     editorRef={editorRef}
-                    initialHtml={article.htmlContent}
+                    initialHtml={styledHtml}
                     onInput={handleEditorInput}
                     onInitialized={(cleanHtml) => {
                       cleanedOriginalRef.current = cleanHtml;
@@ -609,7 +609,7 @@ export function ArticleReviewView({
               <iframe
                 ref={iframeRef}
                 title="Artikel"
-                srcDoc={article.htmlContent}
+                srcDoc={styledHtml}
                 className="w-full h-full absolute inset-0 bg-white"
                 sandbox="allow-same-origin"
               />

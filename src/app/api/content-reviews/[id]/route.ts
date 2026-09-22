@@ -13,6 +13,7 @@ import {
   canTransitionStatus,
   countWords,
 } from "@/lib/content-workflow";
+import { applyCanonicalArticleStyles } from "@/lib/article-html";
 
 async function notifyStatusChange(opts: {
   articleId: string;
@@ -186,7 +187,7 @@ export async function PATCH(
 
     const data: Record<string, unknown> = {};
     if (htmlContent !== undefined) {
-      data.htmlContent = htmlContent;
+      data.htmlContent = applyCanonicalArticleStyles(htmlContent);
       data.wordCount = countWords(htmlContent);
     }
     if (metaTitle !== undefined) data.metaTitle = metaTitle;

@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { NextRequest } from "next/server";
 import { hasFullAdminRights } from "@/lib/rbac";
+import { ARTICLE_STYLE_BLOCK } from "@/lib/article-html";
 
 function languageInstruction(language?: string): string {
   switch ((language || "de").toLowerCase()) {
@@ -48,30 +49,26 @@ SCHREIBWEISEN
 
 Gib ausschliesslich valides HTML aus – kein Markdown, kein erklärender Text davor oder danach. Das komplette Dokument beginnt mit <!DOCTYPE html>.
 
-Pflichtbestandteile:
-1. <head> mit title (Format: "[Titel] | UBS"), meta description (140–160 Zeichen, mit Haupt-Keyword), charset, viewport
-2. Inline-CSS für sauberes Layout (max-width 800px, UBS Rot #E60000 nur sparsam für Akzente, Überschriften in #1a1a1a / dunklem Grau)
-3. <h1> = Artikeltitel
-4. Einleitungsabsatz mit class="intro"
-5. Navigierbares Inhaltsverzeichnis (<nav class="toc">) mit Anker-Links
-6. 5–8 <h2>-Abschnitte mit praxisnahem Inhalt, konkreten Beispielen und klaren Zwischenüberschriften
-7. Mindestens eine highlight-box, tip-box oder warning-box
-8. Eine CTA-Box (class="cta-box") mit Einladung zur Beratung durch UBS-Expertinnen und -Experten
-9. FAQ-Sektion mit 3–5 Fragen und Antworten
-10. Kurzes Fazit
+Der visuelle Stil folgt den UBS-Guide-Artikeln (Frutiger/Arial, helles Grau, rote Titelkante). Kopiere den folgenden Style-Block 1:1 in den <head>. Erfinde kein eigenes CSS, keine anderen Farben, keine anderen Schriftgroessen.
+
+${ARTICLE_STYLE_BLOCK}
+
+Pflichtbestandteile (in dieser Reihenfolge):
+1. <head> mit charset, viewport, title (Format: "[Titel] | UBS"), meta description (140–160 Zeichen, mit Haupt-Keyword) und dem Style-Block oben
+2. <header class="title-block"> mit:
+   - <h1> = Artikeltitel
+   - <p class="intro"> = Lead-Absatz (1–2 Saetze, groessere Einleitung)
+   - optional <p class="meta"><span class="category">Thema</span> Datum</p>
+3. Navigierbares Inhaltsverzeichnis: <nav class="toc"><h2>Inhalt:</h2><ul>…</ul></nav> mit Anker-Links zu allen H2
+4. 5–8 <h2>-Abschnitte mit praxisnahem Inhalt, konkreten Beispielen und klaren Zwischenüberschriften (h3)
+5. Mindestens eine Box: highlight-box, tip-box, warning-box oder example-box
+6. FAQ-Sektion: <h2>FAQ …</h2> plus 3–5 <div class="faq-item"><p class="faq-question">…</p><p>…</p></div>
+7. <div class="cta-box"> mit Einladung zur Beratung durch UBS-Expertinnen und -Experten
+8. <p class="legal-disclaimer"> kurzer Compliance-Hinweis
 
 Ziel-Länge: 1.200 bis 2.000 Wörter Fliesstext.
 
-CSS-Klassen die du verwenden und im Inline-CSS definieren sollst:
-- .intro (Einleitungsabsatz mit farbigem Linksrand)
-- .toc (Inhaltsverzeichnis, hellgrauer Hintergrund)
-- .highlight-box (heller Hintergrund, für wichtige Hinweise)
-- .tip-box (grüner Rand, für Tipps)
-- .warning-box (gelber Rand, für Warnungen)
-- .example-box (hellgrauer Hintergrund, für Beispiele)
-- .cta-box (dunkler Hintergrund, weisser Button)
-- .faq-item + .faq-question (für FAQ-Bereich)
-- Tabellen mit <th> in dunklem Grau
+Verwende ausschliesslich diese Klassen: title-block, intro, meta, category, toc, highlight-box, tip-box, warning-box, example-box, definition-box, cta-box, faq-item, faq-question, legal-disclaimer.
 
 ## FUNNEL-STAGE-LOGIK
 

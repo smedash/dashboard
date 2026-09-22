@@ -14,6 +14,7 @@ import {
   normalizeContentLanguage,
   slugify,
 } from "@/lib/content-workflow";
+import { applyCanonicalArticleStyles } from "@/lib/article-html";
 
 interface SavedArticle {
   id: string;
@@ -184,7 +185,11 @@ function ContentPageInner() {
         }
       }
 
-      extractMeta(accumulated.replace(/^```html\s*\n?/, "").replace(/\n?```\s*$/, ""));
+      const cleaned = applyCanonicalArticleStyles(
+        accumulated.replace(/^```html\s*\n?/, "").replace(/\n?```\s*$/, "")
+      );
+      extractMeta(cleaned);
+      setHtmlContent(cleaned);
     } catch (err) {
       if (!(err instanceof DOMException && err.name === "AbortError")) {
         setError("Verbindungsfehler: " + String(err));

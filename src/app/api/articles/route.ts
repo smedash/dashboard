@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { hasFullAdminRights } from "@/lib/rbac";
 import { slugify, countWords } from "@/lib/content-workflow";
+import { applyCanonicalArticleStyles } from "@/lib/article-html";
 
 export async function GET() {
   const session = await auth();
@@ -80,7 +81,7 @@ export async function POST(request: NextRequest) {
       location: location || null,
       language: language || null,
       targetAudience,
-      htmlContent,
+      htmlContent: applyCanonicalArticleStyles(htmlContent),
       metaTitle: metaTitle || null,
       metaDescription: metaDescription || null,
       wordCount: countWords(htmlContent),
