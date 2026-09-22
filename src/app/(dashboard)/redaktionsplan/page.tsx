@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
-import { canEdit } from "@/lib/rbac";
+import { useRouter } from "next/navigation";
+import { canEdit, hasFullAdminRights } from "@/lib/rbac";
+import { journeyPhaseToFunnel } from "@/lib/content-workflow";
 
 interface ArticleUser {
   id: string;
@@ -23,6 +25,10 @@ interface Article {
   h1: string | null;
   schemaMarkup: string | null;
   location: string | null;
+  journeyPhase?: string | null;
+  contentPushed?: boolean;
+  contentPushedAt?: string | null;
+  articleId?: string | null;
   creator: ArticleUser;
   createdAt: string;
   updatedAt: string;
@@ -102,10 +108,15 @@ function formatDate(dateStr: string) {
 
 export default function RedaktionsplanPage() {
   const { data: session } = useSession();
+  const router = useRouter();
   const userCanEdit = canEdit(session?.user?.role);
+  const userCanProduce = hasFullAdminRights(session?.user?.role);
 
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
+  const [monthLoading, setMonthLoading] = useState(false);
+  const fetchArticlesAbortRef = useRef<AbortController | null>(null);
+  const hasLoadedOnceRef = useRef(false);
   const [showForm, setShowForm] = useState(false);
   const [editingArticle, setEditingArticle] = useState<Article | null>(null);
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
@@ -144,23 +155,41 @@ export default function RedaktionsplanPage() {
     location: "",
   });
 
-  const fetchArticles = useCallback(async () => {
+  const fetchArticles = useCallback(async (year: number, month: number) => {
+    const controller = new AbortController();
+    fetchArticlesAbortRef.current?.abort();
+    fetchArticlesAbortRef.current = controller;
+
+    if (hasLoadedOnceRef.current) setMonthLoading(true);
     try {
-      const res = await fetch("/api/editorial-plan");
+      const params = new URLSearchParams({
+        year: String(year),
+        month: String(month + 1),
+        includeUndated: "1",
+      });
+      const res = await fetch(`/api/editorial-plan?${params}`, {
+        cache: "no-store",
+        signal: controller.signal,
+      });
       if (res.ok) {
         const data = await res.json();
         setArticles(data.articles);
       }
     } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
       console.error("Error fetching articles:", error);
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) {
+        hasLoadedOnceRef.current = true;
+        setLoading(false);
+        setMonthLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
-    fetchArticles();
-  }, [fetchArticles]);
+    fetchArticles(currentYear, currentMonth);
+  }, [currentYear, currentMonth, fetchArticles]);
 
   const resetForm = () => {
     setFormData({ title: "", description: "", url: "", category: "", status: "idea", plannedDate: "", metaDescription: "", h1: "", schemaMarkup: "", location: "" });
@@ -185,7 +214,7 @@ export default function RedaktionsplanPage() {
       });
 
       if (res.ok) {
-        await fetchArticles();
+        await fetchArticles(currentYear, currentMonth);
         resetForm();
       }
     } catch (error) {
@@ -216,11 +245,37 @@ export default function RedaktionsplanPage() {
     try {
       const res = await fetch(`/api/editorial-plan?id=${id}`, { method: "DELETE" });
       if (res.ok) {
-        await fetchArticles();
+        await fetchArticles(currentYear, currentMonth);
         setSelectedArticle(null);
       }
     } catch (error) {
       console.error("Error deleting article:", error);
+    }
+  };
+
+  const handlePushToContent = async (article: Article) => {
+    try {
+      const res = await fetch(`/api/editorial-plan/${article.id}/push-to-content`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.error || "Konnte nicht in die Contentproduktion übernehmen");
+        return;
+      }
+      const params = new URLSearchParams();
+      params.set("title", article.title);
+      if (article.category) params.set("category", article.category);
+      if (article.location) params.set("location", article.location);
+      if (article.language) params.set("language", article.language);
+      if (article.journeyPhase) params.set("journeyPhase", article.journeyPhase);
+      const funnel = journeyPhaseToFunnel(article.journeyPhase);
+      if (funnel) params.set("funnel", funnel);
+      params.set("editorialPlanArticleId", article.id);
+      if (article.description) params.set("description", article.description);
+      router.push(`/content?${params.toString()}`);
+    } catch (error) {
+      console.error("Error pushing to content:", error);
     }
   };
 
@@ -270,7 +325,7 @@ export default function RedaktionsplanPage() {
 
       if (res.ok) {
         setImportResult(data);
-        await fetchArticles();
+        await fetchArticles(currentYear, currentMonth);
       } else {
         setImportResult({ skipped: 0, total: 0, errors: [data.error || "Import fehlgeschlagen"] });
       }
@@ -328,7 +383,7 @@ export default function RedaktionsplanPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Redaktionsplan</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            {filteredArticles.length} Artikel insgesamt
+            {filteredArticles.length} Artikel in {MONTHS_DE[currentMonth]} {currentYear}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -537,33 +592,37 @@ export default function RedaktionsplanPage() {
         </div>
       )}
 
+      {/* Month Navigation */}
+      <div className="flex items-center justify-between bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 px-6 py-3">
+        <button onClick={prevMonth} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" aria-label="Vorheriger Monat">
+          <svg className="w-5 h-5 text-slate-600 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+            {MONTHS_DE[currentMonth]} {currentYear}
+          </h2>
+          <button
+            onClick={goToToday}
+            className="px-2 py-0.5 text-xs font-medium rounded border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+          >
+            Heute
+          </button>
+          {monthLoading && (
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+          )}
+        </div>
+        <button onClick={nextMonth} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" aria-label="Nächster Monat">
+          <svg className="w-5 h-5 text-slate-600 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      </div>
+
       {/* Calendar View */}
       {viewMode === "calendar" && (
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-          {/* Month Navigation */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
-            <button onClick={prevMonth} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-              <svg className="w-5 h-5 text-slate-600 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            <div className="flex items-center gap-3">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-                {MONTHS_DE[currentMonth]} {currentYear}
-              </h2>
-              <button
-                onClick={goToToday}
-                className="px-2 py-0.5 text-xs font-medium rounded border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-              >
-                Heute
-              </button>
-            </div>
-            <button onClick={nextMonth} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-              <svg className="w-5 h-5 text-slate-600 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          </div>
+        <div className={`bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden ${monthLoading ? "opacity-60 pointer-events-none" : ""}`}>
 
           {/* Weekday Headers */}
           <div className="grid grid-cols-7 border-b border-slate-200 dark:border-slate-700">
@@ -660,7 +719,7 @@ export default function RedaktionsplanPage() {
 
       {/* List View */}
       {viewMode === "list" && (
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <div className={`bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden ${monthLoading ? "opacity-60 pointer-events-none" : ""}`}>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -679,7 +738,7 @@ export default function RedaktionsplanPage() {
                 {filteredArticles.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="px-4 py-12 text-center text-sm text-slate-500 dark:text-slate-400">
-                      Keine Artikel vorhanden. Erstelle deinen ersten Artikel!
+                      Keine Artikel in {MONTHS_DE[currentMonth]} {currentYear}.
                     </td>
                   </tr>
                 ) : (
@@ -898,8 +957,30 @@ export default function RedaktionsplanPage() {
                 Erstellt: {formatDate(selectedArticle.createdAt)} · Aktualisiert: {formatDate(selectedArticle.updatedAt)}
               </div>
 
+              {selectedArticle.contentPushed && !selectedArticle.articleId && (
+                <div className="mt-4 rounded-lg bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 px-3 py-2 text-xs text-violet-800 dark:text-violet-200">
+                  In Contentproduktion – noch kein Entwurf gespeichert.
+                </div>
+              )}
+              {selectedArticle.articleId && (
+                <a
+                  href={`/content-check?article=${selectedArticle.articleId}`}
+                  className="mt-4 inline-flex text-xs font-medium text-emerald-700 dark:text-emerald-300 underline"
+                >
+                  Entwurf im Content-Check öffnen
+                </a>
+              )}
+
               {userCanEdit && (
-                <div className="flex gap-2 mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
+                <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
+                  {userCanProduce && !selectedArticle.contentPushed && (
+                    <button
+                      onClick={() => handlePushToContent(selectedArticle)}
+                      className="flex-1 px-3 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors text-sm font-medium"
+                    >
+                      Content erstellen
+                    </button>
+                  )}
                   <button
                     onClick={() => handleEdit(selectedArticle)}
                     className="flex-1 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"

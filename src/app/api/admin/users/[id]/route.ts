@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { hasFullAdminRights } from "@/lib/rbac";
+import { hasFullAdminRights, ALL_ROLES, type Role } from "@/lib/rbac";
 
 // PATCH /api/admin/users/[id] - User aktualisieren (nur Superadmin)
 export async function PATCH(
@@ -48,12 +48,10 @@ export async function PATCH(
       }
     }
 
-    // Validiere Rolle
-    const validRoles = ["superadmin", "agentur", "member", "viewer"];
     const updateData: { name?: string; role?: string } = {};
     
     if (name !== undefined) updateData.name = name;
-    if (role && validRoles.includes(role)) updateData.role = role;
+    if (role && ALL_ROLES.includes(role as Role)) updateData.role = role;
 
     const user = await prisma.user.update({
       where: { id },

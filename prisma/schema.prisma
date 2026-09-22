@@ -11,14 +11,14 @@ datasource db {
 }
 
 // NextAuth.js Models
-// Rollen: superadmin/agentur (volle Rechte), member (bearbeiten), viewer (nur lesen)
+// Rollen: superadmin/agentur (volle Rechte), seo_manager/content_manager/segment_manager/legal (Content-Check), member (bearbeiten), viewer (nur lesen)
 model User {
   id            String        @id @default(cuid())
   name          String?
   email         String        @unique
   emailVerified DateTime?
   image         String?
-  role          String        @default("member") // superadmin, agentur, member, viewer
+  role          String        @default("member") // superadmin, agentur, seo_manager, content_manager, segment_manager, legal, member, viewer
   accounts      Account[]
   sessions      Session[]
   gscProperties GSCProperty[]
@@ -34,6 +34,10 @@ model User {
   tasksCreated  Task[]         @relation("TaskCreator") // Tasks die der User erstellt hat
   taskAssignments TaskAssignee[] @relation("TaskAssignee") // Tasks die dem User zugewiesen sind
   editorialArticles EditorialPlanArticle[] @relation("EditorialPlanCreator") // Redaktionsplan-Artikel
+  generatedArticles GeneratedArticle[] @relation("ArticleCreator")
+  contentComments   ContentComment[] @relation("ContentCommentAuthor")
+  contentCommentsResolved ContentComment[] @relation("ContentCommentResolver")
+  articleImages     ArticleImage[] @relation("ArticleImageUploader")
   googleTrendJobs   GoogleTrendJob[]
   searchIntentJobs  SearchIntentJob[]
   keywordVolumeJobs KeywordVolumeJob[]
@@ -568,6 +572,10 @@ model EditorialPlanArticle {
   location    String?  // Location: Guide, Insights
   journeyPhase String? // Customer Journey Phase: awareness, orientation, planning, product_search, closing
   journeyConfidence Int? // KI-Konfidenz-Score 0-100 für die Journey-Phase-Zuordnung
+  contentPushed   Boolean  @default(false)
+  contentPushedAt DateTime?
+  articleId       String?  @unique
+  article         GeneratedArticle? @relation("GeneratedFromEditorialPlan", fields: [articleId], references: [id], onDelete: SetNull)
   creatorId   String
   creator     User     @relation("EditorialPlanCreator", fields: [creatorId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
@@ -578,6 +586,103 @@ model EditorialPlanArticle {
   @@index([category])
   @@index([plannedDate])
   @@index([journeyPhase])
+}
+
+// Generierte Artikel - Contentproduktion
+model GeneratedArticle {
+  id                   String    @id @default(cuid())
+  contentNumber        Int       @unique @default(0)
+  title                String
+  slug                 String    @unique
+  funnelStage          String
+  category             String
+  location             String?
+  language             String?
+  targetAudience       String
+  htmlContent          String    @db.Text
+  metaTitle            String?   @db.Text
+  metaDescription      String?   @db.Text
+  wordCount            Int       @default(0)
+  reviewStatus         String    @default("draft") // draft, seo_review, content_review, segment_review, legal_review, approved, published
+  revisionRequestedAt  DateTime?
+  revisionRequestedBy  String?
+  reviewStepDueAt      DateTime?
+  claimedAt            DateTime?
+  claimedByUserId      String?
+  claimedByName        String?
+  editorialPlanArticle EditorialPlanArticle? @relation("GeneratedFromEditorialPlan")
+  creatorId            String
+  creator              User      @relation("ArticleCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  comments             ContentComment[]
+  statusHistory        ArticleStatusHistory[]
+  images               ArticleImage[]
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@index([creatorId])
+  @@index([funnelStage])
+  @@index([category])
+  @@index([reviewStatus])
+  @@index([createdAt])
+}
+
+model ArticleImage {
+  id           String           @id @default(cuid())
+  articleId    String
+  article      GeneratedArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  fileName     String
+  fileUrl      String
+  fileSize     Int
+  fileType     String
+  uploadedById String
+  uploadedBy   User             @relation("ArticleImageUploader", fields: [uploadedById], references: [id], onDelete: Cascade)
+  createdAt    DateTime         @default(now())
+
+  @@index([articleId])
+}
+
+model ContentComment {
+  id                   String           @id @default(cuid())
+  articleId            String
+  article              GeneratedArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  authorId             String
+  author               User             @relation("ContentCommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  selectedText         String           @db.Text
+  commentText          String           @db.Text
+  role                 String           // seo_manager, content_manager, segment_manager, legal
+  resolved             Boolean          @default(false)
+  resolvedById         String?
+  resolvedBy           User?            @relation("ContentCommentResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+  resolvedAt           DateTime?
+  changeAndForward     Boolean          @default(false)
+  recheckAfterRevision Boolean          @default(false)
+  anchorId             String?
+  textOffset           Int?
+  contextPrefix        String?          @db.Text
+  contextSuffix        String?          @db.Text
+  paragraphIndex       Int?
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  @@index([articleId])
+  @@index([authorId])
+  @@index([resolved])
+  @@index([resolvedById])
+}
+
+model ArticleStatusHistory {
+  id             String           @id @default(cuid())
+  articleId      String
+  article        GeneratedArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  fromStatus     String
+  toStatus       String
+  changedByEmail String
+  changedByName  String?
+  comment        String?          @db.Text
+  createdAt      DateTime         @default(now())
+
+  @@index([articleId])
+  @@index([createdAt])
 }
 
 // Changelog Zeiterfassung - Minuten pro Commit

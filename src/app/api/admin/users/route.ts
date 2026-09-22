@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { hasFullAdminRights } from "@/lib/rbac";
+import { hasFullAdminRights, ALL_ROLES, type Role } from "@/lib/rbac";
 import { sendWelcomeEmail } from "@/lib/resend";
 
 // GET /api/admin/users - Alle User abrufen (nur Superadmin)
@@ -75,9 +75,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validiere Rolle
-    const validRoles = ["superadmin", "agentur", "member", "viewer"];
-    const userRole = validRoles.includes(role) ? role : "member";
+    const userRole = ALL_ROLES.includes(role as Role) ? role : "member";
 
     const user = await prisma.user.create({
       data: {

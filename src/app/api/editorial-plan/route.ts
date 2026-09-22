@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { canEdit } from "@/lib/rbac";
@@ -43,13 +44,16 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get("category") || undefined;
     const location = searchParams.get("location") || undefined;
     const search = searchParams.get("search") || undefined;
+    const yearParam = searchParams.get("year");
+    const monthParam = searchParams.get("month");
+    const includeUndated = searchParams.get("includeUndated") === "1";
     const page = parseInt(searchParams.get("page") || "1", 10);
     const pageSize = Math.min(
       parseInt(searchParams.get("pageSize") || "50", 10),
       200
     );
 
-    const where: Record<string, unknown> = {};
+    const where: Prisma.EditorialPlanArticleWhereInput = {};
     if (journeyPhase === "__unassigned") {
       where.journeyPhase = null;
     } else if (journeyPhase) {
@@ -57,11 +61,40 @@ export async function GET(request: NextRequest) {
     }
     if (category) where.category = category;
     if (location) where.location = location;
-    if (search) {
-      where.OR = [
-        { title: { contains: search, mode: "insensitive" } },
-        { metaDescription: { contains: search, mode: "insensitive" } },
-      ];
+
+    const searchOr = search
+      ? [
+          { title: { contains: search, mode: "insensitive" as const } },
+          { metaDescription: { contains: search, mode: "insensitive" as const } },
+        ]
+      : null;
+
+    const year = yearParam ? parseInt(yearParam, 10) : NaN;
+    const month = monthParam ? parseInt(monthParam, 10) : NaN;
+    const hasMonthFilter =
+      Number.isInteger(year) && Number.isInteger(month) && month >= 1 && month <= 12;
+    const monthDateFilter = hasMonthFilter
+      ? {
+          gte: new Date(Date.UTC(year, month - 1, 1)),
+          lt: new Date(Date.UTC(year, month, 1)),
+        }
+      : null;
+
+    const dateOr = monthDateFilter
+      ? includeUndated
+        ? [{ plannedDate: monthDateFilter }, { plannedDate: null }]
+        : [{ plannedDate: monthDateFilter }]
+      : includeUndated
+        ? [{ plannedDate: null }]
+        : null;
+
+    const andFilters: Prisma.EditorialPlanArticleWhereInput[] = [];
+    if (searchOr) andFilters.push({ OR: searchOr });
+    if (dateOr) andFilters.push({ OR: dateOr });
+    if (andFilters.length === 1) {
+      Object.assign(where, andFilters[0]);
+    } else if (andFilters.length > 1) {
+      where.AND = andFilters;
     }
 
     const hasPagination = searchParams.has("page") || searchParams.has("journeyPhase");
@@ -100,6 +133,7 @@ export async function GET(request: NextRequest) {
     }
 
     const articles = await prisma.editorialPlanArticle.findMany({
+      where,
       include: {
         creator: {
           select: { id: true, name: true, email: true },
@@ -111,7 +145,10 @@ export async function GET(request: NextRequest) {
       ],
     });
 
-    return NextResponse.json({ articles });
+    return NextResponse.json(
+      { articles },
+      { headers: { "Cache-Control": "private, no-store" } }
+    );
   } catch (error) {
     console.error("Error fetching editorial plan articles:", error);
     return NextResponse.json({ error: "Failed to fetch articles" }, { status: 500 });

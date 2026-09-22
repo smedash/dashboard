@@ -143,6 +143,14 @@ export default function AdminUsersPage() {
         return "bg-blue-500/20 text-blue-400 border-blue-500/30";
       case "viewer":
         return "bg-slate-500/20 text-slate-400 border-slate-500/30";
+      case "seo_manager":
+        return "bg-cyan-500/20 text-cyan-400 border-cyan-500/30";
+      case "content_manager":
+        return "bg-rose-500/20 text-rose-400 border-rose-500/30";
+      case "segment_manager":
+        return "bg-amber-500/20 text-amber-400 border-amber-500/30";
+      case "legal":
+        return "bg-orange-500/20 text-orange-400 border-orange-500/30";
       default:
         return "bg-slate-500/20 text-slate-400 border-slate-500/30";
     }
@@ -251,6 +259,10 @@ export default function AdminUsersPage() {
               >
                 <option value="viewer">Betrachter - Kann nur lesen</option>
                 <option value="member">Mitglied - Kann bearbeiten</option>
+                <option value="seo_manager">SEO Manager - Content-Check Stufe 1</option>
+                <option value="content_manager">Content Manager - Content-Check Stufe 2</option>
+                <option value="segment_manager">Segment Manager - Content-Check Stufe 3</option>
+                <option value="legal">Legal - Content-Check Stufe 4</option>
                 <option value="agentur">Agentur - Volle Rechte</option>
                 <option value="superadmin">Superadmin - Volle Rechte</option>
               </select>
@@ -285,7 +297,7 @@ export default function AdminUsersPage() {
 
       {/* Rollen-Übersicht */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {(["superadmin", "agentur", "member", "viewer"] as Role[]).map((role) => {
+        {(["superadmin", "agentur", "seo_manager", "content_manager", "segment_manager", "legal", "member", "viewer"] as Role[]).map((role) => {
           const count = users.filter((u) => u.role === role).length;
           return (
             <div
@@ -348,6 +360,10 @@ export default function AdminUsersPage() {
                     >
                       <option value="viewer">Betrachter</option>
                       <option value="member">Mitglied</option>
+                      <option value="seo_manager">SEO Manager</option>
+                      <option value="content_manager">Content Manager</option>
+                      <option value="segment_manager">Segment Manager</option>
+                      <option value="legal">Legal</option>
                       <option value="agentur">Agentur</option>
                       <option value="superadmin">Superadmin</option>
                     </select>

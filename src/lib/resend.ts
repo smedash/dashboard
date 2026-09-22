@@ -637,3 +637,98 @@ export async function sendGoogleTrendsCompletedNotification({
   return data;
 }
 
+function emailShell(title: string, bodyHtml: string, ctaLabel: string, ctaUrl: string) {
+  return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f4f4f5; margin: 0; padding: 40px 20px;">
+          <div style="max-width: 480px; margin: 0 auto; background-color: white; border-radius: 12px; padding: 40px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+            <h1 style="color: #18181b; font-size: 24px; margin: 0 0 16px 0;">${title}</h1>
+            ${bodyHtml}
+            <a href="${ctaUrl}" style="display: inline-block; background-color: #2563eb; color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+              ${ctaLabel}
+            </a>
+          </div>
+        </body>
+      </html>
+    `;
+}
+
+export async function sendContentReviewNotification({
+  to,
+  articleTitle,
+  newStatus,
+  changedByName,
+  dashboardUrl,
+}: {
+  to: string;
+  articleTitle: string;
+  newStatus: string;
+  changedByName: string;
+  dashboardUrl: string;
+}) {
+  const { data, error } = await resend.emails.send({
+    from: EMAIL_FROM,
+    to,
+    subject: `Content-Check: ${articleTitle}`,
+    html: emailShell(
+      "Content-Check",
+      `<p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 24px 0;">
+        <strong>${changedByName}</strong> hat den Artikel <strong>${articleTitle}</strong> auf den Status <strong>${newStatus}</strong> gesetzt.
+      </p>`,
+      "Im Content-Check öffnen",
+      dashboardUrl
+    ),
+  });
+
+  if (error) {
+    console.error("Failed to send content review notification:", error);
+    throw error;
+  }
+
+  return data;
+}
+
+export async function sendRevisionRequestNotification({
+  to,
+  articleTitle,
+  currentStatus,
+  requestedByName,
+  unresolvedCount,
+  dashboardUrl,
+}: {
+  to: string;
+  articleTitle: string;
+  currentStatus: string;
+  requestedByName: string;
+  unresolvedCount: number;
+  dashboardUrl: string;
+}) {
+  const { data, error } = await resend.emails.send({
+    from: EMAIL_FROM,
+    to,
+    subject: `Überarbeitung angefordert: ${articleTitle}`,
+    html: emailShell(
+      "Überarbeitung angefordert",
+      `<p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 24px 0;">
+        <strong>${requestedByName}</strong> hat eine Überarbeitung für <strong>${articleTitle}</strong> angefordert
+        (${unresolvedCount} offene Kommentare, aktueller Status: ${currentStatus}).
+      </p>`,
+      "Artikel öffnen",
+      dashboardUrl
+    ),
+  });
+
+  if (error) {
+    console.error("Failed to send revision request notification:", error);
+    throw error;
+  }
+
+  return data;
+}
+
+
