@@ -1,3 +1,48 @@
+export const TIME_SPENT_FILES: Array<{
+  file: string;
+  segment: string;
+  slug: string;
+  name: string;
+}> = [
+  {
+    file: "BR-387638_-_AM_-_Time_spent_on_page.xlsx",
+    segment: "AM",
+    slug: "adobe_am_timespent",
+    name: "Adobe AM Time spent",
+  },
+  {
+    file: "BR-387638_-_WM_-_Time_spent_on_page.xlsx",
+    segment: "WM",
+    slug: "adobe_wm_timespent",
+    name: "Adobe WM Time spent",
+  },
+  {
+    file: "BR-387638_-_IB_-_Time_spent_on_page.xlsx",
+    segment: "IB",
+    slug: "adobe_ib_timespent",
+    name: "Adobe IB Time spent",
+  },
+  {
+    file: "BR-387638_-_About_us_-_Time_spent_on_page.xlsx",
+    segment: "About_us",
+    slug: "adobe_about_us_timespent",
+    name: "Adobe About us Time spent",
+  },
+  {
+    file: "BR-387638_-_Swiss_website_-_Time_spent_on_page.xlsx",
+    segment: "Swiss_website",
+    slug: "adobe_swiss_timespent",
+    name: "Adobe Swiss website Time spent",
+  },
+];
+
+export const GATING_FILE = {
+  file: "ÀM Gating Header Report.xlsx",
+  slug: "am_gating_header",
+  name: "AM Gating Header",
+  segment: "AM",
+};
+
 export const ADOBE_FILES: Array<{
   file: string;
   segment: string;

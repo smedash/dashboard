@@ -1260,6 +1260,19 @@ model UrlInventory {
   aaHasData         Boolean  @default(false)
   aaSegments        String[] @default([])
 
+  aaTimeSpentVisits      Int      @default(0)
+  aaTimeSpentShortPct    Float    @default(0)
+  aaTimeSpentEngagedPct  Float    @default(0)
+  aaTimeSpentHasData     Boolean  @default(false)
+
+  gatingHasData     Boolean  @default(false)
+  gatingIsGated     Boolean  @default(false)
+  gatingRoles       String[] @default([])
+  gatingStatus      String?
+  gatingLiveCopy    String?
+  gatingPageTitle   String?  @db.Text
+  gatingBrowserTitle String? @db.Text
+
   hasFocusKeywords   Boolean  @default(false)
   focusKeywords      String[] @default([])
   inEditorialPlan    Boolean  @default(false)
@@ -1293,6 +1306,8 @@ model UrlInventory {
   @@index([language])
   @@index([gscHasData])
   @@index([aaHasData])
+  @@index([aaTimeSpentHasData])
+  @@index([gatingIsGated])
   @@index([cleanupStatus])
   @@index([gscImpressions])
   @@index([aaVisits])

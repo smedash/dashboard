@@ -24,6 +24,17 @@ type Row = {
   aaFormSuccess: number;
   aaHasData: boolean;
   aaSegments: string[];
+  aaTimeSpentVisits: number;
+  aaTimeSpentShortPct: number;
+  aaTimeSpentEngagedPct: number;
+  aaTimeSpentHasData: boolean;
+  gatingHasData: boolean;
+  gatingIsGated: boolean;
+  gatingRoles: string[];
+  gatingStatus: string | null;
+  gatingLiveCopy: string | null;
+  gatingPageTitle: string | null;
+  gatingBrowserTitle: string | null;
   focusKeywords: string[];
   labsKeywords: string[];
   labsBestRank: number | null;
@@ -248,6 +259,16 @@ export default function InventarPage() {
                 <td className="px-3 py-2 text-right tabular-nums text-xs align-top overflow-hidden">
                   {r.aaVisits.toLocaleString("de-CH")} Vis.
                   <div className="text-[10px] text-slate-400">{r.aaFormSuccess} Leads</div>
+                  {r.aaTimeSpentHasData && (
+                    <div className="text-[10px] text-slate-400">
+                      {Math.round(r.aaTimeSpentShortPct)}% &lt;15s · {Math.round(r.aaTimeSpentEngagedPct)}% ≥1m
+                    </div>
+                  )}
+                  {r.gatingIsGated && (
+                    <div className="text-[10px] text-amber-700 dark:text-amber-300 truncate" title={r.gatingRoles.join(", ")}>
+                      gated
+                    </div>
+                  )}
                 </td>
                 <td className="px-3 py-2 text-xs align-top overflow-hidden">
                   {r.focusKeywords.length ? (
@@ -330,6 +351,24 @@ export default function InventarPage() {
               <dd>{detail.aaFormSuccess}</dd>
               <dt className="text-slate-500">Segmente</dt>
               <dd>{detail.aaSegments.join(", ") || "—"}</dd>
+              <dt className="text-slate-500">Time Spent</dt>
+              <dd>
+                {detail.aaTimeSpentHasData
+                  ? `${detail.aaTimeSpentVisits.toLocaleString("de-CH")} Vis. · ${Math.round(detail.aaTimeSpentShortPct)}% <15s · ${Math.round(detail.aaTimeSpentEngagedPct)}% ≥1 Min.`
+                  : "—"}
+              </dd>
+              <dt className="text-slate-500">Gating</dt>
+              <dd>
+                {detail.gatingHasData
+                  ? `${detail.gatingIsGated ? "gated" : "offen"}${detail.gatingRoles.length ? ` · ${detail.gatingRoles.join(", ")}` : ""}`
+                  : "—"}
+              </dd>
+              {detail.gatingPageTitle ? (
+                <>
+                  <dt className="text-slate-500">Page Title</dt>
+                  <dd>{detail.gatingPageTitle}</dd>
+                </>
+              ) : null}
               <dt className="text-slate-500">Status</dt>
               <dd>{detail.cleanupStatus}</dd>
             </dl>

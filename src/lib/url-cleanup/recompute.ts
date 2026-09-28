@@ -13,6 +13,10 @@ const SCORE_SELECT = {
   aaVisits: true,
   aaFormSuccess: true,
   aaHasData: true,
+  aaTimeSpentHasData: true,
+  aaTimeSpentVisits: true,
+  aaTimeSpentShortPct: true,
+  aaTimeSpentEngagedPct: true,
   hasFocusKeywords: true,
   labsHasData: true,
   labsFetchedAt: true,
@@ -30,6 +34,10 @@ type ScoreRow = {
   aaVisits: number;
   aaFormSuccess: number;
   aaHasData: boolean;
+  aaTimeSpentHasData: boolean;
+  aaTimeSpentVisits: number;
+  aaTimeSpentShortPct: number;
+  aaTimeSpentEngagedPct: number;
   hasFocusKeywords: boolean;
   labsHasData: boolean;
   labsFetchedAt: Date | null;

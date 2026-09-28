@@ -24,6 +24,12 @@ export type InventoryListQuery = {
   maxAaVisits?: number;
   minAaFormSuccess?: number;
   maxAaFormSuccess?: number;
+  aaTimeSpentHasData?: boolean;
+  minTimeSpentShortPct?: number;
+  maxTimeSpentShortPct?: number;
+  gatingHasData?: boolean;
+  gatingIsGated?: boolean;
+  gatingRole?: string;
   lastmodBefore?: string;
   focusKeyword?: string;
   labsKeyword?: string;
@@ -72,6 +78,12 @@ export function parseInventoryQuery(sp: URLSearchParams): InventoryListQuery {
     maxAaVisits: num("maxAaVisits"),
     minAaFormSuccess: num("minAaFormSuccess"),
     maxAaFormSuccess: num("maxAaFormSuccess"),
+    aaTimeSpentHasData: bool("aaTimeSpentHasData"),
+    minTimeSpentShortPct: num("minTimeSpentShortPct"),
+    maxTimeSpentShortPct: num("maxTimeSpentShortPct"),
+    gatingHasData: bool("gatingHasData"),
+    gatingIsGated: bool("gatingIsGated"),
+    gatingRole: sp.get("gatingRole")?.trim() || undefined,
     lastmodBefore: sp.get("lastmodBefore")?.trim() || undefined,
     focusKeyword: sp.get("focusKeyword")?.trim() || undefined,
     labsKeyword: sp.get("labsKeyword")?.trim() || undefined,
@@ -124,6 +136,12 @@ export function buildInventoryWhere(q: InventoryListQuery): Prisma.UrlInventoryW
   if (q.maxAaVisits !== undefined) and.push({ aaVisits: { lte: q.maxAaVisits } });
   if (q.minAaFormSuccess !== undefined) and.push({ aaFormSuccess: { gte: q.minAaFormSuccess } });
   if (q.maxAaFormSuccess !== undefined) and.push({ aaFormSuccess: { lte: q.maxAaFormSuccess } });
+  if (q.aaTimeSpentHasData !== undefined) and.push({ aaTimeSpentHasData: q.aaTimeSpentHasData });
+  if (q.minTimeSpentShortPct !== undefined) and.push({ aaTimeSpentShortPct: { gte: q.minTimeSpentShortPct } });
+  if (q.maxTimeSpentShortPct !== undefined) and.push({ aaTimeSpentShortPct: { lte: q.maxTimeSpentShortPct } });
+  if (q.gatingHasData !== undefined) and.push({ gatingHasData: q.gatingHasData });
+  if (q.gatingIsGated !== undefined) and.push({ gatingIsGated: q.gatingIsGated });
+  if (q.gatingRole) and.push({ gatingRoles: { has: q.gatingRole } });
   if (q.lastmodBefore) {
     const d = new Date(q.lastmodBefore);
     if (!Number.isNaN(d.getTime())) and.push({ lastmod: { lt: d } });
@@ -147,6 +165,8 @@ const SORTABLE: Record<string, true> = {
   gscPosition: true,
   aaVisits: true,
   aaFormSuccess: true,
+  aaTimeSpentShortPct: true,
+  aaTimeSpentEngagedPct: true,
   killConfidence: true,
   lastmod: true,
   cleanupStatus: true,

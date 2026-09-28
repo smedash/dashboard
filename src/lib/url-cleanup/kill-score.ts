@@ -33,6 +33,10 @@ export type KillScoreInput = {
   aaVisits: number;
   aaFormSuccess: number;
   aaHasData: boolean;
+  aaTimeSpentHasData: boolean;
+  aaTimeSpentVisits: number;
+  aaTimeSpentShortPct: number;
+  aaTimeSpentEngagedPct: number;
   hasFocusKeywords: boolean;
   labsHasData: boolean;
   labsFetchedAt: Date | null;
@@ -136,6 +140,21 @@ export function computeKillScore(
       `${fmt(row.aaVisits)} Adobe-Visits (12 Monate, Schwelle ${fmt(settings.maxAaVisits)})`
     );
     if (row.aaVisits === 0) score += 10;
+  }
+
+  if (row.aaTimeSpentHasData && row.aaTimeSpentVisits >= 20) {
+    if (row.aaTimeSpentShortPct >= 70) {
+      score += 10;
+      reasons.push(
+        `${Math.round(row.aaTimeSpentShortPct)}% der Time-Spent-Visits unter 15s (${fmt(row.aaTimeSpentVisits)} Visits)`
+      );
+    }
+    if (row.aaTimeSpentEngagedPct >= 40) {
+      score -= 15;
+      reasons.push(
+        `${Math.round(row.aaTimeSpentEngagedPct)}% der Visits ≥1 Minute — eher behalten`
+      );
+    }
   }
 
   if (row.aaFormSuccess <= settings.maxAaLeads) {

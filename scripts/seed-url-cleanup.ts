@@ -3,10 +3,15 @@ config();
 
 import {
   denormalizeAdobeOnInventory,
+  denormalizeGatingOnInventory,
+  denormalizeTimeSpentOnInventory,
   seedAdobeFile,
+  seedGatingFile,
   seedSitemaps,
+  seedTimeSpentFile,
   seedUrls,
   ADOBE_FILES,
+  TIME_SPENT_FILES,
 } from "../src/lib/url-cleanup/seed";
 import { syncFocusKeywordsFromMapping, syncLabsFromCache } from "../src/lib/url-cleanup/keyword-join";
 import { recomputeKillScores } from "../src/lib/url-cleanup/recompute";
@@ -28,9 +33,27 @@ async function main() {
       console.log(await seedAdobeFile(f.file));
     }
   }
+  if (step === "timespent" || step === "all") {
+    for (const f of TIME_SPENT_FILES) {
+      console.log("Time spent", f.file);
+      console.log(await seedTimeSpentFile(f.file));
+    }
+  }
+  if (step === "gating" || step === "all") {
+    console.log("Gating…");
+    console.log(await seedGatingFile());
+  }
   if (step === "denorm" || step === "all") {
     console.log("Adobe denorm…");
     console.log(await denormalizeAdobeOnInventory());
+  }
+  if (step === "denorm-timespent" || step === "all") {
+    console.log("Time spent denorm…");
+    console.log(await denormalizeTimeSpentOnInventory());
+  }
+  if (step === "denorm-gating" || step === "all") {
+    console.log("Gating denorm…");
+    console.log(await denormalizeGatingOnInventory());
   }
   if (step === "keywords" || step === "all") {
     console.log("Keywords…");

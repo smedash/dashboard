@@ -86,6 +86,9 @@ export function FilterBar({
         </select>
         <Tri label="GSC-Daten" value={filters.gscHasData} onChange={(v) => set("gscHasData", v)} />
         <Tri label="Adobe-Daten" value={filters.aaHasData} onChange={(v) => set("aaHasData", v)} />
+        <Tri label="Time Spent" value={filters.aaTimeSpentHasData} onChange={(v) => set("aaTimeSpentHasData", v)} />
+        <Tri label="Gating-Daten" value={filters.gatingHasData} onChange={(v) => set("gatingHasData", v)} />
+        <Tri label="Gated" value={filters.gatingIsGated} onChange={(v) => set("gatingIsGated", v)} />
         <select
           value={filters.aaSegment}
           onChange={(e) => set("aaSegment", e.target.value)}
@@ -98,6 +101,29 @@ export function FilterBar({
             </option>
           ))}
         </select>
+        <select
+          value={filters.gatingRole}
+          onChange={(e) => set("gatingRole", e.target.value)}
+          className="px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
+        >
+          <option value="">Gating-Rolle (any)</option>
+          {["institutional-investor", "distribution-partner", "private-investor", "liquidity-investor"].map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+        <input
+          type="number"
+          min={0}
+          max={100}
+          inputMode="numeric"
+          value={filters.minTimeSpentShortPct}
+          onChange={(e) => set("minTimeSpentShortPct", clampScore(e.target.value))}
+          placeholder="Min. % <15s"
+          aria-label="Mindestanteil Time Spent unter 15 Sekunden"
+          className="px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
+        />
         <select
           value={filters.killBand}
           onChange={(e) => set("killBand", e.target.value)}

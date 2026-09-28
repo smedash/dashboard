@@ -56,6 +56,18 @@ export function toUrlKey(input: string): UrlKeys | null {
   return { urlKey: p, urlKeyNoHtml: stripHtmlExt(p) };
 }
 
+/** AEM-Content-Pfad (`/content/sites/at/de/...`) → öffentlicher UBS-Pfad. */
+export function aemContentPathToUrlKey(input: string): UrlKeys | null {
+  const t = input.trim();
+  if (!t) return null;
+  const decoded = decodeRepeated(t).trim().toLowerCase();
+  const stripped = decoded
+    .replace(/^https?:\/\/[^/]+/i, "")
+    .replace(/^\/content\/sites(?=\/|$)/i, "")
+    .replace(/^\/content(?=\/|$)/i, "");
+  return toUrlKey(stripped || "/");
+}
+
 export function canonicalUbsUrl(urlKey: string): string {
   return `${UBS_ORIGIN}${urlKey.startsWith("/") ? urlKey : `/${urlKey}`}`;
 }

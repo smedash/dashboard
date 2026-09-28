@@ -4,10 +4,17 @@ import { canEdit } from "@/lib/rbac";
 import { prisma } from "@/lib/prisma";
 import {
   ADOBE_FILES,
+  TIME_SPENT_FILES,
   denormalizeAdobeOnInventory,
+  denormalizeGatingOnInventory,
+  denormalizeTimeSpentOnInventory,
   listAdobeSeedStatus,
+  listGatingSeedStatus,
+  listTimeSpentSeedStatus,
   seedAdobeFile,
+  seedGatingFile,
   seedSitemaps,
+  seedTimeSpentFile,
   seedUrls,
 } from "@/lib/url-cleanup/seed";
 import { syncFocusKeywordsFromMapping, syncLabsFromCache } from "@/lib/url-cleanup/keyword-join";
@@ -45,6 +52,8 @@ export async function GET() {
     dimensions,
     latestJob,
     adobeFiles: listAdobeSeedStatus(),
+    timeSpentFiles: listTimeSpentSeedStatus(),
+    gatingFile: listGatingSeedStatus(),
   });
 }
 
@@ -80,8 +89,31 @@ export async function POST(request: NextRequest) {
       const result = await seedAdobeFile(file);
       return NextResponse.json({ step, result });
     }
+    if (step === "timespent") {
+      const file = body.file;
+      if (!file) {
+        return NextResponse.json({
+          step,
+          files: TIME_SPENT_FILES.map((f) => f.file),
+        });
+      }
+      const result = await seedTimeSpentFile(file);
+      return NextResponse.json({ step, result });
+    }
+    if (step === "gating") {
+      const result = await seedGatingFile();
+      return NextResponse.json({ step, result });
+    }
     if (step === "denorm") {
       const result = await denormalizeAdobeOnInventory();
+      return NextResponse.json({ step, result });
+    }
+    if (step === "denorm-timespent") {
+      const result = await denormalizeTimeSpentOnInventory();
+      return NextResponse.json({ step, result });
+    }
+    if (step === "denorm-gating") {
+      const result = await denormalizeGatingOnInventory();
       return NextResponse.json({ step, result });
     }
     if (step === "keywords") {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ADOBE_FILES } from "@/lib/url-cleanup/adobe-files";
+import { ADOBE_FILES, TIME_SPENT_FILES } from "@/lib/url-cleanup/adobe-files";
 import { DimensionImport } from "@/components/url-cleanup/DimensionImport";
 import { RecomputeProgressBar } from "@/components/url-cleanup/RecomputeProgressBar";
 import { runChunkedRecompute, type RecomputeProgress } from "@/components/url-cleanup/run-recompute";
@@ -12,6 +12,8 @@ type SeedStatus = {
   inventoryCount: number;
   sitemapCount: number;
   adobeFiles: Array<{ file: string; exists: boolean; slug: string; name: string }>;
+  timeSpentFiles: Array<{ file: string; exists: boolean; slug: string; name: string }>;
+  gatingFile: { file: string; exists: boolean; slug: string; name: string; resolvedFile?: string };
   dimensions: Array<{ slug: string; name: string; matchedCount: number; unmatchedCount: number; sourceType: string }>;
 };
 
@@ -83,10 +85,64 @@ export default function DimensionenPage() {
       }
       push("Adobe denormalisieren…");
       await postSeed({ step: "denorm" });
+      for (const f of TIME_SPENT_FILES) {
+        push(`Time spent ${f.file}…`);
+        const r = await postSeed({ step: "timespent", file: f.file });
+        push(`  matched ${r.result.matched.toLocaleString("de-CH")}, unmatched ${r.result.unmatched.toLocaleString("de-CH")}`);
+      }
+      push("Time spent denormalisieren…");
+      await postSeed({ step: "denorm-timespent" });
+      push("Gating…");
+      const gating = await postSeed({ step: "gating" });
+      push(`  matched ${gating.result.matched.toLocaleString("de-CH")}, unmatched ${gating.result.unmatched.toLocaleString("de-CH")}`);
+      push("Gating denormalisieren…");
+      await postSeed({ step: "denorm-gating" });
       push("Keywords…");
       await postSeed({ step: "keywords" });
       await recomputeScores();
       push("Fertig.");
+      refresh();
+    } catch (e) {
+      push(e instanceof Error ? e.message : "Fehler");
+    } finally {
+      setScoreProgress(null);
+      setBusy(false);
+    }
+  }
+
+  async function runTimeSpent() {
+    setBusy(true);
+    setLog([]);
+    try {
+      for (const f of TIME_SPENT_FILES) {
+        push(`Time spent ${f.file}…`);
+        const r = await postSeed({ step: "timespent", file: f.file });
+        push(`  matched ${r.result.matched.toLocaleString("de-CH")}, unmatched ${r.result.unmatched.toLocaleString("de-CH")}`);
+      }
+      push("Time spent denormalisieren…");
+      await postSeed({ step: "denorm-timespent" });
+      await recomputeScores();
+      push("Time spent fertig.");
+      refresh();
+    } catch (e) {
+      push(e instanceof Error ? e.message : "Fehler");
+    } finally {
+      setScoreProgress(null);
+      setBusy(false);
+    }
+  }
+
+  async function runGating() {
+    setBusy(true);
+    setLog([]);
+    try {
+      push("Gating…");
+      const gating = await postSeed({ step: "gating" });
+      push(`  matched ${gating.result.matched.toLocaleString("de-CH")}, unmatched ${gating.result.unmatched.toLocaleString("de-CH")}`);
+      push("Gating denormalisieren…");
+      await postSeed({ step: "denorm-gating" });
+      await recomputeScores();
+      push("Gating fertig.");
       refresh();
     } catch (e) {
       push(e instanceof Error ? e.message : "Fehler");
@@ -184,13 +240,61 @@ export default function DimensionenPage() {
           Inventar {status?.inventoryCount.toLocaleString("de-CH") ?? "—"} · Sitemaps{" "}
           {status?.sitemapCount ?? "—"}
         </p>
+        <p className="text-sm text-slate-500">
+          Enthält Sitemaps, URLs, Adobe Traffic/Leads, Time Spent und Gating. Time Spent kann mehrere Minuten dauern.
+        </p>
         <button
           type="button"
           disabled={busy}
           onClick={runFullSeed}
           className="px-3 py-1.5 text-sm rounded-lg bg-blue-600 text-white disabled:opacity-50"
         >
-          {busy ? "Läuft…" : "Inventar + Adobe seeden"}
+          {busy ? "Läuft…" : "Inventar + Dimensionen seeden"}
+        </button>
+      </div>
+
+      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 space-y-3">
+        <h2 className="font-semibold">Time Spent (public/data)</h2>
+        <p className="text-sm text-slate-500">
+          Adobe Time-Spent-Buckets pro Segment, denormalisiert als Anteil &lt;15s und ≥1 Minute.
+        </p>
+        <ul className="text-xs text-slate-500 space-y-0.5">
+          {(status?.timeSpentFiles ?? TIME_SPENT_FILES.map((f) => ({ ...f, exists: true }))).map((f) => (
+            <li key={f.file}>
+              {f.exists === false ? "fehlt: " : ""}
+              {f.name}
+            </li>
+          ))}
+        </ul>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={runTimeSpent}
+          className="px-3 py-1.5 text-sm rounded-lg bg-blue-600 text-white disabled:opacity-50"
+        >
+          Time Spent seeden
+        </button>
+      </div>
+
+      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 space-y-3">
+        <h2 className="font-semibold">AM Gating Header</h2>
+        <p className="text-sm text-slate-500">
+          AEM-Pfade (`/content/sites/…`) werden auf öffentliche URLs gemappt. Rollen, Live Copy und Titel landen als Dimension.
+        </p>
+        <p className="text-xs text-slate-500">
+          {status?.gatingFile
+            ? status.gatingFile.exists
+              ? status.gatingFile.resolvedFile || status.gatingFile.file
+              : "Datei fehlt"
+            : "—"}
+        </p>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={runGating}
+          className="px-3 py-1.5 text-sm rounded-lg bg-blue-600 text-white disabled:opacity-50"
+        >
+          Gating seeden
         </button>
       </div>
 

@@ -19,6 +19,11 @@ export type InventoryFilters = {
   minAaVisits: string;
   maxAaVisits: string;
   minAaFormSuccess: string;
+  aaTimeSpentHasData: string;
+  minTimeSpentShortPct: string;
+  gatingHasData: string;
+  gatingIsGated: string;
+  gatingRole: string;
   sort: string;
   sortDir: string;
 };
@@ -44,6 +49,11 @@ export const EMPTY_FILTERS: InventoryFilters = {
   minAaVisits: "",
   maxAaVisits: "",
   minAaFormSuccess: "",
+  aaTimeSpentHasData: "",
+  minTimeSpentShortPct: "",
+  gatingHasData: "",
+  gatingIsGated: "",
+  gatingRole: "",
   sort: "killConfidence",
   sortDir: "desc",
 };

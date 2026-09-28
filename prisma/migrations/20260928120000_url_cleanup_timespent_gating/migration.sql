@@ -1,0 +1,15 @@
+-- AlterTable
+ALTER TABLE "UrlInventory" ADD COLUMN IF NOT EXISTS "aaTimeSpentVisits" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "UrlInventory" ADD COLUMN IF NOT EXISTS "aaTimeSpentShortPct" DOUBLE PRECISION NOT NULL DEFAULT 0;
+ALTER TABLE "UrlInventory" ADD COLUMN IF NOT EXISTS "aaTimeSpentEngagedPct" DOUBLE PRECISION NOT NULL DEFAULT 0;
+ALTER TABLE "UrlInventory" ADD COLUMN IF NOT EXISTS "aaTimeSpentHasData" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "UrlInventory" ADD COLUMN IF NOT EXISTS "gatingHasData" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "UrlInventory" ADD COLUMN IF NOT EXISTS "gatingIsGated" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "UrlInventory" ADD COLUMN IF NOT EXISTS "gatingRoles" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[];
+ALTER TABLE "UrlInventory" ADD COLUMN IF NOT EXISTS "gatingStatus" TEXT;
+ALTER TABLE "UrlInventory" ADD COLUMN IF NOT EXISTS "gatingLiveCopy" TEXT;
+ALTER TABLE "UrlInventory" ADD COLUMN IF NOT EXISTS "gatingPageTitle" TEXT;
+ALTER TABLE "UrlInventory" ADD COLUMN IF NOT EXISTS "gatingBrowserTitle" TEXT;
+
+CREATE INDEX IF NOT EXISTS "UrlInventory_aaTimeSpentHasData_idx" ON "UrlInventory"("aaTimeSpentHasData");
+CREATE INDEX IF NOT EXISTS "UrlInventory_gatingIsGated_idx" ON "UrlInventory"("gatingIsGated");

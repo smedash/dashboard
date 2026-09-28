@@ -1,12 +1,18 @@
 import path from "path";
 import fs from "fs";
 import ExcelJS from "exceljs";
-import { ADOBE_FILES } from "./adobe-files";
+import { Prisma } from "@prisma/client";
+import { ADOBE_FILES, GATING_FILE, TIME_SPENT_FILES } from "./adobe-files";
 import { prisma } from "@/lib/prisma";
-import { canonicalUbsUrl, lookupInventoryId, toUrlKey } from "./normalize";
+import {
+  aemContentPathToUrlKey,
+  canonicalUbsUrl,
+  lookupInventoryId,
+  toUrlKey,
+} from "./normalize";
 import { parseUbsPath } from "./parse-path";
 
-export { ADOBE_FILES } from "./adobe-files";
+export { ADOBE_FILES, GATING_FILE, TIME_SPENT_FILES } from "./adobe-files";
 
 export const ADOBE_PERIOD = {
   start: new Date("2025-09-21T00:00:00.000Z"),
@@ -481,4 +487,419 @@ export function listAdobeSeedStatus() {
     ...f,
     exists: fs.existsSync(path.join(DATA_DIR, f.file)),
   }));
+}
+
+export function listTimeSpentSeedStatus() {
+  return TIME_SPENT_FILES.map((f) => ({
+    ...f,
+    exists: fs.existsSync(path.join(DATA_DIR, f.file)),
+  }));
+}
+
+export function resolveGatingFilePath(): string | null {
+  const preferred = path.join(DATA_DIR, GATING_FILE.file);
+  if (fs.existsSync(preferred)) return preferred;
+  if (!fs.existsSync(DATA_DIR)) return null;
+  const found = fs.readdirSync(DATA_DIR).find((f) => /gating/i.test(f) && /\.xlsx$/i.test(f));
+  return found ? path.join(DATA_DIR, found) : null;
+}
+
+export function listGatingSeedStatus() {
+  const filePath = resolveGatingFilePath();
+  return {
+    ...GATING_FILE,
+    exists: Boolean(filePath),
+    resolvedFile: filePath ? path.basename(filePath) : GATING_FILE.file,
+  };
+}
+
+const TIME_SPENT_KEYS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K"] as const;
+type TimeSpentKey = (typeof TIME_SPENT_KEYS)[number];
+
+const TIME_SPENT_LABELS: Record<TimeSpentKey, string> = {
+  A: "Group A: <15 seconds",
+  B: "Group B: 15-30 seconds",
+  C: "Group C: 30-60 seconds",
+  D: "Group D: 1-3 minutes",
+  E: "Group E: 3-5 minutes",
+  F: "Group F: 5-10 minutes",
+  G: "Group G: 10-15 minutes",
+  H: "Group H: 15-20 minutes",
+  I: "Group I: 20-30 minutes",
+  J: "Group J: >30 minutes",
+  K: "Group K: Last page view in the date range",
+};
+
+const TIME_SPENT_COLUMNS = [
+  { key: "visits", label: "Visits", type: "number" },
+  ...TIME_SPENT_KEYS.map((k) => ({ key: k, label: TIME_SPENT_LABELS[k], type: "number" })),
+  { key: "shortPct", label: "Share <15s (%)", type: "number" },
+  { key: "engagedPct", label: "Share ≥1 min (%)", type: "number" },
+];
+
+function parseTimeSpentGroup(label: string): TimeSpentKey | null {
+  const m = label.match(/^Group\s+([A-K])\s*:/i);
+  if (!m) return null;
+  return m[1].toUpperCase() as TimeSpentKey;
+}
+
+function emptyTimeSpentBuckets(): Record<TimeSpentKey, number> {
+  return { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0, G: 0, H: 0, I: 0, J: 0, K: 0 };
+}
+
+function timeSpentMetrics(buckets: Record<TimeSpentKey, number>) {
+  const classified = TIME_SPENT_KEYS.filter((k) => k !== "K").reduce((s, k) => s + buckets[k], 0);
+  const visits = classified + buckets.K;
+  const engaged = (["D", "E", "F", "G", "H", "I", "J"] as TimeSpentKey[]).reduce(
+    (s, k) => s + buckets[k],
+    0
+  );
+  return {
+    visits,
+    shortPct: classified > 0 ? (buckets.A / classified) * 100 : 0,
+    engagedPct: classified > 0 ? (engaged / classified) * 100 : 0,
+  };
+}
+
+type TimeSpentAgg = {
+  inventoryId: string;
+  buckets: Record<TimeSpentKey, number>;
+};
+
+export async function seedTimeSpentFile(fileName: string): Promise<{
+  slug: string;
+  matched: number;
+  unmatched: number;
+}> {
+  const spec = TIME_SPENT_FILES.find((f) => f.file === fileName);
+  if (!spec) throw new Error(`Unbekannte Time-Spent-Datei: ${fileName}`);
+  const filePath = path.join(DATA_DIR, spec.file);
+  if (!fs.existsSync(filePath)) throw new Error(`${spec.file} nicht gefunden`);
+
+  const { byKey, byNoHtml } = await loadInventoryLookup();
+  const { headers, rows } = await readSheetRows(filePath);
+  const iPage = colIndex(headers, "Pages", "Page");
+  const iGroup = colIndex(headers, "Time Spent on Page");
+  const iVisits = colIndex(headers, "Visits");
+  if (iPage < 0 || iGroup < 0) throw new Error("Pages- oder Time-Spent-Spalte fehlt");
+
+  const merged = new Map<string, TimeSpentAgg>();
+  const unmatchedSample: string[] = [];
+  let unmatched = 0;
+
+  for (const r of rows) {
+    const group = parseTimeSpentGroup(cellStr(r[iGroup]));
+    if (!group) continue;
+    const raw = cellStr(r[iPage]);
+    const keys = toUrlKey(raw);
+    const inventoryId = keys ? lookupInventoryId(keys, byKey, byNoHtml) : undefined;
+    if (!inventoryId) {
+      unmatched++;
+      if (unmatchedSample.length < 30) unmatchedSample.push(raw);
+      continue;
+    }
+    const prev = merged.get(inventoryId) ?? { inventoryId, buckets: emptyTimeSpentBuckets() };
+    prev.buckets[group] += iVisits >= 0 ? cellNum(r[iVisits]) : 0;
+    merged.set(inventoryId, prev);
+  }
+
+  const dimension = await prisma.urlDimension.upsert({
+    where: { slug: spec.slug },
+    update: {
+      name: spec.name,
+      sourceType: "adobe_timespent",
+      segment: spec.segment,
+      periodStart: ADOBE_PERIOD.start,
+      periodEnd: ADOBE_PERIOD.end,
+      columns: TIME_SPENT_COLUMNS as Prisma.InputJsonValue,
+      matchedCount: merged.size,
+      unmatchedCount: unmatched,
+      unmatchedSample,
+      importedAt: new Date(),
+    },
+    create: {
+      slug: spec.slug,
+      name: spec.name,
+      sourceType: "adobe_timespent",
+      segment: spec.segment,
+      periodStart: ADOBE_PERIOD.start,
+      periodEnd: ADOBE_PERIOD.end,
+      columns: TIME_SPENT_COLUMNS as Prisma.InputJsonValue,
+      matchedCount: merged.size,
+      unmatchedCount: unmatched,
+      unmatchedSample,
+    },
+  });
+
+  await prisma.urlDimensionValue.deleteMany({ where: { dimensionId: dimension.id } });
+
+  const valueRows = [...merged.values()].map((m) => {
+    const metrics = timeSpentMetrics(m.buckets);
+    return {
+      inventoryId: m.inventoryId,
+      dimensionId: dimension.id,
+      values: { ...m.buckets, ...metrics },
+    };
+  });
+
+  const CREATE_BATCH = 500;
+  for (let i = 0; i < valueRows.length; i += CREATE_BATCH) {
+    await prisma.urlDimensionValue.createMany({ data: valueRows.slice(i, i + CREATE_BATCH) });
+  }
+
+  return { slug: spec.slug, matched: merged.size, unmatched };
+}
+
+export async function denormalizeTimeSpentOnInventory(): Promise<{ updated: number }> {
+  const dims = await prisma.urlDimension.findMany({
+    where: { sourceType: "adobe_timespent" },
+    include: { values: true },
+  });
+
+  type Acc = Record<TimeSpentKey, number> & { has: boolean };
+  const acc = new Map<string, Acc>();
+
+  for (const dim of dims) {
+    for (const val of dim.values) {
+      const v = (val.values ?? {}) as Record<string, number>;
+      const cur = acc.get(val.inventoryId) ?? { ...emptyTimeSpentBuckets(), has: false };
+      for (const k of TIME_SPENT_KEYS) {
+        cur[k] = Math.max(cur[k], Number(v[k] ?? 0) || 0);
+      }
+      cur.has = true;
+      acc.set(val.inventoryId, cur);
+    }
+  }
+
+  await prisma.urlInventory.updateMany({
+    data: {
+      aaTimeSpentVisits: 0,
+      aaTimeSpentShortPct: 0,
+      aaTimeSpentEngagedPct: 0,
+      aaTimeSpentHasData: false,
+    },
+  });
+
+  const entries = [...acc.entries()];
+  const BATCH = 200;
+  for (let i = 0; i < entries.length; i += BATCH) {
+    const slice = entries.slice(i, i + BATCH);
+    await prisma.$transaction(
+      slice.map(([id, a]) => {
+        const metrics = timeSpentMetrics(a);
+        return prisma.urlInventory.update({
+          where: { id },
+          data: {
+            aaTimeSpentVisits: metrics.visits,
+            aaTimeSpentShortPct: metrics.shortPct,
+            aaTimeSpentEngagedPct: metrics.engagedPct,
+            aaTimeSpentHasData: a.has && metrics.visits > 0,
+          },
+        });
+      })
+    );
+  }
+
+  return { updated: entries.length };
+}
+
+const GATING_COLUMNS = [
+  { key: "roles", label: "Roles", type: "string" },
+  { key: "isGated", label: "Gated", type: "string" },
+  { key: "pageStatus", label: "Page Status", type: "string" },
+  { key: "liveCopy", label: "Live copy", type: "string" },
+  { key: "browserTitle", label: "Browser Title", type: "string" },
+  { key: "pageTitle", label: "Page Title", type: "string" },
+  { key: "pagePath", label: "Page path", type: "string" },
+];
+
+type GatingAgg = {
+  inventoryId: string;
+  roles: Set<string>;
+  pageStatus: string;
+  liveCopy: string;
+  browserTitle: string;
+  pageTitle: string;
+  pagePath: string;
+};
+
+export async function seedGatingFile(): Promise<{
+  slug: string;
+  matched: number;
+  unmatched: number;
+}> {
+  const filePath = resolveGatingFilePath();
+  if (!filePath) throw new Error("Gating-Header-Report nicht gefunden");
+
+  const { byKey, byNoHtml } = await loadInventoryLookup();
+  const { headers, rows } = await readSheetRows(filePath);
+  const iPath = colIndex(headers, "Page path", "Page Path");
+  const iStatus = colIndex(headers, "Page Status");
+  const iLive = colIndex(headers, "Live copy");
+  const iBrowser = colIndex(headers, "Browser Title");
+  const iTitle = colIndex(headers, "Page Title");
+  const roleIdx = [1, 2, 3, 4]
+    .map((n) => colIndex(headers, `Role${n}`))
+    .filter((i) => i >= 0);
+  if (iPath < 0) throw new Error("Page-path-Spalte fehlt");
+
+  const merged = new Map<string, GatingAgg>();
+  const unmatchedSample: string[] = [];
+  let unmatched = 0;
+
+  for (const r of rows) {
+    const pagePath = cellStr(r[iPath]);
+    const keys = aemContentPathToUrlKey(pagePath);
+    const inventoryId = keys ? lookupInventoryId(keys, byKey, byNoHtml) : undefined;
+    if (!inventoryId) {
+      unmatched++;
+      if (unmatchedSample.length < 30) unmatchedSample.push(pagePath);
+      continue;
+    }
+    const prev = merged.get(inventoryId) ?? {
+      inventoryId,
+      roles: new Set<string>(),
+      pageStatus: "",
+      liveCopy: "",
+      browserTitle: "",
+      pageTitle: "",
+      pagePath,
+    };
+    for (const i of roleIdx) {
+      const role = cellStr(r[i]);
+      if (role) prev.roles.add(role);
+    }
+    const status = iStatus >= 0 ? cellStr(r[iStatus]) : "";
+    if (status) prev.pageStatus = status;
+    const live = iLive >= 0 ? cellStr(r[iLive]) : "";
+    if (live) prev.liveCopy = live;
+    const browser = iBrowser >= 0 ? cellStr(r[iBrowser]) : "";
+    if (browser && !prev.browserTitle) prev.browserTitle = browser;
+    const title = iTitle >= 0 ? cellStr(r[iTitle]) : "";
+    if (title && !prev.pageTitle) prev.pageTitle = title;
+    merged.set(inventoryId, prev);
+  }
+
+  const dimension = await prisma.urlDimension.upsert({
+    where: { slug: GATING_FILE.slug },
+    update: {
+      name: GATING_FILE.name,
+      sourceType: "gating",
+      segment: GATING_FILE.segment,
+      columns: GATING_COLUMNS as Prisma.InputJsonValue,
+      matchedCount: merged.size,
+      unmatchedCount: unmatched,
+      unmatchedSample,
+      importedAt: new Date(),
+    },
+    create: {
+      slug: GATING_FILE.slug,
+      name: GATING_FILE.name,
+      sourceType: "gating",
+      segment: GATING_FILE.segment,
+      columns: GATING_COLUMNS as Prisma.InputJsonValue,
+      matchedCount: merged.size,
+      unmatchedCount: unmatched,
+      unmatchedSample,
+    },
+  });
+
+  await prisma.urlDimensionValue.deleteMany({ where: { dimensionId: dimension.id } });
+
+  const valueRows = [...merged.values()].map((m) => {
+    const roles = [...m.roles];
+    return {
+      inventoryId: m.inventoryId,
+      dimensionId: dimension.id,
+      values: {
+        roles,
+        isGated: roles.length > 0,
+        pageStatus: m.pageStatus,
+        liveCopy: m.liveCopy,
+        browserTitle: m.browserTitle,
+        pageTitle: m.pageTitle,
+        pagePath: m.pagePath,
+      },
+    };
+  });
+
+  const CREATE_BATCH = 500;
+  for (let i = 0; i < valueRows.length; i += CREATE_BATCH) {
+    await prisma.urlDimensionValue.createMany({ data: valueRows.slice(i, i + CREATE_BATCH) });
+  }
+
+  return { slug: GATING_FILE.slug, matched: merged.size, unmatched };
+}
+
+export async function denormalizeGatingOnInventory(): Promise<{ updated: number }> {
+  const dims = await prisma.urlDimension.findMany({
+    where: { sourceType: "gating" },
+    include: { values: true },
+  });
+
+  type Acc = {
+    roles: string[];
+    isGated: boolean;
+    pageStatus: string | null;
+    liveCopy: string | null;
+    pageTitle: string | null;
+    browserTitle: string | null;
+  };
+  const acc = new Map<string, Acc>();
+
+  for (const dim of dims) {
+    for (const val of dim.values) {
+      const v = (val.values ?? {}) as Record<string, unknown>;
+      const roles = Array.isArray(v.roles)
+        ? v.roles.map((r) => String(r)).filter(Boolean)
+        : String(v.roles || "")
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean);
+      acc.set(val.inventoryId, {
+        roles: [...new Set(roles)],
+        isGated: Boolean(v.isGated) || roles.length > 0,
+        pageStatus: v.pageStatus ? String(v.pageStatus) : null,
+        liveCopy: v.liveCopy ? String(v.liveCopy) : null,
+        pageTitle: v.pageTitle ? String(v.pageTitle) : null,
+        browserTitle: v.browserTitle ? String(v.browserTitle) : null,
+      });
+    }
+  }
+
+  await prisma.urlInventory.updateMany({
+    data: {
+      gatingHasData: false,
+      gatingIsGated: false,
+      gatingRoles: [],
+      gatingStatus: null,
+      gatingLiveCopy: null,
+      gatingPageTitle: null,
+      gatingBrowserTitle: null,
+    },
+  });
+
+  const entries = [...acc.entries()];
+  const BATCH = 200;
+  for (let i = 0; i < entries.length; i += BATCH) {
+    const slice = entries.slice(i, i + BATCH);
+    await prisma.$transaction(
+      slice.map(([id, a]) =>
+        prisma.urlInventory.update({
+          where: { id },
+          data: {
+            gatingHasData: true,
+            gatingIsGated: a.isGated,
+            gatingRoles: a.roles,
+            gatingStatus: a.pageStatus,
+            gatingLiveCopy: a.liveCopy,
+            gatingPageTitle: a.pageTitle,
+            gatingBrowserTitle: a.browserTitle,
+          },
+        })
+      )
+    );
+  }
+
+  return { updated: entries.length };
 }
