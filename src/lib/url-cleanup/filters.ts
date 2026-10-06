@@ -33,7 +33,7 @@ export type InventoryListQuery = {
   lastmodBefore?: string;
   focusKeyword?: string;
   labsKeyword?: string;
-  preset?: "high" | "zero" | "";
+  preset?: "high" | "zero" | "protected" | "";
   page?: number;
   pageSize?: number;
   sort?: string;
@@ -87,7 +87,7 @@ export function parseInventoryQuery(sp: URLSearchParams): InventoryListQuery {
     lastmodBefore: sp.get("lastmodBefore")?.trim() || undefined,
     focusKeyword: sp.get("focusKeyword")?.trim() || undefined,
     labsKeyword: sp.get("labsKeyword")?.trim() || undefined,
-    preset: preset === "high" || preset === "zero" ? preset : "",
+    preset: preset === "high" || preset === "zero" || preset === "protected" ? preset : "",
     page: num("page") ?? 0,
     pageSize: Math.min(num("pageSize") ?? 25, 200),
     sort: sp.get("sort")?.trim() || "killConfidence",
@@ -102,6 +102,8 @@ export function buildInventoryWhere(q: InventoryListQuery): Prisma.UrlInventoryW
     and.push({ killBand: "high" });
   } else if (q.preset === "zero") {
     and.push({ gscImpressions: 0, aaVisits: 0, aaFormSuccess: 0 });
+  } else if (q.preset === "protected") {
+    and.push({ killBand: "protected" });
   }
 
   if (q.q) {

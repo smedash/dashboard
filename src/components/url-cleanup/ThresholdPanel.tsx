@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from "react";
 import type { KillScoreSettings } from "@/lib/url-cleanup/kill-score";
+import { parseKeepUrlPatterns } from "@/lib/url-cleanup/keep-patterns";
 import { RecomputeProgressBar } from "./RecomputeProgressBar";
 import { runChunkedRecompute, type RecomputeProgress } from "./run-recompute";
 
 export function ThresholdPanel({ onSaved }: { onSaved?: () => void }) {
   const [settings, setSettings] = useState<KillScoreSettings | null>(null);
+  const [keepText, setKeepText] = useState("");
   const [saving, setSaving] = useState(false);
   const [open, setOpen] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -15,7 +17,12 @@ export function ThresholdPanel({ onSaved }: { onSaved?: () => void }) {
   useEffect(() => {
     fetch("/api/url-cleanup/settings")
       .then((r) => r.json())
-      .then((d) => setSettings(d.settings))
+      .then((d) => {
+        const next = d.settings as KillScoreSettings | undefined;
+        if (!next) throw new Error(d.error || "Settings fehlen");
+        setSettings(next);
+        setKeepText((next.keepUrlPatterns ?? []).join("\n"));
+      })
       .catch(() => setSettings(null));
   }, []);
 
@@ -31,12 +38,12 @@ export function ThresholdPanel({ onSaved }: { onSaved?: () => void }) {
 
   if (!settings) return null;
 
-  const num = (k: keyof KillScoreSettings, label: string) => (
+  const num = (k: Exclude<keyof KillScoreSettings, "gscPeriod" | "keepUrlPatterns">, label: string) => (
     <label className="block text-xs text-slate-500">
       {label}
       <input
         type="number"
-        value={settings[k] as number}
+        value={settings[k]}
         onChange={(e) => setSettings({ ...settings, [k]: Number(e.target.value) })}
         disabled={saving}
         className="mt-1 w-full px-2 py-1.5 text-sm rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
@@ -53,7 +60,11 @@ export function ThresholdPanel({ onSaved }: { onSaved?: () => void }) {
         }}
         className="w-full px-4 py-3 text-left text-sm font-medium text-slate-800 dark:text-slate-100"
       >
-        Score-Schwellen {open ? "▸" : "▾"}
+        Score-Schwellen & Keep-URLs
+        {parseKeepUrlPatterns(keepText).length > 0
+          ? ` (${parseKeepUrlPatterns(keepText).length})`
+          : ""}{" "}
+        {open ? "▸" : "▾"}
       </button>
       {open && (
         <div className="px-4 pb-4 space-y-3">
@@ -81,6 +92,26 @@ export function ThresholdPanel({ onSaved }: { onSaved?: () => void }) {
             {num("vetoGscClicks", "Veto ab GSC-Klicks")}
             {num("vetoAaVisits", "Veto ab Adobe-Visits")}
           </div>
+          <label className="block text-xs text-slate-500">
+            Keep-URLs (Allowlist)
+            <span className="mt-0.5 block font-normal text-slate-400">
+              Eine Zeile pro Eintrag. Ordner wie <code className="text-slate-500">/legal/</code> oder
+              komplette URLs. Treffer gelten nie als Kill und erscheinen in der 3D-Wolke als blaue
+              Punkte.
+            </span>
+            <textarea
+              value={keepText}
+              onChange={(e) => setKeepText(e.target.value)}
+              disabled={saving}
+              rows={6}
+              spellCheck={false}
+              placeholder={"/legal/\nhttps://www.ubs.com/ch/de/legal/privacy.html"}
+              className="mt-1 w-full px-2 py-1.5 text-sm font-mono rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
+            />
+            <span className="mt-1 block text-[11px] text-slate-400">
+              {parseKeepUrlPatterns(keepText).length.toLocaleString("de-CH")} Muster
+            </span>
+          </label>
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -91,14 +122,18 @@ export function ThresholdPanel({ onSaved }: { onSaved?: () => void }) {
                 setMsg(null);
                 setProgress({ processed: 0, total: 0, percent: 0, etaSeconds: null });
                 try {
+                  const keepUrlPatterns = parseKeepUrlPatterns(keepText);
+                  const payload = { ...settings, keepUrlPatterns };
                   const res = await fetch("/api/url-cleanup/settings", {
                     method: "PUT",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ settings, recompute: false }),
+                    body: JSON.stringify({ settings: payload, recompute: false }),
                   });
                   const data = await res.json();
                   if (!res.ok) throw new Error(data.error || "Fehler");
                   const updated = await runChunkedRecompute(setProgress);
+                  setSettings({ ...payload });
+                  setKeepText(keepUrlPatterns.join("\n"));
                   setMsg(`Neu berechnet: ${updated.toLocaleString("de-CH")} URLs`);
                   onSaved?.();
                 } catch (e) {

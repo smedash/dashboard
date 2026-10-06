@@ -11,6 +11,7 @@ type Stats = {
   labsCached: number;
   highKill: number;
   keepBand: number;
+  protectedBand?: number;
   gscMatchRate: number;
   adobeMatchRate: number;
   lastGsc: { gscSyncedAt: string; gscPeriod: string | null } | null;
@@ -86,7 +87,7 @@ export default function UrlCleanupOverviewPage() {
         <Card
           label="Kill high"
           value={stats.highKill.toLocaleString("de-CH")}
-          hint={`${stats.keepBand.toLocaleString("de-CH")} Keep-Vetos`}
+          hint={`${stats.keepBand.toLocaleString("de-CH")} Keep-Vetos · ${(stats.protectedBand ?? 0).toLocaleString("de-CH")} Allowlist`}
         />
         <Card label="Fokuskeywords" value={stats.withFocus.toLocaleString("de-CH")} />
         <Card

@@ -1,4 +1,6 @@
-export type KillBand = "high" | "medium" | "low" | "keep";
+import { firstMatchingKeepPattern } from "./keep-patterns";
+
+export type KillBand = "high" | "medium" | "low" | "keep" | "protected";
 
 export type KillScoreSettings = {
   gscPeriod: string;
@@ -11,6 +13,7 @@ export type KillScoreSettings = {
   capMissingAdobe: number;
   vetoGscClicks: number;
   vetoAaVisits: number;
+  keepUrlPatterns: string[];
 };
 
 export const DEFAULT_KILL_SETTINGS: KillScoreSettings = {
@@ -24,9 +27,12 @@ export const DEFAULT_KILL_SETTINGS: KillScoreSettings = {
   capMissingAdobe: 85,
   vetoGscClicks: 500,
   vetoAaVisits: 1000,
+  keepUrlPatterns: [],
 };
 
 export type KillScoreInput = {
+  url: string;
+  urlKey: string;
   gscClicks: number;
   gscImpressions: number;
   gscPeriod: string | null;
@@ -85,6 +91,19 @@ export function computeKillScore(
   const reasons: string[] = [];
   const missing: string[] = [];
   let score = 0;
+
+  const keepHit = firstMatchingKeepPattern(
+    row.url,
+    row.urlKey,
+    settings.keepUrlPatterns ?? []
+  );
+  if (keepHit) {
+    return {
+      killConfidence: 0,
+      killBand: "protected",
+      killReason: `Nicht löschen: Allowlist-Muster «${keepHit}».`,
+    };
+  }
 
   if (row.cleanupStatus === "keep") {
     return {

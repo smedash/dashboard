@@ -7,6 +7,8 @@ const BATCH = 2000;
 
 const SCORE_SELECT = {
   id: true,
+  url: true,
+  urlKey: true,
   gscClicks: true,
   gscImpressions: true,
   gscPeriod: true,
@@ -28,6 +30,8 @@ const SCORE_SELECT = {
 
 type ScoreRow = {
   id: string;
+  url: string;
+  urlKey: string;
   gscClicks: number;
   gscImpressions: number;
   gscPeriod: string | null;
@@ -96,6 +100,7 @@ export async function markZeroConfidenceAsKeep(): Promise<{ updated: number }> {
   const result = await prisma.urlInventory.updateMany({
     where: {
       killConfidence: 0,
+      killBand: { not: "protected" },
       cleanupStatus: { notIn: ["keep", "kill"] },
     },
     data: { cleanupStatus: "keep" },
@@ -112,7 +117,13 @@ async function applyBatch(
   const tuples = rows.map((row) => {
     const score = computeKillScore(row, settings);
     const status =
-      score.killConfidence === 0 && row.cleanupStatus !== "kill" ? "keep" : row.cleanupStatus;
+      score.killBand === "protected"
+        ? row.cleanupStatus === "kill"
+          ? "none"
+          : row.cleanupStatus
+        : score.killConfidence === 0 && row.cleanupStatus !== "kill"
+          ? "keep"
+          : row.cleanupStatus;
     return Prisma.sql`(${score.killConfidence}::int, ${score.killReason}::text, ${score.killBand}::text, ${status}::text, ${row.id}::text)`;
   });
 

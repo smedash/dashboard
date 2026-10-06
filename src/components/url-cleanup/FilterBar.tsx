@@ -25,6 +25,7 @@ export function FilterBar({
           { id: "", label: "Alle" },
           { id: "high", label: "Kill-Kandidaten (high)" },
           { id: "zero", label: "0/0/0 Traffic" },
+          { id: "protected", label: "Allowlist (behalten)" },
         ].map((p) => (
           <button
             key={p.id || "all"}
@@ -134,6 +135,7 @@ export function FilterBar({
           <option value="medium">medium (50–74)</option>
           <option value="low">low (1–49)</option>
           <option value="keep">keep (0)</option>
+          <option value="protected">Allowlist (blau)</option>
         </select>
         <div className="grid grid-cols-2 gap-2">
           <input

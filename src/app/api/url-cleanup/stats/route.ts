@@ -16,6 +16,7 @@ export async function GET() {
     labsCached,
     highKill,
     keepBand,
+    protectedBand,
     lastGsc,
     sitemaps,
     dimensions,
@@ -27,6 +28,7 @@ export async function GET() {
     prisma.urlInventory.count({ where: { labsHasData: true } }),
     prisma.urlInventory.count({ where: { killBand: "high" } }),
     prisma.urlInventory.count({ where: { killBand: "keep" } }),
+    prisma.urlInventory.count({ where: { killBand: "protected" } }),
     prisma.urlInventory.findFirst({
       where: { gscSyncedAt: { not: null } },
       orderBy: { gscSyncedAt: "desc" },
@@ -57,6 +59,7 @@ export async function GET() {
     labsCached,
     highKill,
     keepBand,
+    protectedBand,
     gscMatchRate: total > 0 ? inGsc / total : 0,
     adobeMatchRate: total > 0 ? inAdobe / total : 0,
     lastGsc,

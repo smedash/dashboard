@@ -1,0 +1,1 @@
+ALTER TABLE "UrlCleanupSettings" ADD COLUMN IF NOT EXISTS "keepUrlPatterns" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[];

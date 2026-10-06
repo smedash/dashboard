@@ -30,6 +30,7 @@ function bandHex(b: string): string {
   if (b === "medium") return "#f97316";
   if (b === "low") return "#f59e0b";
   if (b === "keep") return "#22c55e";
+  if (b === "protected") return "#3b82f6";
   return "#94a3b8";
 }
 
@@ -47,6 +48,7 @@ const BAND_DRAW_RANK: Record<string, number> = {
   medium: 1,
   low: 2,
   keep: 3,
+  protected: 4,
 };
 
 const CLUSTER_RADIUS = 8;
@@ -348,7 +350,8 @@ export function Cloud3D({
           Metrik-Scatter
         </button>
         <span className="text-xs text-slate-500">
-          {points.length.toLocaleString("de-CH")} Punkte · rot = high Konfidenz · grün = keep
+          {points.length.toLocaleString("de-CH")} Punkte · rot = high Konfidenz · grün = keep · blau =
+          Allowlist
         </span>
         <button
           type="button"
@@ -397,7 +400,8 @@ export function Cloud3D({
                 </a>
                 <div className="mt-1.5 space-y-0.5 text-slate-500 dark:text-slate-400">
                   <div>
-                    Konfidenz {selected.point.k} ({selected.point.b})
+                    Konfidenz {selected.point.k} (
+                    {selected.point.b === "protected" ? "Allowlist" : selected.point.b})
                   </div>
                   <div>GSC Impressions {selected.point.gi.toLocaleString("de-CH")}</div>
                   <div>GSC Klicks {selected.point.gc.toLocaleString("de-CH")}</div>

@@ -1370,6 +1370,7 @@ model UrlCleanupSettings {
   capMissingAdobe    Int      @default(85)
   vetoGscClicks      Int      @default(500)
   vetoAaVisits       Int      @default(1000)
+  keepUrlPatterns    String[] @default([])
   updatedAt          DateTime @updatedAt
 }
 
