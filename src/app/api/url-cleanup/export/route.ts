@@ -7,6 +7,8 @@ import {
   parseInventoryQuery,
 } from "@/lib/url-cleanup/filters";
 import ExcelJS from "exceljs";
+import { displayCleanupStatus } from "@/lib/url-cleanup/cleanup-status";
+import { syncCleanupStatusFromKillBand } from "@/lib/url-cleanup/recompute";
 
 export const maxDuration = 120;
 
@@ -15,6 +17,8 @@ export async function GET(request: NextRequest) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  await syncCleanupStatusFromKillBand();
 
   const q = parseInventoryQuery(request.nextUrl.searchParams);
   const where = buildInventoryWhere(q);
@@ -99,7 +103,7 @@ export async function GET(request: NextRequest) {
       r.killConfidence,
       r.killBand,
       r.killReason,
-      r.cleanupStatus,
+      displayCleanupStatus(r.killBand).label,
       r.cleanupNote,
     ]);
   }

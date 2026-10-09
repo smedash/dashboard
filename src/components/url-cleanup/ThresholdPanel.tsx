@@ -96,8 +96,8 @@ export function ThresholdPanel({ onSaved }: { onSaved?: () => void }) {
             Keep-URLs (Allowlist)
             <span className="mt-0.5 block font-normal text-slate-400">
               Eine Zeile pro Eintrag. Ordner wie <code className="text-slate-500">/legal/</code> oder
-              komplette URLs. Treffer gelten nie als Kill und erscheinen in der 3D-Wolke als blaue
-              Punkte.
+              komplette URLs. Treffer gelten als MustKeep, nie als Kill, und erscheinen in der
+              3D-Wolke als blaue Punkte.
             </span>
             <textarea
               value={keepText}

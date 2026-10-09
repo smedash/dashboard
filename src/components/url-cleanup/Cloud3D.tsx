@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber";
 import { OrbitControls, Html } from "@react-three/drei";
 import * as THREE from "three";
+import { displayCleanupStatus } from "@/lib/url-cleanup/cleanup-status";
 
 export type CloudPoint = {
   id: string;
@@ -350,8 +351,8 @@ export function Cloud3D({
           Metrik-Scatter
         </button>
         <span className="text-xs text-slate-500">
-          {points.length.toLocaleString("de-CH")} Punkte · rot = high Konfidenz · grün = keep · blau =
-          Allowlist
+          {points.length.toLocaleString("de-CH")} Punkte · rot = Kill · orange = Candidate · grün =
+          Keep · blau = MustKeep
         </span>
         <button
           type="button"
@@ -400,8 +401,7 @@ export function Cloud3D({
                 </a>
                 <div className="mt-1.5 space-y-0.5 text-slate-500 dark:text-slate-400">
                   <div>
-                    Konfidenz {selected.point.k} (
-                    {selected.point.b === "protected" ? "Allowlist" : selected.point.b})
+                    Konfidenz {selected.point.k} ({displayCleanupStatus(selected.point.b).label})
                   </div>
                   <div>GSC Impressions {selected.point.gi.toLocaleString("de-CH")}</div>
                   <div>GSC Klicks {selected.point.gc.toLocaleString("de-CH")}</div>

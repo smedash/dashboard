@@ -22,7 +22,7 @@ export function KillBadge({ score, band }: { score: number; band: string }) {
   return (
     <div className="min-w-[4.5rem]">
       <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold tabular-nums ${cls}`}>
-        {band === "protected" ? "Allowlist" : score}
+        {band === "protected" ? "MustKeep" : score}
       </span>
       <div className="mt-1 h-1 w-full rounded bg-slate-200 dark:bg-slate-700 overflow-hidden">
         <div className={`h-full ${bar}`} style={{ width: band === "protected" ? "100%" : `${Math.max(2, score)}%` }} />

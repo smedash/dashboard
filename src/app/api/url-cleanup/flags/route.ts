@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { canEdit } from "@/lib/rbac";
 import { prisma } from "@/lib/prisma";
+import { isCleanupStatus } from "@/lib/url-cleanup/cleanup-status";
 import { recomputeKillScores } from "@/lib/url-cleanup/recompute";
 
 export async function PATCH(request: NextRequest) {
@@ -24,7 +25,7 @@ export async function PATCH(request: NextRequest) {
     if (ids.length === 0 || !status) {
       return NextResponse.json({ error: "ids und status erforderlich" }, { status: 400 });
     }
-    if (!["none", "candidate", "keep", "kill"].includes(status)) {
+    if (status !== "none" && !isCleanupStatus(status)) {
       return NextResponse.json({ error: "Ungültiger Status" }, { status: 400 });
     }
 

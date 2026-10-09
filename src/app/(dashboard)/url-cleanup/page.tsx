@@ -87,7 +87,7 @@ export default function UrlCleanupOverviewPage() {
         <Card
           label="Kill high"
           value={stats.highKill.toLocaleString("de-CH")}
-          hint={`${stats.keepBand.toLocaleString("de-CH")} Keep-Vetos · ${(stats.protectedBand ?? 0).toLocaleString("de-CH")} Allowlist`}
+          hint={`${stats.keepBand.toLocaleString("de-CH")} Keep · ${(stats.protectedBand ?? 0).toLocaleString("de-CH")} MustKeep`}
         />
         <Card label="Fokuskeywords" value={stats.withFocus.toLocaleString("de-CH")} />
         <Card

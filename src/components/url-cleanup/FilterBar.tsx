@@ -25,7 +25,7 @@ export function FilterBar({
           { id: "", label: "Alle" },
           { id: "high", label: "Kill-Kandidaten (high)" },
           { id: "zero", label: "0/0/0 Traffic" },
-          { id: "protected", label: "Allowlist (behalten)" },
+          { id: "protected", label: "MustKeep (Allowlist)" },
         ].map((p) => (
           <button
             key={p.id || "all"}
@@ -135,7 +135,7 @@ export function FilterBar({
           <option value="medium">medium (50–74)</option>
           <option value="low">low (1–49)</option>
           <option value="keep">keep (0)</option>
-          <option value="protected">Allowlist (blau)</option>
+          <option value="protected">MustKeep / Allowlist (blau)</option>
         </select>
         <div className="grid grid-cols-2 gap-2">
           <input
@@ -208,10 +208,10 @@ export function FilterBar({
           className="px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
         >
           <option value="">Status</option>
-          <option value="none">none</option>
-          <option value="candidate">candidate</option>
-          <option value="keep">keep</option>
-          <option value="kill">kill</option>
+          <option value="kill">Kill</option>
+          <option value="candidate">Candidate</option>
+          <option value="keep">Keep</option>
+          <option value="mustKeep">MustKeep</option>
         </select>
       </div>
     </div>

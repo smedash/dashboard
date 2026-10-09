@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { cleanupStatusFromKillBand } from "./cleanup-status";
 import { computeKillScore } from "./kill-score";
 import { getKillSettings } from "./settings";
 
@@ -26,6 +27,8 @@ const SCORE_SELECT = {
   labsMaxSearchVolume: true,
   lastmod: true,
   cleanupStatus: true,
+  killBand: true,
+  killReason: true,
 } as const;
 
 type ScoreRow = {
@@ -49,6 +52,8 @@ type ScoreRow = {
   labsMaxSearchVolume: number | null;
   lastmod: Date | null;
   cleanupStatus: string;
+  killBand: string;
+  killReason: string;
 };
 
 export async function recomputeKillScoreChunk(cursor?: string): Promise<{
@@ -96,16 +101,24 @@ export async function recomputeKillScores(options?: { ids?: string[] }): Promise
   return { updated };
 }
 
-export async function markZeroConfidenceAsKeep(): Promise<{ updated: number }> {
-  const result = await prisma.urlInventory.updateMany({
-    where: {
-      killConfidence: 0,
-      killBand: { not: "protected" },
-      cleanupStatus: { notIn: ["keep", "kill"] },
-    },
-    data: { cleanupStatus: "keep" },
-  });
-  return { updated: result.count };
+/** Setzt den Status aus dem aktuellen Kill-Band — analog zur 3D-Wolke. */
+export async function syncCleanupStatusFromKillBand(): Promise<{ updated: number }> {
+  const result = await prisma.$executeRaw`
+    UPDATE "UrlInventory"
+    SET "cleanupStatus" = CASE "killBand"
+      WHEN 'protected' THEN 'mustKeep'
+      WHEN 'keep' THEN 'keep'
+      WHEN 'high' THEN 'kill'
+      ELSE 'candidate'
+    END
+    WHERE "cleanupStatus" IS DISTINCT FROM CASE "killBand"
+      WHEN 'protected' THEN 'mustKeep'
+      WHEN 'keep' THEN 'keep'
+      WHEN 'high' THEN 'kill'
+      ELSE 'candidate'
+    END
+  `;
+  return { updated: Number(result) };
 }
 
 async function applyBatch(
@@ -116,14 +129,7 @@ async function applyBatch(
 
   const tuples = rows.map((row) => {
     const score = computeKillScore(row, settings);
-    const status =
-      score.killBand === "protected"
-        ? row.cleanupStatus === "kill"
-          ? "none"
-          : row.cleanupStatus
-        : score.killConfidence === 0 && row.cleanupStatus !== "kill"
-          ? "keep"
-          : row.cleanupStatus;
+    const status = cleanupStatusFromKillBand(score.killBand);
     return Prisma.sql`(${score.killConfidence}::int, ${score.killReason}::text, ${score.killBand}::text, ${status}::text, ${row.id}::text)`;
   });
 

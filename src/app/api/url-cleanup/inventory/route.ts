@@ -6,7 +6,8 @@ import {
   buildInventoryWhere,
   parseInventoryQuery,
 } from "@/lib/url-cleanup/filters";
-import { markZeroConfidenceAsKeep } from "@/lib/url-cleanup/recompute";
+import { tallyCleanupStatusCounts } from "@/lib/url-cleanup/cleanup-status";
+import { syncCleanupStatusFromKillBand } from "@/lib/url-cleanup/recompute";
 
 export async function GET(request: NextRequest) {
   const session = await auth();
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  await markZeroConfidenceAsKeep();
+  await syncCleanupStatusFromKillBand();
 
   const q = parseInventoryQuery(request.nextUrl.searchParams);
   const where = buildInventoryWhere(q);
@@ -22,7 +23,7 @@ export async function GET(request: NextRequest) {
   const page = q.page ?? 0;
   const pageSize = q.pageSize ?? 25;
 
-  const [total, rows, countries, languages] = await Promise.all([
+  const [total, rows, countries, languages, bandCounts] = await Promise.all([
     prisma.urlInventory.count({ where }),
     prisma.urlInventory.findMany({
       where,
@@ -47,6 +48,11 @@ export async function GET(request: NextRequest) {
       select: { language: true },
       take: 80,
     }),
+    prisma.urlInventory.groupBy({
+      by: ["killBand"],
+      where,
+      _count: { _all: true },
+    }),
   ]);
 
   return NextResponse.json({
@@ -54,6 +60,9 @@ export async function GET(request: NextRequest) {
     page,
     pageSize,
     rows,
+    statusCounts: tallyCleanupStatusCounts(
+      bandCounts.map((row) => ({ killBand: row.killBand, count: row._count._all }))
+    ),
     facets: {
       countries: countries.map((c) => c.country).filter(Boolean).sort(),
       languages: languages.map((c) => c.language).filter(Boolean).sort(),

@@ -1,10 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { CleanupStatusBadge } from "@/components/url-cleanup/CleanupStatusBadge";
 import { FilterBar } from "@/components/url-cleanup/FilterBar";
 import { KillBadge } from "@/components/url-cleanup/KillBadge";
 import { RankedKeywordsSyncPanel } from "@/components/url-cleanup/RankedKeywordsSyncPanel";
+import { StatusDistributionChart } from "@/components/url-cleanup/StatusDistributionChart";
 import { ThresholdPanel } from "@/components/url-cleanup/ThresholdPanel";
+import {
+  emptyCleanupStatusCounts,
+  formatCleanupStatus,
+  type CleanupStatusCounts,
+} from "@/lib/url-cleanup/cleanup-status";
 import {
   EMPTY_FILTERS,
   filtersToParams,
@@ -67,6 +74,7 @@ export default function InventarPage() {
   const [detail, setDetail] = useState<Row | null>(null);
   const [labs, setLabs] = useState<Record<string, LabsRow[]>>({});
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
+  const [statusCounts, setStatusCounts] = useState<CleanupStatusCounts>(emptyCleanupStatusCounts);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -90,6 +98,7 @@ export default function InventarPage() {
     const data = await res.json();
     setRows(data.rows ?? []);
     setTotal(data.total ?? 0);
+    if (data.statusCounts) setStatusCounts(data.statusCounts);
     if (data.facets) setFacets(data.facets);
     setLoading(false);
   }, [debounced, page]);
@@ -140,7 +149,7 @@ export default function InventarPage() {
       setStatusMsg(data.error || "Fehler");
       return;
     }
-    setStatusMsg(`${ids.length} URLs → ${status}`);
+    setStatusMsg(`${ids.length} URLs → ${formatCleanupStatus(status)}`);
     setSelected(new Set());
     load();
   }
@@ -154,7 +163,10 @@ export default function InventarPage() {
         facets={facets}
         sitemaps={sitemaps}
       />
-      <RankedKeywordsSyncPanel onDone={() => load()} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+        <RankedKeywordsSyncPanel onDone={() => load()} />
+        <StatusDistributionChart counts={statusCounts} total={total} loading={loading} />
+      </div>
 
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm text-slate-500">
@@ -167,13 +179,13 @@ export default function InventarPage() {
           Excel-Export
         </a>
         <button type="button" className="px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-600" onClick={() => setStatus("kill")}>
-          Markieren: kill
+          Markieren: Kill
         </button>
         <button type="button" className="px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-600" onClick={() => setStatus("keep")}>
-          keep
+          Keep
         </button>
         <button type="button" className="px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-600" onClick={() => setStatus("candidate")}>
-          candidate
+          Candidate
         </button>
         {statusMsg && <span className="text-xs text-slate-500">{statusMsg}</span>}
       </div>
@@ -291,16 +303,8 @@ export default function InventarPage() {
                     <span className="text-slate-400">—</span>
                   )}
                 </td>
-                <td
-                  className={`px-3 py-2 text-xs align-top overflow-hidden ${
-                    r.cleanupStatus === "keep"
-                      ? "text-green-700 dark:text-green-400 font-medium"
-                      : r.cleanupStatus === "kill"
-                        ? "text-red-700 dark:text-red-400 font-medium"
-                        : ""
-                  }`}
-                >
-                  {r.cleanupStatus}
+                <td className="px-3 py-2 text-xs align-top overflow-hidden">
+                  <CleanupStatusBadge killBand={r.killBand} />
                 </td>
               </tr>
             ))}
@@ -370,7 +374,9 @@ export default function InventarPage() {
                 </>
               ) : null}
               <dt className="text-slate-500">Status</dt>
-              <dd>{detail.cleanupStatus}</dd>
+              <dd>
+                <CleanupStatusBadge killBand={detail.killBand} />
+              </dd>
             </dl>
             <div>
               <div className="text-xs font-medium text-slate-500 mb-1">Fokuskeywords</div>

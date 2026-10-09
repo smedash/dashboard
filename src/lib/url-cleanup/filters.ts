@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import { killBandsForCleanupStatus } from "./cleanup-status";
 
 export type InventoryListQuery = {
   q?: string;
@@ -126,7 +127,14 @@ export function buildInventoryWhere(q: InventoryListQuery): Prisma.UrlInventoryW
   if (q.hasFocusKeywords !== undefined) and.push({ hasFocusKeywords: q.hasFocusKeywords });
   if (q.inEditorialPlan !== undefined) and.push({ inEditorialPlan: q.inEditorialPlan });
   if (q.labsHasData !== undefined) and.push({ labsHasData: q.labsHasData });
-  if (q.cleanupStatus) and.push({ cleanupStatus: q.cleanupStatus });
+  if (q.cleanupStatus) {
+    const bands = killBandsForCleanupStatus(q.cleanupStatus);
+    if (bands) {
+      and.push({ killBand: { in: bands } });
+    } else {
+      and.push({ cleanupStatus: q.cleanupStatus });
+    }
+  }
   if (q.killBand) and.push({ killBand: q.killBand });
   if (q.minKillConfidence !== undefined) and.push({ killConfidence: { gte: q.minKillConfidence } });
   if (q.maxKillConfidence !== undefined) and.push({ killConfidence: { lte: q.maxKillConfidence } });

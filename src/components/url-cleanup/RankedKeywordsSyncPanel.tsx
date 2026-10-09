@@ -43,7 +43,7 @@ export function RankedKeywordsSyncPanel({ onDone }: { onDone?: () => void }) {
   }, [busy]);
 
   return (
-    <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 space-y-3">
+    <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 space-y-3 h-full">
       <h2 className="font-semibold">ranked Keywords (DataForSEO)</h2>
       <p className="text-sm text-slate-500">
         Einmaliger Abruf der Top-Rankings je Inventar-URL. Bereits gespeicherte URLs werden übersprungen.

@@ -50,6 +50,9 @@ export type KillScoreInput = {
   labsMaxSearchVolume: number | null;
   lastmod: Date | null;
   cleanupStatus: string;
+  /** Zuletzt gespeichertes Band — für manuelle Keep-Overrides. */
+  killBand?: string;
+  killReason?: string;
 };
 
 export type KillScoreResult = {
@@ -83,6 +86,17 @@ function fmt(n: number): string {
   return n.toLocaleString("de-CH");
 }
 
+const MANUAL_KEEP_REASON = "Nicht löschen: manuell als behalten markiert.";
+
+function isManualKeepOverride(row: KillScoreInput, naturalBand: KillBand): boolean {
+  if (row.cleanupStatus !== "keep") return false;
+  if (naturalBand === "keep" || naturalBand === "protected") return false;
+  if (/manuell als behalten/i.test(row.killReason ?? "")) return true;
+  const previousBand = row.killBand;
+  if (previousBand !== "keep" && previousBand !== "protected") return true;
+  return !(row.killReason ?? "");
+}
+
 export function computeKillScore(
   row: KillScoreInput,
   settings: KillScoreSettings
@@ -101,15 +115,7 @@ export function computeKillScore(
     return {
       killConfidence: 0,
       killBand: "protected",
-      killReason: `Nicht löschen: Allowlist-Muster «${keepHit}».`,
-    };
-  }
-
-  if (row.cleanupStatus === "keep") {
-    return {
-      killConfidence: 0,
-      killBand: "keep",
-      killReason: "Nicht löschen: manuell als behalten markiert.",
+      killReason: `Nicht löschen: Allowlist-Muster «${keepHit}» — MustKeep.`,
     };
   }
 
@@ -233,6 +239,15 @@ export function computeKillScore(
   }
 
   const band = bandFor(score);
+
+  if (isManualKeepOverride(row, band)) {
+    return {
+      killConfidence: 0,
+      killBand: "keep",
+      killReason: MANUAL_KEEP_REASON,
+    };
+  }
+
   const prefix =
     band === "keep"
       ? "Nicht löschen"
