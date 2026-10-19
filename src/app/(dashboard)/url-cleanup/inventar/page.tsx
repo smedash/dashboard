@@ -149,7 +149,16 @@ export default function InventarPage() {
       setStatusMsg(data.error || "Fehler");
       return;
     }
-    setStatusMsg(`${ids.length} URLs → ${formatCleanupStatus(status)}`);
+    const kept = Array.isArray(data.languageKeptIds) ? data.languageKeptIds.length : 0;
+    if (kept > 0 && status !== "keep") {
+      const stayed =
+        kept === 1
+          ? "1 URL bleibt Keep, weil eine andere Sprachversion Keep ist."
+          : `${kept} URLs bleiben Keep, weil eine andere Sprachversion Keep ist.`;
+      setStatusMsg(kept === ids.length ? stayed : `${ids.length - kept} URLs → ${formatCleanupStatus(status)}. ${stayed}`);
+    } else {
+      setStatusMsg(`${ids.length} URLs → ${formatCleanupStatus(status)}`);
+    }
     setSelected(new Set());
     load();
   }

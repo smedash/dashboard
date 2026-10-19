@@ -27,7 +27,7 @@ export function RecomputeProgressBar({
         {progress.processed.toLocaleString("de-CH")} / {progress.total.toLocaleString("de-CH")} URLs
         {progress.total > 0 ? ` · ${progress.percent} %` : ""}
         {" · "}
-        {formatEta(progress.etaSeconds)}
+        {progress.label ?? formatEta(progress.etaSeconds)}
       </p>
       <p className="text-xs text-amber-800 dark:text-amber-200">
         Bitte dieses Fenster geöffnet lassen und nicht neu laden. Die Berechnung hängt am Browser-Request

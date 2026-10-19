@@ -37,8 +37,8 @@ export async function PATCH(request: NextRequest) {
       },
     });
 
-    await recomputeKillScores({ ids });
-    return NextResponse.json({ updated: ids.length });
+    const scored = await recomputeKillScores({ ids });
+    return NextResponse.json({ updated: ids.length, languageKeptIds: scored.languageKeptIds ?? [] });
   } catch (e) {
     console.error("[url-cleanup/flags]", e);
     return NextResponse.json({ error: "Update fehlgeschlagen" }, { status: 500 });

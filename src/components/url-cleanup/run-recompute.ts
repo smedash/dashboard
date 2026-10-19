@@ -3,6 +3,7 @@ export type RecomputeProgress = {
   total: number;
   percent: number;
   etaSeconds: number | null;
+  label?: string;
 };
 
 export function formatEta(seconds: number | null): string {
@@ -40,19 +41,23 @@ export async function runChunkedRecompute(
 
     total = data.total ?? total;
     processed += data.batchUpdated ?? 0;
+    const finished = Boolean(data.done);
     const elapsed = (Date.now() - started) / 1000;
-    const etaSeconds =
-      processed > 1500 && elapsed > 0.5 && total > processed
+    const aligning = !finished && total > 0 && processed >= total;
+    const etaSeconds = aligning
+      ? null
+      : processed > 1500 && elapsed > 0.5 && total > processed
         ? ((total - processed) * elapsed) / processed
-        : processed >= total
+        : finished
           ? 0
           : null;
 
     onProgress({
       processed: Math.min(processed, total || processed),
       total,
-      percent: total > 0 ? Math.min(100, Math.round((processed / total) * 100)) : 0,
+      percent: total > 0 ? Math.min(finished ? 100 : 99, Math.round((processed / total) * 100)) : 0,
       etaSeconds,
+      label: aligning ? "Sprachversionen werden abgeglichen…" : undefined,
     });
 
     if (data.done || !data.nextCursor) return processed;
