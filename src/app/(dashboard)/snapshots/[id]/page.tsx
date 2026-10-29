@@ -6,6 +6,8 @@ import { StatCard } from "@/components/ui/StatCard";
 import { LineChart } from "@/components/charts/LineChart";
 import { PieChart } from "@/components/charts/PieChart";
 import Link from "next/link";
+import { useLocale, useMessages } from "@/i18n/I18nProvider";
+import { snapshotsMessages } from "@/i18n/messages/snapshots";
 
 interface SnapshotData {
   id: string;
@@ -46,6 +48,8 @@ export default function SnapshotDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const t = useMessages(snapshotsMessages).detail;
+  const { intlLocale } = useLocale();
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"queries" | "pages" | "countries" | "devices">("queries");
@@ -84,16 +88,16 @@ export default function SnapshotDetailPage({
   if (!snapshot) {
     return (
       <div className="text-center py-20">
-        <h2 className="text-xl font-bold text-white mb-2">Snapshot nicht gefunden</h2>
+        <h2 className="text-xl font-bold text-white mb-2">{t.notFound}</h2>
         <Link href="/snapshots" className="text-blue-400 hover:text-blue-300">
-          Zurück zur Übersicht
+          {t.backToOverview}
         </Link>
       </div>
     );
   }
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("de-DE", {
+    return new Date(dateString).toLocaleDateString(intlLocale, {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -134,15 +138,15 @@ export default function SnapshotDetailPage({
   const deviceData = snapshot.data
     .filter((d) => d.dimension === "device")
     .map((d) => ({
-      name: d.key === "DESKTOP" ? "Desktop" : d.key === "MOBILE" ? "Mobile" : "Tablet",
+      name: d.key === "DESKTOP" ? t.deviceNames.DESKTOP : d.key === "MOBILE" ? t.deviceNames.MOBILE : t.deviceNames.TABLET,
       value: d.clicks,
     }));
 
   const tabs = [
-    { key: "queries", label: "Suchanfragen" },
-    { key: "pages", label: "Seiten" },
-    { key: "countries", label: "Länder" },
-    { key: "devices", label: "Geräte" },
+    { key: "queries", label: t.tabs.queries },
+    { key: "pages", label: t.tabs.pages },
+    { key: "countries", label: t.tabs.countries },
+    { key: "devices", label: t.tabs.devices },
   ] as const;
 
   return (
@@ -161,8 +165,7 @@ export default function SnapshotDetailPage({
           <div>
             <h1 className="text-2xl font-bold text-white">{snapshot.name}</h1>
             <p className="text-slate-400 text-sm">
-              {formatDate(snapshot.startDate)} - {formatDate(snapshot.endDate)} • 
-              Erstellt von {snapshot.user.name || snapshot.user.email}
+              {formatDate(snapshot.startDate)} - {formatDate(snapshot.endDate)} • {t.createdBy(snapshot.user.name || snapshot.user.email)}
             </p>
           </div>
         </div>
@@ -176,7 +179,7 @@ export default function SnapshotDetailPage({
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
-            Exportieren
+            {t.export}
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
@@ -185,7 +188,7 @@ export default function SnapshotDetailPage({
           {showExportMenu && (
             <div className="absolute right-0 mt-2 w-64 bg-slate-700 rounded-lg shadow-xl border border-slate-600 py-2 z-50">
               <div className="px-4 py-2 border-b border-slate-600">
-                <p className="text-xs text-slate-400 uppercase font-medium">Alle Daten</p>
+                <p className="text-xs text-slate-400 uppercase font-medium">{t.allData}</p>
               </div>
               <button
                 onClick={() => handleExport("xlsx")}
@@ -210,7 +213,7 @@ export default function SnapshotDetailPage({
               </button>
 
               <div className="px-4 py-2 border-t border-slate-600 mt-2">
-                <p className="text-xs text-slate-400 uppercase font-medium">Aktuelle Ansicht ({tabs.find(t => t.key === activeTab)?.label})</p>
+                <p className="text-xs text-slate-400 uppercase font-medium">{t.currentView(tabs.find((tab) => tab.key === activeTab)?.label ?? "")}</p>
               </div>
               <button
                 onClick={() => handleExport("xlsx", getDimensionKey())}
@@ -240,40 +243,40 @@ export default function SnapshotDetailPage({
 
       {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Klicks" value={snapshot.totals.clicks} />
-        <StatCard title="Impressionen" value={snapshot.totals.impressions} />
-        <StatCard title="CTR" value={snapshot.totals.ctr} format="percentage" />
-        <StatCard title="Ø Position" value={snapshot.totals.position} format="position" />
+        <StatCard title={t.kpis.clicks} value={snapshot.totals.clicks} />
+        <StatCard title={t.kpis.impressions} value={snapshot.totals.impressions} />
+        <StatCard title={t.kpis.ctr} value={snapshot.totals.ctr} format="percentage" />
+        <StatCard title={t.kpis.avgPosition} value={snapshot.totals.position} format="position" />
       </div>
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 bg-slate-800 rounded-xl p-6 border border-slate-700">
-          <h3 className="text-lg font-semibold text-white mb-4">Klicks & Impressionen</h3>
+          <h3 className="text-lg font-semibold text-white mb-4">{t.clicksAndImpressions}</h3>
           {dateData.length > 0 ? (
             <LineChart
               data={dateData}
               xKey="date"
               lines={[
-                { key: "clicks", name: "Klicks", color: "#3b82f6" },
-                { key: "impressions", name: "Impressionen", color: "#10b981" },
+                { key: "clicks", name: t.kpis.clicks, color: "#3b82f6" },
+                { key: "impressions", name: t.kpis.impressions, color: "#10b981" },
               ]}
               height={300}
             />
           ) : (
             <div className="h-[300px] flex items-center justify-center text-slate-500">
-              Keine Zeitreihen-Daten verfügbar
+              {t.noTimeSeries}
             </div>
           )}
         </div>
 
         <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-          <h3 className="text-lg font-semibold text-white mb-4">Geräte</h3>
+          <h3 className="text-lg font-semibold text-white mb-4">{t.devices}</h3>
           {deviceData.length > 0 ? (
             <PieChart data={deviceData} height={300} />
           ) : (
             <div className="h-[300px] flex items-center justify-center text-slate-500">
-              Keine Geräte-Daten verfügbar
+              {t.noDeviceData}
             </div>
           )}
         </div>
@@ -303,7 +306,7 @@ export default function SnapshotDetailPage({
           columns={[
             {
               key: "key",
-              header: activeTab === "queries" ? "Suchanfrage" : activeTab === "pages" ? "Seite" : activeTab === "countries" ? "Land" : "Gerät",
+              header: activeTab === "queries" ? t.columns.query : activeTab === "pages" ? t.columns.page : activeTab === "countries" ? t.columns.country : t.columns.device,
               sortable: true,
               render: (value) => (
                 <span className="font-medium text-white truncate max-w-[300px] block">
@@ -313,27 +316,27 @@ export default function SnapshotDetailPage({
             },
             {
               key: "clicks",
-              header: "Klicks",
+              header: t.columns.clicks,
               sortable: true,
               render: (value) => (
-                <span className="text-blue-400">{Number(value).toLocaleString("de-DE")}</span>
+                <span className="text-blue-400">{Number(value).toLocaleString(intlLocale)}</span>
               ),
             },
             {
               key: "impressions",
-              header: "Impressionen",
+              header: t.columns.impressions,
               sortable: true,
-              render: (value) => Number(value).toLocaleString("de-DE"),
+              render: (value) => Number(value).toLocaleString(intlLocale),
             },
             {
               key: "ctr",
-              header: "CTR",
+              header: t.columns.ctr,
               sortable: true,
               render: (value) => `${(Number(value) * 100).toFixed(2)}%`,
             },
             {
               key: "position",
-              header: "Position",
+              header: t.columns.position,
               sortable: true,
               render: (value) => Number(value).toFixed(1),
             },

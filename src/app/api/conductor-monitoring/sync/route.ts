@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { hasFullAdminRights } from "@/lib/rbac";
-import { syncConductorData, findConductorWebsiteByDomain } from "@/lib/conductor-sync";
+import { syncConductorWebsite, findConductorWebsiteByDomain } from "@/lib/conductor-sync";
+import { getWebsites } from "@/lib/conductor-monitoring";
 
 export const maxDuration = 800;
+
+/** Short slices keep the UI responsive; the client calls again while the run is "paused". */
+const SYNC_BUDGET_MS = 240_000;
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,28 +23,28 @@ export async function POST(request: NextRequest) {
     const websiteId = body.websiteId as string | undefined;
     const domain = body.domain as string | undefined;
 
-    let targetWebsiteId = websiteId;
+    const website = websiteId
+      ? (await getWebsites()).find((w) => w.id === websiteId)
+      : domain
+        ? await findConductorWebsiteByDomain(domain)
+        : undefined;
 
-    if (!targetWebsiteId && domain) {
-      targetWebsiteId = await findConductorWebsiteByDomain(domain);
-      if (!targetWebsiteId) {
+    if (!website) {
+      if (!websiteId && !domain) {
         return NextResponse.json(
-          { error: `Keine Conductor-Website fuer Domain "${domain}" gefunden` },
-          { status: 404 }
+          { error: "Bitte Property auswaehlen (domain Parameter fehlt)" },
+          { status: 400 }
         );
       }
-    }
-
-    if (!targetWebsiteId) {
       return NextResponse.json(
-        { error: "Bitte Property auswaehlen (domain Parameter fehlt)" },
-        { status: 400 }
+        { error: `Keine Conductor-Website fuer "${websiteId ?? domain}" gefunden` },
+        { status: 404 }
       );
     }
 
-    const result = await syncConductorData("manual", targetWebsiteId);
+    const result = await syncConductorWebsite(website, "manual", Date.now() + SYNC_BUDGET_MS);
     return NextResponse.json({
-      success: true,
+      success: result.status !== "locked",
       ...result,
     });
   } catch (error) {

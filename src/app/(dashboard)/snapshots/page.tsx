@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { PropertySelector } from "@/components/ui/PropertySelector";
 import { PeriodSelector } from "@/components/ui/PeriodSelector";
+import { useLocale, useMessages } from "@/i18n/I18nProvider";
+import { snapshotsMessages } from "@/i18n/messages/snapshots";
 
 interface Snapshot {
   id: string;
@@ -27,6 +29,8 @@ interface Snapshot {
 }
 
 export default function SnapshotsPage() {
+  const t = useMessages(snapshotsMessages);
+  const { intlLocale } = useLocale();
   const [selectedProperty, setSelectedProperty] = useState<string | null>(null);
   const [period, setPeriod] = useState("28d");
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
@@ -89,7 +93,7 @@ export default function SnapshotsPage() {
   }
 
   async function deleteSnapshot(id: string) {
-    if (!confirm("Snapshot wirklich löschen?")) return;
+    if (!confirm(t.confirmDelete)) return;
 
     try {
       await fetch(`/api/snapshots/${id}`, { method: "DELETE" });
@@ -143,11 +147,11 @@ export default function SnapshotsPage() {
       } else {
         const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
         console.error("Error updating snapshot name:", errorData.error || `HTTP ${response.status}`);
-        alert(`Fehler beim Speichern: ${errorData.error || "Unbekannter Fehler"}`);
+        alert(t.saveError(errorData.error || t.unknownError));
       }
     } catch (error) {
       console.error("Error updating snapshot name:", error);
-      alert("Fehler beim Speichern. Bitte versuche es erneut.");
+      alert(t.saveErrorRetry);
     }
   }
 
@@ -160,7 +164,7 @@ export default function SnapshotsPage() {
   }
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("de-DE", {
+    return new Date(dateString).toLocaleDateString(intlLocale, {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -170,7 +174,7 @@ export default function SnapshotsPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h1 className="text-2xl font-bold text-white">Snapshots</h1>
+        <h1 className="text-2xl font-bold text-white">{t.title}</h1>
         <button
           onClick={() => setShowCreateModal(true)}
           className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg transition-colors"
@@ -178,7 +182,7 @@ export default function SnapshotsPage() {
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
-          Neuer Snapshot
+          {t.newSnapshot}
         </button>
       </div>
 
@@ -195,8 +199,8 @@ export default function SnapshotsPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </div>
-            <h3 className="text-lg font-medium text-white mb-2">Keine Snapshots vorhanden</h3>
-            <p className="text-slate-400 mb-4">Erstelle einen Snapshot, um GSC-Daten zu speichern.</p>
+            <h3 className="text-lg font-medium text-white mb-2">{t.empty.title}</h3>
+            <p className="text-slate-400 mb-4">{t.empty.description}</p>
           </div>
         ) : (
           <div className="divide-y divide-slate-700">
@@ -219,7 +223,7 @@ export default function SnapshotsPage() {
                         <h3
                           className="text-lg font-medium text-white cursor-pointer hover:text-blue-400 transition-colors"
                           onClick={() => startEditing(snapshot)}
-                          title="Klicken zum Bearbeiten"
+                          title={t.clickToEdit}
                         >
                           {snapshot.name}
                         </h3>
@@ -233,32 +237,32 @@ export default function SnapshotsPage() {
                     )}
                     <div className="flex flex-wrap gap-6 text-sm">
                       <div>
-                        <span className="text-slate-400">Klicks:</span>{" "}
+                        <span className="text-slate-400">{t.metrics.clicks}</span>{" "}
                         <span className="text-white font-medium">
-                          {snapshot.totals.clicks.toLocaleString("de-DE")}
+                          {snapshot.totals.clicks.toLocaleString(intlLocale)}
                         </span>
                       </div>
                       <div>
-                        <span className="text-slate-400">Impressionen:</span>{" "}
+                        <span className="text-slate-400">{t.metrics.impressions}</span>{" "}
                         <span className="text-white font-medium">
-                          {snapshot.totals.impressions.toLocaleString("de-DE")}
+                          {snapshot.totals.impressions.toLocaleString(intlLocale)}
                         </span>
                       </div>
                       <div>
-                        <span className="text-slate-400">CTR:</span>{" "}
+                        <span className="text-slate-400">{t.metrics.ctr}</span>{" "}
                         <span className="text-white font-medium">
                           {(snapshot.totals.ctr * 100).toFixed(2)}%
                         </span>
                       </div>
                       <div>
-                        <span className="text-slate-400">Position:</span>{" "}
+                        <span className="text-slate-400">{t.metrics.position}</span>{" "}
                         <span className="text-white font-medium">
                           {snapshot.totals.position.toFixed(1)}
                         </span>
                       </div>
                     </div>
                     <div className="mt-3 text-xs text-slate-500">
-                      Erstellt am {formatDate(snapshot.createdAt)} von {snapshot.user.name || snapshot.user.email}
+                      {t.createdOnBy(formatDate(snapshot.createdAt), snapshot.user.name || snapshot.user.email)}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -267,7 +271,7 @@ export default function SnapshotsPage() {
                         <a
                           href={`/snapshots/${snapshot.id}`}
                           className="p-2 text-slate-400 hover:text-white hover:bg-slate-600 rounded-lg transition-colors"
-                          title="Details anzeigen"
+                          title={t.showDetails}
                         >
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -277,7 +281,7 @@ export default function SnapshotsPage() {
                         <button
                           onClick={() => deleteSnapshot(snapshot.id)}
                           className="p-2 text-slate-400 hover:text-red-400 hover:bg-slate-600 rounded-lg transition-colors"
-                          title="Löschen"
+                          title={t.delete}
                         >
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -290,7 +294,7 @@ export default function SnapshotsPage() {
                         <button
                           onClick={() => saveSnapshotName(snapshot.id)}
                           className="p-2 text-green-400 hover:text-green-300 hover:bg-slate-600 rounded-lg transition-colors"
-                          title="Speichern"
+                          title={t.save}
                         >
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -299,7 +303,7 @@ export default function SnapshotsPage() {
                         <button
                           onClick={cancelEditing}
                           className="p-2 text-slate-400 hover:text-white hover:bg-slate-600 rounded-lg transition-colors"
-                          title="Abbrechen"
+                          title={t.cancel}
                         >
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -319,54 +323,54 @@ export default function SnapshotsPage() {
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="w-full max-w-lg bg-slate-800 rounded-xl border border-slate-700 p-6 shadow-2xl">
-            <h2 className="text-xl font-bold text-white mb-4">Neuen Snapshot erstellen</h2>
+            <h2 className="text-xl font-bold text-white mb-4">{t.modal.title}</h2>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Name *</label>
+                <label className="block text-sm font-medium text-slate-300 mb-2">{t.modal.name}</label>
                 <input
                   type="text"
                   value={newSnapshotName}
                   onChange={(e) => setNewSnapshotName(e.target.value)}
-                  placeholder="z.B. KW 50 Report"
+                  placeholder={t.modal.namePlaceholder}
                   className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Beschreibung</label>
+                <label className="block text-sm font-medium text-slate-300 mb-2">{t.modal.description}</label>
                 <textarea
                   value={newSnapshotDescription}
                   onChange={(e) => setNewSnapshotDescription(e.target.value)}
-                  placeholder="Optionale Beschreibung..."
+                  placeholder={t.modal.descriptionPlaceholder}
                   rows={2}
                   className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Property *</label>
+                <label className="block text-sm font-medium text-slate-300 mb-2">{t.modal.property}</label>
                 <PropertySelector value={selectedProperty} onChange={setSelectedProperty} />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Zeitraum</label>
+                <label className="block text-sm font-medium text-slate-300 mb-2">{t.modal.period}</label>
                 <PeriodSelector value={period} onChange={setPeriod} />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">
-                  URL-Pfad Filter (optional)
+                  {t.modal.urlPath}
                 </label>
                 <input
                   type="text"
                   value={newSnapshotUrlPath}
                   onChange={(e) => setNewSnapshotUrlPath(e.target.value)}
-                  placeholder="z.B. /produkte oder /blog/artikel"
+                  placeholder={t.modal.urlPathPlaceholder}
                   className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <p className="mt-1 text-xs text-slate-400">
-                  Nur Daten für Seiten mit diesem URL-Pfad werden abgerufen. Leer lassen für alle Seiten.
+                  {t.modal.urlPathHint}
                 </p>
               </div>
             </div>
@@ -376,7 +380,7 @@ export default function SnapshotsPage() {
                 onClick={() => setShowCreateModal(false)}
                 className="px-4 py-2 text-slate-300 hover:text-white transition-colors"
               >
-                Abbrechen
+                {t.cancel}
               </button>
               <button
                 onClick={createSnapshot}
@@ -386,10 +390,10 @@ export default function SnapshotsPage() {
                 {isCreating ? (
                   <>
                     <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                    Erstelle...
+                    {t.modal.creating}
                   </>
                 ) : (
-                  "Snapshot erstellen"
+                  t.modal.create
                 )}
               </button>
             </div>

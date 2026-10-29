@@ -5,6 +5,8 @@ import { useSearchParams } from "next/navigation";
 import { downloadExcel } from "@/lib/excel-export";
 import CategorySelector from "@/components/planning/CategorySelector";
 import CategoryTotalsChart from "@/components/planning/CategoryTotalsChart";
+import { useLocale, useMessages } from "@/i18n/I18nProvider";
+import { planningQuestionsMessages } from "@/i18n/messages/planning-questions";
 
 interface QuestionResult {
   id: string;
@@ -17,6 +19,8 @@ interface QuestionResult {
 
 export default function QuestionsPage() {
   const searchParams = useSearchParams();
+  const t = useMessages(planningQuestionsMessages);
+  const { intlLocale } = useLocale();
   const [keyword, setKeyword] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [filterCategory, setFilterCategory] = useState<string>("");
@@ -51,7 +55,7 @@ export default function QuestionsPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Ein Fehler ist aufgetreten");
+        setError(data.error || t.errorOccurred);
         return;
       }
 
@@ -59,11 +63,11 @@ export default function QuestionsPage() {
       setKeyword("");
       fetchHistory();
     } catch {
-      setError("Netzwerkfehler - bitte erneut versuchen");
+      setError(t.networkError);
     } finally {
       setLoading(false);
     }
-  }, [loading]);
+  }, [loading, t]);
 
   // Auto-trigger from URL parameter (from keywords page)
   useEffect(() => {
@@ -116,10 +120,10 @@ export default function QuestionsPage() {
     const sheets = history.map((item) => ({
       name: item.keyword.slice(0, 31).replace(/[/\\?*[\]]/g, ""),
       rows: item.questions.map((q, i) => ({
-        "Seed-Keyword": item.keyword,
-        Kategorie: item.category ?? "",
-        Nr: i + 1,
-        Frage: q,
+        [t.excel.seedKeyword]: item.keyword,
+        [t.excel.category]: item.category ?? "",
+        [t.excel.number]: i + 1,
+        [t.excel.question]: q,
       })),
     }));
 
@@ -129,14 +133,14 @@ export default function QuestionsPage() {
 
   function exportSingleToExcel(item: QuestionResult) {
     const rows = item.questions.map((q, i) => ({
-      "Seed-Keyword": item.keyword,
-      Kategorie: item.category ?? "",
-      Nr: i + 1,
-      Frage: q,
+      [t.excel.seedKeyword]: item.keyword,
+      [t.excel.category]: item.category ?? "",
+      [t.excel.number]: i + 1,
+      [t.excel.question]: q,
     }));
 
     downloadExcel(`fragen-${item.keyword.replace(/\s+/g, "-")}.xlsx`, [
-      { name: "Fragen", rows },
+      { name: t.excel.sheetName, rows },
     ]);
   }
 
@@ -160,10 +164,10 @@ export default function QuestionsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-            Question based
+            {t.title}
           </h1>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Finde die 20 häufigsten Fragen zu einem Keyword — generiert via KI und persistent gespeichert.
+            {t.subtitle}
           </p>
         </div>
         {history.length > 0 && (
@@ -174,7 +178,7 @@ export default function QuestionsPage() {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
-            Excel Export
+            {t.excelExport}
           </button>
         )}
       </div>
@@ -182,7 +186,7 @@ export default function QuestionsPage() {
       {/* Kategorie-Selektor */}
       <CategorySelector
         onSelectKeyword={handleSeedKeywordSelect}
-        actionLabel="Fragen generieren"
+        actionLabel={t.generateQuestions}
       />
 
       {/* Eingabeformular */}
@@ -192,7 +196,7 @@ export default function QuestionsPage() {
             type="text"
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
-            placeholder="Keyword eingeben, z.B. 'hypothek', 'vorsorge 3a'..."
+            placeholder={t.keywordPlaceholder}
             className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-3 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             disabled={loading}
           />
@@ -208,14 +212,14 @@ export default function QuestionsPage() {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
               </svg>
-              Generiere...
+              {t.generating}
             </>
           ) : (
             <>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
-              Fragen generieren
+              {t.generateQuestions}
             </>
           )}
         </button>
@@ -225,8 +229,8 @@ export default function QuestionsPage() {
       {categoryChartData.length > 0 && (
         <CategoryTotalsChart
           data={categoryChartData}
-          countLabel="Abfragen"
-          totalLabel="Fragen"
+          countLabel={t.countLabel}
+          totalLabel={t.totalLabel}
         />
       )}
 
@@ -244,11 +248,11 @@ export default function QuestionsPage() {
               <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
                 <div>
                   <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-                    Fragen zu &ldquo;{currentResult.keyword}&rdquo;
+                    {t.questionsAbout} &ldquo;{currentResult.keyword}&rdquo;
                   </h2>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    {currentResult.cached ? "Aus Cache geladen" : "Frisch generiert"} &middot;{" "}
-                    {new Date(currentResult.createdAt).toLocaleDateString("de-CH", {
+                    {currentResult.cached ? t.fromCache : t.freshlyGenerated} &middot;{" "}
+                    {new Date(currentResult.createdAt).toLocaleDateString(intlLocale, {
                       day: "2-digit",
                       month: "2-digit",
                       year: "numeric",
@@ -258,7 +262,7 @@ export default function QuestionsPage() {
                   </p>
                 </div>
                 <span className="inline-flex items-center rounded-full bg-blue-50 dark:bg-blue-900/30 px-3 py-1 text-xs font-medium text-blue-700 dark:text-blue-300">
-                  {currentResult.questions.length} Fragen
+                  {t.questionsCount(currentResult.questions.length)}
                 </span>
               </div>
               <div className="divide-y divide-slate-100 dark:divide-slate-700">
@@ -283,10 +287,10 @@ export default function QuestionsPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <h3 className="mt-4 text-lg font-medium text-slate-900 dark:text-white">
-                Keyword eingeben
+                {t.emptyTitle}
               </h3>
               <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                Gib ein Keyword ein, um die 20 häufigsten Fragen dazu zu erhalten.
+                {t.emptyHint}
               </p>
             </div>
           )}
@@ -297,7 +301,7 @@ export default function QuestionsPage() {
           <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700">
               <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
-                Bisherige Abfragen
+                {t.history}
               </h3>
               {(() => {
                 const cats = [...new Set(history.map((h) => h.category).filter(Boolean))] as string[];
@@ -308,7 +312,7 @@ export default function QuestionsPage() {
                       onClick={() => setFilterCategory("")}
                       className={`px-2 py-0.5 text-[10px] rounded transition-colors ${!filterCategory ? "bg-slate-600 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400"}`}
                     >
-                      Alle
+                      {t.all}
                     </button>
                     {cats.map((c) => (
                       <button
@@ -326,7 +330,7 @@ export default function QuestionsPage() {
             {history.length === 0 ? (
               <div className="p-4 text-center">
                 <p className="text-xs text-slate-400 dark:text-slate-500">
-                  Noch keine Abfragen gespeichert
+                  {t.noHistory}
                 </p>
               </div>
             ) : (
@@ -347,7 +351,7 @@ export default function QuestionsPage() {
                       </p>
                       <div className="flex items-center gap-1.5">
                         <p className="text-xs text-slate-400 dark:text-slate-500">
-                          {new Date(item.createdAt).toLocaleDateString("de-CH")}
+                          {new Date(item.createdAt).toLocaleDateString(intlLocale)}
                         </p>
                         {item.category && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
@@ -363,7 +367,7 @@ export default function QuestionsPage() {
                           exportSingleToExcel(item);
                         }}
                         className="p-1 rounded text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
-                        title="Als Excel exportieren"
+                        title={t.exportAsExcel}
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -375,7 +379,7 @@ export default function QuestionsPage() {
                           handleDelete(item.id);
                         }}
                         className="p-1 rounded text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                        title="Löschen"
+                        title={t.delete}
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

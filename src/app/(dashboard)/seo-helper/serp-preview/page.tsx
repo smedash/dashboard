@@ -2,11 +2,14 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useMessages } from "@/i18n/I18nProvider";
+import { seoHelperSerpPreviewMessages } from "@/i18n/messages/seo-helper-serp-preview";
 
 export default function SERPPreviewPage() {
-  const [url, setUrl] = useState("https://www.beispiel.ch/ratgeber/hypothek");
-  const [title, setTitle] = useState("Hypothek Schweiz: Der umfassende Ratgeber 2026");
-  const [description, setDescription] = useState("Erfahren Sie alles Wichtige über Hypotheken in der Schweiz. Unser umfassender Ratgeber bietet Ihnen Expertenwissen, aktuelle Zinsen und praktische Tipps.");
+  const t = useMessages(seoHelperSerpPreviewMessages);
+  const [url, setUrl] = useState(t.defaults.url);
+  const [title, setTitle] = useState(t.defaults.title);
+  const [description, setDescription] = useState(t.defaults.description);
   const [favicon, setFavicon] = useState("");
   const [previewType, setPreviewType] = useState<"desktop" | "mobile">("desktop");
 
@@ -55,8 +58,8 @@ export default function SERPPreviewPage() {
           </svg>
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">SERP Preview</h1>
-          <p className="text-slate-500 dark:text-slate-400">Vorschau deiner Google-Suchergebnisse</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h1>
+          <p className="text-slate-500 dark:text-slate-400">{t.subtitle}</p>
         </div>
       </div>
 
@@ -64,17 +67,17 @@ export default function SERPPreviewPage() {
         {/* Input Section */}
         <div className="space-y-6">
           <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 space-y-4">
-            <h2 className="font-semibold text-slate-900 dark:text-white">Meta-Daten eingeben</h2>
+            <h2 className="font-semibold text-slate-900 dark:text-white">{t.enterMetaData}</h2>
             
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                URL
+                {t.urlLabel}
               </label>
               <input
                 type="text"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://www.beispiel.ch/seite"
+                placeholder={t.urlPlaceholder}
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
             </div>
@@ -82,17 +85,17 @@ export default function SERPPreviewPage() {
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                  Title Tag
+                  {t.titleTag}
                 </label>
                 <span className={`text-xs font-medium ${titleOptimal ? 'text-green-600' : titleLength > 60 ? 'text-red-600' : 'text-amber-600'}`}>
-                  {titleLength}/60 Zeichen
+                  {t.characters(titleLength, 60)}
                 </span>
               </div>
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Seitentitel"
+                placeholder={t.titlePlaceholder}
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
               <div className="mt-2 h-1.5 bg-slate-200 dark:bg-slate-600 rounded-full overflow-hidden">
@@ -109,16 +112,16 @@ export default function SERPPreviewPage() {
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                  Meta Description
+                  {t.metaDescription}
                 </label>
                 <span className={`text-xs font-medium ${descOptimal ? 'text-green-600' : descLength > 160 ? 'text-red-600' : 'text-amber-600'}`}>
-                  {descLength}/160 Zeichen
+                  {t.characters(descLength, 160)}
                 </span>
               </div>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Meta-Beschreibung"
+                placeholder={t.descriptionPlaceholder}
                 rows={3}
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none"
               />
@@ -148,11 +151,11 @@ export default function SERPPreviewPage() {
                   </svg>
                 )}
                 <span className={`text-sm font-medium ${titleOptimal ? 'text-green-700 dark:text-green-400' : 'text-amber-700 dark:text-amber-400'}`}>
-                  Title Tag
+                  {t.titleTag}
                 </span>
               </div>
               <p className={`text-xs ${titleOptimal ? 'text-green-600 dark:text-green-500' : 'text-amber-600 dark:text-amber-500'}`}>
-                {titleOptimal ? 'Optimale Länge' : titleLength < 50 ? 'Zu kurz (min. 50)' : 'Zu lang (max. 60)'}
+                {titleOptimal ? t.optimalLength : titleLength < 50 ? t.tooShort(50) : t.tooLong(60)}
               </p>
             </div>
 
@@ -168,11 +171,11 @@ export default function SERPPreviewPage() {
                   </svg>
                 )}
                 <span className={`text-sm font-medium ${descOptimal ? 'text-green-700 dark:text-green-400' : 'text-amber-700 dark:text-amber-400'}`}>
-                  Description
+                  {t.description}
                 </span>
               </div>
               <p className={`text-xs ${descOptimal ? 'text-green-600 dark:text-green-500' : 'text-amber-600 dark:text-amber-500'}`}>
-                {descOptimal ? 'Optimale Länge' : descLength < 150 ? 'Zu kurz (min. 150)' : 'Zu lang (max. 160)'}
+                {descOptimal ? t.optimalLength : descLength < 150 ? t.tooShort(150) : t.tooLong(160)}
               </p>
             </div>
           </div>
@@ -182,7 +185,7 @@ export default function SERPPreviewPage() {
         <div className="space-y-4">
           {/* Device Toggle */}
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-slate-900 dark:text-white">Live-Vorschau</h2>
+            <h2 className="font-semibold text-slate-900 dark:text-white">{t.livePreview}</h2>
             <div className="flex bg-slate-100 dark:bg-slate-700 rounded-lg p-1">
               <button
                 onClick={() => setPreviewType("desktop")}
@@ -243,13 +246,13 @@ export default function SERPPreviewPage() {
 
                 {/* Title */}
                 <h3 className="text-xl text-blue-800 hover:underline cursor-pointer leading-tight">
-                  {title || "Seitentitel eingeben..."}
+                  {title || t.titleFallback}
                   {titleLength > 60 && <span className="text-slate-400">...</span>}
                 </h3>
 
                 {/* Description */}
                 <p className="text-sm text-slate-600 leading-relaxed">
-                  {description || "Meta-Beschreibung eingeben..."}
+                  {description || t.descriptionFallback}
                   {descLength > 160 && <span className="text-slate-400">...</span>}
                 </p>
               </div>
@@ -270,7 +273,7 @@ export default function SERPPreviewPage() {
           {/* Tips */}
           <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-4 border border-amber-200 dark:border-amber-800">
             <p className="text-sm text-amber-800 dark:text-amber-200">
-              <strong>Tipp:</strong> Google kann Title und Description je nach Suchanfrage anpassen. Diese Vorschau zeigt die wahrscheinlichste Darstellung.
+              <strong>{t.tipLabel}</strong> {t.tipText}
             </p>
           </div>
         </div>

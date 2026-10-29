@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { canEdit } from "@/lib/rbac";
+import { useLocale, useMessages } from "@/i18n/I18nProvider";
+import { customerJourneyMessages } from "@/i18n/messages/customer-journey";
 
 interface Article {
   id: string;
@@ -39,10 +41,7 @@ interface JourneyStats {
 const JOURNEY_PHASES = [
   {
     id: "awareness",
-    label: "Bewusstsein",
     sublabel: "Awareness",
-    description: "Emotionaler Einstieg, erster Impuls",
-    examples: "Miete vs. Kauf, Bedeutung der HHV",
     color: "from-sky-400 to-sky-500",
     bgLight: "bg-sky-50 dark:bg-sky-900/20",
     borderColor: "border-sky-200 dark:border-sky-800",
@@ -57,10 +56,7 @@ const JOURNEY_PHASES = [
   },
   {
     id: "orientation",
-    label: "Orientierung",
     sublabel: "Consideration",
-    description: "Wissensaufbau, Grundbegriffe",
-    examples: "Maximalbeitrag, Testament, Zinsen, Eigenkapital",
     color: "from-violet-400 to-violet-500",
     bgLight: "bg-violet-50 dark:bg-violet-900/20",
     borderColor: "border-violet-200 dark:border-violet-800",
@@ -75,10 +71,7 @@ const JOURNEY_PHASES = [
   },
   {
     id: "planning",
-    label: "Planung",
     sublabel: "Intent",
-    description: "Konkrete Zahlen, Rendite, Modelle",
-    examples: "Budget, Förderung prüfen, Renditerechner",
     color: "from-amber-400 to-amber-500",
     bgLight: "bg-amber-50 dark:bg-amber-900/20",
     borderColor: "border-amber-200 dark:border-amber-800",
@@ -93,10 +86,7 @@ const JOURNEY_PHASES = [
   },
   {
     id: "product_search",
-    label: "Produkt & Objektsuche",
     sublabel: "Evaluation",
-    description: "Immobilie suchen, bewerten, Vorsorgeprodukte",
-    examples: "Produkte vergleichen, Bewertung, Besichtigung",
     color: "from-emerald-400 to-emerald-500",
     bgLight: "bg-emerald-50 dark:bg-emerald-900/20",
     borderColor: "border-emerald-200 dark:border-emerald-800",
@@ -111,10 +101,7 @@ const JOURNEY_PHASES = [
   },
   {
     id: "closing",
-    label: "Abschluss",
     sublabel: "Decision",
-    description: "Vergleichen, beantragen, kaufen",
-    examples: "Banken vergleichen, Kredit beantragen, Notar",
     color: "from-rose-400 to-rose-500",
     bgLight: "bg-rose-50 dark:bg-rose-900/20",
     borderColor: "border-rose-200 dark:border-rose-800",
@@ -179,14 +166,6 @@ const CATEGORY_BAR_COLORS: Record<string, string> = {
   "Assetmanagement": "bg-indigo-400",
 };
 
-const STATUSES: Record<string, string> = {
-  idea: "Idee",
-  planned: "Geplant",
-  in_progress: "In Arbeit",
-  in_review: "Review",
-  published: "Publiziert",
-};
-
 const PAGE_SIZE = 50;
 
 function buildFilterParams(filters: { category: string; location: string; search: string }) {
@@ -200,6 +179,8 @@ function buildFilterParams(filters: { category: string; location: string; search
 export default function CustomerJourneyPage() {
   const { data: session } = useSession();
   const userCanEdit = canEdit(session?.user?.role);
+  const t = useMessages(customerJourneyMessages);
+  const { intlLocale } = useLocale();
 
   const [journeyStats, setJourneyStats] = useState<JourneyStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -591,6 +572,8 @@ export default function CustomerJourneyPage() {
     return counts;
   }, [suggestPhase, journeyStats]);
 
+  const suggestPhaseInfo = JOURNEY_PHASES.find((p) => p.id === suggestPhase);
+
   if (loading && !journeyStats) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -605,13 +588,13 @@ export default function CustomerJourneyPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-            Customer Journey
+            {t.title}
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            {totalAssigned.toLocaleString()} von {totalCount.toLocaleString()} Artikeln zugeordnet
+            {t.assignedSummary(totalAssigned.toLocaleString(intlLocale), totalCount.toLocaleString(intlLocale))}
             {totalUnassigned > 0 && (
               <span className="text-amber-600 dark:text-amber-400">
-                {" "}· {totalUnassigned.toLocaleString()} ohne Phase
+                {" "}· {t.withoutPhase(totalUnassigned.toLocaleString(intlLocale))}
               </span>
             )}
           </p>
@@ -624,8 +607,8 @@ export default function CustomerJourneyPage() {
               disabled={classifying}
               className="px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300"
             >
-              <option value="unassigned">Nur nicht zugeordnete ({totalUnassigned.toLocaleString()})</option>
-              <option value="all">Alle Artikel neu klassifizieren ({totalCount.toLocaleString()})</option>
+              <option value="unassigned">{t.classifyModes.unassigned(totalUnassigned.toLocaleString(intlLocale))}</option>
+              <option value="all">{t.classifyModes.all(totalCount.toLocaleString(intlLocale))}</option>
             </select>
             <button
               onClick={() => {
@@ -647,14 +630,14 @@ export default function CustomerJourneyPage() {
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
-                  Abbrechen
+                  {t.cancel}
                 </>
               ) : (
                 <>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
                   </svg>
-                  KI-Zuordnung starten
+                  {t.startClassification}
                 </>
               )}
             </button>
@@ -672,10 +655,10 @@ export default function CustomerJourneyPage() {
             </svg>
             <div className="flex-1">
               <p className="text-sm font-medium text-slate-900 dark:text-white">
-                {classifyProgress.classified.toLocaleString()} klassifiziert · {classifyProgress.remaining.toLocaleString()} verbleibend
+                {t.progressSummary(classifyProgress.classified.toLocaleString(intlLocale), classifyProgress.remaining.toLocaleString(intlLocale))}
               </p>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Batch {classifyProgress.currentBatch} von ~{classifyProgress.totalBatches} · {Math.round((classifyProgress.classified / classifyProgress.totalToProcess) * 100)}% abgeschlossen
+                {t.progressBatch(classifyProgress.currentBatch, classifyProgress.totalBatches, Math.round((classifyProgress.classified / classifyProgress.totalToProcess) * 100))}
               </p>
             </div>
           </div>
@@ -702,13 +685,13 @@ export default function CustomerJourneyPage() {
               </svg>
               <div>
                 <p className="text-sm font-medium text-slate-900 dark:text-white">
-                  {classifyResult.classified.toLocaleString()} Artikel klassifiziert
+                  {t.resultClassified(classifyResult.classified.toLocaleString(intlLocale))}
                   {classifyResult.cancelled && (
-                    <span className="text-amber-600 dark:text-amber-400 ml-2">(abgebrochen)</span>
+                    <span className="text-amber-600 dark:text-amber-400 ml-2">{t.resultCancelled}</span>
                   )}
                 </p>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  {classifyResult.classified.toLocaleString()} von {classifyResult.total.toLocaleString()} verarbeitet
+                  {t.resultProcessed(classifyResult.classified.toLocaleString(intlLocale), classifyResult.total.toLocaleString(intlLocale))}
                 </p>
               </div>
             </div>
@@ -734,7 +717,7 @@ export default function CustomerJourneyPage() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Titel suchen..."
+            placeholder={t.searchTitle}
             className="pl-9 pr-3 py-1.5 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 w-64 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
           {searchQuery && (
@@ -753,7 +736,7 @@ export default function CustomerJourneyPage() {
           onChange={(e) => setFilterCategory(e.target.value)}
           className="px-3 py-1.5 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300"
         >
-          <option value="">Alle Kategorien</option>
+          <option value="">{t.allCategories}</option>
           {CATEGORIES.map((c) => (
             <option key={c} value={c}>{c}</option>
           ))}
@@ -763,7 +746,7 @@ export default function CustomerJourneyPage() {
           onChange={(e) => setFilterLocation(e.target.value)}
           className="px-3 py-1.5 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300"
         >
-          <option value="">Alle Locations</option>
+          <option value="">{t.allLocations}</option>
           {LOCATIONS.map((l) => (
             <option key={l} value={l}>{l}</option>
           ))}
@@ -771,7 +754,7 @@ export default function CustomerJourneyPage() {
         {loading && journeyStats && (
           <div className="flex items-center gap-2 text-xs text-slate-400">
             <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-slate-400" />
-            Aktualisiere...
+            {t.updating}
           </div>
         )}
       </div>
@@ -779,7 +762,7 @@ export default function CustomerJourneyPage() {
       {/* Funnel Overview */}
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
         <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-4">
-          Funnel-Übersicht
+          {t.funnelOverview}
         </h2>
         <div className="flex items-end gap-3 h-40">
           {JOURNEY_PHASES.map((phase) => {
@@ -789,7 +772,7 @@ export default function CustomerJourneyPage() {
             return (
               <div key={phase.id} className="flex-1 flex flex-col items-center gap-2">
                 <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                  <span className="text-lg font-bold text-slate-900 dark:text-white">{count.toLocaleString()}</span>
+                  <span className="text-lg font-bold text-slate-900 dark:text-white">{count.toLocaleString(intlLocale)}</span>
                 </div>
                 <div className="w-full relative" style={{ height: "80px" }}>
                   <div
@@ -799,7 +782,7 @@ export default function CustomerJourneyPage() {
                 </div>
                 <div className="text-center">
                   <div className="text-xs font-semibold text-slate-700 dark:text-slate-300 leading-tight">
-                    {phase.label}
+                    {t.phases[phase.id].label}
                   </div>
                   <div className="text-[10px] text-slate-400 dark:text-slate-500">
                     {phase.sublabel}
@@ -828,19 +811,19 @@ export default function CustomerJourneyPage() {
       {/* Category Heatmap */}
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
         <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-4">
-          Kategorien pro Journey-Phase
+          {t.categoriesPerPhase}
         </h2>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr>
-                <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">Kategorie</th>
+                <th className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">{t.category}</th>
                 {JOURNEY_PHASES.map((phase) => (
                   <th key={phase.id} className="text-center px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
-                    {phase.label}
+                    {t.phases[phase.id].label}
                   </th>
                 ))}
-                <th className="text-center px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">Total</th>
+                <th className="text-center px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">{t.total}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
@@ -873,17 +856,17 @@ export default function CustomerJourneyPage() {
                 </tr>
               ))}
               <tr className="bg-slate-50 dark:bg-slate-700/30 font-medium">
-                <td className="px-3 py-2.5 text-xs font-semibold text-slate-600 dark:text-slate-400">Total</td>
+                <td className="px-3 py-2.5 text-xs font-semibold text-slate-600 dark:text-slate-400">{t.total}</td>
                 {JOURNEY_PHASES.map((phase) => {
                   const count = getPhaseCount(phase.id);
                   return (
                     <td key={phase.id} className="text-center px-3 py-2.5">
-                      <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{count.toLocaleString()}</span>
+                      <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{count.toLocaleString(intlLocale)}</span>
                     </td>
                   );
                 })}
                 <td className="text-center px-3 py-2.5">
-                  <span className="text-sm font-bold text-slate-900 dark:text-white">{totalAssigned.toLocaleString()}</span>
+                  <span className="text-sm font-bold text-slate-900 dark:text-white">{totalAssigned.toLocaleString(intlLocale)}</span>
                 </td>
               </tr>
             </tbody>
@@ -913,19 +896,19 @@ export default function CustomerJourneyPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                      {phase.label}
+                      {t.phases[phase.id].label}
                     </h3>
                     <span className="text-xs text-slate-400 dark:text-slate-500">
                       {phase.sublabel}
                     </span>
                   </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    {phase.description} · <span className="italic">{phase.examples}</span>
+                    {t.phases[phase.id].description} · <span className="italic">{t.phases[phase.id].examples}</span>
                   </p>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
                   <span className={`inline-flex items-center justify-center px-3 py-1 rounded-full text-sm font-bold ${phase.badgeColor}`}>
-                    {count.toLocaleString()}
+                    {count.toLocaleString(intlLocale)}
                   </span>
                   {userCanEdit && (
                     <div
@@ -943,12 +926,12 @@ export default function CustomerJourneyPage() {
                         }
                       }}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-purple-50 text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50 transition-colors cursor-pointer"
-                      title="Neue Titelvorschläge von der KI generieren"
+                      title={t.suggestTitlesTooltip}
                     >
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
                       </svg>
-                      Neue Titelvorschläge
+                      {t.newTitleSuggestions}
                     </div>
                   )}
                   <svg
@@ -993,7 +976,7 @@ export default function CustomerJourneyPage() {
                                 </svg>
                                 <input
                                   type="text"
-                                  placeholder="Titel oder URL suchen..."
+                                  placeholder={t.searchTitleOrUrl}
                                   value={phaseSearch[phase.id] || ""}
                                   onChange={(e) => setPhaseSearch((prev) => ({ ...prev, [phase.id]: e.target.value }))}
                                   onClick={(e) => e.stopPropagation()}
@@ -1017,7 +1000,7 @@ export default function CustomerJourneyPage() {
                                   onClick={(e) => e.stopPropagation()}
                                   className="px-2.5 py-1.5 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
                                 >
-                                  <option value="">Alle Kategorien</option>
+                                  <option value="">{t.allCategories}</option>
                                   {phaseCategories.sort().map((c) => (
                                     <option key={c} value={c}>{c}</option>
                                   ))}
@@ -1030,7 +1013,7 @@ export default function CustomerJourneyPage() {
                                   onClick={(e) => e.stopPropagation()}
                                   className="px-2.5 py-1.5 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
                                 >
-                                  <option value="">Alle Locations</option>
+                                  <option value="">{t.allLocations}</option>
                                   {phaseLocations.sort().map((l) => (
                                     <option key={l} value={l}>{l}</option>
                                   ))}
@@ -1039,7 +1022,7 @@ export default function CustomerJourneyPage() {
                             </div>
                             {hasFilter && (
                               <div className="mt-1.5 text-xs text-slate-400 dark:text-slate-500">
-                                {filtered.length.toLocaleString()} von {data.articles.length.toLocaleString()} geladenen Artikeln
+                                {t.filteredOfLoaded(filtered.length.toLocaleString(intlLocale), data.articles.length.toLocaleString(intlLocale))}
                               </div>
                             )}
                           </div>
@@ -1057,7 +1040,7 @@ export default function CustomerJourneyPage() {
                             </div>
                           ) : (
                             <div className="px-6 py-6 text-center text-sm text-slate-400 dark:text-slate-500">
-                              Keine Artikel für die gewählten Filter
+                              {t.noArticlesForFilters}
                             </div>
                           )}
                           {data.pagination && data.pagination.page < data.pagination.totalPages && (
@@ -1074,7 +1057,7 @@ export default function CustomerJourneyPage() {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                               </svg>
                             )}
-                            Weitere laden ({data.articles.length} von {data.pagination.totalCount.toLocaleString()})
+                            {t.loadMore(data.articles.length, data.pagination.totalCount.toLocaleString(intlLocale))}
                           </button>
                         </div>
                       )}
@@ -1084,7 +1067,7 @@ export default function CustomerJourneyPage() {
                   ) : (
                     <div className="px-6 py-8 text-center">
                       <p className="text-sm text-slate-400 dark:text-slate-500">
-                        Keine Artikel in dieser Phase
+                        {t.noArticlesInPhase}
                       </p>
                     </div>
                   )}
@@ -1106,10 +1089,10 @@ export default function CustomerJourneyPage() {
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                    Neue Titelvorschläge
+                    {t.newTitleSuggestions}
                   </h3>
                   <p className="text-sm text-slate-500 dark:text-slate-400">
-                    {JOURNEY_PHASES.find((p) => p.id === suggestPhase)?.label} – {JOURNEY_PHASES.find((p) => p.id === suggestPhase)?.sublabel}
+                    {suggestPhaseInfo && t.phases[suggestPhaseInfo.id].label} – {suggestPhaseInfo?.sublabel}
                   </p>
                 </div>
               </div>
@@ -1126,7 +1109,7 @@ export default function CustomerJourneyPage() {
             {!suggestions && !suggesting && (
               <>
                 <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                  Für welche Kategorie möchtest du neue Titelvorschläge? Die KI gleicht dann mit den bestehenden Titeln dieser Kategorie ab.
+                  {t.suggestCategoryPrompt}
                 </p>
                 <div className="space-y-2 mb-6">
                   {CATEGORIES.map((cat) => {
@@ -1146,7 +1129,7 @@ export default function CustomerJourneyPage() {
                           <span className="text-sm font-medium text-slate-900 dark:text-white">{cat}</span>
                         </span>
                         <span className="text-xs text-slate-400 dark:text-slate-500">
-                          {count} Artikel in Phase
+                          {t.articlesInPhase(count)}
                         </span>
                       </button>
                     );
@@ -1157,14 +1140,14 @@ export default function CustomerJourneyPage() {
                     onClick={closeSuggestDialog}
                     className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors"
                   >
-                    Abbrechen
+                    {t.cancel}
                   </button>
                   <button
                     onClick={fetchSuggestions}
                     disabled={!suggestCategory}
                     className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-purple-600 text-white hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Vorschläge generieren
+                    {t.generateSuggestions}
                   </button>
                 </div>
               </>
@@ -1178,11 +1161,11 @@ export default function CustomerJourneyPage() {
                 </svg>
                 <p className="text-sm font-medium text-slate-600 dark:text-slate-400 text-center transition-opacity duration-500">
                   {[
-                    <>Neue Vorschläge für <span className="font-bold text-purple-600 dark:text-purple-400">{suggestCategory}</span> in <span className="font-bold text-purple-600 dark:text-purple-400">{JOURNEY_PHASES.find((p) => p.id === suggestPhase)?.label}</span> werden recherchiert...</>,
-                    "Abgleich mit Topic-Map und existierenden Themen...",
-                    "Starte Keyword-Research...",
-                    "Übermittlung der Ergebnisse an Claude...",
-                    "Warten auf Feedback...",
+                    <>{t.loadingMessages.researching.prefix}<span className="font-bold text-purple-600 dark:text-purple-400">{suggestCategory}</span>{t.loadingMessages.researching.between}<span className="font-bold text-purple-600 dark:text-purple-400">{suggestPhaseInfo && t.phases[suggestPhaseInfo.id].label}</span>{t.loadingMessages.researching.suffix}</>,
+                    t.loadingMessages.topicMap,
+                    t.loadingMessages.keywordResearch,
+                    t.loadingMessages.submitting,
+                    t.loadingMessages.waiting,
                   ][loadingMsgIndex]}
                 </p>
               </div>
@@ -1195,11 +1178,11 @@ export default function CustomerJourneyPage() {
                     {suggestMeta.category}
                   </span>
                   <span className="text-xs text-slate-400 dark:text-slate-500">
-                    · {suggestMeta.existingCount} bestehende Artikel abgeglichen · {suggestions.length} Vorschläge
+                    {t.suggestMeta(suggestMeta.existingCount, suggestions.length)}
                   </span>
                   {savedSuggestions.size > 0 && (
                     <span className="text-xs font-medium text-green-600 dark:text-green-400 ml-auto">
-                      {savedSuggestions.size} gespeichert
+                      {t.savedCount(savedSuggestions.size)}
                     </span>
                   )}
                 </div>
@@ -1230,14 +1213,14 @@ export default function CustomerJourneyPage() {
                                 ? "bg-purple-50 text-purple-500 dark:bg-purple-900/30 cursor-wait"
                                 : "bg-slate-100 text-slate-700 hover:bg-purple-50 hover:text-purple-700 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-purple-900/30 dark:hover:text-purple-300"
                           }`}
-                          title={isSaved ? "Bereits gespeichert" : "In Redaktionsplan speichern"}
+                          title={isSaved ? t.alreadySaved : t.saveToEditorialPlan}
                         >
                           {isSaved ? (
                             <>
                               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                               </svg>
-                              Gespeichert
+                              {t.saved}
                             </>
                           ) : isSaving ? (
                             <>
@@ -1245,14 +1228,14 @@ export default function CustomerJourneyPage() {
                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                               </svg>
-                              Speichere...
+                              {t.saving}
                             </>
                           ) : (
                             <>
                               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                               </svg>
-                              Speichern
+                              {t.save}
                             </>
                           )}
                         </button>
@@ -1273,13 +1256,13 @@ export default function CustomerJourneyPage() {
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                     </svg>
-                    Andere Kategorie
+                    {t.otherCategory}
                   </button>
                   <button
                     onClick={closeSuggestDialog}
                     className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 transition-colors"
                   >
-                    Fertig
+                    {t.done}
                   </button>
                 </div>
               </>
@@ -1301,16 +1284,16 @@ export default function CustomerJourneyPage() {
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="text-base font-bold text-slate-900 dark:text-white">
-              Nicht zugeordnet
+              {t.unassigned}
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Artikel ohne Journey-Phase – bitte einer Phase zuordnen
+              {t.unassignedDescription}
             </p>
           </div>
           <div className="flex items-center gap-3 shrink-0">
             {totalUnassigned > 0 && (
               <span className="inline-flex items-center justify-center px-3 py-1 rounded-full text-sm font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
-                {totalUnassigned.toLocaleString()}
+                {totalUnassigned.toLocaleString(intlLocale)}
               </span>
             )}
             <svg
@@ -1356,7 +1339,7 @@ export default function CustomerJourneyPage() {
                           </svg>
                           <input
                             type="text"
-                            placeholder="Titel oder URL suchen..."
+                            placeholder={t.searchTitleOrUrl}
                             value={phaseSearch["__unassigned"] || ""}
                             onChange={(e) => setPhaseSearch((prev) => ({ ...prev, "__unassigned": e.target.value }))}
                             onClick={(e) => e.stopPropagation()}
@@ -1380,7 +1363,7 @@ export default function CustomerJourneyPage() {
                             onClick={(e) => e.stopPropagation()}
                             className="px-2.5 py-1.5 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
                           >
-                            <option value="">Alle Kategorien</option>
+                            <option value="">{t.allCategories}</option>
                             {uCategories.sort().map((c) => (
                               <option key={c} value={c}>{c}</option>
                             ))}
@@ -1393,7 +1376,7 @@ export default function CustomerJourneyPage() {
                             onClick={(e) => e.stopPropagation()}
                             className="px-2.5 py-1.5 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
                           >
-                            <option value="">Alle Locations</option>
+                            <option value="">{t.allLocations}</option>
                             {uLocations.sort().map((l) => (
                               <option key={l} value={l}>{l}</option>
                             ))}
@@ -1402,7 +1385,7 @@ export default function CustomerJourneyPage() {
                       </div>
                       {hasFilter && (
                         <div className="mt-1.5 text-xs text-slate-400 dark:text-slate-500">
-                          {filtered.length.toLocaleString()} von {allArticles.length.toLocaleString()} geladenen Artikeln
+                          {t.filteredOfLoaded(filtered.length.toLocaleString(intlLocale), allArticles.length.toLocaleString(intlLocale))}
                         </div>
                       )}
                     </div>
@@ -1420,7 +1403,7 @@ export default function CustomerJourneyPage() {
                       </div>
                     ) : (
                       <div className="px-6 py-6 text-center text-sm text-slate-400 dark:text-slate-500">
-                        Keine Artikel für die gewählten Filter
+                        {t.noArticlesForFilters}
                       </div>
                     )}
                 {phaseData["__unassigned"].pagination &&
@@ -1438,7 +1421,7 @@ export default function CustomerJourneyPage() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                           </svg>
                         )}
-                        Weitere laden ({phaseData["__unassigned"].articles.length} von {phaseData["__unassigned"].pagination.totalCount.toLocaleString()})
+                        {t.loadMore(phaseData["__unassigned"].articles.length, phaseData["__unassigned"].pagination.totalCount.toLocaleString(intlLocale))}
                       </button>
                     </div>
                   )}
@@ -1451,7 +1434,7 @@ export default function CustomerJourneyPage() {
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  Alle Artikel sind einer Phase zugeordnet
+                  {t.allAssigned}
                 </div>
               </div>
             ) : null}
@@ -1473,6 +1456,7 @@ function ArticleRow({
   updatingId: string | null;
   onUpdatePhase: (id: string, phase: string | null) => void;
 }) {
+  const t = useMessages(customerJourneyMessages);
   const isUpdating = updatingId === article.id;
   const currentPhase = JOURNEY_PHASES.find((p) => p.id === article.journeyPhase);
 
@@ -1494,12 +1478,12 @@ function ArticleRow({
             </span>
           )}
           {article.language && (
-            <span className="inline-flex px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300 shrink-0 uppercase" title="Sprache aus URL-Pfad">
+            <span className="inline-flex px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300 shrink-0 uppercase" title={t.languageFromUrl}>
               {article.language}
             </span>
           )}
           <span className="inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400 shrink-0">
-            {STATUSES[article.status] || article.status}
+            {t.statuses[article.status] || article.status}
           </span>
           {article.journeyPhase && article.journeyConfidence != null && (
             <ConfidenceBadge confidence={article.journeyConfidence} />
@@ -1525,15 +1509,15 @@ function ArticleRow({
             isUpdating ? "opacity-50" : ""
           }`}
         >
-          <option value="">– Phase wählen –</option>
+          <option value="">{t.choosePhase}</option>
           {JOURNEY_PHASES.map((p) => (
-            <option key={p.id} value={p.id}>{p.label}</option>
+            <option key={p.id} value={p.id}>{t.phases[p.id].label}</option>
           ))}
         </select>
       ) : (
         currentPhase && (
           <span className={`inline-flex px-2 py-1 rounded-lg text-xs font-medium shrink-0 ${currentPhase.badgeColor}`}>
-            {currentPhase.label}
+            {t.phases[currentPhase.id].label}
           </span>
         )
       )}
@@ -1542,6 +1526,7 @@ function ArticleRow({
 }
 
 function ConfidenceBadge({ confidence }: { confidence: number }) {
+  const t = useMessages(customerJourneyMessages);
   const color =
     confidence >= 85
       ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
@@ -1553,17 +1538,17 @@ function ConfidenceBadge({ confidence }: { confidence: number }) {
 
   const label =
     confidence >= 85
-      ? "Sehr sicher"
+      ? t.confidence.veryHigh
       : confidence >= 65
-        ? "Sicher"
+        ? t.confidence.high
         : confidence >= 45
-          ? "Grenzfall"
-          : "Unsicher";
+          ? t.confidence.borderline
+          : t.confidence.low;
 
   return (
     <span
       className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold tabular-nums shrink-0 ${color}`}
-      title={`KI-Konfidenz: ${confidence}% – ${label}`}
+      title={t.confidenceTooltip(confidence, label)}
     >
       <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />

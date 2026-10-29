@@ -1,10 +1,14 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import { useMessages } from "@/i18n/I18nProvider";
+import { authMessages } from "@/i18n/messages/auth";
 
 // Loading-Komponente für Suspense
 function LoadingSpinner() {
+  const t = useMessages(authMessages);
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       <div className="w-full max-w-md p-8 bg-slate-800/50 backdrop-blur-xl rounded-2xl border border-slate-700/50 shadow-2xl text-center">
@@ -26,7 +30,7 @@ function LoadingSpinner() {
             />
           </svg>
         </div>
-        <p className="text-slate-400">Wird geladen...</p>
+        <p className="text-slate-400">{t.loading}</p>
       </div>
     </div>
   );
@@ -34,9 +38,9 @@ function LoadingSpinner() {
 
 // Hauptinhalt der Seite - verwendet useSearchParams
 function AuthConfirmContent() {
+  const t = useMessages(authMessages);
   const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
 
   const token = searchParams.get("token");
   const email = searchParams.get("email");
@@ -47,11 +51,7 @@ function AuthConfirmContent() {
     : "/";
 
   // Prüfe ob alle Parameter vorhanden sind
-  useEffect(() => {
-    if (!token || !email) {
-      setError("Ungültiger Anmeldelink. Bitte fordere einen neuen Link an.");
-    }
-  }, [token, email]);
+  const error = !token || !email;
 
   const handleLogin = () => {
     if (!token || !email) return;
@@ -91,16 +91,16 @@ function AuthConfirmContent() {
           </div>
 
           <h1 className="text-2xl font-bold text-white mb-2">
-            Ungültiger Link
+            {t.confirm.invalidLinkTitle}
           </h1>
 
-          <p className="text-slate-400 mb-6">{error}</p>
+          <p className="text-slate-400 mb-6">{t.confirm.invalidLinkError}</p>
 
           <a
             href="/login"
             className="inline-flex items-center justify-center gap-2 w-full py-3 px-4 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg transition-all duration-200"
           >
-            Zurück zur Anmeldung
+            {t.backToLogin}
           </a>
         </div>
       </div>
@@ -127,11 +127,11 @@ function AuthConfirmContent() {
         </div>
 
         <h1 className="text-2xl font-bold text-white mb-2">
-          Anmeldung bestätigen
+          {t.confirm.title}
         </h1>
 
         <p className="text-slate-400 mb-2">
-          Du meldest Dich an als:
+          {t.confirm.signingInAs}
         </p>
         <p className="text-white font-medium mb-6">{email}</p>
 
@@ -158,7 +158,7 @@ function AuthConfirmContent() {
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
                 />
               </svg>
-              Wird angemeldet...
+              {t.confirm.signingIn}
             </>
           ) : (
             <>
@@ -175,13 +175,13 @@ function AuthConfirmContent() {
                   d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"
                 />
               </svg>
-              Jetzt anmelden
+              {t.confirm.signInNow}
             </>
           )}
         </button>
 
         <p className="mt-6 text-xs text-slate-500">
-          Klicke auf den Button, um die Anmeldung abzuschließen.
+          {t.confirm.hint}
         </p>
 
         <div className="mt-4 pt-4 border-t border-slate-700/50">
@@ -189,7 +189,7 @@ function AuthConfirmContent() {
             href="/login"
             className="text-sm text-slate-400 hover:text-slate-300 transition-colors"
           >
-            Das bist nicht Du? Andere E-Mail verwenden
+            {t.confirm.notYou}
           </a>
         </div>
       </div>

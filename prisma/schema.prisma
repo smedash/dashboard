@@ -1109,6 +1109,7 @@ model ConductorWebsite {
   issues        ConductorIssue[]
   syncLogs      ConductorSyncLog[]
   lastSyncAt    DateTime?
+  syncLockedUntil DateTime? // Sperre gegen parallele Sync-Läufe, wird pro Batch verlängert
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
@@ -1167,12 +1168,14 @@ model ConductorPage {
   segments              Json?    // JSON-Array von Segment-IDs
   timeDocumentDownload  Int?     // ms
 
+  syncLogId             String?  // Sync-Lauf, der die Zeile zuletzt geschrieben hat
   dataCapturedAt        DateTime?
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
   @@unique([websiteId, url])
   @@index([websiteId])
+  @@index([websiteId, syncLogId])
   @@index([url])
   @@index([health])
   @@index([statusCode])
@@ -1206,11 +1209,13 @@ model ConductorSyncLog {
   websiteId       String
   website         ConductorWebsite @relation(fields: [websiteId], references: [id], onDelete: Cascade)
   type            String   // manual, cron
-  status          String   @default("running") // running, completed, failed
+  status          String   @default("running") // running, paused, completed, failed, aborted
+  cursor          String?  @db.Text // next_page_cursor der Conductor-API zum Fortsetzen
   pagesProcessed  Int      @default(0)
   issuesProcessed Int      @default(0)
   durationMs      Int?
   error           String?  @db.Text
+  heartbeatAt     DateTime?
   createdAt       DateTime @default(now())
 
   @@index([websiteId, createdAt])

@@ -3,18 +3,8 @@ export type RecomputeProgress = {
   total: number;
   percent: number;
   etaSeconds: number | null;
-  label?: string;
+  aligning?: boolean;
 };
-
-export function formatEta(seconds: number | null): string {
-  if (seconds == null) return "Restzeit wird ermittelt…";
-  if (seconds < 20) return "noch wenige Sekunden";
-  if (seconds < 90) return `noch ca. ${Math.round(seconds)} Sek.`;
-  if (seconds < 3600) return `noch ca. ${Math.max(1, Math.round(seconds / 60))} Min.`;
-  const hours = seconds / 3600;
-  if (hours < 10) return `noch ca. ${hours.toFixed(1).replace(".", ",")} Std.`;
-  return `noch ca. ${Math.round(hours)} Std.`;
-}
 
 export async function runChunkedRecompute(
   onProgress: (p: RecomputeProgress) => void
@@ -37,7 +27,7 @@ export async function runChunkedRecompute(
       total?: number;
       error?: string;
     };
-    if (!res.ok) throw new Error(data.error || "Score-Berechnung fehlgeschlagen");
+    if (!res.ok) throw new Error(data.error || "");
 
     total = data.total ?? total;
     processed += data.batchUpdated ?? 0;
@@ -57,7 +47,7 @@ export async function runChunkedRecompute(
       total,
       percent: total > 0 ? Math.min(finished ? 100 : 99, Math.round((processed / total) * 100)) : 0,
       etaSeconds,
-      label: aligning ? "Sprachversionen werden abgeglichen…" : undefined,
+      aligning,
     });
 
     if (data.done || !data.nextCursor) return processed;

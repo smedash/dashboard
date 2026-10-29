@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useMessages } from "@/i18n/I18nProvider";
+import { urlCleanupMessages } from "@/i18n/messages/url-cleanup";
 
 type Preview = {
   headers: string[];
@@ -12,6 +14,7 @@ type Preview = {
 };
 
 export function DimensionImport({ onImported }: { onImported?: () => void }) {
+  const t = useMessages(urlCleanupMessages);
   const [file, setFile] = useState<File | null>(null);
   const [name, setName] = useState("");
   const [urlColumn, setUrlColumn] = useState("");
@@ -32,12 +35,12 @@ export function DimensionImport({ onImported }: { onImported?: () => void }) {
       fd.set("name", name);
       const res = await fetch("/api/url-cleanup/import", { method: "POST", body: fd });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Preview fehlgeschlagen");
+      if (!res.ok) throw new Error(data.error || t.dimensionImport.previewFailed);
       setPreview(data);
       setUrlColumn(data.guessedUrl);
       if (!name) setName(file.name.replace(/\.xlsx?$/i, ""));
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Fehler");
+      setMsg(e instanceof Error ? e.message : t.error);
     } finally {
       setBusy(false);
     }
@@ -56,14 +59,17 @@ export function DimensionImport({ onImported }: { onImported?: () => void }) {
       if (periodEnd) fd.set("periodEnd", periodEnd);
       const res = await fetch("/api/url-cleanup/import", { method: "POST", body: fd });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Import fehlgeschlagen");
+      if (!res.ok) throw new Error(data.error || t.dimensionImport.importFailed);
       setMsg(
-        `Importiert: ${data.dimension.matchedCount.toLocaleString("de-CH")} Matches, ${data.dimension.unmatchedCount.toLocaleString("de-CH")} ohne Inventar-Treffer`
+        t.dimensionImport.imported(
+          data.dimension.matchedCount.toLocaleString(t.displayLocale),
+          data.dimension.unmatchedCount.toLocaleString(t.displayLocale)
+        )
       );
       setPreview(null);
       onImported?.();
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Fehler");
+      setMsg(e instanceof Error ? e.message : t.error);
     } finally {
       setBusy(false);
     }
@@ -81,7 +87,7 @@ export function DimensionImport({ onImported }: { onImported?: () => void }) {
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Dimensionsname"
+          placeholder={t.dimensionImport.namePlaceholder}
           className="px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
         />
         <input
@@ -104,7 +110,7 @@ export function DimensionImport({ onImported }: { onImported?: () => void }) {
           onClick={runPreview}
           className="px-3 py-1.5 text-sm rounded-lg border border-slate-300 dark:border-slate-600 disabled:opacity-50"
         >
-          Preview
+          {t.dimensionImport.preview}
         </button>
         <button
           type="button"
@@ -112,17 +118,19 @@ export function DimensionImport({ onImported }: { onImported?: () => void }) {
           onClick={runImport}
           className="px-3 py-1.5 text-sm rounded-lg bg-blue-600 text-white disabled:opacity-50"
         >
-          {busy ? "Bitte warten…" : "Importieren"}
+          {busy ? t.dimensionImport.pleaseWait : t.dimensionImport.import}
         </button>
       </div>
       {preview && (
         <div className="text-sm text-slate-600 dark:text-slate-300 space-y-2">
           <p>
-            {preview.rowCount.toLocaleString("de-CH")} Zeilen · geschätzte Match-Rate{" "}
-            {(preview.probeMatchRate * 100).toFixed(1)}% (Stichprobe)
+            {t.dimensionImport.previewSummary(
+              preview.rowCount.toLocaleString(t.displayLocale),
+              (preview.probeMatchRate * 100).toFixed(1)
+            )}
           </p>
           <label className="block text-xs">
-            URL-Spalte
+            {t.dimensionImport.urlColumn}
             <select
               value={urlColumn}
               onChange={(e) => setUrlColumn(e.target.value)}
@@ -136,7 +144,7 @@ export function DimensionImport({ onImported }: { onImported?: () => void }) {
             </select>
           </label>
           <p className="text-xs">
-            Weitere Spalten: {preview.columns.map((c) => `${c.key} (${c.type})`).join(", ") || "—"}
+            {t.dimensionImport.otherColumns} {preview.columns.map((c) => `${c.key} (${c.type})`).join(", ") || "—"}
           </p>
         </div>
       )}

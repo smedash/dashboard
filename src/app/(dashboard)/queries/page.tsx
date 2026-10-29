@@ -5,6 +5,8 @@ import { downloadExcel } from "@/lib/excel-export";
 import { DataTable } from "@/components/ui/DataTable";
 import { PeriodSelector } from "@/components/ui/PeriodSelector";
 import { useProperty } from "@/contexts/PropertyContext";
+import { useLocale, useMessages } from "@/i18n/I18nProvider";
+import { queriesMessages } from "@/i18n/messages/queries";
 
 interface QueryRow {
   keys: string[];
@@ -48,6 +50,8 @@ interface IntentJob {
 
 export default function QueriesPage() {
   const { selectedProperty } = useProperty();
+  const t = useMessages(queriesMessages);
+  const { intlLocale } = useLocale();
   const [period, setPeriod] = useState("28d");
   const [data, setData] = useState<QueryRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -366,15 +370,15 @@ export default function QueriesPage() {
         setTrendJob(result.job);
       } else {
         if (result.job) setTrendJob(result.job);
-        alert(result.error || "Fehler beim Starten des Jobs");
+        alert(result.error || t.errors.startJob);
       }
     } catch (error) {
       console.error("Error starting trend job:", error);
-      alert("Fehler beim Starten des Google Trends Jobs");
+      alert(t.errors.startTrendJob);
     } finally {
       setIsStartingJob(false);
     }
-  }, [selectedProperty, data]);
+  }, [selectedProperty, data, t]);
 
   const startIntentJob = useCallback(async () => {
     if (!selectedProperty || data.length === 0) return;
@@ -397,15 +401,15 @@ export default function QueriesPage() {
         setIntentJob(result.job);
       } else {
         if (result.job) setIntentJob(result.job);
-        alert(result.error || "Fehler beim Starten des Jobs");
+        alert(result.error || t.errors.startJob);
       }
     } catch (error) {
       console.error("Error starting intent job:", error);
-      alert("Fehler beim Starten des Search Intent Jobs");
+      alert(t.errors.startIntentJob);
     } finally {
       setIsStartingIntentJob(false);
     }
-  }, [selectedProperty, data]);
+  }, [selectedProperty, data, t]);
 
   const exportToXlsx = useCallback(() => {
     if (tableData.length === 0) return;
@@ -414,19 +418,19 @@ export default function QueriesPage() {
     const hasIntents = intentMap.size > 0;
     const rows = tableData.map((r) => {
       const base: Record<string, unknown> = {
-        Suchanfrage: r.query,
-        Klicks: r.clicks,
-        Impressionen: r.impressions,
-        "CTR (%)": Math.round(r.ctr * 10000) / 100,
-        Position: Math.round(r.position * 10) / 10,
+        [t.export.query]: r.query,
+        [t.export.clicks]: r.clicks,
+        [t.export.impressions]: r.impressions,
+        [t.export.ctr]: Math.round(r.ctr * 10000) / 100,
+        [t.export.position]: Math.round(r.position * 10) / 10,
       };
       if (hasIntents) {
-        base["Search Intent"] = r.intentLabel ?? "";
+        base[t.export.searchIntent] = r.intentLabel ?? "";
       }
       if (hasTrends) {
-        base["Trend Ø"] = r.trendAvg ?? "";
-        base["Trend aktuell"] = r.trendRecent ?? "";
-        base["Trend Richtung"] =
+        base[t.export.trendAvg] = r.trendAvg ?? "";
+        base[t.export.trendRecent] = r.trendRecent ?? "";
+        base[t.export.trendDirection] =
           r.trendDirection === "up" ? "↑" :
           r.trendDirection === "down" ? "↓" :
           r.trendDirection === "stable" ? "→" : "";
@@ -442,10 +446,10 @@ export default function QueriesPage() {
       }
     })();
     const stamp = new Date().toISOString().slice(0, 10);
-    downloadExcel(`gsc-suchanfragen_${host}_${period}_${stamp}.xlsx`, [
-      { name: "Suchanfragen", rows },
+    downloadExcel(`${t.export.filePrefix}_${host}_${period}_${stamp}.xlsx`, [
+      { name: t.export.sheetName, rows },
     ]);
-  }, [tableData, selectedProperty, period, trendsMap, intentMap]);
+  }, [tableData, selectedProperty, period, trendsMap, intentMap, t]);
 
   const jobIsActive = trendJob?.status === "pending" || trendJob?.status === "processing";
   const jobProgress = jobIsActive && trendJob
@@ -459,7 +463,7 @@ export default function QueriesPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h1 className="text-2xl font-bold text-white">Suchanfragen</h1>
+        <h1 className="text-2xl font-bold text-white">{t.title}</h1>
         <div className="flex flex-wrap items-center gap-4">
           <PeriodSelector value={period} onChange={setPeriod} />
           <button
@@ -467,7 +471,7 @@ export default function QueriesPage() {
             onClick={startTrendJob}
             disabled={isLoading || isStartingJob || jobIsActive || data.length === 0}
             className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-emerald-600 bg-emerald-700 text-emerald-100 hover:bg-emerald-600 disabled:opacity-50 disabled:pointer-events-none transition-colors"
-            title="Google Trends Daten fuer alle Keywords im Hintergrund laden (Schweiz/Deutsch). Du erhaeltst eine E-Mail wenn fertig."
+            title={t.trendsButtonTitle}
           >
             {isStartingJob || jobIsActive ? (
               <div className="w-4 h-4 border-2 border-emerald-300 border-t-transparent rounded-full animate-spin" />
@@ -483,7 +487,7 @@ export default function QueriesPage() {
             onClick={startIntentJob}
             disabled={isLoading || isStartingIntentJob || intentJobIsActive || data.length === 0}
             className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-violet-600 bg-violet-700 text-violet-100 hover:bg-violet-600 disabled:opacity-50 disabled:pointer-events-none transition-colors"
-            title="Search Intent fuer alle Keywords im Hintergrund laden (DataForSEO Labs). Du erhaeltst eine E-Mail wenn fertig."
+            title={t.intentButtonTitle}
           >
             {isStartingIntentJob || intentJobIsActive ? (
               <div className="w-4 h-4 border-2 border-violet-300 border-t-transparent rounded-full animate-spin" />
@@ -499,7 +503,7 @@ export default function QueriesPage() {
             onClick={exportToXlsx}
             disabled={isLoading || tableData.length === 0}
             className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-slate-600 bg-slate-700 text-slate-200 hover:bg-slate-600 disabled:opacity-50 disabled:pointer-events-none transition-colors"
-            title="Aktuelle Tabelle (inkl. Filter) als Excel-Datei speichern"
+            title={t.exportTitle}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -516,11 +520,11 @@ export default function QueriesPage() {
             <div className="flex items-center gap-3">
               <div className="w-5 h-5 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
               <span className="text-sm font-medium text-emerald-200">
-                Google Trends werden geladen...
+                {t.trendsLoading}
               </span>
             </div>
             <span className="text-sm text-emerald-300">
-              {trendJob.processedKeywords.toLocaleString("de-DE")} / {trendJob.totalKeywords.toLocaleString("de-DE")} Keywords ({jobProgress}%)
+              {t.jobProgress(trendJob.processedKeywords.toLocaleString(intlLocale), trendJob.totalKeywords.toLocaleString(intlLocale), jobProgress)}
             </span>
           </div>
           <div className="w-full bg-emerald-950 rounded-full h-2">
@@ -530,7 +534,7 @@ export default function QueriesPage() {
             />
           </div>
           <p className="text-xs text-emerald-400 mt-2">
-            Laeuft im Hintergrund — du erhaeltst eine E-Mail wenn fertig. Du kannst die Seite verlassen.
+            {t.trendsBackgroundHint}
           </p>
         </div>
       )}
@@ -538,14 +542,14 @@ export default function QueriesPage() {
       {trendJob?.status === "completed" && validTrendsCount > 0 && (
         <div className="bg-emerald-900/30 border border-emerald-800 rounded-xl px-4 py-3 flex items-center justify-between">
           <span className="text-sm text-emerald-300">
-            Google Trends geladen: {validTrendsCount.toLocaleString("de-DE")} Keywords mit Trend-Daten
+            {t.trendsLoaded(validTrendsCount.toLocaleString(intlLocale))}
           </span>
           <button
             onClick={startTrendJob}
             disabled={isLoading || isStartingJob || data.length === 0}
             className="text-xs text-emerald-400 hover:text-emerald-200 underline disabled:opacity-50"
           >
-            Neu laden
+            {t.reload}
           </button>
         </div>
       )}
@@ -557,11 +561,11 @@ export default function QueriesPage() {
             <div className="flex items-center gap-3">
               <div className="w-5 h-5 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" />
               <span className="text-sm font-medium text-violet-200">
-                Search Intent wird geladen...
+                {t.intentLoading}
               </span>
             </div>
             <span className="text-sm text-violet-300">
-              {intentJob.processedKeywords.toLocaleString("de-DE")} / {intentJob.totalKeywords.toLocaleString("de-DE")} Keywords ({intentJobProgress}%)
+              {t.jobProgress(intentJob.processedKeywords.toLocaleString(intlLocale), intentJob.totalKeywords.toLocaleString(intlLocale), intentJobProgress)}
             </span>
           </div>
           <div className="w-full bg-violet-950 rounded-full h-2">
@@ -571,7 +575,7 @@ export default function QueriesPage() {
             />
           </div>
           <p className="text-xs text-violet-400 mt-2">
-            Laeuft im Hintergrund — du kannst die Seite verlassen.
+            {t.intentBackgroundHint}
           </p>
         </div>
       )}
@@ -579,14 +583,14 @@ export default function QueriesPage() {
       {intentJob?.status === "completed" && intentMap.size > 0 && (
         <div className="bg-violet-900/30 border border-violet-800 rounded-xl px-4 py-3 flex items-center justify-between">
           <span className="text-sm text-violet-300">
-            Search Intent geladen: {intentMap.size.toLocaleString("de-DE")} Keywords mit Intent-Daten
+            {t.intentLoaded(intentMap.size.toLocaleString(intlLocale))}
           </span>
           <button
             onClick={startIntentJob}
             disabled={isLoading || isStartingIntentJob || data.length === 0}
             className="text-xs text-violet-400 hover:text-violet-200 underline disabled:opacity-50"
           >
-            Neu laden
+            {t.reload}
           </button>
         </div>
       )}
@@ -604,7 +608,7 @@ export default function QueriesPage() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Keywords durchsuchen..."
+            placeholder={t.searchPlaceholder}
             className="w-full pl-10 pr-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           {searchQuery && (
@@ -627,22 +631,22 @@ export default function QueriesPage() {
               onChange={(e) => setExcludeBrand(e.target.checked)}
               className="w-4 h-4 rounded border-slate-500 bg-slate-600 text-blue-600 focus:ring-blue-500 focus:ring-offset-0"
             />
-            <span className="text-sm text-slate-300">Brand ausschließen:</span>
+            <span className="text-sm text-slate-300">{t.excludeBrand}</span>
           </label>
           <input
             type="text"
             value={brandFilter}
             onChange={(e) => setBrandFilter(e.target.value)}
-            placeholder="z.B. ubs, bank"
+            placeholder={t.brandPlaceholder}
             disabled={!excludeBrand}
             className="flex-1 min-w-[200px] max-w-[400px] px-3 py-2 text-sm bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
           />
           {intentMap.size > 0 && (
             <div className="flex items-center gap-2">
-              <span className="text-sm text-slate-300">Intent:</span>
+              <span className="text-sm text-slate-300">{t.intentLabel}</span>
               <div className="flex items-center gap-1">
                 {[
-                  { value: "all", label: "Alle", cls: "border-slate-500 text-slate-300 hover:bg-slate-600" },
+                  { value: "all", label: t.all, cls: "border-slate-500 text-slate-300 hover:bg-slate-600" },
                   { value: "informational", label: "I", cls: "border-blue-500/50 text-blue-300 hover:bg-blue-500/20" },
                   { value: "navigational", label: "N", cls: "border-purple-500/50 text-purple-300 hover:bg-purple-500/20" },
                   { value: "commercial", label: "C", cls: "border-amber-500/50 text-amber-300 hover:bg-amber-500/20" },
@@ -658,7 +662,7 @@ export default function QueriesPage() {
                         ? "ring-2 ring-offset-1 ring-offset-slate-800 ring-blue-500 bg-slate-600"
                         : ""
                     }`}
-                    title={opt.value === "all" ? "Alle anzeigen" : opt.value === "none" ? "Kein Intent" : opt.value.charAt(0).toUpperCase() + opt.value.slice(1)}
+                    title={opt.value === "all" ? t.showAll : opt.value === "none" ? t.noIntent : opt.value.charAt(0).toUpperCase() + opt.value.slice(1)}
                   >
                     {opt.label}
                   </button>
@@ -667,13 +671,13 @@ export default function QueriesPage() {
             </div>
           )}
           <div className="flex items-center gap-2">
-            <span className="text-sm text-slate-300">Kategorie:</span>
+            <span className="text-sm text-slate-300">{t.categoryLabel}</span>
             <div className="flex items-center gap-[5px]">
               {[
-                { value: "all", label: "Alle", cls: "border-slate-500 text-slate-300 hover:bg-slate-600" },
-                { value: "beratung", label: "Beratung", cls: "border-cyan-500/50 text-cyan-300 hover:bg-cyan-500/20" },
-                { value: "abschluss", label: "Abschluss", cls: "border-orange-500/50 text-orange-300 hover:bg-orange-500/20" },
-                { value: "produkte", label: "Produkte", cls: "border-emerald-500/50 text-emerald-300 hover:bg-emerald-500/20" },
+                { value: "all", label: t.all, cls: "border-slate-500 text-slate-300 hover:bg-slate-600" },
+                { value: "beratung", label: t.categories.beratung, cls: "border-cyan-500/50 text-cyan-300 hover:bg-cyan-500/20" },
+                { value: "abschluss", label: t.categories.abschluss, cls: "border-orange-500/50 text-orange-300 hover:bg-orange-500/20" },
+                { value: "produkte", label: t.categories.produkte, cls: "border-emerald-500/50 text-emerald-300 hover:bg-emerald-500/20" },
               ].map((opt) => (
                 <button
                   key={opt.value}
@@ -686,8 +690,8 @@ export default function QueriesPage() {
                   }`}
                   title={
                     opt.value === "all"
-                      ? "Alle anzeigen"
-                      : `Nur Keywords mit ${opt.label}-Begriffen anzeigen`
+                      ? t.showAll
+                      : t.categoryTitle(opt.label)
                   }
                 >
                   {opt.label}
@@ -697,10 +701,10 @@ export default function QueriesPage() {
           </div>
           {trendsMap.size > 0 && (
             <div className="flex items-center gap-2">
-              <span className="text-sm text-slate-300">Trend:</span>
+              <span className="text-sm text-slate-300">{t.trendLabel}</span>
               <div className="flex items-center gap-[5px]">
                 {[
-                  { value: "all", label: "Alle", icon: null, cls: "border-slate-500 text-slate-300 hover:bg-slate-600" },
+                  { value: "all", label: t.all, icon: null, cls: "border-slate-500 text-slate-300 hover:bg-slate-600" },
                   { value: "up", label: "↑", icon: null, cls: "border-emerald-500/50 text-emerald-300 hover:bg-emerald-500/20" },
                   { value: "stable", label: "→", icon: null, cls: "border-slate-400/50 text-slate-300 hover:bg-slate-500/20" },
                   { value: "down", label: "↓", icon: null, cls: "border-red-500/50 text-red-300 hover:bg-red-500/20" },
@@ -716,11 +720,11 @@ export default function QueriesPage() {
                         : ""
                     }`}
                     title={
-                      opt.value === "all" ? "Alle anzeigen" :
-                      opt.value === "up" ? "Steigend" :
-                      opt.value === "stable" ? "Stagniert" :
-                      opt.value === "down" ? "Fallend" :
-                      "Keine Richtung"
+                      opt.value === "all" ? t.showAll :
+                      opt.value === "up" ? t.trendFilter.up :
+                      opt.value === "stable" ? t.trendFilter.stable :
+                      opt.value === "down" ? t.trendFilter.down :
+                      t.trendFilter.none
                     }
                   >
                     {opt.label}
@@ -730,7 +734,7 @@ export default function QueriesPage() {
             </div>
           )}
           <span className="text-sm text-slate-400">
-            {tableData.length} von {data.length} Suchanfragen
+            {t.resultCount(tableData.length, data.length)}
           </span>
         </div>
       </div>
@@ -754,7 +758,7 @@ export default function QueriesPage() {
           { label: "Navigational", short: "N", count: counts.navigational, color: "#a855f7" },
           { label: "Commercial", short: "C", count: counts.commercial, color: "#f59e0b" },
           { label: "Transactional", short: "T", count: counts.transactional, color: "#10b981" },
-          { label: "Kein Intent", short: "?", count: counts.none, color: "#ef4444" },
+          { label: t.noIntent, short: "?", count: counts.none, color: "#ef4444" },
         ].filter((s) => s.count > 0);
 
         const radius = 40;
@@ -763,7 +767,7 @@ export default function QueriesPage() {
 
         return (
           <div className="bg-slate-800 rounded-xl border border-slate-700 p-4 flex flex-col items-center justify-center">
-            <h3 className="text-sm font-medium text-slate-300 mb-3">Intent-Verteilung</h3>
+            <h3 className="text-sm font-medium text-slate-300 mb-3">{t.intentDistribution}</h3>
             <svg viewBox="0 0 100 100" className="w-28 h-28 mb-3">
               {segments.map((seg) => {
                 const pct = seg.count / total;
@@ -784,7 +788,7 @@ export default function QueriesPage() {
                 );
               })}
               <text x="50" y="50" textAnchor="middle" dominantBaseline="middle" className="fill-white text-[10px] font-bold">
-                {total.toLocaleString("de-DE")}
+                {total.toLocaleString(intlLocale)}
               </text>
             </svg>
             <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
@@ -819,7 +823,7 @@ export default function QueriesPage() {
           { label: "Navigational", short: "N", count: impByIntent.navigational, color: "#a855f7" },
           { label: "Commercial", short: "C", count: impByIntent.commercial, color: "#f59e0b" },
           { label: "Transactional", short: "T", count: impByIntent.transactional, color: "#10b981" },
-          { label: "Kein Intent", short: "?", count: impByIntent.none, color: "#ef4444" },
+          { label: t.noIntent, short: "?", count: impByIntent.none, color: "#ef4444" },
         ].filter((s) => s.count > 0);
 
         const radius = 40;
@@ -828,7 +832,7 @@ export default function QueriesPage() {
 
         return (
           <div className="bg-slate-800 rounded-xl border border-slate-700 p-4 flex flex-col items-center justify-center">
-            <h3 className="text-sm font-medium text-slate-300 mb-3">Impressionen je Intent</h3>
+            <h3 className="text-sm font-medium text-slate-300 mb-3">{t.impressionsByIntent}</h3>
             <svg viewBox="0 0 100 100" className="w-28 h-28 mb-3">
               {segments.map((seg) => {
                 const pct = seg.count / totalImp;
@@ -849,7 +853,7 @@ export default function QueriesPage() {
                 );
               })}
               <text x="50" y="50" textAnchor="middle" dominantBaseline="middle" className="fill-white text-[10px] font-bold">
-                {totalImp.toLocaleString("de-DE")}
+                {totalImp.toLocaleString(intlLocale)}
               </text>
             </svg>
             <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
@@ -857,7 +861,7 @@ export default function QueriesPage() {
                 <div key={seg.label} className="flex items-center gap-1.5">
                   <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: seg.color }} />
                   <span className="text-slate-400">{seg.short}</span>
-                  <span className="text-slate-200 font-medium">{seg.count.toLocaleString("de-DE")}</span>
+                  <span className="text-slate-200 font-medium">{seg.count.toLocaleString(intlLocale)}</span>
                   <span className="text-slate-500">{Math.round((seg.count / totalImp) * 100)}%</span>
                 </div>
               ))}
@@ -885,7 +889,7 @@ export default function QueriesPage() {
           { label: "Navigational", short: "N", count: clicksByIntent.navigational, color: "#a855f7" },
           { label: "Commercial", short: "C", count: clicksByIntent.commercial, color: "#f59e0b" },
           { label: "Transactional", short: "T", count: clicksByIntent.transactional, color: "#10b981" },
-          { label: "Kein Intent", short: "?", count: clicksByIntent.none, color: "#ef4444" },
+          { label: t.noIntent, short: "?", count: clicksByIntent.none, color: "#ef4444" },
         ].filter((s) => s.count > 0);
 
         const radius = 40;
@@ -894,7 +898,7 @@ export default function QueriesPage() {
 
         return (
           <div className="bg-slate-800 rounded-xl border border-slate-700 p-4 flex flex-col items-center justify-center">
-            <h3 className="text-sm font-medium text-slate-300 mb-3">Klicks je Intent</h3>
+            <h3 className="text-sm font-medium text-slate-300 mb-3">{t.clicksByIntent}</h3>
             <svg viewBox="0 0 100 100" className="w-28 h-28 mb-3">
               {segments.map((seg) => {
                 const pct = seg.count / totalClicks;
@@ -915,7 +919,7 @@ export default function QueriesPage() {
                 );
               })}
               <text x="50" y="50" textAnchor="middle" dominantBaseline="middle" className="fill-white text-[10px] font-bold">
-                {totalClicks.toLocaleString("de-DE")}
+                {totalClicks.toLocaleString(intlLocale)}
               </text>
             </svg>
             <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
@@ -923,7 +927,7 @@ export default function QueriesPage() {
                 <div key={seg.label} className="flex items-center gap-1.5">
                   <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: seg.color }} />
                   <span className="text-slate-400">{seg.short}</span>
-                  <span className="text-slate-200 font-medium">{seg.count.toLocaleString("de-DE")}</span>
+                  <span className="text-slate-200 font-medium">{seg.count.toLocaleString(intlLocale)}</span>
                   <span className="text-slate-500">{Math.round((seg.count / totalClicks) * 100)}%</span>
                 </div>
               ))}
@@ -939,10 +943,10 @@ export default function QueriesPage() {
             <div className="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full mb-4"></div>
             <div className="text-center">
               <p className="text-lg font-medium text-white mb-2">
-                Hole Live-Daten aus der GSC...
+                {t.loadingTitle}
               </p>
               <p className="text-sm text-slate-400">
-                Das kann einige Sekunden dauern!
+                {t.loadingHint}
               </p>
             </div>
           </div>
@@ -953,7 +957,7 @@ export default function QueriesPage() {
             columns={[
               {
                 key: "query",
-                header: "Suchanfrage",
+                header: t.columns.query,
                 sortable: true,
                 render: (value) => (
                   <span className="font-medium text-white">{String(value)}</span>
@@ -961,27 +965,27 @@ export default function QueriesPage() {
               },
               {
                 key: "clicks",
-                header: "Klicks",
+                header: t.columns.clicks,
                 sortable: true,
                 render: (value) => (
-                  <span className="text-blue-400">{Number(value).toLocaleString("de-DE")}</span>
+                  <span className="text-blue-400">{Number(value).toLocaleString(intlLocale)}</span>
                 ),
               },
               {
                 key: "impressions",
-                header: "Impressionen",
+                header: t.columns.impressions,
                 sortable: true,
-                render: (value) => Number(value).toLocaleString("de-DE"),
+                render: (value) => Number(value).toLocaleString(intlLocale),
               },
               {
                 key: "ctr",
-                header: "CTR",
+                header: t.columns.ctr,
                 sortable: true,
                 render: (value) => `${(Number(value) * 100).toFixed(2)}%`,
               },
               {
                 key: "position",
-                header: "Position",
+                header: t.columns.position,
                 sortable: true,
                 render: (value) => Number(value).toFixed(1),
               },
@@ -989,14 +993,14 @@ export default function QueriesPage() {
                 ? [
                     {
                       key: "intentLabel" as const,
-                      header: "Intent",
+                      header: t.columns.intent,
                       sortable: true,
                       render: (value: unknown) => {
                         const label = value as string | null;
                         if (!label) return (
                           <span
                             className="inline-flex items-center justify-center w-6 h-6 rounded text-xs font-bold border bg-red-500/10 text-red-400 border-red-500/30"
-                            title="Kein Intent vorhanden"
+                            title={t.noIntentAvailable}
                           >
                             ?
                           </span>
@@ -1030,7 +1034,7 @@ export default function QueriesPage() {
                 ? [
                     {
                       key: "trendAvg" as const,
-                      header: "Trend Ø",
+                      header: t.columns.trendAvg,
                       sortable: true,
                       render: (value: unknown) => {
                         const v = value as number | null;
@@ -1041,14 +1045,14 @@ export default function QueriesPage() {
                     },
                     {
                       key: "trendDirection" as const,
-                      header: "Richtung",
+                      header: t.columns.direction,
                       sortable: true,
                       render: (value: unknown) => {
                         const dir = value as string | null;
                         if (!dir) return <span className="text-slate-500">–</span>;
-                        if (dir === "up") return <span className="text-emerald-400" title="steigend">↑</span>;
-                        if (dir === "down") return <span className="text-red-400" title="fallend">↓</span>;
-                        return <span className="text-slate-400" title="stabil">→</span>;
+                        if (dir === "up") return <span className="text-emerald-400" title={t.trendDirection.up}>↑</span>;
+                        if (dir === "down") return <span className="text-red-400" title={t.trendDirection.down}>↓</span>;
+                        return <span className="text-slate-400" title={t.trendDirection.stable}>→</span>;
                       },
                     },
                   ]

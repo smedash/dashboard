@@ -5,6 +5,8 @@ import { downloadExcel } from "@/lib/excel-export";
 import { TopicSunburstChart } from "@/components/charts";
 import CategorySelector from "@/components/planning/CategorySelector";
 import CategoryTotalsChart from "@/components/planning/CategoryTotalsChart";
+import { useMessages } from "@/i18n/I18nProvider";
+import { planningTopicsMessages } from "@/i18n/messages/planning-topics";
 
 interface TopicGraphNode {
   label: string;
@@ -113,6 +115,7 @@ function flattenForExport(
 }
 
 function TopicContent({ job }: { job: TopicGraphJob }) {
+  const t = useMessages(planningTopicsMessages);
   const [view, setView] = useState<"tree" | "sunburst">("sunburst");
 
   const exportToXlsx = () => {
@@ -124,7 +127,7 @@ function TopicContent({ job }: { job: TopicGraphJob }) {
         name: "Topics",
         rows,
         columnWidths: [25, 25, 40, 8, 80],
-        headerOverrides: ["Seed-Keyword", "Kategorie", "Topic", "Ebene", "Pfad"],
+        headerOverrides: t.exportHeaders,
       },
     ]);
   };
@@ -140,7 +143,7 @@ function TopicContent({ job }: { job: TopicGraphJob }) {
               : "bg-slate-700 text-slate-300 hover:bg-slate-600"
           }`}
         >
-          Sunburst
+          {t.sunburst}
         </button>
         <button
           onClick={() => setView("tree")}
@@ -150,7 +153,7 @@ function TopicContent({ job }: { job: TopicGraphJob }) {
               : "bg-slate-700 text-slate-300 hover:bg-slate-600"
           }`}
         >
-          Baumansicht
+          {t.treeView}
         </button>
         <button
           onClick={exportToXlsx}
@@ -159,7 +162,7 @@ function TopicContent({ job }: { job: TopicGraphJob }) {
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
           </svg>
-          Excel Export
+          {t.excelExport}
         </button>
       </div>
       <div className="px-6 py-4">
@@ -175,6 +178,7 @@ function TopicContent({ job }: { job: TopicGraphJob }) {
 }
 
 export default function TopicsPage() {
+  const t = useMessages(planningTopicsMessages);
   const [keyword, setKeyword] = useState("");
   const [countryCode, setCountryCode] = useState("ch");
   const [languageCode, setLanguageCode] = useState("de");
@@ -281,7 +285,7 @@ export default function TopicsPage() {
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || `Fehler: ${res.status}`);
+        throw new Error(data.error || t.errorStatus(res.status));
       }
 
       const result = await res.json();
@@ -315,11 +319,11 @@ export default function TopicsPage() {
         pollJob(dbId);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unbekannter Fehler");
+      setError(err instanceof Error ? err.message : t.unknownError);
     } finally {
       setIsLoading(false);
     }
-  }, [keyword, countryCode, languageCode, selectedCategory, isLoading, pollJob]);
+  }, [keyword, countryCode, languageCode, selectedCategory, isLoading, pollJob, t]);
 
   const totalTopics = (job: TopicGraphJob) => {
     if (!job.topic_graph) return 0;
@@ -339,13 +343,13 @@ export default function TopicsPage() {
           name: job.parameters.keyword.slice(0, 31).replace(/[\\/*?[\]:]/g, ""),
           rows,
           columnWidths: [25, 25, 40, 8, 80],
-          headerOverrides: ["Seed-Keyword", "Kategorie", "Topic", "Ebene", "Pfad"],
+          headerOverrides: t.exportHeaders,
         };
       });
 
     const date = new Date().toISOString().split("T")[0];
     downloadExcel(`alle-topics-${date}.xlsx`, sheets);
-  }, [jobs]);
+  }, [jobs, t]);
 
   const filteredJobs = filterCategory
     ? jobs.filter((j) => j.category === filterCategory)
@@ -374,9 +378,9 @@ export default function TopicsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Topic Research</h1>
+          <h1 className="text-2xl font-bold text-white">{t.title}</h1>
           <p className="text-sm text-slate-400 mt-1">
-            Finde alle relevanten Unterthemen fuer deine Inhalte via TopicLoops
+            {t.subtitle}
           </p>
         </div>
         {succeededCount > 0 && (
@@ -387,7 +391,7 @@ export default function TopicsPage() {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
-            Alle exportieren ({succeededCount})
+            {t.exportAll(succeededCount)}
           </button>
         )}
       </div>
@@ -395,7 +399,7 @@ export default function TopicsPage() {
       {/* Kategorie-Selektor */}
       <CategorySelector
         onSelectKeyword={handleSeedKeywordSelect}
-        actionLabel="Topic-Graph erstellen"
+        actionLabel={t.createGraph}
       />
 
       {/* Eingabe */}
@@ -403,44 +407,44 @@ export default function TopicsPage() {
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1">
             <label className="block text-sm font-medium text-slate-300 mb-1.5">
-              Keyword / Thema
+              {t.keywordLabel}
             </label>
             <input
               type="text"
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-              placeholder="z.B. hypothek, vorsorge 3a, ..."
+              placeholder={t.keywordPlaceholder}
               className="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
           <div className="w-32">
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Land</label>
+            <label className="block text-sm font-medium text-slate-300 mb-1.5">{t.country}</label>
             <select
               value={countryCode}
               onChange={(e) => setCountryCode(e.target.value)}
               className="w-full px-3 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="ch">Schweiz</option>
-              <option value="de">Deutschland</option>
-              <option value="at">Oesterreich</option>
-              <option value="us">USA</option>
-              <option value="gb">UK</option>
-              <option value="fr">Frankreich</option>
-              <option value="it">Italien</option>
+              <option value="ch">{t.countries.ch}</option>
+              <option value="de">{t.countries.de}</option>
+              <option value="at">{t.countries.at}</option>
+              <option value="us">{t.countries.us}</option>
+              <option value="gb">{t.countries.gb}</option>
+              <option value="fr">{t.countries.fr}</option>
+              <option value="it">{t.countries.it}</option>
             </select>
           </div>
           <div className="w-32">
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Sprache</label>
+            <label className="block text-sm font-medium text-slate-300 mb-1.5">{t.language}</label>
             <select
               value={languageCode}
               onChange={(e) => setLanguageCode(e.target.value)}
               className="w-full px-3 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="de">Deutsch</option>
-              <option value="en">Englisch</option>
-              <option value="fr">Franzoesisch</option>
-              <option value="it">Italienisch</option>
+              <option value="de">{t.languages.de}</option>
+              <option value="en">{t.languages.en}</option>
+              <option value="fr">{t.languages.fr}</option>
+              <option value="it">{t.languages.it}</option>
             </select>
           </div>
           <div className="flex items-end">
@@ -455,10 +459,10 @@ export default function TopicsPage() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
-                  Wird erstellt...
+                  {t.creating}
                 </span>
               ) : (
-                "Topic-Graph erstellen"
+                t.createGraph
               )}
             </button>
           </div>
@@ -475,15 +479,15 @@ export default function TopicsPage() {
       {categoryChartData.length > 0 && (
         <CategoryTotalsChart
           data={categoryChartData}
-          countLabel="Recherchen"
-          totalLabel="Topics"
+          countLabel={t.countLabel}
+          totalLabel={t.totalLabel}
         />
       )}
 
       {/* Kategorie-Filter fuer Ergebnisse */}
       {jobCategories.length > 0 && (
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs font-medium text-slate-400">Filtern:</span>
+          <span className="text-xs font-medium text-slate-400">{t.filter}</span>
           <button
             onClick={() => setFilterCategory("")}
             className={`px-2.5 py-1 text-xs rounded-md transition-colors ${
@@ -492,7 +496,7 @@ export default function TopicsPage() {
                 : "bg-slate-800 text-slate-400 hover:text-white"
             }`}
           >
-            Alle ({jobs.length})
+            {t.all(jobs.length)}
           </button>
           {jobCategories.map((cat) => (
             <button
@@ -545,27 +549,27 @@ export default function TopicsPage() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
-                    Wird verarbeitet...
+                    {t.processing}
                   </span>
                 )}
                 {job.status === "succeeded" && (
                   <span className="text-xs text-emerald-400">
-                    {totalTopics(job)} Topics gefunden
+                    {t.topicsFound(totalTopics(job))}
                   </span>
                 )}
                 {job.status === "failed" && (
-                  <span className="text-xs text-red-400">Fehlgeschlagen</span>
+                  <span className="text-xs text-red-400">{t.failed}</span>
                 )}
               </div>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (confirm(`Topic-Graph "${job.parameters.keyword}" wirklich loeschen?`)) {
+                  if (confirm(t.confirmDelete(job.parameters.keyword))) {
                     deleteJob(job.id);
                   }
                 }}
                 className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                title="Loeschen"
+                title={t.delete}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -584,7 +588,7 @@ export default function TopicsPage() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
-                  <p className="text-sm">Topic-Graph wird erstellt, das dauert ca. 10 Sekunden...</p>
+                  <p className="text-sm">{t.processingHint}</p>
                 </div>
               </div>
             )}
@@ -599,7 +603,7 @@ export default function TopicsPage() {
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
           </svg>
-          <p className="text-sm text-slate-400">Gespeicherte Topic-Graphs werden geladen...</p>
+          <p className="text-sm text-slate-400">{t.loadingSaved}</p>
         </div>
       )}
       {!isLoadingSaved && jobs.length === 0 && (
@@ -607,9 +611,9 @@ export default function TopicsPage() {
           <svg className="w-16 h-16 mx-auto text-slate-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
           </svg>
-          <h3 className="text-lg font-medium text-slate-300 mb-2">Noch keine Topic-Graphs</h3>
+          <h3 className="text-lg font-medium text-slate-300 mb-2">{t.emptyTitle}</h3>
           <p className="text-sm text-slate-500">
-            Gib oben ein Keyword oder Thema ein, um einen Topic-Graph zu erstellen.
+            {t.emptyHint}
           </p>
         </div>
       )}

@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useMessages } from "@/i18n/I18nProvider";
+import { uiMessages } from "@/i18n/messages/ui";
 
 interface Property {
   siteUrl: string;
@@ -13,9 +15,11 @@ interface PropertySelectorProps {
 }
 
 export function PropertySelector({ value, onChange }: PropertySelectorProps) {
+  const t = useMessages(uiMessages).propertySelector;
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
@@ -43,7 +47,7 @@ export function PropertySelector({ value, onChange }: PropertySelectorProps) {
           onChange(savedProperty);
         }
       } catch {
-        setError("Fehler beim Laden der Properties");
+        setLoadFailed(true);
       } finally {
         setIsLoading(false);
       }
@@ -60,10 +64,10 @@ export function PropertySelector({ value, onChange }: PropertySelectorProps) {
     );
   }
 
-  if (error) {
+  if (error || loadFailed) {
     return (
       <div className="px-4 py-2 bg-amber-500/20 text-amber-400 text-sm rounded-lg">
-        {error}
+        {error ?? t.loadError}
       </div>
     );
   }
@@ -115,7 +119,7 @@ export function PropertySelector({ value, onChange }: PropertySelectorProps) {
         </svg>
         <span className="truncate flex-1 text-left">
           {selectedProperty?.siteUrl?.replace(/^(sc-domain:|https?:\/\/)/, "") ||
-            "Property wählen"}
+            t.placeholder}
         </span>
         <svg
           className="w-4 h-4 text-slate-400"

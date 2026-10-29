@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import { useLocale, useMessages } from "@/i18n/I18nProvider";
+import { superagentMessages } from "@/i18n/messages/superagent";
 
 interface Message {
   id: string;
@@ -9,14 +11,9 @@ interface Message {
   timestamp: Date;
 }
 
-const suggestedPrompts = [
-  "Auf welcher Position rankt ubs.com für 'Hypothek Schweiz'?",
-  "Was ist das Suchvolumen für 'Online Banking', 'Mobile Banking' und 'E-Banking'?",
-  "Zeig mir eine Zusammenfassung des Backlink-Profils von ubs.com",
-  "Welche sind die Top 10 verweisenden Domains?",
-];
-
 export default function SuperAgentPage() {
+  const t = useMessages(superagentMessages);
+  const { intlLocale } = useLocale();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -77,7 +74,7 @@ export default function SuperAgentPage() {
       const errorMessage: Message = {
         id: crypto.randomUUID(),
         role: "assistant",
-        content: `Fehler: ${error instanceof Error ? error.message : "Ein unbekannter Fehler ist aufgetreten"}`,
+        content: t.errorPrefix(error instanceof Error ? error.message : t.unknownError),
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, errorMessage]);
@@ -119,10 +116,10 @@ export default function SuperAgentPage() {
         </div>
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-            SuperAgent
+            {t.title}
           </h1>
           <p className="text-slate-500 dark:text-slate-400">
-            KI-gestützte SEO-Analyse mit Echtzeit-Daten
+            {t.subtitle}
           </p>
         </div>
       </div>
@@ -149,16 +146,15 @@ export default function SuperAgentPage() {
                 </svg>
               </div>
               <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">
-                Willkommen beim SuperAgent
+                {t.welcomeTitle}
               </h2>
               <p className="text-slate-500 dark:text-slate-400 max-w-md mb-8">
-                Ich bin dein KI-Assistent für SEO-Analysen. Frag mich nach
-                Rankings, Suchvolumen, Backlinks und mehr.
+                {t.welcomeText}
               </p>
 
               {/* Suggested Prompts */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl w-full">
-                {suggestedPrompts.map((prompt, index) => (
+                {t.suggestedPrompts.map((prompt, index) => (
                   <button
                     key={index}
                     onClick={() => handleSuggestionClick(prompt)}
@@ -202,7 +198,7 @@ export default function SuperAgentPage() {
                           : "text-slate-400 dark:text-slate-500"
                       }`}
                     >
-                      {message.timestamp.toLocaleTimeString("de-DE", {
+                      {message.timestamp.toLocaleTimeString(intlLocale, {
                         hour: "2-digit",
                         minute: "2-digit",
                       })}
@@ -230,7 +226,7 @@ export default function SuperAgentPage() {
                         />
                       </div>
                       <span className="text-sm text-slate-500 dark:text-slate-400">
-                        Analysiere Daten...
+                        {t.analyzing}
                       </span>
                     </div>
                   </div>
@@ -250,7 +246,7 @@ export default function SuperAgentPage() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Frag mich etwas über SEO..."
+                placeholder={t.inputPlaceholder}
                 rows={1}
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 
                          bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white
@@ -285,7 +281,7 @@ export default function SuperAgentPage() {
             </button>
           </form>
           <p className="text-xs text-slate-400 dark:text-slate-500 mt-2 text-center">
-            SuperAgent nutzt Claude AI mit DataForSEO für Echtzeit-SEO-Daten
+            {t.footer}
           </p>
         </div>
       </div>

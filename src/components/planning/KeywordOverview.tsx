@@ -3,6 +3,8 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useProperty } from "@/contexts/PropertyContext";
 import { downloadExcel } from "@/lib/excel-export";
+import { useLocale, useMessages } from "@/i18n/I18nProvider";
+import { planningComponentsMessages } from "@/i18n/messages/planning-components";
 
 interface KeywordSuggestionItem {
   keyword: string;
@@ -99,6 +101,8 @@ interface ComparisonRow {
 type CompSortField = "baseTerm" | string;
 
 export default function KeywordOverview() {
+  const t = useMessages(planningComponentsMessages).keywordOverview;
+  const { intlLocale } = useLocale();
   const [results, setResults] = useState<KeywordSuggestionResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -511,7 +515,7 @@ export default function KeywordOverview() {
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
         </svg>
-        <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">Keywords werden geladen...</p>
+        <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">{t.loading}</p>
       </div>
     );
   }
@@ -522,9 +526,9 @@ export default function KeywordOverview() {
         <svg className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
         </svg>
-        <h3 className="mt-4 text-lg font-medium text-slate-900 dark:text-white">Noch keine Keywords recherchiert</h3>
+        <h3 className="mt-4 text-lg font-medium text-slate-900 dark:text-white">{t.emptyTitle}</h3>
         <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-          Wechsle zum Tab &ldquo;Keyword Research&rdquo;, um Keyword-Vorschläge abzurufen.
+          {t.emptyHint}
         </p>
       </div>
     );
@@ -542,7 +546,7 @@ export default function KeywordOverview() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Keyword oder Seed-Keyword suchen..."
+            placeholder={t.searchPlaceholder}
             className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
           {searchQuery && (
@@ -562,7 +566,7 @@ export default function KeywordOverview() {
           onChange={(e) => setSelectedCategory(e.target.value)}
           className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          <option value="">Alle Kategorien</option>
+          <option value="">{t.allCategories}</option>
           {categories.map((cat) => (
             <option key={cat.name} value={cat.name}>
               {cat.name} ({cat.count})
@@ -575,7 +579,7 @@ export default function KeywordOverview() {
           onChange={(e) => setSelectedSeed(e.target.value)}
           className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          <option value="">Alle Seed-Keywords</option>
+          <option value="">{t.allSeedKeywords}</option>
           {seedKeywords.map((sk) => (
             <option key={sk.name} value={sk.name}>
               {sk.name} ({sk.count})
@@ -589,7 +593,7 @@ export default function KeywordOverview() {
             onChange={(e) => setSelectedIntent(e.target.value)}
             className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="">Alle Intents</option>
+            <option value="">{t.allIntents}</option>
             {intents.map((i) => (
               <option key={i} value={i}>{i.charAt(0).toUpperCase() + i.slice(1)}</option>
             ))}
@@ -608,14 +612,14 @@ export default function KeywordOverview() {
             }}
             className="px-3 py-2 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
           >
-            Filter zurücksetzen
+            {t.resetFilters}
           </button>
         )}
       </div>
 
       {/* Wettbewerber-Brand-Filter */}
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-medium text-slate-500 dark:text-slate-400 mr-1">Wettbewerber:</span>
+        <span className="text-xs font-medium text-slate-500 dark:text-slate-400 mr-1">{t.competitors}</span>
         {COMPETITOR_BRANDS.map((brand) => {
           const isActive = selectedBrands.includes(brand.label);
           return (
@@ -641,7 +645,7 @@ export default function KeywordOverview() {
         {selectedBrands.length > 0 && (
           <>
             <span className="text-xs text-slate-400 dark:text-slate-500">
-              ({filteredKeywords.length.toLocaleString("de-CH")} Treffer)
+              {t.hits(filteredKeywords.length.toLocaleString(intlLocale))}
             </span>
             <div className="ml-auto flex items-center gap-2">
               <button
@@ -655,7 +659,7 @@ export default function KeywordOverview() {
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
-                vs. UBS vergleichen
+                {t.compareWithUbs}
               </button>
             </div>
           </>
@@ -671,35 +675,35 @@ export default function KeywordOverview() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
               <h3 className="text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide">
-                Markenaufmerksamkeit nach Kategorie
+                {t.brandAttention}
               </h3>
             </div>
             <button
               onClick={() => {
                 const activeBrands = [OWN_BRAND, ...COMPETITOR_BRANDS.filter((b) => selectedBrands.includes(b.label))];
                 const rows = brandStats.categories.map((cat) => {
-                  const obj: Record<string, unknown> = { Kategorie: cat.category };
+                  const obj: Record<string, unknown> = { [t.excelCols.category]: cat.category };
                   for (const brand of activeBrands) {
-                    obj[`${brand.label} Suchvolumen`] = cat.brands[brand.label]?.volume ?? 0;
+                    obj[`${brand.label} ${t.excelCols.searchVolume}`] = cat.brands[brand.label]?.volume ?? 0;
                     obj[`${brand.label} Keywords`] = cat.brands[brand.label]?.count ?? 0;
                   }
                   return obj;
                 });
-                const totalRow: Record<string, unknown> = { Kategorie: "TOTAL" };
+                const totalRow: Record<string, unknown> = { [t.excelCols.category]: "TOTAL" };
                 for (const brand of activeBrands) {
-                  totalRow[`${brand.label} Suchvolumen`] = brandStats.totals[brand.label]?.volume ?? 0;
+                  totalRow[`${brand.label} ${t.excelCols.searchVolume}`] = brandStats.totals[brand.label]?.volume ?? 0;
                   totalRow[`${brand.label} Keywords`] = brandStats.totals[brand.label]?.count ?? 0;
                 }
                 rows.push(totalRow);
                 const date = new Date().toISOString().slice(0, 10);
-                downloadExcel(`markenaufmerksamkeit-${date}.xlsx`, [{ name: "Markenaufmerksamkeit", rows }]);
+                downloadExcel(`markenaufmerksamkeit-${date}.xlsx`, [{ name: t.excelCols.brandAttentionSheet, rows }]);
               }}
               className="px-3 py-1.5 text-xs rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors flex items-center gap-1"
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
-              Excel
+              {t.excel}
             </button>
           </div>
           <div className="overflow-x-auto">
@@ -707,7 +711,7 @@ export default function KeywordOverview() {
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-700">
                   <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500 dark:text-slate-400">
-                    Kategorie
+                    {t.category}
                   </th>
                   {[OWN_BRAND, ...COMPETITOR_BRANDS.filter((b) => selectedBrands.includes(b.label))].map((brand) => (
                     <th
@@ -719,7 +723,7 @@ export default function KeywordOverview() {
                       }`}
                     >
                       <div>{brand.label}</div>
-                      <div className="font-normal text-[10px] text-slate-400">Vol. / Anz.</div>
+                      <div className="font-normal text-[10px] text-slate-400">{t.volumeCount}</div>
                     </th>
                   ))}
                 </tr>
@@ -748,7 +752,7 @@ export default function KeywordOverview() {
                             {val ? (
                               <div>
                                 <span className={`text-xs font-semibold ${isWinner ? "text-green-600 dark:text-green-400" : "text-slate-700 dark:text-slate-200"}`}>
-                                  {vol.toLocaleString("de-CH")}
+                                  {vol.toLocaleString(intlLocale)}
                                 </span>
                                 <span className="text-[10px] text-slate-400 dark:text-slate-500 ml-1.5">
                                   ({val.count})
@@ -767,7 +771,7 @@ export default function KeywordOverview() {
               <tfoot>
                 <tr className="border-t-2 border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/50">
                   <td className="px-4 py-2.5 font-bold text-xs text-slate-900 dark:text-white">
-                    Total
+                    {t.total}
                   </td>
                   {[OWN_BRAND, ...COMPETITOR_BRANDS.filter((b) => selectedBrands.includes(b.label))].map((brand) => {
                     const val = brandStats.totals[brand.label];
@@ -781,7 +785,7 @@ export default function KeywordOverview() {
                         {val ? (
                           <div>
                             <span className={`text-xs font-bold ${isWinner ? "text-green-600 dark:text-green-400" : "text-slate-900 dark:text-white"}`}>
-                              {vol.toLocaleString("de-CH")}
+                              {vol.toLocaleString(intlLocale)}
                             </span>
                             <span className="text-[10px] text-slate-400 dark:text-slate-500 ml-1.5">
                               ({val.count})
@@ -807,20 +811,20 @@ export default function KeywordOverview() {
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
             </svg>
-            {filteredKeywords.length.toLocaleString("de-CH")} von {allKeywords.length.toLocaleString("de-CH")} Keywords
+            {t.keywordsOf(filteredKeywords.length.toLocaleString(intlLocale), allKeywords.length.toLocaleString(intlLocale))}
           </span>
           <button
             onClick={() => {
               const rows = filteredKeywords.map((kw) => ({
                 Keyword: kw.keyword,
-                "Seed-Keyword": kw.seedKeyword,
-                Kategorie: kw.category,
-                Suchvolumen: kw.searchVolume ?? "",
+                [t.excelCols.seedKeyword]: kw.seedKeyword,
+                [t.excelCols.category]: kw.category,
+                [t.excelCols.searchVolume]: kw.searchVolume ?? "",
                 Difficulty: kw.difficulty ?? "",
                 CPC: kw.cpc ?? "",
                 Competition: kw.competition ?? "",
                 Intent: kw.searchIntents?.join(", ") ?? "",
-                "In GSC": kw.inGsc ? "Ja" : "Nein",
+                "In GSC": kw.inGsc ? t.excelCols.yes : t.excelCols.no,
                 ...(kw.inGsc ? { "GSC Clicks": kw.gscClicks ?? "", "GSC Impressions": kw.gscImpressions ?? "", "GSC Position": kw.gscPosition != null ? Math.round(kw.gscPosition * 10) / 10 : "" } : {}),
               }));
               const date = new Date().toISOString().slice(0, 10);
@@ -831,13 +835,13 @@ export default function KeywordOverview() {
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
-            Excel-Export
+            {t.excelExport}
           </button>
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-xs font-medium text-amber-700 dark:text-amber-300">
-            {categories.length} Kategorien
+            {t.categoriesCount(categories.length)}
           </span>
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-xs font-medium text-blue-700 dark:text-blue-300">
-            {seedKeywords.length} Seed-Keywords
+            {t.seedKeywordsCount(seedKeywords.length)}
           </span>
         </div>
 
@@ -852,7 +856,7 @@ export default function KeywordOverview() {
                   : "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600"
               }`}
             >
-              Alle
+              {t.gscAll}
             </button>
             <button
               onClick={() => setGscFilterMode("gaps")}
@@ -862,7 +866,7 @@ export default function KeywordOverview() {
                   : "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300 hover:bg-orange-200 dark:hover:bg-orange-900/50"
               }`}
             >
-              Gaps ({gapCount.toLocaleString("de-CH")})
+              Gaps ({gapCount.toLocaleString(intlLocale)})
             </button>
             <button
               onClick={() => setGscFilterMode("in_gsc")}
@@ -872,7 +876,7 @@ export default function KeywordOverview() {
                   : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-900/50"
               }`}
             >
-              In GSC ({inGscCount.toLocaleString("de-CH")})
+              In GSC ({inGscCount.toLocaleString(intlLocale)})
             </button>
           </div>
         )}
@@ -882,7 +886,7 @@ export default function KeywordOverview() {
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
             </svg>
-            <span className="text-xs text-slate-500 dark:text-slate-400">GSC-Daten laden...</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">{t.gscLoading}</span>
           </div>
         )}
       </div>
@@ -912,11 +916,11 @@ export default function KeywordOverview() {
               </svg>
               <div>
                 <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
-                  Brand-Vergleich: {OWN_BRAND.label} vs. {selectedBrands.join(", ")}
+                  {t.brandComparison(OWN_BRAND.label, selectedBrands.join(", "))}
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  {sortedComparisonRows.length} Suchbegriffe verglichen
-                  {ubsVolumesLoading && " · UBS-Volumen werden geladen..."}
+                  {t.termsCompared(sortedComparisonRows.length)}
+                  {ubsVolumesLoading && t.ubsVolumesLoading}
                 </p>
               </div>
             </div>
@@ -924,29 +928,29 @@ export default function KeywordOverview() {
               onClick={() => {
                 const rows = sortedComparisonRows.map((row) => {
                   const obj: Record<string, unknown> = {
-                    Suchbegriff: row.baseTerm,
-                    Kategorie: row.category,
+                    [t.excelCols.searchTerm]: row.baseTerm,
+                    [t.excelCols.category]: row.category,
                   };
                   for (const brand of compBrandColumns) {
                     const entry = row.brands[brand];
                     obj[`${brand} Keyword`] = entry?.keyword ?? "";
-                    obj[`${brand} Suchvolumen`] = entry?.volume ?? "";
+                    obj[`${brand} ${t.excelCols.searchVolume}`] = entry?.volume ?? "";
                   }
                   const vols = compBrandColumns.map((b) => row.brands[b]?.volume).filter((v): v is number => v != null);
-                  obj["Gewinner"] = vols.length > 0
+                  obj[t.excelCols.winner] = vols.length > 0
                     ? compBrandColumns.find((b) => row.brands[b]?.volume === Math.max(...vols)) ?? ""
                     : "";
                   return obj;
                 });
                 const date = new Date().toISOString().slice(0, 10);
-                downloadExcel(`brand-vergleich-${date}.xlsx`, [{ name: "Brand-Vergleich", rows }]);
+                downloadExcel(`brand-vergleich-${date}.xlsx`, [{ name: t.excelCols.brandComparisonSheet, rows }]);
               }}
               className="px-4 py-2 text-sm rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors flex items-center gap-1.5 flex-shrink-0"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
-              Excel Export
+              {t.excelExportBrand}
             </button>
           </div>
           <div className="overflow-x-auto">
@@ -957,7 +961,7 @@ export default function KeywordOverview() {
                     className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 select-none"
                     onClick={() => handleCompSort("baseTerm")}
                   >
-                    Suchbegriff <CompSortIcon field="baseTerm" />
+                    {t.searchTerm} <CompSortIcon field="baseTerm" />
                   </th>
                   {compBrandColumns.map((brand) => (
                     <th
@@ -973,7 +977,7 @@ export default function KeywordOverview() {
                     </th>
                   ))}
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
-                    Kat.
+                    {t.categoryShort}
                   </th>
                 </tr>
               </thead>
@@ -982,7 +986,7 @@ export default function KeywordOverview() {
                   <tr>
                     <td colSpan={compBrandColumns.length + 2} className="px-4 py-12 text-center">
                       <p className="text-sm text-slate-500 dark:text-slate-400">
-                        Keine Suchbegriffe zum Vergleich gefunden.
+                        {t.noComparisonTerms}
                       </p>
                     </td>
                   </tr>
@@ -1005,10 +1009,10 @@ export default function KeywordOverview() {
                                   className={`font-medium ${isWinner ? "text-green-600 dark:text-green-400" : "text-slate-600 dark:text-slate-300"}`}
                                   title={entry?.keyword}
                                 >
-                                  {vol.toLocaleString("de-CH")}
+                                  {vol.toLocaleString(intlLocale)}
                                 </span>
                               ) : (
-                                <span className="text-slate-400 text-xs" title={entry?.keyword}>k.A.</span>
+                                <span className="text-slate-400 text-xs" title={entry?.keyword}>{t.notAvailable}</span>
                               )}
                             </td>
                           );
@@ -1029,7 +1033,7 @@ export default function KeywordOverview() {
           {compTotalPages > 1 && (
             <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between">
               <span className="text-xs text-slate-500 dark:text-slate-400">
-                Seite {page + 1} von {compTotalPages} ({sortedComparisonRows.length} Begriffe)
+                {t.pageOfTerms(page + 1, compTotalPages, sortedComparisonRows.length)}
               </span>
               <div className="flex items-center gap-1">
                 <button onClick={() => setPage(0)} disabled={page === 0} className="px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-600 disabled:opacity-30 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">&laquo;</button>
@@ -1052,46 +1056,46 @@ export default function KeywordOverview() {
                       className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 select-none"
                       onClick={() => handleSort("keyword")}
                     >
-                      Keyword <SortIcon field="keyword" />
+                      {t.columns.keyword} <SortIcon field="keyword" />
                     </th>
                     <th
                       className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 select-none"
                       onClick={() => handleSort("seedKeyword")}
                     >
-                      Seed-Keyword <SortIcon field="seedKeyword" />
+                      {t.columns.seedKeyword} <SortIcon field="seedKeyword" />
                     </th>
                     <th
                       className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 select-none"
                       onClick={() => handleSort("category")}
                     >
-                      Kategorie <SortIcon field="category" />
+                      {t.columns.category} <SortIcon field="category" />
                     </th>
                     <th
                       className="px-4 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 select-none"
                       onClick={() => handleSort("searchVolume")}
                     >
-                      Suchvol. <SortIcon field="searchVolume" />
+                      {t.columns.searchVolume} <SortIcon field="searchVolume" />
                     </th>
                     <th
                       className="px-4 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 select-none"
                       onClick={() => handleSort("difficulty")}
                     >
-                      Difficulty <SortIcon field="difficulty" />
+                      {t.columns.difficulty} <SortIcon field="difficulty" />
                     </th>
                     <th
                       className="px-4 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 select-none"
                       onClick={() => handleSort("cpc")}
                     >
-                      CPC <SortIcon field="cpc" />
+                      {t.columns.cpc} <SortIcon field="cpc" />
                     </th>
                     <th
                       className="px-4 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 select-none"
                       onClick={() => handleSort("competition")}
                     >
-                      Comp. <SortIcon field="competition" />
+                      {t.columns.competition} <SortIcon field="competition" />
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
-                      Intent
+                      {t.columns.intent}
                     </th>
                     {gscLoaded && (
                       <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
@@ -1108,7 +1112,7 @@ export default function KeywordOverview() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
                         <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
-                          Keine Keywords gefunden, die den Filtern entsprechen.
+                          {t.noKeywordsMatch}
                         </p>
                       </td>
                     </tr>
@@ -1127,7 +1131,7 @@ export default function KeywordOverview() {
                           </span>
                         </td>
                         <td className="px-4 py-2 text-right text-slate-600 dark:text-slate-300 tabular-nums">
-                          {kw.searchVolume != null ? kw.searchVolume.toLocaleString("de-CH") : "–"}
+                          {kw.searchVolume != null ? kw.searchVolume.toLocaleString(intlLocale) : "–"}
                         </td>
                         <td className="px-4 py-2 text-right">
                           {kw.difficulty != null ? <DifficultyBar value={kw.difficulty} /> : <span className="text-slate-400">–</span>}
@@ -1150,7 +1154,7 @@ export default function KeywordOverview() {
                             {kw.inGsc ? (
                               <span
                                 className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
-                                title={`Pos. ${kw.gscPosition?.toFixed(1)} | ${kw.gscClicks} Clicks | ${kw.gscImpressions} Imp.`}
+                                title={t.gscTooltip(kw.gscPosition?.toFixed(1) ?? "", kw.gscClicks, kw.gscImpressions)}
                               >
                                 <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -1175,7 +1179,7 @@ export default function KeywordOverview() {
             {totalPages > 1 && (
               <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between">
                 <span className="text-xs text-slate-500 dark:text-slate-400">
-                  Seite {page + 1} von {totalPages} ({filteredKeywords.length.toLocaleString("de-CH")} Keywords)
+                  {t.pageOfKeywords(page + 1, totalPages, filteredKeywords.length.toLocaleString(intlLocale))}
                 </span>
                 <div className="flex items-center gap-1">
                   <button onClick={() => setPage(0)} disabled={page === 0} className="px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-600 disabled:opacity-30 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">&laquo;</button>

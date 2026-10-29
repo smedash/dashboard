@@ -9,6 +9,8 @@
  */
 
 import catalogData from "./catalog.json";
+import catalogEn from "./catalog.en.json";
+import type { Locale } from "@/i18n/config";
 
 // --- Types ---
 
@@ -59,8 +61,17 @@ export interface CatalogEvaluationResult {
 
 // --- Catalog Access ---
 
-function loadCatalog(): CatalogEntry[] {
-  return catalogData as unknown as CatalogEntry[];
+type CatalogTexts = Pick<CatalogEntry, "checkDescription" | "recommendation">;
+
+const catalogTexts: Partial<Record<Locale, Record<string, CatalogTexts>>> = {
+  en: catalogEn as Record<string, CatalogTexts>,
+};
+
+function loadCatalog(locale: Locale = "de"): CatalogEntry[] {
+  const entries = catalogData as unknown as CatalogEntry[];
+  const texts = catalogTexts[locale];
+  if (!texts) return entries;
+  return entries.map((e) => (texts[e.id] ? { ...e, ...texts[e.id] } : e));
 }
 
 export function getCatalog(): CatalogEntry[] {
@@ -116,9 +127,9 @@ export interface ParsedPageData {
  */
 export function evaluateCatalog(
   page: ParsedPageData,
-  options?: { categories?: string[]; minImpact?: CatalogEntry["impact"] }
+  options?: { categories?: string[]; minImpact?: CatalogEntry["impact"]; locale?: Locale }
 ): CatalogEvaluationResult {
-  let entries = loadCatalog();
+  let entries = loadCatalog(options?.locale);
 
   if (options?.categories) {
     entries = entries.filter((e) => options.categories!.includes(e.category));

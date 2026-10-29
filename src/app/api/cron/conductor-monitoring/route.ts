@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { syncAllConductorWebsites } from "@/lib/conductor-sync";
+import { syncDueConductorWebsites } from "@/lib/conductor-sync";
 
 export const maxDuration = 800;
 export const dynamic = "force-dynamic";
+
+/** Leaves headroom below maxDuration for the final cleanup of the last website. */
+const SYNC_BUDGET_MS = 600_000;
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,16 +25,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    console.log("[Cron Conductor] ====== Starte taeglichen Conductor Sync (alle Websites) ======");
-    console.log("[Cron Conductor] Zeitpunkt:", new Date().toISOString());
+    console.log("[Cron Conductor] Starte Conductor Sync für fällige Websites:", new Date().toISOString());
 
-    const results = await syncAllConductorWebsites("cron");
+    const results = await syncDueConductorWebsites(SYNC_BUDGET_MS);
     const totalPages = results.reduce((s, r) => s + r.pagesProcessed, 0);
     const totalIssues = results.reduce((s, r) => s + r.issuesProcessed, 0);
 
-    console.log("[Cron Conductor] ====== Sync abgeschlossen ======");
     console.log(
-      `[Cron Conductor] ${results.length} Websites, Pages: ${totalPages}, Issues: ${totalIssues}`
+      `[Cron Conductor] ${results.length} Websites bearbeitet (${results
+        .map((r) => `${r.domain}: ${r.status}`)
+        .join(", ") || "keine fällig"}), Pages: ${totalPages}, Issues: ${totalIssues}`
     );
 
     return NextResponse.json({

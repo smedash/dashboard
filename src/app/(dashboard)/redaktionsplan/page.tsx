@@ -6,10 +6,11 @@ import { useRouter } from "next/navigation";
 import { canEdit, hasFullAdminRights } from "@/lib/rbac";
 import {
   CONTENT_LANGUAGES,
-  contentLanguageLabel,
   journeyPhaseToFunnel,
   normalizeContentLanguage,
 } from "@/lib/content-workflow";
+import { useLocale, useMessages } from "@/i18n/I18nProvider";
+import { editorialPlanMessages } from "@/i18n/messages/editorial-plan";
 
 interface ArticleUser {
   id: string;
@@ -56,11 +57,11 @@ const CATEGORIES = [
 ] as const;
 
 const STATUSES = [
-  { id: "idea", label: "Idee", color: "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300", dot: "bg-slate-400" },
-  { id: "planned", label: "Geplant", color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300", dot: "bg-blue-400" },
-  { id: "in_progress", label: "In Arbeit", color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300", dot: "bg-yellow-400" },
-  { id: "in_review", label: "Review", color: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300", dot: "bg-purple-400" },
-  { id: "published", label: "Publiziert", color: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300", dot: "bg-green-400" },
+  { id: "idea", color: "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300", dot: "bg-slate-400" },
+  { id: "planned", color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300", dot: "bg-blue-400" },
+  { id: "in_progress", color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300", dot: "bg-yellow-400" },
+  { id: "in_review", color: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300", dot: "bg-purple-400" },
+  { id: "published", color: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300", dot: "bg-green-400" },
 ];
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -81,13 +82,6 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 const LOCATIONS = ["Guide", "Insights", "CH Market", "Global", "Microsites", "Minisites"] as const;
 
-const MONTHS_DE = [
-  "Januar", "Februar", "März", "April", "Mai", "Juni",
-  "Juli", "August", "September", "Oktober", "November", "Dezember",
-];
-
-const WEEKDAYS_DE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
-
 function getMonthDays(year: number, month: number) {
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
@@ -106,14 +100,16 @@ function getMonthDays(year: number, month: number) {
   return days;
 }
 
-function formatDate(dateStr: string) {
-  const d = new Date(dateStr);
-  return `${d.getDate().toString().padStart(2, "0")}.${(d.getMonth() + 1).toString().padStart(2, "0")}.${d.getFullYear()}`;
+function formatDate(dateStr: string, intlLocale: string) {
+  return new Date(dateStr).toLocaleDateString(intlLocale, { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
 export default function RedaktionsplanPage() {
   const { data: session } = useSession();
   const router = useRouter();
+  const t = useMessages(editorialPlanMessages);
+  const { intlLocale } = useLocale();
+  const languageLabel = (value: string | null | undefined) => t.languages[normalizeContentLanguage(value)];
   const userCanEdit = canEdit(session?.user?.role);
   const userCanProduce = hasFullAdminRights(session?.user?.role);
 
@@ -248,7 +244,7 @@ export default function RedaktionsplanPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Artikel wirklich löschen?")) return;
+    if (!confirm(t.confirmDelete)) return;
     try {
       const res = await fetch(`/api/editorial-plan?id=${id}`, { method: "DELETE" });
       if (res.ok) {
@@ -267,7 +263,7 @@ export default function RedaktionsplanPage() {
       });
       if (!res.ok) {
         const data = await res.json();
-        alert(data.error || "Konnte nicht in die Contentproduktion übernehmen");
+        alert(data.error || t.pushFailed);
         return;
       }
       const params = new URLSearchParams();
@@ -334,11 +330,11 @@ export default function RedaktionsplanPage() {
         setImportResult(data);
         await fetchArticles(currentYear, currentMonth);
       } else {
-        setImportResult({ skipped: 0, total: 0, errors: [data.error || "Import fehlgeschlagen"] });
+        setImportResult({ skipped: 0, total: 0, errors: [data.error || t.import.failed] });
       }
     } catch (error) {
       console.error("Import error:", error);
-      setImportResult({ skipped: 0, total: 0, errors: ["Netzwerkfehler beim Import"] });
+      setImportResult({ skipped: 0, total: 0, errors: [t.import.networkError] });
     } finally {
       setImporting(false);
       e.target.value = "";
@@ -388,9 +384,9 @@ export default function RedaktionsplanPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Redaktionsplan</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            {filteredArticles.length} Artikel in {MONTHS_DE[currentMonth]} {currentYear}
+            {t.articlesInMonth(filteredArticles.length, t.months[currentMonth], currentYear)}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -407,7 +403,7 @@ export default function RedaktionsplanPage() {
               <svg className="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              Kalender
+              {t.view.calendar}
             </button>
             <button
               onClick={() => setViewMode("list")}
@@ -420,7 +416,7 @@ export default function RedaktionsplanPage() {
               <svg className="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
               </svg>
-              Liste
+              {t.view.list}
             </button>
           </div>
           {userCanEdit && (
@@ -433,7 +429,7 @@ export default function RedaktionsplanPage() {
                   className="rounded border-slate-300 dark:border-slate-600 shrink-0"
                   disabled={importing}
                 />
-                Nur bestehende Artikel aktualisieren (URLs nach Titel zuordnen, keine neuen Datensätze)
+                {t.import.mergeMode}
               </label>
               <div className="flex items-center gap-2">
                 <label
@@ -442,7 +438,7 @@ export default function RedaktionsplanPage() {
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                   </svg>
-                  {importing ? "Importiere..." : importMergeMode ? "XLSX → URLs aktualisieren" : "XLSX Import"}
+                  {importing ? t.import.importing : importMergeMode ? t.import.mergeButton : t.import.button}
                   <input
                     type="file"
                     accept=".xlsx,.xls"
@@ -458,7 +454,7 @@ export default function RedaktionsplanPage() {
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
-                  Neuer Artikel
+                  {t.newArticle}
                 </button>
               </div>
             </div>
@@ -476,7 +472,7 @@ export default function RedaktionsplanPage() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Titel oder Meta-Description suchen..."
+            placeholder={t.filters.searchPlaceholder}
             className="pl-9 pr-3 py-1.5 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 w-72 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
           {searchQuery && (
@@ -495,7 +491,7 @@ export default function RedaktionsplanPage() {
           onChange={(e) => setFilterCategory(e.target.value)}
           className="px-3 py-1.5 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300"
         >
-          <option value="">Alle Kategorien</option>
+          <option value="">{t.filters.allCategories}</option>
           {CATEGORIES.map((c) => (
             <option key={c} value={c}>{c}</option>
           ))}
@@ -505,9 +501,9 @@ export default function RedaktionsplanPage() {
           onChange={(e) => setFilterStatus(e.target.value)}
           className="px-3 py-1.5 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300"
         >
-          <option value="">Alle Status</option>
+          <option value="">{t.filters.allStatuses}</option>
           {STATUSES.map((s) => (
-            <option key={s.id} value={s.id}>{s.label}</option>
+            <option key={s.id} value={s.id}>{t.statuses[s.id]}</option>
           ))}
         </select>
         <select
@@ -515,7 +511,7 @@ export default function RedaktionsplanPage() {
           onChange={(e) => setFilterLocation(e.target.value)}
           className="px-3 py-1.5 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300"
         >
-          <option value="">Alle Locations</option>
+          <option value="">{t.filters.allLocations}</option>
           {LOCATIONS.map((l) => (
             <option key={l} value={l}>{l}</option>
           ))}
@@ -525,7 +521,7 @@ export default function RedaktionsplanPage() {
           {STATUSES.map((s) => (
             <div key={s.id} className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
               <span className={`w-2 h-2 rounded-full ${s.dot}`} />
-              {s.label}
+              {t.statuses[s.id]}
             </div>
           ))}
         </div>
@@ -566,21 +562,21 @@ export default function RedaktionsplanPage() {
               <div>
                 {importResult.mode === "merge" ? (
                   <p className="text-sm font-medium text-slate-900 dark:text-white">
-                    <strong>{importResult.updated ?? 0}</strong> Artikel mit URL aktualisiert
+                    <strong>{importResult.updated ?? 0}</strong> {t.import.updated}
                     {importResult.skipped > 0 && (
-                      <span className="text-slate-500 font-normal"> · {importResult.skipped} Zeilen ohne Titel/URL übersprungen</span>
+                      <span className="text-slate-500 font-normal"> · {t.import.skippedRows(importResult.skipped)}</span>
                     )}
                     {(importResult.notFound ?? 0) > 0 && (
-                      <span className="text-slate-500 font-normal"> · {importResult.notFound} Titel in der Datenbank nicht gefunden</span>
+                      <span className="text-slate-500 font-normal"> · {t.import.notFound(importResult.notFound ?? 0)}</span>
                     )}
                     {(importResult.ambiguous ?? 0) > 0 && (
-                      <span className="text-amber-700 dark:text-amber-300 font-normal"> · {importResult.ambiguous} Titel mehrfach im Plan (nicht aktualisiert)</span>
+                      <span className="text-amber-700 dark:text-amber-300 font-normal"> · {t.import.ambiguous(importResult.ambiguous ?? 0)}</span>
                     )}
                   </p>
                 ) : (
                   <p className="text-sm font-medium text-slate-900 dark:text-white">
-                    {importResult.imported ?? 0} von {importResult.total} Artikeln importiert
-                    {importResult.skipped > 0 && <span className="text-slate-500"> · {importResult.skipped} übersprungen</span>}
+                    {t.import.imported(importResult.imported ?? 0, importResult.total)}
+                    {importResult.skipped > 0 && <span className="text-slate-500"> · {t.import.skipped(importResult.skipped)}</span>}
                   </p>
                 )}
                 {importResult.errors.length > 0 && (
@@ -601,26 +597,26 @@ export default function RedaktionsplanPage() {
 
       {/* Month Navigation */}
       <div className="flex items-center justify-between bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 px-6 py-3">
-        <button onClick={prevMonth} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" aria-label="Vorheriger Monat">
+        <button onClick={prevMonth} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" aria-label={t.nav.previousMonth}>
           <svg className="w-5 h-5 text-slate-600 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </button>
         <div className="flex items-center gap-3">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-            {MONTHS_DE[currentMonth]} {currentYear}
+            {t.months[currentMonth]} {currentYear}
           </h2>
           <button
             onClick={goToToday}
             className="px-2 py-0.5 text-xs font-medium rounded border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
           >
-            Heute
+            {t.nav.today}
           </button>
           {monthLoading && (
             <span className="h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
           )}
         </div>
-        <button onClick={nextMonth} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" aria-label="Nächster Monat">
+        <button onClick={nextMonth} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" aria-label={t.nav.nextMonth}>
           <svg className="w-5 h-5 text-slate-600 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
@@ -633,7 +629,7 @@ export default function RedaktionsplanPage() {
 
           {/* Weekday Headers */}
           <div className="grid grid-cols-7 border-b border-slate-200 dark:border-slate-700">
-            {WEEKDAYS_DE.map((day) => (
+            {t.weekdays.map((day) => (
               <div key={day} className="px-2 py-2 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
                 {day}
               </div>
@@ -687,7 +683,7 @@ export default function RedaktionsplanPage() {
                         })}
                         {dayArticles.length > 3 && (
                           <div className="text-[10px] text-slate-400 dark:text-slate-500 px-1">
-                            +{dayArticles.length - 3} weitere
+                            {t.calendar.more(dayArticles.length - 3)}
                           </div>
                         )}
                       </div>
@@ -702,7 +698,7 @@ export default function RedaktionsplanPage() {
           {unscheduledArticles.length > 0 && (
             <div className="border-t border-slate-200 dark:border-slate-700 px-6 py-4">
               <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
-                Content-Ideen ({unscheduledArticles.length})
+                {t.calendar.contentIdeas(unscheduledArticles.length)}
               </h3>
               <div className="flex flex-wrap gap-2">
                 {unscheduledArticles.map((article) => {
@@ -734,21 +730,21 @@ export default function RedaktionsplanPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-700">
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Status</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Titel</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Kategorie</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Geplant</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">URL</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Sprache</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Erstellt von</th>
-                  <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Aktionen</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">{t.table.status}</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">{t.table.title}</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">{t.table.category}</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">{t.table.planned}</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">{t.table.url}</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">{t.table.language}</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">{t.table.createdBy}</th>
+                  <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">{t.table.actions}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
                 {filteredArticles.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="px-4 py-12 text-center text-sm text-slate-500 dark:text-slate-400">
-                      Keine Artikel in {MONTHS_DE[currentMonth]} {currentYear}.
+                      {t.table.empty(t.months[currentMonth], currentYear)}
                     </td>
                   </tr>
                 ) : (
@@ -759,7 +755,7 @@ export default function RedaktionsplanPage() {
                         <td className="px-4 py-3">
                           <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${statusInfo.color}`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${statusInfo.dot}`} />
-                            {statusInfo.label}
+                            {t.statuses[statusInfo.id]}
                           </span>
                         </td>
                         <td className="px-4 py-3">
@@ -785,7 +781,7 @@ export default function RedaktionsplanPage() {
                           )}
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">
-                          {article.plannedDate ? formatDate(article.plannedDate) : "–"}
+                          {article.plannedDate ? formatDate(article.plannedDate, intlLocale) : "–"}
                         </td>
                         <td className="px-4 py-3">
                           {article.url ? (
@@ -803,7 +799,7 @@ export default function RedaktionsplanPage() {
                         </td>
                         <td className="px-4 py-3">
                           <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200">
-                            {contentLanguageLabel(article.language)}
+                            {languageLabel(article.language)}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-xs text-slate-600 dark:text-slate-400">
@@ -815,7 +811,7 @@ export default function RedaktionsplanPage() {
                               <button
                                 onClick={() => handleEdit(article)}
                                 className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                                title="Bearbeiten"
+                                title={t.table.edit}
                               >
                                 <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -824,7 +820,7 @@ export default function RedaktionsplanPage() {
                               <button
                                 onClick={() => handleDelete(article.id)}
                                 className="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                                title="Löschen"
+                                title={t.table.delete}
                               >
                                 <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -859,7 +855,7 @@ export default function RedaktionsplanPage() {
                       return (
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusInfo.color}`}>
                           <span className={`w-2 h-2 rounded-full ${statusInfo.dot}`} />
-                          {statusInfo.label}
+                          {t.statuses[statusInfo.id]}
                         </span>
                       );
                     })()}
@@ -883,20 +879,20 @@ export default function RedaktionsplanPage() {
 
               {selectedArticle.description && (
                 <div className="mb-4">
-                  <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Beschreibung</h3>
+                  <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">{t.detail.description}</h3>
                   <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{selectedArticle.description}</p>
                 </div>
               )}
 
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
-                  <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Geplantes Datum</h3>
+                  <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">{t.detail.plannedDate}</h3>
                   <p className="text-sm text-slate-700 dark:text-slate-300">
-                    {selectedArticle.plannedDate ? formatDate(selectedArticle.plannedDate) : "Nicht festgelegt"}
+                    {selectedArticle.plannedDate ? formatDate(selectedArticle.plannedDate, intlLocale) : t.detail.notSet}
                   </p>
                 </div>
                 <div>
-                  <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Erstellt von</h3>
+                  <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">{t.detail.createdBy}</h3>
                   <p className="text-sm text-slate-700 dark:text-slate-300">
                     {selectedArticle.creator.name || selectedArticle.creator.email}
                   </p>
@@ -905,7 +901,7 @@ export default function RedaktionsplanPage() {
 
               {selectedArticle.location && (
                 <div className="mb-4">
-                  <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Location</h3>
+                  <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">{t.detail.location}</h3>
                   <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300">
                     {selectedArticle.location}
                   </span>
@@ -914,7 +910,7 @@ export default function RedaktionsplanPage() {
 
               {selectedArticle.url && (
                 <div className="mb-4">
-                  <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">URL</h3>
+                  <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">{t.detail.url}</h3>
                   <a
                     href={selectedArticle.url}
                     target="_blank"
@@ -927,30 +923,30 @@ export default function RedaktionsplanPage() {
               )}
 
               <div className="mb-4">
-                <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Sprache</h3>
+                <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">{t.detail.language}</h3>
                 <span className="inline-flex px-2.5 py-1 rounded text-xs font-medium bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-200">
-                  {contentLanguageLabel(selectedArticle.language)}
+                  {languageLabel(selectedArticle.language)}
                 </span>
               </div>
 
               {(selectedArticle.h1 || selectedArticle.metaDescription || selectedArticle.schemaMarkup) && (
                 <div className="mb-4 pt-3 border-t border-slate-100 dark:border-slate-700 space-y-3">
-                  <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">SEO-Felder</h3>
+                  <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">{t.detail.seoFields}</h3>
                   {selectedArticle.h1 && (
                     <div>
-                      <h4 className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-0.5">H1</h4>
+                      <h4 className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-0.5">{t.detail.h1}</h4>
                       <p className="text-sm text-slate-700 dark:text-slate-300">{selectedArticle.h1}</p>
                     </div>
                   )}
                   {selectedArticle.metaDescription && (
                     <div>
-                      <h4 className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-0.5">Meta-Description</h4>
+                      <h4 className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-0.5">{t.detail.metaDescription}</h4>
                       <p className="text-sm text-slate-700 dark:text-slate-300">{selectedArticle.metaDescription}</p>
                     </div>
                   )}
                   {selectedArticle.schemaMarkup && (
                     <div>
-                      <h4 className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-0.5">Schema.org Markup</h4>
+                      <h4 className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-0.5">{t.detail.schemaMarkup}</h4>
                       <pre className="text-xs text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-900 rounded-lg p-3 overflow-x-auto whitespace-pre-wrap font-mono">{selectedArticle.schemaMarkup}</pre>
                     </div>
                   )}
@@ -958,12 +954,12 @@ export default function RedaktionsplanPage() {
               )}
 
               <div className="text-xs text-slate-400 dark:text-slate-500 pt-4 border-t border-slate-100 dark:border-slate-700">
-                Erstellt: {formatDate(selectedArticle.createdAt)} · Aktualisiert: {formatDate(selectedArticle.updatedAt)}
+                {t.detail.timestamps(formatDate(selectedArticle.createdAt, intlLocale), formatDate(selectedArticle.updatedAt, intlLocale))}
               </div>
 
               {selectedArticle.contentPushed && !selectedArticle.articleId && (
                 <div className="mt-4 rounded-lg bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 px-3 py-2 text-xs text-violet-800 dark:text-violet-200">
-                  In Contentproduktion – noch kein Entwurf gespeichert.
+                  {t.detail.inProduction}
                 </div>
               )}
               {selectedArticle.articleId && (
@@ -971,7 +967,7 @@ export default function RedaktionsplanPage() {
                   href={`/content-check?article=${selectedArticle.articleId}`}
                   className="mt-4 inline-flex text-xs font-medium text-emerald-700 dark:text-emerald-300 underline"
                 >
-                  Entwurf im Content-Check öffnen
+                  {t.detail.openDraft}
                 </a>
               )}
 
@@ -982,20 +978,20 @@ export default function RedaktionsplanPage() {
                       onClick={() => handlePushToContent(selectedArticle)}
                       className="flex-1 px-3 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors text-sm font-medium"
                     >
-                      Content erstellen
+                      {t.detail.createContent}
                     </button>
                   )}
                   <button
                     onClick={() => handleEdit(selectedArticle)}
                     className="flex-1 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
                   >
-                    Bearbeiten
+                    {t.detail.edit}
                   </button>
                   <button
                     onClick={() => handleDelete(selectedArticle.id)}
                     className="px-3 py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors text-sm font-medium"
                   >
-                    Löschen
+                    {t.detail.delete}
                   </button>
                 </div>
               )}
@@ -1013,40 +1009,40 @@ export default function RedaktionsplanPage() {
           >
             <form onSubmit={handleSubmit} className="p-6">
               <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-6">
-                {editingArticle ? "Artikel bearbeiten" : "Neuer Artikel"}
+                {editingArticle ? t.form.editTitle : t.form.newTitle}
               </h2>
 
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Titel <span className="text-red-500">*</span>
+                    {t.form.title} <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                     className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Artikeltitel eingeben..."
+                    placeholder={t.form.titlePlaceholder}
                     required
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Beschreibung
+                    {t.form.description}
                   </label>
                   <textarea
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     rows={3}
                     className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                    placeholder="Kurze Beschreibung des Artikels..."
+                    placeholder={t.form.descriptionPlaceholder}
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    URL (optional)
+                    {t.form.url}
                   </label>
                   <input
                     type="url"
@@ -1060,14 +1056,14 @@ export default function RedaktionsplanPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                      Kategorie
+                      {t.form.category}
                     </label>
                     <select
                       value={formData.category}
                       onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                       className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
-                      <option value="">Keine Kategorie</option>
+                      <option value="">{t.form.noCategory}</option>
                       {CATEGORIES.map((c) => (
                         <option key={c} value={c}>{c}</option>
                       ))}
@@ -1075,7 +1071,7 @@ export default function RedaktionsplanPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                      Status
+                      {t.form.status}
                     </label>
                     <select
                       value={formData.status}
@@ -1083,7 +1079,7 @@ export default function RedaktionsplanPage() {
                       className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       {STATUSES.map((s) => (
-                        <option key={s.id} value={s.id}>{s.label}</option>
+                        <option key={s.id} value={s.id}>{t.statuses[s.id]}</option>
                       ))}
                     </select>
                   </div>
@@ -1092,14 +1088,14 @@ export default function RedaktionsplanPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                      Location
+                      {t.form.location}
                     </label>
                     <select
                       value={formData.location}
                       onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                       className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
-                      <option value="">Keine Location</option>
+                      <option value="">{t.form.noLocation}</option>
                       {LOCATIONS.map((l) => (
                         <option key={l} value={l}>{l}</option>
                       ))}
@@ -1107,7 +1103,7 @@ export default function RedaktionsplanPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                      Sprache
+                      {t.form.language}
                     </label>
                     <select
                       value={formData.language}
@@ -1115,7 +1111,7 @@ export default function RedaktionsplanPage() {
                       className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       {CONTENT_LANGUAGES.map((l) => (
-                        <option key={l.value} value={l.value}>{l.label}</option>
+                        <option key={l.value} value={l.value}>{t.languages[l.value] ?? l.label}</option>
                       ))}
                     </select>
                   </div>
@@ -1123,7 +1119,7 @@ export default function RedaktionsplanPage() {
 
                 <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                      Geplantes Datum
+                      {t.form.plannedDate}
                     </label>
                     <input
                       type="date"
@@ -1135,39 +1131,39 @@ export default function RedaktionsplanPage() {
 
                 {/* SEO-Felder */}
                 <div className="pt-2 border-t border-slate-100 dark:border-slate-700">
-                  <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-3">SEO-Felder (optional)</h3>
+                  <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-3">{t.form.seoFields}</h3>
 
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                        H1
+                        {t.form.h1}
                       </label>
                       <input
                         type="text"
                         value={formData.h1}
                         onChange={(e) => setFormData({ ...formData, h1: e.target.value })}
                         className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="H1-Überschrift..."
+                        placeholder={t.form.h1Placeholder}
                       />
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                        Meta-Description
+                        {t.form.metaDescription}
                       </label>
                       <textarea
                         value={formData.metaDescription}
                         onChange={(e) => setFormData({ ...formData, metaDescription: e.target.value })}
                         rows={2}
                         className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                        placeholder="Meta-Description für Suchmaschinen..."
+                        placeholder={t.form.metaDescriptionPlaceholder}
                       />
-                      <p className="text-xs text-slate-400 mt-1">{formData.metaDescription.length}/160 Zeichen</p>
+                      <p className="text-xs text-slate-400 mt-1">{t.form.characters(formData.metaDescription.length)}</p>
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                        Schema.org Markup
+                        {t.form.schemaMarkup}
                       </label>
                       <textarea
                         value={formData.schemaMarkup}
@@ -1186,14 +1182,14 @@ export default function RedaktionsplanPage() {
                   type="submit"
                   className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
                 >
-                  {editingArticle ? "Speichern" : "Erstellen"}
+                  {editingArticle ? t.form.save : t.form.create}
                 </button>
                 <button
                   type="button"
                   onClick={resetForm}
                   className="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors text-sm font-medium"
                 >
-                  Abbrechen
+                  {t.form.cancel}
                 </button>
               </div>
             </form>

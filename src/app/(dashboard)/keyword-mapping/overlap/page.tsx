@@ -3,6 +3,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { useMessages } from "@/i18n/I18nProvider";
+import { keywordMappingOverlapMessages } from "@/i18n/messages/keyword-mapping-overlap";
 
 interface Article {
   id: string;
@@ -48,6 +50,7 @@ const LOCATION_COLORS: Record<string, string> = {
 };
 
 export default function OverlapDetailPage() {
+  const t = useMessages(keywordMappingOverlapMessages);
   const searchParams = useSearchParams();
   const keyword = searchParams.get("keyword") ?? "";
 
@@ -110,12 +113,12 @@ export default function OverlapDetailPage() {
   const locationGroups = useMemo(() => {
     const groups = new Map<string, typeof enrichedArticles>();
     for (const a of enrichedArticles) {
-      const loc = a.location || "Ohne Location";
+      const loc = a.location || t.noLocation;
       if (!groups.has(loc)) groups.set(loc, []);
       groups.get(loc)!.push(a);
     }
     return groups;
-  }, [enrichedArticles]);
+  }, [enrichedArticles, t.noLocation]);
 
   if (loading) {
     return (
@@ -137,9 +140,9 @@ export default function OverlapDetailPage() {
   if (!keyword) {
     return (
       <div className="text-center py-16">
-        <p className="text-slate-500 dark:text-slate-400">Kein Keyword angegeben.</p>
+        <p className="text-slate-500 dark:text-slate-400">{t.noKeyword}</p>
         <Link href="/keyword-mapping" className="mt-4 inline-flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline">
-          &larr; Zurück zum Keyword Mapping
+          &larr; {t.backToMapping}
         </Link>
       </div>
     );
@@ -155,14 +158,14 @@ export default function OverlapDetailPage() {
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
         </svg>
-        Zurück zum Keyword Mapping
+        {t.backToMapping}
       </Link>
 
       {/* Header */}
       <div>
         <div className="flex items-center gap-3 flex-wrap">
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-            Keyword-Überlappung
+            {t.title}
           </h1>
           <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 ring-1 ring-amber-300 dark:ring-amber-700">
             <svg className="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
@@ -172,10 +175,10 @@ export default function OverlapDetailPage() {
           </span>
         </div>
         <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-          {enrichedArticles.length} {enrichedArticles.length === 1 ? "Artikel verwendet" : "Artikel verwenden"} dieses Fokuskeyword.
+          {t.articlesUsing(enrichedArticles.length)}
           {enrichedArticles.length >= 3 && (
             <span className="ml-2 text-red-600 dark:text-red-400 font-medium">
-              Hohes Kannibalisierungsrisiko
+              {t.highRisk}
             </span>
           )}
         </p>
@@ -187,19 +190,19 @@ export default function OverlapDetailPage() {
           <div className={`text-2xl font-bold ${enrichedArticles.length >= 3 ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-400"}`}>
             {enrichedArticles.length}
           </div>
-          <div className="text-sm text-slate-500 dark:text-slate-400">Betroffene URLs</div>
+          <div className="text-sm text-slate-500 dark:text-slate-400">{t.affectedUrls}</div>
         </div>
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
           <div className="text-2xl font-bold text-slate-900 dark:text-white">
             {locationGroups.size}
           </div>
-          <div className="text-sm text-slate-500 dark:text-slate-400">Locations betroffen</div>
+          <div className="text-sm text-slate-500 dark:text-slate-400">{t.affectedLocations}</div>
         </div>
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
           <div className="text-2xl font-bold text-slate-900 dark:text-white">
             {new Set(enrichedArticles.map((a) => a.category).filter(Boolean)).size}
           </div>
-          <div className="text-sm text-slate-500 dark:text-slate-400">Kategorien betroffen</div>
+          <div className="text-sm text-slate-500 dark:text-slate-400">{t.affectedCategories}</div>
         </div>
       </div>
 
@@ -211,10 +214,10 @@ export default function OverlapDetailPage() {
           </svg>
           <div>
             <div className="text-sm font-medium text-red-800 dark:text-red-300">
-              Hohes Kannibalisierungsrisiko
+              {t.highRisk}
             </div>
             <div className="text-sm text-red-700 dark:text-red-400 mt-0.5">
-              {enrichedArticles.length} Artikel konkurrieren um dasselbe Fokuskeyword. Es wird empfohlen, die Content-Strategie zu konsolidieren.
+              {t.competingHint(enrichedArticles.length)}
             </div>
           </div>
         </div>
@@ -226,9 +229,9 @@ export default function OverlapDetailPage() {
           <svg className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-1">Keine Überlappung gefunden</h3>
+          <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-1">{t.noOverlapTitle}</h3>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Für &quot;{keyword}&quot; wurde keine Keyword-Überlappung erkannt, oder die Analyse wurde noch nicht durchgeführt.
+            {t.noOverlapHint(keyword)}
           </p>
         </div>
       )}
@@ -238,7 +241,7 @@ export default function OverlapDetailPage() {
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30">
             <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-              Alle Artikel mit Fokuskeyword &quot;{keyword}&quot;
+              {t.allArticlesWith(keyword)}
             </h2>
           </div>
           <div className="overflow-x-auto">
@@ -246,22 +249,22 @@ export default function OverlapDetailPage() {
               <thead className="bg-slate-50 dark:bg-slate-900/50">
                 <tr>
                   <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    Artikel
+                    {t.columns.article}
                   </th>
                   <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    Location
+                    {t.columns.location}
                   </th>
                   <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    Kategorie
+                    {t.columns.category}
                   </th>
                   <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    SEO-Daten
+                    {t.columns.seoData}
                   </th>
                   <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    Alle Fokuskeywords
+                    {t.columns.allFocusKeywords}
                   </th>
                   <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    Begründung
+                    {t.columns.reasoning}
                   </th>
                 </tr>
               </thead>
@@ -321,7 +324,7 @@ export default function OverlapDetailPage() {
                           </div>
                         )}
                         {!article.h1 && !article.metaDescription && (
-                          <span className="text-xs text-slate-400 italic">Keine SEO-Daten</span>
+                          <span className="text-xs text-slate-400 italic">{t.noSeoData}</span>
                         )}
                       </div>
                     </td>
@@ -362,7 +365,7 @@ export default function OverlapDetailPage() {
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30">
             <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-              Verteilung nach Location
+              {t.byLocation}
             </h2>
           </div>
           <div className="p-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -376,7 +379,7 @@ export default function OverlapDetailPage() {
                     {location}
                   </span>
                   <span className="text-xs text-slate-400 dark:text-slate-500">
-                    {groupArticles.length} {groupArticles.length === 1 ? "Artikel" : "Artikel"}
+                    {t.articleCount(groupArticles.length)}
                   </span>
                 </div>
                 <div className="space-y-2">

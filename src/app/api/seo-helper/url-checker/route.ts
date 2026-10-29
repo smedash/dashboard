@@ -4,9 +4,12 @@ import { apiRateLimiter } from "@/lib/rate-limit";
 import { proxyFetch, DEFAULT_SCRAPE_HEADERS } from "@/lib/proxy-fetch";
 import { analyzeUrl } from "@/lib/url-checker";
 import { UrlCheckResult } from "@/lib/url-checker/types";
+import type { Locale } from "@/i18n/config";
+import { getLocale } from "@/i18n/server";
 
 async function fetchAndAnalyze(
   targetUrl: string,
+  locale: Locale,
   keyword?: string
 ): Promise<UrlCheckResult> {
   const redirectChain: string[] = [];
@@ -48,7 +51,7 @@ async function fetchAndAnalyze(
     throw new Error("Response ist kein valides HTML");
   }
 
-  return analyzeUrl(html, finalUrl, statusCode, redirectChain, lastModifiedHeader, keyword || undefined);
+  return analyzeUrl(html, finalUrl, statusCode, redirectChain, lastModifiedHeader, keyword || undefined, locale);
 }
 
 export async function POST(request: NextRequest) {
@@ -68,6 +71,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { url, urls, keyword } = body;
+    const locale = await getLocale();
 
     // Batch mode
     if (urls && Array.isArray(urls) && urls.length > 0) {
@@ -84,7 +88,7 @@ export async function POST(request: NextRequest) {
             results.push({ url: batchUrl, error: "Ungültige URL" });
             continue;
           }
-          const result = await fetchAndAnalyze(parsedUrl.href, keyword);
+          const result = await fetchAndAnalyze(parsedUrl.href, locale, keyword);
           results.push(result);
         } catch (err) {
           results.push({
@@ -118,7 +122,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await fetchAndAnalyze(parsedUrl.href, keyword);
+    const result = await fetchAndAnalyze(parsedUrl.href, locale, keyword);
     return NextResponse.json(result);
   } catch (error) {
     console.error("[url-checker] Error:", error);

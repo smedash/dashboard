@@ -22,6 +22,8 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { useLocale, useMessages } from "@/i18n/I18nProvider";
+import { tasksMessages } from "@/i18n/messages/tasks";
 
 interface TaskUser {
   id: string;
@@ -73,24 +75,23 @@ interface Task {
 
 interface Column {
   id: string;
-  title: string;
   color: string;
   bgColor: string;
 }
 
 const COLUMNS: Column[] = [
-  { id: "backlog", title: "Backlog", color: "text-slate-400", bgColor: "bg-slate-500/20" },
-  { id: "todo", title: "To Do", color: "text-blue-400", bgColor: "bg-blue-500/20" },
-  { id: "in_progress", title: "In Arbeit", color: "text-yellow-400", bgColor: "bg-yellow-500/20" },
-  { id: "review", title: "Review", color: "text-purple-400", bgColor: "bg-purple-500/20" },
-  { id: "done", title: "Erledigt", color: "text-green-400", bgColor: "bg-green-500/20" },
+  { id: "backlog", color: "text-slate-400", bgColor: "bg-slate-500/20" },
+  { id: "todo", color: "text-blue-400", bgColor: "bg-blue-500/20" },
+  { id: "in_progress", color: "text-yellow-400", bgColor: "bg-yellow-500/20" },
+  { id: "review", color: "text-purple-400", bgColor: "bg-purple-500/20" },
+  { id: "done", color: "text-green-400", bgColor: "bg-green-500/20" },
 ];
 
 const PRIORITIES = [
-  { id: "low", label: "Niedrig", color: "text-slate-400", bgColor: "bg-slate-500/20" },
-  { id: "medium", label: "Mittel", color: "text-blue-400", bgColor: "bg-blue-500/20" },
-  { id: "high", label: "Hoch", color: "text-orange-400", bgColor: "bg-orange-500/20" },
-  { id: "urgent", label: "Dringend", color: "text-red-400", bgColor: "bg-red-500/20" },
+  { id: "low", color: "text-slate-400", bgColor: "bg-slate-500/20" },
+  { id: "medium", color: "text-blue-400", bgColor: "bg-blue-500/20" },
+  { id: "high", color: "text-orange-400", bgColor: "bg-orange-500/20" },
+  { id: "urgent", color: "text-red-400", bgColor: "bg-red-500/20" },
 ];
 
 const CATEGORIES = [
@@ -135,6 +136,7 @@ function TaskFileUploadArea({
 }: {
   onUpload: (files: FileList) => Promise<void>;
 }) {
+  const t = useMessages(tasksMessages);
   const [isUploading, setIsUploading] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
 
@@ -180,7 +182,7 @@ function TaskFileUploadArea({
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
           </svg>
-          <span className="text-sm text-slate-600 dark:text-slate-400">Wird hochgeladen...</span>
+          <span className="text-sm text-slate-600 dark:text-slate-400">{t.upload.uploading}</span>
         </div>
       ) : (
         <label className="cursor-pointer">
@@ -189,10 +191,10 @@ function TaskFileUploadArea({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
             </svg>
             <span className="text-sm text-slate-600 dark:text-slate-400">
-              Dateien hierher ziehen oder <span className="text-blue-600 dark:text-blue-400 underline">auswählen</span>
+              {t.upload.dropOr} <span className="text-blue-600 dark:text-blue-400 underline">{t.upload.select}</span>
             </span>
           </div>
-          <span className="text-xs text-slate-500 dark:text-slate-500">Max. 10 MB · PDF, DOCX, XLSX, PPTX, PNG, JPG, GIF, WebP</span>
+          <span className="text-xs text-slate-500 dark:text-slate-500">{t.upload.hint}</span>
           <input type="file" multiple accept=".pdf,.docx,.xlsx,.pptx,.png,.jpg,.jpeg,.gif,.webp" onChange={handleFileChange} className="hidden" />
         </label>
       )}
@@ -242,11 +244,13 @@ function SortableTaskCard({
 
 // Task Card Content (shared between sortable and overlay)
 function TaskCardContent({ task }: { task: Task }) {
+  const t = useMessages(tasksMessages);
+  const { intlLocale } = useLocale();
   const priority = PRIORITIES.find((p) => p.id === task.priority);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" });
+    return date.toLocaleDateString(intlLocale, { day: "2-digit", month: "2-digit" });
   };
 
   const isOverdue = task.dueDate && new Date(task.dueDate) < new Date();
@@ -259,7 +263,7 @@ function TaskCardContent({ task }: { task: Task }) {
         </h4>
         {priority && (
           <span className={`px-1.5 py-0.5 text-xs rounded ${priority.bgColor} ${priority.color} shrink-0`}>
-            {priority.label}
+            {t.priorities[priority.id]}
           </span>
         )}
       </div>
@@ -348,6 +352,7 @@ function DroppableColumn({
   onAddTask: (status: string) => void;
   canEditData: boolean;
 }) {
+  const t = useMessages(tasksMessages);
   const { setNodeRef, isOver } = useDroppable({
     id: column.id,
   });
@@ -358,7 +363,7 @@ function DroppableColumn({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className={`w-2 h-2 rounded-full ${column.bgColor}`}></span>
-            <h3 className={`font-medium ${column.color}`}>{column.title}</h3>
+            <h3 className={`font-medium ${column.color}`}>{t.columns[column.id]}</h3>
             <span className="text-xs text-slate-500 dark:text-slate-400 bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded-full">
               {tasks.length}
             </span>
@@ -367,7 +372,7 @@ function DroppableColumn({
             <button
               onClick={() => onAddTask(column.id)}
               className="p-1 hover:bg-slate-200 dark:hover:bg-slate-800 rounded transition-colors"
-              title="Task hinzufügen"
+              title={t.column.addTask}
             >
               <svg className="w-4 h-4 text-slate-500 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -383,7 +388,7 @@ function DroppableColumn({
           isOver ? "bg-blue-50 dark:bg-blue-900/20" : ""
         }`}
       >
-        <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+        <SortableContext items={tasks.map((task) => task.id)} strategy={verticalListSortingStrategy}>
           {tasks.map((task) => (
             <SortableTaskCard
               key={task.id}
@@ -399,7 +404,7 @@ function DroppableColumn({
               : "border-slate-300 dark:border-slate-700"
           }`}>
             <span className="text-xs text-slate-400 dark:text-slate-500">
-              {isOver ? "Hier ablegen" : "Keine Tasks"}
+              {isOver ? t.column.dropHere : t.column.noTasks}
             </span>
           </div>
         )}
@@ -426,6 +431,8 @@ function TaskDetailModal({
   onCommentAdded: (taskId: string, comment: TaskComment) => void;
   canEditData: boolean;
 }) {
+  const t = useMessages(tasksMessages);
+  const { intlLocale } = useLocale();
   const [isEditing, setIsEditing] = useState(false);
   const [editedTask, setEditedTask] = useState(task);
   const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>(
@@ -496,7 +503,7 @@ function TaskDetailModal({
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || "Upload fehlgeschlagen");
+        throw new Error(error.error || t.detail.uploadFailed);
       }
 
       const data = await response.json();
@@ -505,12 +512,12 @@ function TaskDetailModal({
       }
     } catch (error) {
       console.error("Error uploading files:", error);
-      alert(`Fehler beim Hochladen: ${error instanceof Error ? error.message : "Unbekannter Fehler"}`);
+      alert(t.detail.uploadError(error instanceof Error ? error.message : t.detail.unknownError));
     }
   };
 
   const handleDeleteFile = async (fileId: string) => {
-    if (!confirm("Datei wirklich löschen?")) return;
+    if (!confirm(t.detail.confirmDeleteFile)) return;
 
     try {
       const response = await fetch(`/api/tasks/${task.id}/files?fileId=${fileId}`, {
@@ -522,7 +529,7 @@ function TaskDetailModal({
       setLocalFiles((prev) => prev.filter((f) => f.id !== fileId));
     } catch (error) {
       console.error("Error deleting file:", error);
-      alert("Fehler beim Löschen der Datei");
+      alert(t.detail.deleteFileError);
     }
   };
 
@@ -535,7 +542,7 @@ function TaskDetailModal({
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("de-DE", {
+    return new Date(dateString).toLocaleDateString(intlLocale, {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -564,7 +571,7 @@ function TaskDetailModal({
               <h2 className="text-xl font-semibold text-slate-900 dark:text-white">{task.title}</h2>
             )}
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-              Erstellt von {task.creator.name || task.creator.email} am {formatDate(task.createdAt)}
+              {t.detail.createdBy(task.creator.name || task.creator.email, formatDate(task.createdAt))}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -601,7 +608,7 @@ function TaskDetailModal({
           {/* Status & Priority */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Status</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.detail.status}</label>
               {isEditing ? (
                 <select
                   value={editedTask.status}
@@ -609,17 +616,17 @@ function TaskDetailModal({
                   className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
                 >
                   {COLUMNS.map((col) => (
-                    <option key={col.id} value={col.id}>{col.title}</option>
+                    <option key={col.id} value={col.id}>{t.columns[col.id]}</option>
                   ))}
                 </select>
               ) : (
                 <span className={`inline-block px-2 py-1 rounded text-sm ${COLUMNS.find((c) => c.id === task.status)?.bgColor} ${COLUMNS.find((c) => c.id === task.status)?.color}`}>
-                  {COLUMNS.find((c) => c.id === task.status)?.title}
+                  {t.columns[task.status]}
                 </span>
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Priorität</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.detail.priority}</label>
               {isEditing ? (
                 <select
                   value={editedTask.priority}
@@ -627,12 +634,12 @@ function TaskDetailModal({
                   className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
                 >
                   {PRIORITIES.map((p) => (
-                    <option key={p.id} value={p.id}>{p.label}</option>
+                    <option key={p.id} value={p.id}>{t.priorities[p.id]}</option>
                   ))}
                 </select>
               ) : (
                 <span className={`inline-block px-2 py-1 rounded text-sm ${PRIORITIES.find((p) => p.id === task.priority)?.bgColor} ${PRIORITIES.find((p) => p.id === task.priority)?.color}`}>
-                  {PRIORITIES.find((p) => p.id === task.priority)?.label}
+                  {t.priorities[task.priority]}
                 </span>
               )}
             </div>
@@ -641,7 +648,7 @@ function TaskDetailModal({
           {/* Assignees (Multi-Select) */}
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Zugewiesen an ({selectedAssigneeIds.length} ausgewählt)
+              {t.detail.assignedTo(selectedAssigneeIds.length)}
             </label>
             {isEditing ? (
               <div className="border border-slate-300 dark:border-slate-600 rounded-lg p-2 max-h-40 overflow-y-auto space-y-1">
@@ -679,7 +686,7 @@ function TaskDetailModal({
                     </div>
                   ))
                 ) : (
-                  <span className="text-slate-500 dark:text-slate-400">Nicht zugewiesen</span>
+                  <span className="text-slate-500 dark:text-slate-400">{t.detail.notAssigned}</span>
                 )}
               </div>
             )}
@@ -688,7 +695,7 @@ function TaskDetailModal({
           {/* Due Date & Category */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Fälligkeitsdatum</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.detail.dueDate}</label>
               {isEditing ? (
                 <input
                   type="date"
@@ -698,43 +705,43 @@ function TaskDetailModal({
                 />
               ) : (
                 <span className="text-slate-600 dark:text-slate-400">
-                  {task.dueDate ? new Date(task.dueDate).toLocaleDateString("de-DE") : "Kein Datum"}
+                  {task.dueDate ? new Date(task.dueDate).toLocaleDateString(intlLocale) : t.detail.noDate}
                 </span>
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Kategorie</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.detail.category}</label>
               {isEditing ? (
                 <select
                   value={editedTask.category || ""}
                   onChange={(e) => setEditedTask({ ...editedTask, category: e.target.value || null })}
                   className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
                 >
-                  <option value="">Keine Kategorie</option>
+                  <option value="">{t.detail.noCategory}</option>
                   {CATEGORIES.map((cat) => (
                     <option key={cat} value={cat}>{cat}</option>
                   ))}
                 </select>
               ) : (
-                <span className="text-slate-600 dark:text-slate-400">{task.category || "Keine Kategorie"}</span>
+                <span className="text-slate-600 dark:text-slate-400">{task.category || t.detail.noCategory}</span>
               )}
             </div>
           </div>
 
           {/* Description */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Beschreibung</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.detail.description}</label>
             {isEditing ? (
               <textarea
                 value={editedTask.description || ""}
                 onChange={(e) => setEditedTask({ ...editedTask, description: e.target.value || null })}
                 rows={4}
                 className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
-                placeholder="Beschreibung hinzufügen..."
+                placeholder={t.detail.descriptionPlaceholder}
               />
             ) : (
               <p className="text-slate-600 dark:text-slate-400 whitespace-pre-wrap">
-                {task.description || "Keine Beschreibung"}
+                {task.description || t.detail.noDescription}
               </p>
             )}
           </div>
@@ -742,7 +749,7 @@ function TaskDetailModal({
           {/* Files Section */}
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-              Dateien ({localFiles.length})
+              {t.detail.files(localFiles.length)}
             </label>
             
             {/* Bestehende Dateien */}
@@ -773,7 +780,7 @@ function TaskDetailModal({
                       <button
                         onClick={() => handleDeleteFile(file.id)}
                         className="p-1 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-2"
-                        title="Datei löschen"
+                        title={t.detail.deleteFile}
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -784,7 +791,7 @@ function TaskDetailModal({
                 ))}
               </div>
             ) : !isEditing ? (
-              <p className="text-sm text-slate-500 dark:text-slate-400">Keine Dateien</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">{t.detail.noFiles}</p>
             ) : null}
 
             {/* Upload - nur im Bearbeitungsmodus */}
@@ -796,7 +803,7 @@ function TaskDetailModal({
           {/* Comments Section */}
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-              Kommentare & Notizen ({localComments.length})
+              {t.detail.comments(localComments.length)}
             </label>
             
             {/* Existing Comments */}
@@ -811,7 +818,7 @@ function TaskDetailModal({
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-sm font-medium text-slate-900 dark:text-white">
-                            {comment.user?.name || comment.user?.email || "Unbekannt"}
+                            {comment.user?.name || comment.user?.email || t.detail.unknown}
                           </span>
                           <span className="text-xs text-slate-500 dark:text-slate-500">
                             {formatDate(comment.createdAt)}
@@ -833,7 +840,7 @@ function TaskDetailModal({
                 <textarea
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Kommentar oder Notiz hinzufügen..."
+                  placeholder={t.detail.commentPlaceholder}
                   rows={3}
                   className="w-full px-3 py-2 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm resize-none border-0 focus:ring-0 focus:outline-none"
                   onKeyDown={(e) => {
@@ -844,7 +851,7 @@ function TaskDetailModal({
                 />
                 <div className="flex items-center justify-between px-3 py-2 bg-slate-50 dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700">
                   <span className="text-xs text-slate-500 dark:text-slate-400">
-                    Cmd/Ctrl + Enter zum Senden
+                    {t.detail.sendHint}
                   </span>
                   <button
                     onClick={handleAddComment}
@@ -857,14 +864,14 @@ function TaskDetailModal({
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                         </svg>
-                        Senden...
+                        {t.detail.sending}
                       </>
                     ) : (
                       <>
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                         </svg>
-                        Senden
+                        {t.detail.send}
                       </>
                     )}
                   </button>
@@ -885,14 +892,14 @@ function TaskDetailModal({
               }}
               className="px-4 py-2 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
             >
-              Abbrechen
+              {t.detail.cancel}
             </button>
             <button
               onClick={handleSave}
               disabled={isSaving}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white rounded-lg transition-colors"
             >
-              {isSaving ? "Speichern..." : "Speichern"}
+              {isSaving ? t.detail.saving : t.detail.save}
             </button>
           </div>
         )}
@@ -913,6 +920,7 @@ function NewTaskModal({
   onClose: () => void;
   onCreate: (task: { title: string; description: string | null; status: string; priority: string; category: string | null; dueDate: string | null; assigneeIds: string[] }) => void;
 }) {
+  const t = useMessages(tasksMessages);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("medium");
@@ -954,23 +962,23 @@ function NewTaskModal({
       >
         <div className="p-4 border-b border-slate-200 dark:border-slate-700">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-            Neuen Task erstellen
+            {t.create.title}
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            In Spalte: {COLUMNS.find((c) => c.id === status)?.title}
+            {t.create.inColumn(t.columns[status] ?? status)}
           </p>
         </div>
 
         <div className="p-4 space-y-4 max-h-[60vh] overflow-y-auto">
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Titel *
+              {t.create.titleLabel}
             </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Task-Titel eingeben..."
+              placeholder={t.create.titlePlaceholder}
               className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
               autoFocus
             />
@@ -978,12 +986,12 @@ function NewTaskModal({
 
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Beschreibung
+              {t.create.description}
             </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Beschreibung hinzufügen..."
+              placeholder={t.create.descriptionPlaceholder}
               rows={3}
               className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
             />
@@ -992,7 +1000,7 @@ function NewTaskModal({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                Priorität
+                {t.create.priority}
               </label>
               <select
                 value={priority}
@@ -1000,20 +1008,20 @@ function NewTaskModal({
                 className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
               >
                 {PRIORITIES.map((p) => (
-                  <option key={p.id} value={p.id}>{p.label}</option>
+                  <option key={p.id} value={p.id}>{t.priorities[p.id]}</option>
                 ))}
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                Kategorie
+                {t.create.category}
               </label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
                 className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
               >
-                <option value="">Keine Kategorie</option>
+                <option value="">{t.create.noCategory}</option>
                 {CATEGORIES.map((cat) => (
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
@@ -1024,7 +1032,7 @@ function NewTaskModal({
           {/* Multi-Select Assignees */}
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Zuweisen an ({assigneeIds.length} ausgewählt)
+              {t.create.assignTo(assigneeIds.length)}
             </label>
             <div className="border border-slate-300 dark:border-slate-600 rounded-lg p-2 max-h-32 overflow-y-auto space-y-1">
               {users.map((user) => (
@@ -1051,7 +1059,7 @@ function NewTaskModal({
 
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Fälligkeitsdatum
+              {t.create.dueDate}
             </label>
             <input
               type="date"
@@ -1067,7 +1075,7 @@ function NewTaskModal({
               <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              Dateien können nach dem Erstellen im Task-Detail hochgeladen werden.
+              {t.create.filesHint}
             </div>
           </div>
         </div>
@@ -1077,14 +1085,14 @@ function NewTaskModal({
             onClick={onClose}
             className="px-4 py-2 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
           >
-            Abbrechen
+            {t.create.cancel}
           </button>
           <button
             onClick={handleCreate}
             disabled={isCreating || !title.trim()}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white rounded-lg transition-colors"
           >
-            {isCreating ? "Erstelle..." : "Task erstellen"}
+            {isCreating ? t.create.creating : t.create.submit}
           </button>
         </div>
       </div>
@@ -1102,6 +1110,8 @@ function TimelineView({
   onTaskClick: (task: Task) => void;
   filterCategory: string;
 }) {
+  const t = useMessages(tasksMessages);
+  const { intlLocale } = useLocale();
   // Nur Tasks mit Fälligkeitsdatum anzeigen
   const tasksWithDueDate = tasks.filter((task) => task.dueDate);
   
@@ -1132,7 +1142,7 @@ function TimelineView({
     weeks.push({
       start: new Date(currentWeekStart),
       end: weekEnd,
-      label: `KW ${getWeekNumber(currentWeekStart)}`,
+      label: t.timeline.week(getWeekNumber(currentWeekStart)),
     });
     
     currentWeekStart.setDate(currentWeekStart.getDate() + 7);
@@ -1149,7 +1159,7 @@ function TimelineView({
 
   // Tasks nach Kategorie gruppieren
   const categories = filterCategory === "all" 
-    ? [...new Set(filteredTasks.map((t) => t.category || "Keine Kategorie"))]
+    ? [...new Set(filteredTasks.map((task) => task.category || t.timeline.noCategory))]
     : [filterCategory];
 
   // Position eines Tasks auf der Timeline berechnen
@@ -1182,10 +1192,10 @@ function TimelineView({
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
         </svg>
         <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">
-          Keine Tasks mit Fälligkeitsdatum
+          {t.timeline.emptyTitle}
         </h3>
         <p className="text-slate-500 dark:text-slate-400">
-          Füge Tasks ein Fälligkeitsdatum hinzu, um sie in der Timeline zu sehen.
+          {t.timeline.emptyHint}
         </p>
       </div>
     );
@@ -1198,7 +1208,7 @@ function TimelineView({
         <div className="flex">
           {/* Kategorie-Spalte */}
           <div className="w-48 flex-shrink-0 p-3 border-r border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
-            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Kategorie</span>
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{t.timeline.category}</span>
           </div>
           {/* Wochen-Header */}
           <div className="flex-1 flex relative">
@@ -1209,7 +1219,7 @@ function TimelineView({
               >
                 <span className="text-xs font-medium text-slate-600 dark:text-slate-400">{week.label}</span>
                 <div className="text-xs text-slate-400 dark:text-slate-500">
-                  {week.start.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}
+                  {week.start.toLocaleDateString(intlLocale, { day: "2-digit", month: "2-digit" })}
                 </div>
               </div>
             ))}
@@ -1220,7 +1230,7 @@ function TimelineView({
       {/* Timeline Body */}
       <div>
         {categories.map((category) => {
-          const categoryTasks = filteredTasks.filter((t) => (t.category || "Keine Kategorie") === category);
+          const categoryTasks = filteredTasks.filter((task) => (task.category || t.timeline.noCategory) === category);
           if (categoryTasks.length === 0) return null;
           
           const colors = CATEGORY_COLORS[category] || { bg: "bg-slate-100 dark:bg-slate-700", border: "border-slate-400", text: "text-slate-700 dark:text-slate-300" };
@@ -1240,7 +1250,7 @@ function TimelineView({
                     style={{ left: `${todayPosition}%` }}
                   >
                     <div className="absolute -top-1 left-1/2 -translate-x-1/2 px-1 py-0.5 bg-red-500 text-white text-xs rounded whitespace-nowrap">
-                      Heute
+                      {t.timeline.today}
                     </div>
                   </div>
                   {/* Wochen-Grid */}
@@ -1272,7 +1282,7 @@ function TimelineView({
                         <div className="flex items-center gap-2 mt-1">
                           {status && (
                             <span className={`px-1.5 py-0.5 text-xs rounded ${status.bgColor} ${status.color}`}>
-                              {status.title}
+                              {t.columns[status.id]}
                             </span>
                           )}
                         </div>
@@ -1299,7 +1309,7 @@ function TimelineView({
                           minWidth: "60px",
                         }}
                         onClick={() => onTaskClick(task)}
-                        title={`${task.title} - Fällig: ${new Date(task.dueDate!).toLocaleDateString("de-DE")}`}
+                        title={t.timeline.due(task.title, new Date(task.dueDate!).toLocaleDateString(intlLocale))}
                       >
                         <div className="h-full flex items-center px-2 overflow-hidden">
                           <span className={`text-xs font-medium truncate ${colors.text}`}>
@@ -1307,7 +1317,7 @@ function TimelineView({
                           </span>
                           {priority && (
                             <span className={`ml-1 px-1 py-0.5 text-xs rounded ${priority.bgColor} ${priority.color} shrink-0`}>
-                              {priority.label.charAt(0)}
+                              {t.priorities[priority.id].charAt(0)}
                             </span>
                           )}
                           {isOverdue && (
@@ -1327,7 +1337,7 @@ function TimelineView({
       {/* Legende */}
       <div className="p-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
         <div className="flex flex-wrap items-center gap-4 text-xs">
-          <span className="font-medium text-slate-600 dark:text-slate-400">Legende:</span>
+          <span className="font-medium text-slate-600 dark:text-slate-400">{t.timeline.legend}</span>
           {Object.entries(CATEGORY_COLORS).map(([cat, colors]) => (
             <div key={cat} className="flex items-center gap-1">
               <div className={`w-3 h-3 rounded ${colors.bg} border-l-2 ${colors.border}`} />
@@ -1336,7 +1346,7 @@ function TimelineView({
           ))}
           <div className="flex items-center gap-1 ml-4">
             <div className="w-3 h-0.5 bg-red-500" />
-            <span className="text-slate-600 dark:text-slate-400">Heute</span>
+            <span className="text-slate-600 dark:text-slate-400">{t.timeline.today}</span>
           </div>
         </div>
       </div>
@@ -1348,6 +1358,7 @@ function TimelineView({
 export default function TasksPage() {
   const { data: session } = useSession();
   const canEditData = canEdit(session?.user?.role);
+  const t = useMessages(tasksMessages);
   
   const [tasks, setTasks] = useState<Task[]>([]);
   const [users, setUsers] = useState<TaskUser[]>([]);
@@ -1517,7 +1528,7 @@ export default function TasksPage() {
 
   const handleDeleteTask = async () => {
     if (!selectedTask) return;
-    if (!confirm("Task wirklich löschen?")) return;
+    if (!confirm(t.confirmDeleteTask)) return;
 
     try {
       const response = await fetch(`/api/tasks/${selectedTask.id}`, {
@@ -1555,7 +1566,7 @@ export default function TasksPage() {
   if (isLoading) {
     return (
       <div className="space-y-8">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Tasks</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h1>
         <div className="h-96 bg-slate-200 dark:bg-slate-800 rounded-xl animate-pulse"></div>
       </div>
     );
@@ -1566,9 +1577,9 @@ export default function TasksPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Tasks</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h1>
           <p className="text-slate-600 dark:text-slate-400 mt-1">
-            {viewMode === "kanban" ? "Kanban Board für Aufgabenverwaltung" : "Zeitliche Übersicht aller Tasks"}
+            {viewMode === "kanban" ? t.subtitleKanban : t.subtitleTimeline}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -1585,7 +1596,7 @@ export default function TasksPage() {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
               </svg>
-              Kanban
+              {t.viewKanban}
             </button>
             <button
               onClick={() => setViewMode("timeline")}
@@ -1598,7 +1609,7 @@ export default function TasksPage() {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              Timeline
+              {t.viewTimeline}
             </button>
           </div>
           {canEditData && (
@@ -1609,7 +1620,7 @@ export default function TasksPage() {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              Neuer Task
+              {t.newTask}
             </button>
           )}
         </div>
@@ -1618,40 +1629,40 @@ export default function TasksPage() {
       {/* Filters */}
       <div className="flex flex-wrap gap-4">
         <div>
-          <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Priorität</label>
+          <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">{t.filters.priority}</label>
           <select
             value={filterPriority}
             onChange={(e) => setFilterPriority(e.target.value)}
             className="px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white text-sm"
           >
-            <option value="all">Alle</option>
+            <option value="all">{t.filters.all}</option>
             {PRIORITIES.map((p) => (
-              <option key={p.id} value={p.id}>{p.label}</option>
+              <option key={p.id} value={p.id}>{t.priorities[p.id]}</option>
             ))}
           </select>
         </div>
         <div>
-          <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Kategorie</label>
+          <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">{t.filters.category}</label>
           <select
             value={filterCategory}
             onChange={(e) => setFilterCategory(e.target.value)}
             className="px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white text-sm"
           >
-            <option value="all">Alle</option>
+            <option value="all">{t.filters.all}</option>
             {CATEGORIES.map((cat) => (
               <option key={cat} value={cat}>{cat}</option>
             ))}
           </select>
         </div>
         <div>
-          <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Zugewiesen</label>
+          <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">{t.filters.assigned}</label>
           <select
             value={filterAssignee}
             onChange={(e) => setFilterAssignee(e.target.value)}
             className="px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white text-sm"
           >
-            <option value="all">Alle</option>
-            <option value="unassigned">Nicht zugewiesen</option>
+            <option value="all">{t.filters.all}</option>
+            <option value="unassigned">{t.filters.unassigned}</option>
             {users.map((user) => (
               <option key={user.id} value={user.id}>{user.name || user.email}</option>
             ))}
@@ -1660,7 +1671,7 @@ export default function TasksPage() {
         <div className="flex-1"></div>
         <div className="self-end">
           <span className="text-sm text-slate-500 dark:text-slate-400">
-            {filteredTasks.length} von {tasks.length} Tasks
+            {t.taskCount(filteredTasks.length, tasks.length)}
           </span>
         </div>
       </div>

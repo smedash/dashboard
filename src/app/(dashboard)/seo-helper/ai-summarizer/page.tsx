@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useLocale, useMessages } from "@/i18n/I18nProvider";
+import { seoHelperAiSummarizerMessages } from "@/i18n/messages/seo-helper-ai-summarizer";
 
 interface FrequentQuestion {
   question: string;
@@ -29,6 +31,8 @@ interface ApiResponse {
 }
 
 export default function AISummarizerPage() {
+  const t = useMessages(seoHelperAiSummarizerMessages);
+  const { intlLocale } = useLocale();
   const [url, setUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -54,12 +58,12 @@ export default function AISummarizerPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Fehler bei der Zusammenfassung");
+        throw new Error(data.error || t.errors.summaryFailed);
       }
 
       setResult(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unbekannter Fehler");
+      setError(err instanceof Error ? err.message : t.errors.unknown);
     } finally {
       setIsLoading(false);
     }
@@ -67,10 +71,10 @@ export default function AISummarizerPage() {
 
   const getIntentLabel = (intent: string) => {
     const labels: { [key: string]: { label: string; color: string } } = {
-      informational: { label: "Informativ", color: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300" },
-      commercial: { label: "Kommerziell", color: "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300" },
-      transactional: { label: "Transaktional", color: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300" },
-      navigational: { label: "Navigational", color: "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300" },
+      informational: { label: t.intents.informational, color: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300" },
+      commercial: { label: t.intents.commercial, color: "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300" },
+      transactional: { label: t.intents.transactional, color: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300" },
+      navigational: { label: t.intents.navigational, color: "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300" },
     };
     return labels[intent] || { label: intent, color: "bg-slate-100 text-slate-700" };
   };
@@ -93,8 +97,8 @@ export default function AISummarizerPage() {
           </svg>
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">AI Summarizer</h1>
-          <p className="text-slate-500 dark:text-slate-400">Lasse KI den Inhalt einer Webseite zusammenfassen</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h1>
+          <p className="text-slate-500 dark:text-slate-400">{t.subtitle}</p>
         </div>
       </div>
 
@@ -103,7 +107,7 @@ export default function AISummarizerPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-              Website URL
+              {t.urlLabel}
             </label>
             <div className="flex gap-3">
               <div className="flex-1 relative">
@@ -119,7 +123,7 @@ export default function AISummarizerPage() {
                     setUrl(e.target.value);
                     setError("");
                   }}
-                  placeholder="https://www.beispiel.ch/seite"
+                  placeholder={t.urlPlaceholder}
                   className="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
                 />
               </div>
@@ -134,14 +138,14 @@ export default function AISummarizerPage() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
-                    Analysiere...
+                    {t.analyzing}
                   </>
                 ) : (
                   <>
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
                     </svg>
-                    Zusammenfassen
+                    {t.summarize}
                   </>
                 )}
               </button>
@@ -163,9 +167,7 @@ export default function AISummarizerPage() {
         {/* Info */}
         <div className="mt-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-700/50">
           <p className="text-sm text-slate-600 dark:text-slate-400">
-            <span className="font-medium text-slate-700 dark:text-slate-300">So funktioniert&apos;s:</span> Gib eine URL ein und die KI analysiert den Inhalt der Seite. 
-            Du erhältst eine strukturierte Zusammenfassung mit den wichtigsten Informationen, 
-            Themen, Zielgruppe und SEO-relevanten Keywords.
+            <span className="font-medium text-slate-700 dark:text-slate-300">{t.howItWorksLabel}</span> {t.howItWorksText}
           </p>
         </div>
       </div>
@@ -181,7 +183,7 @@ export default function AISummarizerPage() {
               </svg>
               <div className="flex-1 min-w-0">
                 <h3 className="font-semibold text-cyan-900 dark:text-cyan-100">
-                  {result.title || "Seite analysiert"}
+                  {result.title || t.pageAnalyzed}
                 </h3>
                 <a 
                   href={result.url} 
@@ -192,9 +194,9 @@ export default function AISummarizerPage() {
                   {result.url}
                 </a>
                 <div className="flex items-center gap-4 mt-2 text-xs text-cyan-600 dark:text-cyan-400">
-                  <span>{result.contentLength.toLocaleString()} Zeichen analysiert</span>
+                  <span>{t.charactersAnalyzed(result.contentLength.toLocaleString(intlLocale))}</span>
                   <span>•</span>
-                  <span>~{result.summary.readingTime} Lesezeit</span>
+                  <span>{t.readingTime(result.summary.readingTime)}</span>
                 </div>
               </div>
             </div>
@@ -209,7 +211,7 @@ export default function AISummarizerPage() {
                   <svg className="w-5 h-5 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  Zusammenfassung
+                  {t.summary}
                 </h3>
                 <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
                   {result.summary.executiveSummary}
@@ -222,7 +224,7 @@ export default function AISummarizerPage() {
                   <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                   </svg>
-                  Kernaussagen
+                  {t.keyTakeaways}
                 </h3>
                 <ul className="space-y-3">
                   {result.summary.keyTakeaways.map((takeaway, index) => (
@@ -242,7 +244,7 @@ export default function AISummarizerPage() {
                   <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                   </svg>
-                  Hauptthemen
+                  {t.mainTopics}
                 </h3>
                 <div className="flex flex-wrap gap-2">
                   {result.summary.mainTopics.map((topic, index) => (
@@ -264,21 +266,21 @@ export default function AISummarizerPage() {
                       <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
-                      Häufige Fragen & Content-Abdeckung
+                      {t.faqTitle}
                     </h3>
                     <div className="flex items-center gap-2 text-sm">
                       <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
-                        {result.summary.frequentQuestions.filter(q => q.isAnswered).length} beantwortet
+                        {t.answered(result.summary.frequentQuestions.filter(q => q.isAnswered).length)}
                       </span>
                       <span className="text-slate-300 dark:text-slate-600">|</span>
                       <span className="flex items-center gap-1 text-red-600 dark:text-red-400">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                         </svg>
-                        {result.summary.frequentQuestions.filter(q => !q.isAnswered).length} fehlt
+                        {t.missing(result.summary.frequentQuestions.filter(q => !q.isAnswered).length)}
                       </span>
                     </div>
                   </div>
@@ -294,7 +296,7 @@ export default function AISummarizerPage() {
                       />
                     </div>
                     <p className="text-xs text-slate-500 mt-1">
-                      {Math.round((result.summary.frequentQuestions.filter(q => q.isAnswered).length / result.summary.frequentQuestions.length) * 100)}% der häufigen Fragen werden im Content beantwortet
+                      {t.answeredPercent(Math.round((result.summary.frequentQuestions.filter(q => q.isAnswered).length / result.summary.frequentQuestions.length) * 100))}
                     </p>
                   </div>
 
@@ -354,7 +356,7 @@ export default function AISummarizerPage() {
                           <svg className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                           </svg>
-                          <p className="font-medium text-amber-800 dark:text-amber-200">Content-Optimierung empfohlen</p>
+                          <p className="font-medium text-amber-800 dark:text-amber-200">{t.optimizationRecommended}</p>
                         </div>
                         <div className="flex items-center gap-2">
                           {copySuccess && (
@@ -362,21 +364,19 @@ export default function AISummarizerPage() {
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                               </svg>
-                              ToDos erfolgreich kopiert
+                              {t.todosCopied}
                             </span>
                           )}
                           <button
                             type="button"
                             onClick={async () => {
                               const unansweredQuestions = result.summary.frequentQuestions.filter(q => !q.isAnswered);
-                              const taskText = `Content-Optimierung: ${result.title || result.url}
-
-Folgende häufig gestellte Fragen werden im Content nicht beantwortet:
-
-${unansweredQuestions.map((q, i) => `${i + 1}. ${q.question}
-   → ${q.coverageNote}`).join("\n\n")}
-
-Quelle: ${result.url}`;
+                              const taskText = t.taskText(
+                                result.title || result.url,
+                                unansweredQuestions.map((q, i) => `${i + 1}. ${q.question}
+   → ${q.coverageNote}`).join("\n\n"),
+                                result.url
+                              );
                               await navigator.clipboard.writeText(taskText);
                               setCopySuccess(true);
                               setTimeout(() => setCopySuccess(false), 2000);
@@ -386,7 +386,7 @@ Quelle: ${result.url}`;
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
                             </svg>
-                            Als Task kopieren
+                            {t.copyAsTask}
                           </button>
                         </div>
                       </div>
@@ -395,7 +395,7 @@ Quelle: ${result.url}`;
                         {result.summary.frequentQuestions.filter(q => !q.isAnswered).map((faq, index) => (
                           <div key={index} className="text-sm">
                             <p className="text-amber-800 dark:text-amber-200 font-medium">
-                              {index + 1}. Beantworte: &quot;{faq.question}&quot;
+                              {index + 1}. {t.answerQuestion(faq.question)}
                             </p>
                             <p className="text-amber-700 dark:text-amber-300 text-xs mt-0.5 pl-4">
                               → {faq.coverageNote}
@@ -413,14 +413,14 @@ Quelle: ${result.url}`;
             <div className="space-y-6">
               {/* Page Intent & Type */}
               <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
-                <h3 className="font-semibold text-slate-900 dark:text-white mb-4">Seitentyp</h3>
+                <h3 className="font-semibold text-slate-900 dark:text-white mb-4">{t.pageType}</h3>
                 <div className="space-y-4">
                   <div>
-                    <span className="text-xs text-slate-500 uppercase tracking-wide">Content-Typ</span>
+                    <span className="text-xs text-slate-500 uppercase tracking-wide">{t.contentType}</span>
                     <p className="text-slate-900 dark:text-white font-medium mt-1">{result.summary.contentType}</p>
                   </div>
                   <div>
-                    <span className="text-xs text-slate-500 uppercase tracking-wide">Suchintention</span>
+                    <span className="text-xs text-slate-500 uppercase tracking-wide">{t.searchIntent}</span>
                     <div className="mt-1">
                       <span className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${getIntentLabel(result.summary.pageIntent).color}`}>
                         {getIntentLabel(result.summary.pageIntent).label}
@@ -436,7 +436,7 @@ Quelle: ${result.url}`;
                   <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                   </svg>
-                  Zielgruppe
+                  {t.targetAudience}
                 </h3>
                 <p className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed">
                   {result.summary.targetAudience}
@@ -449,7 +449,7 @@ Quelle: ${result.url}`;
                   <svg className="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                   </svg>
-                  SEO Keywords
+                  {t.seoKeywords}
                 </h3>
                 <div className="flex flex-wrap gap-2">
                   {result.summary.suggestedKeywords.map((keyword, index) => (
@@ -467,26 +467,26 @@ Quelle: ${result.url}`;
               <button
                 onClick={() => {
                   const faqSection = result.summary.frequentQuestions && result.summary.frequentQuestions.length > 0
-                    ? `\n\n## Häufige Fragen (${result.summary.frequentQuestions.filter(q => q.isAnswered).length}/${result.summary.frequentQuestions.length} beantwortet)\n${result.summary.frequentQuestions.map((q, i) => `${i + 1}. ${q.isAnswered ? "✓" : "✗"} ${q.question}\n   ${q.coverageNote}`).join("\n")}`
+                    ? `\n\n## ${t.copyText.faqHeading(result.summary.frequentQuestions.filter(q => q.isAnswered).length, result.summary.frequentQuestions.length)}\n${result.summary.frequentQuestions.map((q, i) => `${i + 1}. ${q.isAnswered ? "✓" : "✗"} ${q.question}\n   ${q.coverageNote}`).join("\n")}`
                     : "";
-                  const summaryText = `# ${result.title || "Zusammenfassung"}
+                  const summaryText = `# ${result.title || t.summary}
 
-## Executive Summary
+## ${t.copyText.executiveSummary}
 ${result.summary.executiveSummary}
 
-## Kernaussagen
-${result.summary.keyTakeaways.map((t, i) => `${i + 1}. ${t}`).join("\n")}
+## ${t.keyTakeaways}
+${result.summary.keyTakeaways.map((takeaway, i) => `${i + 1}. ${takeaway}`).join("\n")}
 
-## Hauptthemen
+## ${t.mainTopics}
 ${result.summary.mainTopics.join(", ")}
 
-## Details
-- Content-Typ: ${result.summary.contentType}
-- Suchintention: ${getIntentLabel(result.summary.pageIntent).label}
-- Zielgruppe: ${result.summary.targetAudience}
-- SEO Keywords: ${result.summary.suggestedKeywords.join(", ")}${faqSection}
+## ${t.copyText.details}
+- ${t.contentType}: ${result.summary.contentType}
+- ${t.searchIntent}: ${getIntentLabel(result.summary.pageIntent).label}
+- ${t.targetAudience}: ${result.summary.targetAudience}
+- ${t.seoKeywords}: ${result.summary.suggestedKeywords.join(", ")}${faqSection}
 
-Quelle: ${result.url}`;
+${t.copyText.source}: ${result.url}`;
                   navigator.clipboard.writeText(summaryText);
                 }}
                 className="w-full py-3 rounded-xl border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-2"
@@ -494,7 +494,7 @@ Quelle: ${result.url}`;
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
                 </svg>
-                Zusammenfassung kopieren
+                {t.copySummary}
               </button>
             </div>
           </div>
@@ -510,11 +510,10 @@ Quelle: ${result.url}`;
             </svg>
           </div>
           <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-            Webseite zusammenfassen
+            {t.emptyTitle}
           </h3>
           <p className="text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-            Gib oben eine URL ein und klicke auf &quot;Zusammenfassen&quot;. 
-            Die KI analysiert den Inhalt und erstellt eine strukturierte Übersicht.
+            {t.emptyText}
           </p>
         </div>
       )}

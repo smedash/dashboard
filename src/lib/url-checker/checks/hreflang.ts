@@ -1,43 +1,48 @@
+import type { Locale } from '@/i18n/config';
+import { urlCheckerHreflangMessages } from '@/i18n/messages/url-checker/hreflang';
 import { CheckResult, ParsedPage } from '../types';
 
-export function runHreflangChecks(page: ParsedPage): CheckResult[] {
+type Texts = (typeof urlCheckerHreflangMessages)[Locale];
+
+export function runHreflangChecks(page: ParsedPage, locale: Locale): CheckResult[] {
+  const t = urlCheckerHreflangMessages[locale];
   const checks: CheckResult[] = [];
 
-  checks.push(checkHreflangPresence(page));
-  checks.push(checkHreflangSelfReference(page));
-  checks.push(checkHreflangXDefault(page));
+  checks.push(checkHreflangPresence(page, t));
+  checks.push(checkHreflangSelfReference(page, t));
+  checks.push(checkHreflangXDefault(page, t));
 
   return checks;
 }
 
-function checkHreflangPresence(page: ParsedPage): CheckResult {
+function checkHreflangPresence(page: ParsedPage, t: Texts): CheckResult {
   if (page.hreflang.length === 0) {
     return {
-      factor: 'Hreflang-Tags',
+      factor: t.presence.factor,
       status: 'warn',
-      value: 'Keine',
-      recommendation: 'Keine Hreflang-Tags gefunden. Wenn die Seite in mehreren Sprachen/Regionen existiert, setze Hreflang f\u00fcr korrekte Internationalisierung.',
+      value: t.presence.noneValue,
+      recommendation: t.presence.noneRecommendation,
       leakAttribute: 'indexing.hreflang',
     };
   }
 
   const langs = page.hreflang.map(h => h.lang);
   return {
-    factor: 'Hreflang-Tags',
+    factor: t.presence.factor,
     status: 'pass',
-    value: `${page.hreflang.length} Sprachen: ${langs.join(', ')}`,
-    recommendation: 'Hreflang-Tags vorhanden f\u00fcr internationale Ausrichtung.',
+    value: t.presence.languagesValue(page.hreflang.length, langs.join(', ')),
+    recommendation: t.presence.passRecommendation,
     leakAttribute: 'indexing.hreflang',
   };
 }
 
-function checkHreflangSelfReference(page: ParsedPage): CheckResult {
+function checkHreflangSelfReference(page: ParsedPage, t: Texts): CheckResult {
   if (page.hreflang.length === 0) {
     return {
-      factor: 'Hreflang Self-Referenz',
+      factor: t.selfReference.factor,
       status: 'pass',
-      value: 'N/A (keine Hreflangs)',
-      recommendation: 'Keine Hreflang-Tags vorhanden \u2013 Self-Referenz nicht relevant.',
+      value: t.selfReference.notApplicableValue,
+      recommendation: t.selfReference.notApplicableRecommendation,
       leakAttribute: 'indexing.hreflangSelfRef',
     };
   }
@@ -50,30 +55,30 @@ function checkHreflangSelfReference(page: ParsedPage): CheckResult {
 
   if (!hasSelfRef) {
     return {
-      factor: 'Hreflang Self-Referenz',
+      factor: t.selfReference.factor,
       status: 'fail',
-      value: 'Fehlend',
-      recommendation: 'Jede Seite mit Hreflang muss sich selbst referenzieren (Self-Referencing). Ohne dies kann Google die Hreflang-Konfiguration ignorieren.',
+      value: t.missingValue,
+      recommendation: t.selfReference.failRecommendation,
       leakAttribute: 'indexing.hreflangSelfRef',
     };
   }
 
   return {
-    factor: 'Hreflang Self-Referenz',
+    factor: t.selfReference.factor,
     status: 'pass',
-    value: 'Vorhanden',
-    recommendation: 'Self-referencing Hreflang korrekt implementiert.',
+    value: t.selfReference.passValue,
+    recommendation: t.selfReference.passRecommendation,
     leakAttribute: 'indexing.hreflangSelfRef',
   };
 }
 
-function checkHreflangXDefault(page: ParsedPage): CheckResult {
+function checkHreflangXDefault(page: ParsedPage, t: Texts): CheckResult {
   if (page.hreflang.length === 0) {
     return {
-      factor: 'x-default Hreflang',
+      factor: t.xDefault.factor,
       status: 'pass',
-      value: 'N/A',
-      recommendation: 'Keine Hreflang-Tags \u2013 x-default nicht relevant.',
+      value: t.xDefault.notApplicableValue,
+      recommendation: t.xDefault.notApplicableRecommendation,
       leakAttribute: 'indexing.hreflangXDefault',
     };
   }
@@ -82,19 +87,19 @@ function checkHreflangXDefault(page: ParsedPage): CheckResult {
 
   if (!hasXDefault) {
     return {
-      factor: 'x-default Hreflang',
+      factor: t.xDefault.factor,
       status: 'warn',
-      value: 'Fehlend',
-      recommendation: 'Kein x-default Hreflang gesetzt. Dieses Tag teilt Google mit, welche Version f\u00fcr Nutzer ohne passende Sprachversion angezeigt werden soll.',
+      value: t.missingValue,
+      recommendation: t.xDefault.warnRecommendation,
       leakAttribute: 'indexing.hreflangXDefault',
     };
   }
 
   return {
-    factor: 'x-default Hreflang',
+    factor: t.xDefault.factor,
     status: 'pass',
-    value: 'Gesetzt',
-    recommendation: 'x-default Fallback korrekt konfiguriert.',
+    value: t.xDefault.passValue,
+    recommendation: t.xDefault.passRecommendation,
     leakAttribute: 'indexing.hreflangXDefault',
   };
 }

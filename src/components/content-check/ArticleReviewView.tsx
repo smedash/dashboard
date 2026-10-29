@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
-import { ROLE_LABELS } from "@/lib/rbac";
 import {
   COMMENT_ROLES,
   NEXT_STATUS,
@@ -12,11 +11,13 @@ import {
   describeHistoryEntry,
   type CommentRole,
 } from "@/lib/content-workflow";
-import { formatReviewDueDateDe } from "@/lib/review-deadline";
+import { formatReviewDueDate } from "@/lib/review-deadline";
 import { downloadContentReviewPdf } from "@/lib/content-review-pdf";
 import { downloadArticleHtml, downloadArticlePdf } from "@/lib/article-download";
 import { applyCanonicalArticleStyles, extractArticleMeta } from "@/lib/article-html";
 import { SeoMetaPanel } from "@/components/content-check/SeoMetaPanel";
+import { useLocale, useMessages } from "@/i18n/I18nProvider";
+import { contentCheckMessages } from "@/i18n/messages/content-check";
 
 export interface ReviewComment {
   id: string;
@@ -93,6 +94,9 @@ export function ArticleReviewView({
   userRole: string | undefined;
   onDelete: () => void;
 }) {
+  const messages = useMessages(contentCheckMessages);
+  const t = messages.review;
+  const { intlLocale } = useLocale();
   const [updating, setUpdating] = useState(false);
   const [commentText, setCommentText] = useState("");
   const [selectedText, setSelectedText] = useState("");
@@ -226,7 +230,7 @@ export function ArticleReviewView({
       if (res.ok) onUpdate(await res.json());
       else {
         const data = await res.json();
-        alert(data.error || "Aktion fehlgeschlagen");
+        alert(data.error || t.errors.actionFailed);
       }
     } finally {
       setUpdating(false);
@@ -282,7 +286,7 @@ export function ArticleReviewView({
         setTimeout(() => setSaveSuccess(false), 2000);
       } else {
         const data = await res.json();
-        alert(data.error || "Speichern fehlgeschlagen");
+        alert(data.error || t.errors.saveFailed);
       }
     } finally {
       setSaving(false);
@@ -314,7 +318,7 @@ export function ArticleReviewView({
       if (res.ok) onUpdate(await res.json());
       else {
         const data = await res.json();
-        alert(data.error || "PDF-Freigabe fehlgeschlagen");
+        alert(data.error || t.errors.pdfApprovalFailed);
       }
     } finally {
       setPdfApprovalUpdating(false);
@@ -339,7 +343,7 @@ export function ArticleReviewView({
         setTimeout(() => setMetaSaveSuccess(false), 2000);
       } else {
         const data = await res.json();
-        alert(data.error || "SEO-Daten konnten nicht gespeichert werden");
+        alert(data.error || t.errors.metaSaveFailed);
       }
     } finally {
       setMetaSaving(false);
@@ -394,7 +398,7 @@ export function ArticleReviewView({
       if (detail.ok) onUpdate(await detail.json());
     } else {
       const data = await res.json();
-      alert(data.error || "Überarbeitung konnte nicht angefordert werden");
+      alert(data.error || t.errors.revisionRequestFailed);
     }
   };
 
@@ -402,11 +406,11 @@ export function ArticleReviewView({
     <div className="space-y-4">
       <div className="flex items-center gap-3">
         <button onClick={onBack} className="text-sm text-slate-500 hover:text-slate-800 dark:hover:text-white">
-          ← Zurück
+          {t.back}
         </button>
         <h1 className="text-xl font-bold text-slate-900 dark:text-white flex-1 truncate">{article.title}</h1>
         <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${statusConfig.bg} ${statusConfig.color}`}>
-          {statusConfig.label}
+          {messages.statuses[article.reviewStatus] ?? messages.statuses.draft}
         </span>
       </div>
 
@@ -419,7 +423,7 @@ export function ArticleReviewView({
               key={status}
               className={`text-[10px] px-2 py-0.5 rounded-full ${done ? `${cfg.bg} ${cfg.color}` : "bg-slate-100 text-slate-400 dark:bg-slate-800"}`}
             >
-              {cfg.label}
+              {messages.statuses[status]}
             </span>
           );
         })}
@@ -432,22 +436,22 @@ export function ArticleReviewView({
         {" · "}
         {article.targetAudience}
         {" · "}
-        {article.wordCount} Wörter
+        {t.words(article.wordCount)}
         {article.reviewStepDueAt && article.reviewStatus !== "published"
-          ? ` · fällig ${formatReviewDueDateDe(article.reviewStepDueAt)}`
+          ? ` · ${t.due(formatReviewDueDate(article.reviewStepDueAt, intlLocale))}`
           : ""}
-        {article.claimedByName ? ` · beansprucht von ${article.claimedByName}` : ""}
+        {article.claimedByName ? ` · ${t.claimedBy(article.claimedByName)}` : ""}
       </p>
 
       {hasOpenRevision && (
         <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-3 text-sm text-red-800 dark:text-red-200">
-          Überarbeitung angefordert von {article.revisionRequestedBy}. {unresolved.length} offene Kommentare.
+          {t.revisionRequested(article.revisionRequestedBy ?? "", unresolved.length)}
           {canEditContent && (
             <button
               onClick={() => patch({ resolveRevision: true })}
               className="ml-3 underline"
             >
-              Als erledigt markieren
+              {t.markResolved}
             </button>
           )}
         </div>
@@ -460,7 +464,7 @@ export function ArticleReviewView({
             onClick={() => patch({ reviewStatus: nextAction.status })}
             className={`px-3 py-1.5 text-sm text-white rounded-lg ${nextAction.color} disabled:opacity-50`}
           >
-            {nextAction.label}
+            {messages.nextActions[article.reviewStatus] ?? nextAction.label}
           </button>
         )}
         {unresolved.length > 0 && !hasOpenRevision && article.reviewStatus !== "draft" && article.reviewStatus !== "published" && (
@@ -468,14 +472,14 @@ export function ArticleReviewView({
             onClick={requestRevision}
             className="px-3 py-1.5 text-sm rounded-lg border border-red-200 text-red-700 dark:text-red-300"
           >
-            Überarbeitung anfordern
+            {t.requestRevision}
           </button>
         )}
         <button
           onClick={() => patch({ claim: !article.claimedAt || article.claimedByUserId !== userId })}
           className="px-3 py-1.5 text-sm rounded-lg border border-slate-200 dark:border-slate-600"
         >
-          {article.claimedByUserId === userId ? "Freigeben" : "Beanspruchen"}
+          {article.claimedByUserId === userId ? t.release : t.claim}
         </button>
         {isAdmin && currentStepIndex > 0 && (
           <select
@@ -485,9 +489,9 @@ export function ArticleReviewView({
               if (e.target.value) patch({ resetToStatus: e.target.value });
             }}
           >
-            <option value="">Zurücksetzen…</option>
+            <option value="">{t.resetTo}</option>
             {REVIEW_STATUSES.slice(0, currentStepIndex).map((s) => (
-              <option key={s} value={s}>{STATUS_CONFIG[s].label}</option>
+              <option key={s} value={s}>{messages.statuses[s]}</option>
             ))}
           </select>
         )}
@@ -495,7 +499,7 @@ export function ArticleReviewView({
           type="button"
           onClick={() => downloadArticleHtml(article)}
           className="px-3 py-1.5 text-sm rounded-lg border border-slate-200 dark:border-slate-600"
-          title="Artikel als HTML herunterladen"
+          title={t.downloadHtml}
         >
           HTML
         </button>
@@ -503,7 +507,7 @@ export function ArticleReviewView({
           type="button"
           onClick={() => downloadArticlePdf(article)}
           className="px-3 py-1.5 text-sm rounded-lg border border-slate-200 dark:border-slate-600"
-          title="Artikel als PDF herunterladen"
+          title={t.downloadPdf}
         >
           PDF
         </button>
@@ -512,14 +516,14 @@ export function ArticleReviewView({
             <button
               onClick={canDownloadPdf ? () => downloadContentReviewPdf(article) : undefined}
               disabled={!canDownloadPdf}
-              title={!canDownloadPdf ? "PDF muss erst von der Agentur freigegeben werden" : "Revisions-PDF herunterladen"}
+              title={!canDownloadPdf ? t.pdfNeedsApproval : t.downloadRevisionPdf}
               className={`px-3 py-1.5 text-sm rounded-lg flex items-center gap-1.5 ${
                 canDownloadPdf
                   ? "bg-slate-800 hover:bg-slate-900 dark:bg-slate-200 dark:hover:bg-white text-white dark:text-slate-900"
                   : "bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed"
               }`}
             >
-              Revisions-PDF
+              {t.revisionPdf}
             </button>
             {canEditContent && (
               <label
@@ -536,27 +540,27 @@ export function ArticleReviewView({
                   disabled={pdfApprovalUpdating}
                   className="rounded border-slate-300 dark:border-slate-600 text-blue-600"
                 />
-                PDF geprüft
+                {t.pdfChecked}
                 {article.pdfApprovedAt && article.pdfApprovedBy && (
                   <span className="text-xs text-slate-500">({article.pdfApprovedBy})</span>
                 )}
               </label>
             )}
             {!canEditContent && !article.pdfApprovedAt && (
-              <span className="text-xs text-slate-400 self-center">PDF noch nicht freigegeben</span>
+              <span className="text-xs text-slate-400 self-center">{t.pdfNotApproved}</span>
             )}
           </>
         )}
         {isAdmin && (
           <button
             onClick={async () => {
-              if (!confirm("Artikel wirklich löschen?")) return;
+              if (!confirm(t.confirmDelete)) return;
               const res = await fetch(`/api/content-reviews/${article.id}`, { method: "DELETE" });
               if (res.ok) onDelete();
             }}
             className="px-3 py-1.5 text-sm rounded-lg text-red-600"
           >
-            Löschen
+            {t.delete}
           </button>
         )}
       </div>
@@ -589,7 +593,7 @@ export function ArticleReviewView({
                       : "border-slate-200 dark:border-slate-600"
                   }`}
                 >
-                  {isEditing ? "Vorschau" : "Bearbeiten"}
+                  {isEditing ? t.preview : t.edit}
                 </button>
               )}
             </div>
@@ -597,21 +601,21 @@ export function ArticleReviewView({
               {canEditContent && isEditing ? (
                 <>
                   {saveSuccess && (
-                    <span className="text-xs text-emerald-600 dark:text-emerald-400">Gespeichert</span>
+                    <span className="text-xs text-emerald-600 dark:text-emerald-400">{t.saved}</span>
                   )}
                   {hasUnsavedChanges && !saveSuccess && (
-                    <span className="text-xs text-amber-600 dark:text-amber-400">Ungespeicherte Änderungen</span>
+                    <span className="text-xs text-amber-600 dark:text-amber-400">{t.unsavedChanges}</span>
                   )}
                   <button
                     onClick={handleSaveContent}
                     disabled={saving || !hasUnsavedChanges}
                     className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg disabled:opacity-50"
                   >
-                    {saving ? "Speichern…" : "Speichern"}
+                    {saving ? t.saving : t.save}
                   </button>
                 </>
               ) : (
-                <span className="text-xs text-slate-400">Text markieren, um zu kommentieren</span>
+                <span className="text-xs text-slate-400">{t.selectToComment}</span>
               )}
             </div>
           </div>
@@ -620,28 +624,28 @@ export function ArticleReviewView({
             <div className="flex items-center gap-1 px-3 py-2 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/30">
               {!isHtmlView && (
                 <>
-                  <button onClick={() => execCommand("bold")} className="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300" title="Fett">
+                  <button onClick={() => execCommand("bold")} className="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300" title={t.toolbar.bold}>
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path d="M6 4h8a4 4 0 014 4 4 4 0 01-4 4H6z"/><path d="M6 12h9a4 4 0 014 4 4 4 0 01-4 4H6z"/></svg>
                   </button>
-                  <button onClick={() => execCommand("italic")} className="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300" title="Kursiv">
+                  <button onClick={() => execCommand("italic")} className="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300" title={t.toolbar.italic}>
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/></svg>
                   </button>
-                  <button onClick={() => execCommand("underline")} className="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300" title="Unterstrichen">
+                  <button onClick={() => execCommand("underline")} className="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300" title={t.toolbar.underline}>
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M6 3v7a6 6 0 006 6 6 6 0 006-6V3"/><line x1="4" y1="21" x2="20" y2="21"/></svg>
                   </button>
                   <div className="w-px h-5 bg-slate-200 dark:bg-slate-600 mx-1" />
-                  <button onClick={() => execCommand("formatBlock", "h2")} className="px-2 py-1 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 text-xs font-bold text-slate-600 dark:text-slate-300" title="Überschrift 2">H2</button>
-                  <button onClick={() => execCommand("formatBlock", "h3")} className="px-2 py-1 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 text-xs font-bold text-slate-600 dark:text-slate-300" title="Überschrift 3">H3</button>
-                  <button onClick={() => execCommand("formatBlock", "p")} className="px-2 py-1 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 text-xs text-slate-600 dark:text-slate-300" title="Absatz">P</button>
+                  <button onClick={() => execCommand("formatBlock", "h2")} className="px-2 py-1 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 text-xs font-bold text-slate-600 dark:text-slate-300" title={t.toolbar.heading2}>H2</button>
+                  <button onClick={() => execCommand("formatBlock", "h3")} className="px-2 py-1 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 text-xs font-bold text-slate-600 dark:text-slate-300" title={t.toolbar.heading3}>H3</button>
+                  <button onClick={() => execCommand("formatBlock", "p")} className="px-2 py-1 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 text-xs text-slate-600 dark:text-slate-300" title={t.toolbar.paragraph}>P</button>
                   <div className="w-px h-5 bg-slate-200 dark:bg-slate-600 mx-1" />
-                  <button onClick={() => execCommand("insertUnorderedList")} className="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300" title="Aufzählung">
+                  <button onClick={() => execCommand("insertUnorderedList")} className="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300" title={t.toolbar.bulletList}>
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3" cy="6" r="1" fill="currentColor"/><circle cx="3" cy="12" r="1" fill="currentColor"/><circle cx="3" cy="18" r="1" fill="currentColor"/></svg>
                   </button>
-                  <button onClick={() => execCommand("insertOrderedList")} className="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300" title="Nummerierte Liste">
+                  <button onClick={() => execCommand("insertOrderedList")} className="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300" title={t.toolbar.numberedList}>
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/></svg>
                   </button>
                   <div className="w-px h-5 bg-slate-200 dark:bg-slate-600 mx-1" />
-                  <button onClick={() => execCommand("removeFormat")} className="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300" title="Formatierung entfernen">
+                  <button onClick={() => execCommand("removeFormat")} className="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300" title={t.toolbar.removeFormat}>
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M17 10L3 10M21 6L3 6M15.5 14L3 14M11.5 18L3 18"/><line x1="19" y1="12" x2="13" y2="20"/><line x1="13" y1="12" x2="19" y2="20"/></svg>
                   </button>
                   <div className="w-px h-5 bg-slate-200 dark:bg-slate-600 mx-1" />
@@ -654,7 +658,7 @@ export function ArticleReviewView({
                     ? "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300"
                     : "hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300"
                 }`}
-                title={isHtmlView ? "Zurück zum visuellen Editor" : "HTML-Quellcode bearbeiten"}
+                title={isHtmlView ? t.toolbar.backToVisual : t.toolbar.editHtml}
               >
                 {isHtmlView ? "Visual" : "HTML"}
               </button>
@@ -692,7 +696,7 @@ export function ArticleReviewView({
             ) : (
               <iframe
                 ref={iframeRef}
-                title="Artikel"
+                title={t.articleFrameTitle}
                 srcDoc={styledHtml}
                 className="w-full h-full absolute inset-0 bg-white"
                 sandbox="allow-same-origin"
@@ -711,7 +715,7 @@ export function ArticleReviewView({
                 className="w-full text-sm rounded-lg border border-slate-200 dark:border-slate-600 bg-transparent px-2 py-1"
               >
                 {COMMENT_ROLES.map((r) => (
-                  <option key={r} value={r}>{ROLE_LABELS[r]}</option>
+                  <option key={r} value={r}>{messages.roles[r]}</option>
                 ))}
               </select>
               <textarea
@@ -719,15 +723,15 @@ export function ArticleReviewView({
                 onChange={(e) => setCommentText(e.target.value)}
                 rows={3}
                 className="w-full text-sm rounded-lg border border-slate-200 dark:border-slate-600 bg-transparent p-2"
-                placeholder="Kommentar…"
+                placeholder={t.commentPlaceholder}
               />
               <label className="flex items-center gap-2 text-xs text-slate-500">
                 <input type="checkbox" checked={changeAndForward} onChange={(e) => setChangeAndForward(e.target.checked)} />
-                Ändern und weitergeben
+                {t.changeAndForward}
               </label>
               <label className="flex items-center gap-2 text-xs text-slate-500">
                 <input type="checkbox" checked={recheckAfterRevision} onChange={(e) => setRecheckAfterRevision(e.target.checked)} />
-                Recheck nach Überarbeitung
+                {t.recheckAfterRevision}
               </label>
               <div className="flex gap-2">
                 <button
@@ -735,10 +739,10 @@ export function ArticleReviewView({
                   disabled={submittingComment}
                   className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg"
                 >
-                  Speichern
+                  {t.save}
                 </button>
                 <button onClick={() => setShowCommentInput(false)} className="px-3 py-1.5 text-sm">
-                  Abbrechen
+                  {t.cancel}
                 </button>
               </div>
             </div>
@@ -746,12 +750,12 @@ export function ArticleReviewView({
 
           <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
             <h2 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">
-              Kommentare ({unresolved.length} offen)
+              {t.comments(unresolved.length)}
             </h2>
-            <p className="text-[11px] text-slate-400 mb-3">Text im Artikel markieren, um zu kommentieren.</p>
+            <p className="text-[11px] text-slate-400 mb-3">{t.commentHint}</p>
             <div className="space-y-3 max-h-[35vh] overflow-y-auto">
               {(article.comments || []).length === 0 && (
-                <p className="text-xs text-slate-400">Noch keine Kommentare.</p>
+                <p className="text-xs text-slate-400">{t.noComments}</p>
               )}
               {(article.comments || []).map((c) => (
                 <div
@@ -765,13 +769,13 @@ export function ArticleReviewView({
                   <p className="italic text-slate-500 line-clamp-2">„{c.selectedText}“</p>
                   <p className="mt-1 text-slate-800 dark:text-slate-200">{c.commentText}</p>
                   <p className="mt-1 text-slate-400">
-                    {c.author.name || c.author.email} · {ROLE_LABELS[c.role as keyof typeof ROLE_LABELS] || c.role}
+                    {c.author.name || c.author.email} · {messages.roles[c.role] || c.role}
                   </p>
                   <button
                     onClick={() => toggleResolved(c.id, !c.resolved)}
                     className="mt-1 text-blue-600 dark:text-blue-400"
                   >
-                    {c.resolved ? "Wieder öffnen" : "Erledigen"}
+                    {c.resolved ? t.reopen : t.resolve}
                   </button>
                 </div>
               ))}
@@ -780,21 +784,21 @@ export function ArticleReviewView({
 
           <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
             <h2 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">
-              Änderungsverlauf ({history.length})
+              {t.history(history.length)}
             </h2>
             <div className="space-y-2 max-h-[25vh] overflow-y-auto">
               {history.length === 0 && (
-                <p className="text-xs text-slate-400">Noch keine Änderungen protokolliert.</p>
+                <p className="text-xs text-slate-400">{t.noHistory}</p>
               )}
               {[...history].reverse().map((entry) => {
-                const described = describeHistoryEntry(entry);
+                const described = describeHistoryEntry(entry, { statuses: messages.statuses, actions: messages.historyActions });
                 return (
                   <div key={entry.id} className="text-xs border-b border-slate-100 dark:border-slate-700 pb-2 last:border-0">
                     <p className="font-medium text-slate-800 dark:text-slate-200">{described.action}</p>
                     <p className="text-slate-500">{described.status}</p>
                     <p className="text-slate-400">
-                      {entry.changedByName || entry.changedByEmail || "Unbekannt"} ·{" "}
-                      {new Date(entry.createdAt).toLocaleDateString("de-DE", {
+                      {entry.changedByName || entry.changedByEmail || t.unknown} ·{" "}
+                      {new Date(entry.createdAt).toLocaleDateString(intlLocale, {
                         day: "2-digit",
                         month: "2-digit",
                         year: "numeric",

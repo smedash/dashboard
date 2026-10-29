@@ -14,6 +14,9 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
+import { useLocale, useMessages } from "@/i18n/I18nProvider";
+import { commonMessages } from "@/i18n/messages/common";
+import { planningOverviewMessages } from "@/i18n/messages/planning-overview";
 
 interface OverviewData {
   topicStats: {
@@ -66,12 +69,6 @@ const TREND_COLORS: Record<string, string> = {
   down: "#ef4444",
 };
 
-const TREND_LABELS: Record<string, string> = {
-  up: "Steigend",
-  stable: "Stabil",
-  down: "Fallend",
-};
-
 const DIFFICULTY_COLORS = ["#10b981", "#f59e0b", "#ef4444"];
 
 const CATEGORY_COLORS = [
@@ -100,13 +97,14 @@ function KpiCard({
   color: string;
   href?: string;
 }) {
+  const { intlLocale } = useLocale();
   const card = (
     <div className={`bg-slate-800/50 border border-slate-700 rounded-xl p-5 hover:border-slate-600 transition-colors ${href ? "cursor-pointer" : ""}`}>
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm font-medium text-slate-400">{title}</p>
           <p className={`text-3xl font-bold mt-1 ${color}`}>
-            {typeof value === "number" ? value.toLocaleString("de-DE") : value}
+            {typeof value === "number" ? value.toLocaleString(intlLocale) : value}
           </p>
           {subtitle && <p className="text-xs text-slate-500 mt-1">{subtitle}</p>}
         </div>
@@ -139,19 +137,27 @@ function ChartCard({
 }
 
 export default function PlanungOverviewPage() {
+  const t = useMessages(planningOverviewMessages);
+  const nav = useMessages(commonMessages).nav;
+  const { intlLocale } = useLocale();
   const [data, setData] = useState<OverviewData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<
+    { kind: "loadFailed" | "unknown" } | { kind: "message"; message: string } | null
+  >(null);
 
   useEffect(() => {
     async function fetchData() {
       try {
         const res = await fetch("/api/planung/overview");
-        if (!res.ok) throw new Error("Fehler beim Laden");
+        if (!res.ok) {
+          setError({ kind: "loadFailed" });
+          return;
+        }
         const json = await res.json();
         setData(json);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Unbekannter Fehler");
+        setError(err instanceof Error ? { kind: "message", message: err.message } : { kind: "unknown" });
       } finally {
         setLoading(false);
       }
@@ -164,7 +170,7 @@ export default function PlanungOverviewPage() {
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="flex flex-col items-center gap-3">
           <div className="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full" />
-          <p className="text-sm text-slate-400">Dashboard wird geladen...</p>
+          <p className="text-sm text-slate-400">{t.loading}</p>
         </div>
       </div>
     );
@@ -173,7 +179,7 @@ export default function PlanungOverviewPage() {
   if (error || !data) {
     return (
       <div className="bg-red-900/20 border border-red-800 rounded-xl p-6 text-center">
-        <p className="text-red-300">{error || "Keine Daten verfügbar"}</p>
+        <p className="text-red-300">{error ? (error.kind === "message" ? error.message : t.errors[error.kind]) : t.noData}</p>
       </div>
     );
   }
@@ -185,15 +191,15 @@ export default function PlanungOverviewPage() {
   }));
 
   const trendPieData = data.gscStats.trendDistribution.map((d) => ({
-    name: TREND_LABELS[d.direction] || d.direction,
+    name: t.trendLabels[d.direction] || d.direction,
     value: d.count,
     fill: TREND_COLORS[d.direction] || "#64748b",
   }));
 
   const difficultyBarData = [
-    { name: "Leicht (0-30)", value: data.keywordStats.difficultyDistribution.easy, fill: DIFFICULTY_COLORS[0] },
-    { name: "Mittel (31-60)", value: data.keywordStats.difficultyDistribution.medium, fill: DIFFICULTY_COLORS[1] },
-    { name: "Schwer (61-100)", value: data.keywordStats.difficultyDistribution.hard, fill: DIFFICULTY_COLORS[2] },
+    { name: t.difficulty.easy, value: data.keywordStats.difficultyDistribution.easy, fill: DIFFICULTY_COLORS[0] },
+    { name: t.difficulty.medium, value: data.keywordStats.difficultyDistribution.medium, fill: DIFFICULTY_COLORS[1] },
+    { name: t.difficulty.hard, value: data.keywordStats.difficultyDistribution.hard, fill: DIFFICULTY_COLORS[2] },
   ];
 
   const kwIntentData = Object.entries(data.keywordStats.intentDistribution).map(([label, count]) => ({
@@ -234,18 +240,18 @@ export default function PlanungOverviewPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">Marketing Planung — Übersicht</h1>
+        <h1 className="text-2xl font-bold text-white">{t.title}</h1>
         <p className="text-sm text-slate-400 mt-1">
-          Aggregierte Daten und Insights aus allen 4 Planungs-Modulen
+          {t.subtitle}
         </p>
       </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
-          title="GSC Keywords"
+          title={t.kpi.gscKeywords}
           value={data.gscStats.gscKeywordCount}
-          subtitle={`${data.gscStats.totalIntents.toLocaleString("de-DE")} Intents · ${data.gscStats.totalTrends.toLocaleString("de-DE")} Trends · ${data.gscStats.totalVolumes.toLocaleString("de-DE")} Volumen`}
+          subtitle={t.kpi.gscSubtitle(data.gscStats.totalIntents.toLocaleString(intlLocale), data.gscStats.totalTrends.toLocaleString(intlLocale), data.gscStats.totalVolumes.toLocaleString(intlLocale))}
           color="text-blue-400"
           href="/planung/marketing"
           icon={
@@ -255,9 +261,9 @@ export default function PlanungOverviewPage() {
           }
         />
         <KpiCard
-          title="Topic-Graphs"
+          title={t.kpi.topicGraphs}
           value={data.topicStats.succeeded}
-          subtitle={`${data.topicStats.totalTopics.toLocaleString("de-DE")} Unterthemen gefunden`}
+          subtitle={t.kpi.topicSubtitle(data.topicStats.totalTopics.toLocaleString(intlLocale))}
           color="text-emerald-400"
           href="/planung/topics"
           icon={
@@ -267,9 +273,9 @@ export default function PlanungOverviewPage() {
           }
         />
         <KpiCard
-          title="Keyword-Recherchen"
+          title={t.kpi.keywordResearches}
           value={data.keywordStats.totalResearched}
-          subtitle={`${data.keywordStats.totalSuggestions.toLocaleString("de-DE")} Vorschläge · Ø ${data.keywordStats.avgSearchVolume.toLocaleString("de-DE")} SV`}
+          subtitle={t.kpi.keywordSubtitle(data.keywordStats.totalSuggestions.toLocaleString(intlLocale), data.keywordStats.avgSearchVolume.toLocaleString(intlLocale))}
           color="text-amber-400"
           href="/planung/keywords"
           icon={
@@ -279,9 +285,9 @@ export default function PlanungOverviewPage() {
           }
         />
         <KpiCard
-          title="Fragen-Sets"
+          title={t.kpi.questionSets}
           value={data.questionStats.total}
-          subtitle={`${data.questionStats.totalQuestions.toLocaleString("de-DE")} Fragen generiert`}
+          subtitle={t.kpi.questionSubtitle(data.questionStats.totalQuestions.toLocaleString(intlLocale))}
           color="text-purple-400"
           href="/planung/questions"
           icon={
@@ -295,26 +301,26 @@ export default function PlanungOverviewPage() {
       {/* Secondary KPIs */}
       <div className="grid grid-cols-3 lg:grid-cols-3 gap-4">
         <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 text-center">
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Seed-Keywords</p>
-          <p className="text-2xl font-bold text-cyan-400 mt-1">{totalSeedKeywords.toLocaleString("de-DE")}</p>
-          <p className="text-xs text-slate-500 mt-0.5">{data.seedStats.length} Kategorien</p>
+          <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t.kpi.seedKeywords}</p>
+          <p className="text-2xl font-bold text-cyan-400 mt-1">{totalSeedKeywords.toLocaleString(intlLocale)}</p>
+          <p className="text-xs text-slate-500 mt-0.5">{t.kpi.categories(data.seedStats.length)}</p>
         </div>
         <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 text-center">
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Cached Intents</p>
-          <p className="text-2xl font-bold text-violet-400 mt-1">{data.gscStats.totalIntents.toLocaleString("de-DE")}</p>
-          <p className="text-xs text-slate-500 mt-0.5">Search Intent Datenpunkte</p>
+          <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t.kpi.cachedIntents}</p>
+          <p className="text-2xl font-bold text-violet-400 mt-1">{data.gscStats.totalIntents.toLocaleString(intlLocale)}</p>
+          <p className="text-xs text-slate-500 mt-0.5">{t.kpi.intentDataPoints}</p>
         </div>
         <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 text-center">
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Trend-Daten</p>
-          <p className="text-2xl font-bold text-emerald-400 mt-1">{data.gscStats.totalTrends.toLocaleString("de-DE")}</p>
-          <p className="text-xs text-slate-500 mt-0.5">Google Trends gecacht</p>
+          <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t.kpi.trendData}</p>
+          <p className="text-2xl font-bold text-emerald-400 mt-1">{data.gscStats.totalTrends.toLocaleString(intlLocale)}</p>
+          <p className="text-xs text-slate-500 mt-0.5">{t.kpi.trendsCached}</p>
         </div>
       </div>
 
       {/* Charts Row 1: Intent & Trends */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Intent Distribution */}
-        <ChartCard title="Search Intent Verteilung (GSC)">
+        <ChartCard title={t.charts.intentGsc}>
           {intentPieData.length > 0 ? (
             <div className="flex flex-col items-center">
               <ResponsiveContainer width="100%" height={200}>
@@ -336,7 +342,7 @@ export default function PlanungOverviewPage() {
                   <Tooltip
                     contentStyle={{ backgroundColor: "#1e293b", border: "1px solid #334155", borderRadius: "8px" }}
                     itemStyle={{ color: "#e2e8f0" }}
-                    formatter={(value: number) => value.toLocaleString("de-DE")}
+                    formatter={(value: number) => value.toLocaleString(intlLocale)}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -345,18 +351,18 @@ export default function PlanungOverviewPage() {
                   <div key={d.name} className="flex items-center gap-2">
                     <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: d.fill }} />
                     <span className="text-slate-400">{d.name}</span>
-                    <span className="text-slate-200 font-medium">{d.value.toLocaleString("de-DE")}</span>
+                    <span className="text-slate-200 font-medium">{d.value.toLocaleString(intlLocale)}</span>
                   </div>
                 ))}
               </div>
             </div>
           ) : (
-            <p className="text-sm text-slate-500 text-center py-8">Noch keine Intent-Daten vorhanden</p>
+            <p className="text-sm text-slate-500 text-center py-8">{t.charts.noIntentData}</p>
           )}
         </ChartCard>
 
         {/* Trend Distribution */}
-        <ChartCard title="Trend-Richtungen (Google Trends)">
+        <ChartCard title={t.charts.trendDirections}>
           {trendPieData.length > 0 ? (
             <div className="flex flex-col items-center">
               <ResponsiveContainer width="100%" height={200}>
@@ -378,7 +384,7 @@ export default function PlanungOverviewPage() {
                   <Tooltip
                     contentStyle={{ backgroundColor: "#1e293b", border: "1px solid #334155", borderRadius: "8px" }}
                     itemStyle={{ color: "#e2e8f0" }}
-                    formatter={(value: number) => value.toLocaleString("de-DE")}
+                    formatter={(value: number) => value.toLocaleString(intlLocale)}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -387,18 +393,18 @@ export default function PlanungOverviewPage() {
                   <div key={d.name} className="flex items-center gap-2">
                     <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: d.fill }} />
                     <span className="text-slate-400">{d.name}</span>
-                    <span className="text-slate-200 font-medium">{d.value.toLocaleString("de-DE")}</span>
+                    <span className="text-slate-200 font-medium">{d.value.toLocaleString(intlLocale)}</span>
                   </div>
                 ))}
               </div>
             </div>
           ) : (
-            <p className="text-sm text-slate-500 text-center py-8">Noch keine Trend-Daten vorhanden</p>
+            <p className="text-sm text-slate-500 text-center py-8">{t.charts.noTrendData}</p>
           )}
         </ChartCard>
 
         {/* Keyword Difficulty */}
-        <ChartCard title="Keyword Difficulty Verteilung">
+        <ChartCard title={t.charts.difficulty}>
           {difficultyBarData.some((d) => d.value > 0) ? (
             <ResponsiveContainer width="100%" height={240}>
               <BarChart data={difficultyBarData} layout="vertical" margin={{ left: 10, right: 20 }}>
@@ -414,7 +420,7 @@ export default function PlanungOverviewPage() {
                 <Tooltip
                   contentStyle={{ backgroundColor: "#1e293b", border: "1px solid #334155", borderRadius: "8px" }}
                   itemStyle={{ color: "#e2e8f0" }}
-                  formatter={(value: number) => value.toLocaleString("de-DE")}
+                  formatter={(value: number) => value.toLocaleString(intlLocale)}
                 />
                 <Bar dataKey="value" radius={[0, 6, 6, 0]}>
                   {difficultyBarData.map((entry, i) => (
@@ -424,7 +430,7 @@ export default function PlanungOverviewPage() {
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <p className="text-sm text-slate-500 text-center py-8">Noch keine Keyword-Daten vorhanden</p>
+            <p className="text-sm text-slate-500 text-center py-8">{t.charts.noKeywordData}</p>
           )}
         </ChartCard>
       </div>
@@ -432,7 +438,7 @@ export default function PlanungOverviewPage() {
       {/* Charts Row 2: Keyword Intent + Category Overview */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Keyword Research Intent */}
-        <ChartCard title="Intent-Verteilung (Keyword Research)">
+        <ChartCard title={t.charts.intentKeywordResearch}>
           {kwIntentData.length > 0 ? (
             <div className="flex flex-col items-center">
               <ResponsiveContainer width="100%" height={220}>
@@ -454,7 +460,7 @@ export default function PlanungOverviewPage() {
                   <Tooltip
                     contentStyle={{ backgroundColor: "#1e293b", border: "1px solid #334155", borderRadius: "8px" }}
                     itemStyle={{ color: "#e2e8f0" }}
-                    formatter={(value: number) => value.toLocaleString("de-DE")}
+                    formatter={(value: number) => value.toLocaleString(intlLocale)}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -463,18 +469,18 @@ export default function PlanungOverviewPage() {
                   <div key={d.name} className="flex items-center gap-2">
                     <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: d.fill }} />
                     <span className="text-slate-400">{d.name}</span>
-                    <span className="text-slate-200 font-medium">{d.value.toLocaleString("de-DE")}</span>
+                    <span className="text-slate-200 font-medium">{d.value.toLocaleString(intlLocale)}</span>
                   </div>
                 ))}
               </div>
             </div>
           ) : (
-            <p className="text-sm text-slate-500 text-center py-8">Noch keine Intent-Daten aus Keyword-Recherchen</p>
+            <p className="text-sm text-slate-500 text-center py-8">{t.charts.noKeywordIntentData}</p>
           )}
         </ChartCard>
 
         {/* Category Comparison */}
-        <ChartCard title="Datenlage nach Kategorie">
+        <ChartCard title={t.charts.dataByCategory}>
           {categoryBarData.length > 0 ? (
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={categoryBarData} margin={{ left: 10, right: 10, bottom: 40 }}>
@@ -491,23 +497,23 @@ export default function PlanungOverviewPage() {
                 <Tooltip
                   contentStyle={{ backgroundColor: "#1e293b", border: "1px solid #334155", borderRadius: "8px" }}
                   itemStyle={{ color: "#e2e8f0" }}
-                  formatter={(value: number) => value.toLocaleString("de-DE")}
+                  formatter={(value: number) => value.toLocaleString(intlLocale)}
                 />
                 <Legend wrapperStyle={{ fontSize: 11, color: "#94a3b8" }} />
-                <Bar dataKey="topics" name="Topics" fill="#10b981" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="keywords" name="Keywords" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="questions" name="Fragen" fill="#a855f7" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="topics" name={t.charts.topics} fill="#10b981" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="keywords" name={t.charts.keywords} fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="questions" name={t.charts.questions} fill="#a855f7" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <p className="text-sm text-slate-500 text-center py-8">Noch keine Kategorie-Daten vorhanden</p>
+            <p className="text-sm text-slate-500 text-center py-8">{t.charts.noCategoryData}</p>
           )}
         </ChartCard>
       </div>
 
       {/* Seed Keywords per Category */}
       {data.seedStats.length > 0 && (
-        <ChartCard title="Seed-Keywords nach Kategorie">
+        <ChartCard title={t.charts.seedKeywordsByCategory}>
           <ResponsiveContainer width="100%" height={Math.max(200, data.seedStats.length * 36)}>
             <BarChart
               data={data.seedStats.sort((a, b) => b.count - a.count)}
@@ -526,9 +532,9 @@ export default function PlanungOverviewPage() {
               <Tooltip
                 contentStyle={{ backgroundColor: "#1e293b", border: "1px solid #334155", borderRadius: "8px" }}
                 itemStyle={{ color: "#e2e8f0" }}
-                formatter={(value: number) => value.toLocaleString("de-DE")}
+                formatter={(value: number) => value.toLocaleString(intlLocale)}
               />
-              <Bar dataKey="count" name="Seed-Keywords" radius={[0, 6, 6, 0]}>
+              <Bar dataKey="count" name={t.charts.seedKeywords} radius={[0, 6, 6, 0]}>
                 {data.seedStats
                   .sort((a, b) => b.count - a.count)
                   .map((_, i) => (
@@ -544,29 +550,29 @@ export default function PlanungOverviewPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           {
-            title: "GSC based",
-            description: "Keywords aus der Search Console mit Trends, Intent & Volumen",
+            title: nav.gscBased,
+            description: t.links.gscDescription,
             href: "/planung/marketing",
             color: "border-blue-500/30 hover:border-blue-500/60",
             iconColor: "text-blue-400",
           },
           {
-            title: "Topic based",
-            description: "Topic-Graphen mit Unterthemen via TopicLoops",
+            title: nav.topicBased,
+            description: t.links.topicDescription,
             href: "/planung/topics",
             color: "border-emerald-500/30 hover:border-emerald-500/60",
             iconColor: "text-emerald-400",
           },
           {
-            title: "Keyword based",
-            description: "Keyword-Vorschläge mit Suchvolumen, Difficulty & CPC",
+            title: nav.keywordBased,
+            description: t.links.keywordDescription,
             href: "/planung/keywords",
             color: "border-amber-500/30 hover:border-amber-500/60",
             iconColor: "text-amber-400",
           },
           {
-            title: "Question based",
-            description: "KI-generierte Fragen zu Keywords",
+            title: nav.questionBased,
+            description: t.links.questionDescription,
             href: "/planung/questions",
             color: "border-purple-500/30 hover:border-purple-500/60",
             iconColor: "text-purple-400",
@@ -580,7 +586,7 @@ export default function PlanungOverviewPage() {
             <h3 className={`text-sm font-semibold ${link.iconColor}`}>{link.title}</h3>
             <p className="text-xs text-slate-500 mt-1">{link.description}</p>
             <span className="inline-flex items-center gap-1 text-xs text-slate-400 mt-3">
-              Öffnen
+              {t.links.open}
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>

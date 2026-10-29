@@ -4,6 +4,10 @@ import { signOut, useSession } from "next-auth/react";
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { useProperty } from "@/contexts/PropertyContext";
+import { useLocale, useMessages } from "@/i18n/I18nProvider";
+import { settingsMessages } from "@/i18n/messages/settings";
+import type { SyncLogEntry } from "@/lib/technical-seo";
+import Link from "next/link";
 
 interface Property {
   siteUrl: string;
@@ -25,50 +29,68 @@ export default function SettingsPage() {
   const { data: session } = useSession();
   const searchParams = useSearchParams();
   const { selectedProperty } = useProperty();
+  const t = useMessages(settingsMessages);
+  const { intlLocale } = useLocale();
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasGoogleConnection, setHasGoogleConnection] = useState(false);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [message, setMessage] = useState<{ type: "success" | "error"; text?: string; code?: string } | null>(null);
 
   // Conductor Monitoring State
   const [cmSyncing, setCmSyncing] = useState(false);
   const [cmLastSync, setCmLastSync] = useState<string | null>(null);
   const [cmSyncResult, setCmSyncResult] = useState<{ pages: number; issues: number; durationMs: number } | null>(null);
+  const [cmSyncLogs, setCmSyncLogs] = useState<SyncLogEntry[]>([]);
+  const [cmProgress, setCmProgress] = useState<number | null>(null);
 
   const currentDomain = selectedProperty ? extractDomain(selectedProperty) : null;
 
-  useEffect(() => {
-    async function fetchCmStatus() {
-      if (!currentDomain) return;
-      try {
-        const res = await fetch(`/api/conductor-monitoring/pages-enrichment?domain=${encodeURIComponent(currentDomain)}`);
-        const data = await res.json();
-        setCmLastSync(data.lastSyncAt || null);
-      } catch { /* ignore */ }
-    }
-    fetchCmStatus();
+  const fetchCmSyncLogs = useCallback(async () => {
+    if (!currentDomain) return;
+    try {
+      const res = await fetch(`/api/conductor-monitoring/sync-logs?domain=${encodeURIComponent(currentDomain)}`);
+      const data = await res.json();
+      setCmSyncLogs(data.logs || []);
+      setCmLastSync(data.lastSyncAt || null);
+    } catch { /* ignore */ }
   }, [currentDomain]);
+
+  useEffect(() => {
+    fetchCmSyncLogs();
+  }, [fetchCmSyncLogs]);
 
   const handleCmSync = useCallback(async () => {
     if (!currentDomain) return;
     setCmSyncing(true);
     setCmSyncResult(null);
+    setCmProgress(null);
     try {
-      const res = await fetch("/api/conductor-monitoring/sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ domain: currentDomain }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Sync fehlgeschlagen");
-      setCmSyncResult({ pages: data.pagesProcessed, issues: data.issuesProcessed, durationMs: data.durationMs });
-      setCmLastSync(new Date().toISOString());
+      // Each request syncs a time slice; large websites need several slices.
+      for (;;) {
+        const res = await fetch("/api/conductor-monitoring/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ domain: currentDomain }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || t.conductor.syncFailed);
+        if (data.status === "locked") throw new Error(t.conductor.syncLocked);
+        if (data.status === "paused") {
+          setCmProgress(data.pagesProcessed);
+          fetchCmSyncLogs();
+          continue;
+        }
+        setCmSyncResult({ pages: data.pagesProcessed, issues: data.issuesProcessed, durationMs: data.durationMs });
+        break;
+      }
     } catch (err) {
-      setMessage({ type: "error", text: err instanceof Error ? err.message : "Conductor Sync fehlgeschlagen" });
+      setMessage({ type: "error", text: err instanceof Error ? err.message : t.conductor.conductorSyncFailed });
     } finally {
       setCmSyncing(false);
+      setCmProgress(null);
+      fetchCmSyncLogs();
     }
-  }, [currentDomain]);
+  }, [currentDomain, t, fetchCmSyncLogs]);
 
   // Check for success/error messages from OAuth callback
   useEffect(() => {
@@ -76,16 +98,11 @@ export default function SettingsPage() {
     const error = searchParams.get("error");
 
     if (success === "google_linked") {
-      setMessage({ type: "success", text: "Google-Konto erfolgreich verbunden!" });
+      setMessage({ type: "success", code: "googleLinked" });
       // Reload to show updated connection status
       window.history.replaceState({}, "", "/settings");
     } else if (error) {
-      const errorMessages: Record<string, string> = {
-        oauth_error: "Fehler bei der Google-Authentifizierung.",
-        google_already_linked: "Dieses Google-Konto ist bereits mit einem anderen Benutzer verknüpft.",
-        link_failed: "Fehler beim Verknüpfen des Google-Kontos.",
-      };
-      setMessage({ type: "error", text: errorMessages[error] || "Ein Fehler ist aufgetreten." });
+      setMessage({ type: "error", code: error });
       window.history.replaceState({}, "", "/settings");
     }
   }, [searchParams]);
@@ -118,7 +135,7 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-8 max-w-4xl">
-      <h1 className="text-2xl font-bold text-white">Einstellungen</h1>
+      <h1 className="text-2xl font-bold text-white">{t.title}</h1>
 
       {/* Message */}
       {message && (
@@ -129,24 +146,24 @@ export default function SettingsPage() {
               : "bg-red-500/10 border border-red-500/30 text-red-400"
           }`}
         >
-          {message.text}
+          {message.text ?? t.feedback[message.code ?? ""] ?? t.feedback.unknownError}
         </div>
       )}
 
       {/* Account Section */}
       <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-        <h2 className="text-lg font-semibold text-white mb-4">Account</h2>
+        <h2 className="text-lg font-semibold text-white mb-4">{t.account.title}</h2>
         <div className="space-y-4">
           <div className="flex items-center justify-between py-3 border-b border-slate-700">
             <div>
-              <p className="text-sm text-slate-400">E-Mail</p>
+              <p className="text-sm text-slate-400">{t.account.email}</p>
               <p className="text-white">{session?.user?.email}</p>
             </div>
           </div>
           <div className="flex items-center justify-between py-3">
             <div>
-              <p className="text-sm text-slate-400">Name</p>
-              <p className="text-white">{session?.user?.name || "Nicht angegeben"}</p>
+              <p className="text-sm text-slate-400">{t.account.name}</p>
+              <p className="text-white">{session?.user?.name || t.account.notSpecified}</p>
             </div>
           </div>
         </div>
@@ -164,11 +181,11 @@ export default function SettingsPage() {
               <svg className="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span className="text-emerald-400">Google-Konto verbunden</span>
+              <span className="text-emerald-400">{t.google.connected}</span>
             </div>
 
             <div>
-              <p className="text-sm text-slate-400 mb-2">Verfügbare Properties ({properties.length})</p>
+              <p className="text-sm text-slate-400 mb-2">{t.google.availableProperties(properties.length)}</p>
               <div className="space-y-2 max-h-60 overflow-y-auto">
                 {properties.map((property) => (
                   <div
@@ -190,13 +207,13 @@ export default function SettingsPage() {
               onClick={handleLinkGoogle}
               className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
             >
-              Mit anderem Google-Konto verbinden
+              {t.google.connectOther}
             </button>
           </div>
         ) : (
           <div className="space-y-4">
             <p className="text-slate-400">
-              Verbinde Dein Google-Konto, um auf die Search Console Daten zuzugreifen.
+              {t.google.connectHint}
             </p>
             <button
               onClick={handleLinkGoogle}
@@ -208,7 +225,7 @@ export default function SettingsPage() {
                 <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
               </svg>
-              Mit Google verbinden
+              {t.google.connect}
             </button>
           </div>
         )}
@@ -218,8 +235,7 @@ export default function SettingsPage() {
       <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
         <h2 className="text-lg font-semibold text-white mb-4">Conductor Monitoring</h2>
         <p className="text-sm text-slate-400 mb-4">
-          Synchronisiert SEO-Health, Indexierbarkeit, Lighthouse-Metriken und Crawler-Frequenz-Daten 
-          von Conductor Monitoring (ehem. ContentKing) fuer die ausgewaehlte Property.
+          {t.conductor.description}
         </p>
 
         {currentDomain && (
@@ -227,7 +243,7 @@ export default function SettingsPage() {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
             </svg>
-            Aktive Property: {currentDomain}
+            {t.conductor.activeProperty(currentDomain)}
           </div>
         )}
 
@@ -237,17 +253,17 @@ export default function SettingsPage() {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              Letzter Sync: {new Date(cmLastSync).toLocaleString("de-DE")}
+              {t.conductor.lastSync(new Date(cmLastSync).toLocaleString(intlLocale))}
             </div>
           )}
 
           {cmSyncResult && (
             <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg text-sm text-emerald-400">
-              Sync abgeschlossen: {cmSyncResult.pages} Seiten, {cmSyncResult.issues} Issues 
-              ({(cmSyncResult.durationMs / 1000).toFixed(1)}s)
+              {t.conductor.syncDone(cmSyncResult.pages, cmSyncResult.issues, (cmSyncResult.durationMs / 1000).toFixed(1))}
             </div>
           )}
 
+          <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={handleCmSync}
             disabled={cmSyncing || !currentDomain}
@@ -259,28 +275,92 @@ export default function SettingsPage() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
-                Synchronisiere...
+                {cmProgress !== null ? t.conductor.syncProgress(cmProgress) : t.conductor.syncing}
               </>
             ) : (
               <>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
-                Jetzt synchronisieren
+                {t.conductor.syncNow}
               </>
             )}
           </button>
+          {cmLastSync && (
+            <Link
+              href="/technical-seo"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white font-medium rounded-lg transition-colors"
+            >
+              {t.conductor.viewData}
+            </Link>
+          )}
+          </div>
+
+          <div className="pt-4 border-t border-slate-700">
+            <h3 className="text-sm font-semibold text-white mb-3">{t.conductor.history}</h3>
+            {cmSyncLogs.length === 0 ? (
+              <p className="text-sm text-slate-400">{t.conductor.noHistory}</p>
+            ) : (
+              <ul className="divide-y divide-slate-700">
+                {cmSyncLogs.map((log) => {
+                  const statusStyle = {
+                    completed: "bg-emerald-500/15 text-emerald-400",
+                    running: "bg-blue-500/15 text-blue-400",
+                    paused: "bg-amber-500/15 text-amber-400",
+                    failed: "bg-red-500/15 text-red-400",
+                    aborted: "bg-slate-500/15 text-slate-400",
+                  }[log.status];
+                  const statusHint =
+                    log.status === "paused"
+                      ? t.conductor.pausedHint
+                      : log.status === "aborted"
+                        ? t.conductor.abortedHint
+                        : undefined;
+                  return (
+                    <li key={log.id} className="py-2 text-sm">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <span className="text-slate-300 tabular-nums">
+                          {new Date(log.createdAt).toLocaleString(intlLocale)}
+                        </span>
+                        <span className="text-slate-500">
+                          {t.conductor.syncTypes[log.type] ?? log.type}
+                        </span>
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusStyle}`}
+                          title={statusHint}
+                        >
+                          {t.conductor.statuses[log.status]}
+                        </span>
+                        {log.status === "completed" && (
+                          <span className="text-slate-400">
+                            {t.conductor.historyResult(log.pagesProcessed, log.issuesProcessed)}
+                            {log.durationMs !== null && ` · ${(log.durationMs / 1000).toFixed(1)}s`}
+                          </span>
+                        )}
+                        {(log.status === "running" || log.status === "paused") && log.pagesProcessed > 0 && (
+                          <span className="text-slate-400">{t.conductor.historyProgress(log.pagesProcessed)}</span>
+                        )}
+                      </div>
+                      {log.error && (
+                        <p className="mt-1 text-xs text-red-400 break-words">{log.error}</p>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Logout Section */}
       <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-        <h2 className="text-lg font-semibold text-white mb-4">Sitzung</h2>
+        <h2 className="text-lg font-semibold text-white mb-4">{t.session.title}</h2>
         <button
           onClick={() => signOut({ callbackUrl: "/login" })}
           className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 font-medium rounded-lg transition-colors"
         >
-          Abmelden
+          {t.session.signOut}
         </button>
       </div>
     </div>

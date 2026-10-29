@@ -7,6 +7,8 @@ import { RecomputeProgressBar } from "@/components/url-cleanup/RecomputeProgress
 import { runChunkedRecompute, type RecomputeProgress } from "@/components/url-cleanup/run-recompute";
 import { RankedKeywordsSyncPanel } from "@/components/url-cleanup/RankedKeywordsSyncPanel";
 import { KEYWORD_MAPPING_GSC_SITE_URL } from "@/lib/keyword-mapping-gsc";
+import { useMessages } from "@/i18n/I18nProvider";
+import { urlCleanupMessages } from "@/i18n/messages/url-cleanup";
 
 type SeedStatus = {
   inventoryCount: number;
@@ -18,6 +20,7 @@ type SeedStatus = {
 };
 
 export default function DimensionenPage() {
+  const t = useMessages(urlCleanupMessages);
   const [status, setStatus] = useState<SeedStatus | null>(null);
   const [log, setLog] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
@@ -50,10 +53,10 @@ export default function DimensionenPage() {
   }
 
   async function recomputeScores() {
-    push("Scores neu rechnen — Fenster bitte geöffnet lassen (läuft nicht im Hintergrund).");
+    push(t.dimensions.log.recomputeScores);
     const updated = await runChunkedRecompute(setScoreProgress);
     setScoreProgress(null);
-    push(`Scores: ${updated.toLocaleString("de-CH")} URLs`);
+    push(`Scores: ${updated.toLocaleString(t.displayLocale)} URLs`);
     return updated;
   }
 
@@ -64,7 +67,7 @@ export default function DimensionenPage() {
       body: JSON.stringify(body),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Fehler");
+    if (!res.ok) throw new Error(data.error || t.error);
     return data;
   }
 
@@ -77,33 +80,33 @@ export default function DimensionenPage() {
       push(`Sitemaps: ${sm.result.count}`);
       push("URLs…");
       const urls = await postSeed({ step: "urls" });
-      push(`URLs unique: ${urls.result.unique.toLocaleString("de-CH")}`);
+      push(`URLs unique: ${urls.result.unique.toLocaleString(t.displayLocale)}`);
       for (const f of ADOBE_FILES) {
         push(`Adobe ${f.file}…`);
         const r = await postSeed({ step: "adobe", file: f.file });
-        push(`  matched ${r.result.matched.toLocaleString("de-CH")}, unmatched ${r.result.unmatched.toLocaleString("de-CH")}`);
+        push(`  matched ${r.result.matched.toLocaleString(t.displayLocale)}, unmatched ${r.result.unmatched.toLocaleString(t.displayLocale)}`);
       }
-      push("Adobe denormalisieren…");
+      push(t.dimensions.log.denormAdobe);
       await postSeed({ step: "denorm" });
       for (const f of TIME_SPENT_FILES) {
         push(`Time spent ${f.file}…`);
         const r = await postSeed({ step: "timespent", file: f.file });
-        push(`  matched ${r.result.matched.toLocaleString("de-CH")}, unmatched ${r.result.unmatched.toLocaleString("de-CH")}`);
+        push(`  matched ${r.result.matched.toLocaleString(t.displayLocale)}, unmatched ${r.result.unmatched.toLocaleString(t.displayLocale)}`);
       }
-      push("Time spent denormalisieren…");
+      push(t.dimensions.log.denormTimeSpent);
       await postSeed({ step: "denorm-timespent" });
       push("Gating…");
       const gating = await postSeed({ step: "gating" });
-      push(`  matched ${gating.result.matched.toLocaleString("de-CH")}, unmatched ${gating.result.unmatched.toLocaleString("de-CH")}`);
-      push("Gating denormalisieren…");
+      push(`  matched ${gating.result.matched.toLocaleString(t.displayLocale)}, unmatched ${gating.result.unmatched.toLocaleString(t.displayLocale)}`);
+      push(t.dimensions.log.denormGating);
       await postSeed({ step: "denorm-gating" });
       push("Keywords…");
       await postSeed({ step: "keywords" });
       await recomputeScores();
-      push("Fertig.");
+      push(t.dimensions.log.done);
       refresh();
     } catch (e) {
-      push(e instanceof Error ? e.message : "Fehler");
+      push(e instanceof Error && e.message ? e.message : t.error);
     } finally {
       setScoreProgress(null);
       setBusy(false);
@@ -117,15 +120,15 @@ export default function DimensionenPage() {
       for (const f of TIME_SPENT_FILES) {
         push(`Time spent ${f.file}…`);
         const r = await postSeed({ step: "timespent", file: f.file });
-        push(`  matched ${r.result.matched.toLocaleString("de-CH")}, unmatched ${r.result.unmatched.toLocaleString("de-CH")}`);
+        push(`  matched ${r.result.matched.toLocaleString(t.displayLocale)}, unmatched ${r.result.unmatched.toLocaleString(t.displayLocale)}`);
       }
-      push("Time spent denormalisieren…");
+      push(t.dimensions.log.denormTimeSpent);
       await postSeed({ step: "denorm-timespent" });
       await recomputeScores();
-      push("Time spent fertig.");
+      push(t.dimensions.log.timeSpentDone);
       refresh();
     } catch (e) {
-      push(e instanceof Error ? e.message : "Fehler");
+      push(e instanceof Error && e.message ? e.message : t.error);
     } finally {
       setScoreProgress(null);
       setBusy(false);
@@ -138,14 +141,14 @@ export default function DimensionenPage() {
     try {
       push("Gating…");
       const gating = await postSeed({ step: "gating" });
-      push(`  matched ${gating.result.matched.toLocaleString("de-CH")}, unmatched ${gating.result.unmatched.toLocaleString("de-CH")}`);
-      push("Gating denormalisieren…");
+      push(`  matched ${gating.result.matched.toLocaleString(t.displayLocale)}, unmatched ${gating.result.unmatched.toLocaleString(t.displayLocale)}`);
+      push(t.dimensions.log.denormGating);
       await postSeed({ step: "denorm-gating" });
       await recomputeScores();
-      push("Gating fertig.");
+      push(t.dimensions.log.gatingDone);
       refresh();
     } catch (e) {
-      push(e instanceof Error ? e.message : "Fehler");
+      push(e instanceof Error && e.message ? e.message : t.error);
     } finally {
       setScoreProgress(null);
       setBusy(false);
@@ -163,7 +166,7 @@ export default function DimensionenPage() {
         body: JSON.stringify({ phase: "reset", period: gscPeriod, siteUrl: KEYWORD_MAPPING_GSC_SITE_URL }),
       });
       let data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Reset fehlgeschlagen");
+      if (!res.ok) throw new Error(data.error || t.dimensions.log.resetFailed);
       let startRow = 0;
       for (let i = 0; i < 4; i++) {
         push(`GSC Pages startRow=${startRow}…`);
@@ -178,8 +181,8 @@ export default function DimensionenPage() {
           }),
         });
         data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Pages fehlgeschlagen");
-        push(`  ${data.result.rows} Zeilen, ${data.result.matched} Matches`);
+        if (!res.ok) throw new Error(data.error || t.dimensions.log.pagesFailed);
+        push(t.dimensions.log.rowsMatches(data.result.rows, data.result.matched));
         if (!data.result.hasMore) break;
         startRow = data.result.nextStartRow;
       }
@@ -199,16 +202,16 @@ export default function DimensionenPage() {
         });
         data = await res.json();
         if (!res.ok) {
-          push(`  Fehler: ${data.error}`);
+          push(t.dimensions.log.prefixError(data.error));
           continue;
         }
-        push(`  ${data.result.matched} Matches`);
+        push(t.dimensions.log.matches(data.result.matched));
       }
       await recomputeScores();
-      push("GSC-Sync fertig.");
+      push(t.dimensions.log.gscSyncDone);
       refresh();
     } catch (e) {
-      push(e instanceof Error ? e.message : "Fehler");
+      push(e instanceof Error && e.message ? e.message : t.error);
     } finally {
       setScoreProgress(null);
       setBusy(false);
@@ -221,11 +224,11 @@ export default function DimensionenPage() {
       const res = await fetch("/api/url-cleanup/keyword-sync", { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      push(`Keywords: Fokus ${data.focus.matched}, ranked Keywords ${data.labs.matched}`);
+      push(t.dimensions.log.keywords(data.focus.matched, data.labs.matched));
       await recomputeScores();
       refresh();
     } catch (e) {
-      push(e instanceof Error ? e.message : "Fehler");
+      push(e instanceof Error && e.message ? e.message : t.error);
     } finally {
       setScoreProgress(null);
       setBusy(false);
@@ -235,13 +238,15 @@ export default function DimensionenPage() {
   return (
     <div className="space-y-6">
       <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 space-y-3">
-        <h2 className="font-semibold">Erstimport (public/data)</h2>
+        <h2 className="font-semibold">{t.dimensions.seed.title}</h2>
         <p className="text-sm text-slate-500">
-          Inventar {status?.inventoryCount.toLocaleString("de-CH") ?? "—"} · Sitemaps{" "}
-          {status?.sitemapCount ?? "—"}
+          {t.dimensions.seed.summary(
+            status?.inventoryCount.toLocaleString(t.displayLocale) ?? "—",
+            status?.sitemapCount != null ? String(status.sitemapCount) : "—"
+          )}
         </p>
         <p className="text-sm text-slate-500">
-          Enthält Sitemaps, URLs, Adobe Traffic/Leads, Time Spent und Gating. Time Spent kann mehrere Minuten dauern.
+          {t.dimensions.seed.description}
         </p>
         <button
           type="button"
@@ -249,19 +254,19 @@ export default function DimensionenPage() {
           onClick={runFullSeed}
           className="px-3 py-1.5 text-sm rounded-lg bg-blue-600 text-white disabled:opacity-50"
         >
-          {busy ? "Läuft…" : "Inventar + Dimensionen seeden"}
+          {busy ? t.dimensions.seed.running : t.dimensions.seed.button}
         </button>
       </div>
 
       <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 space-y-3">
-        <h2 className="font-semibold">Time Spent (public/data)</h2>
+        <h2 className="font-semibold">{t.dimensions.timeSpent.title}</h2>
         <p className="text-sm text-slate-500">
-          Adobe Time-Spent-Buckets pro Segment, denormalisiert als Anteil &lt;15s und ≥1 Minute.
+          {t.dimensions.timeSpent.description}
         </p>
         <ul className="text-xs text-slate-500 space-y-0.5">
           {(status?.timeSpentFiles ?? TIME_SPENT_FILES.map((f) => ({ ...f, exists: true }))).map((f) => (
             <li key={f.file}>
-              {f.exists === false ? "fehlt: " : ""}
+              {f.exists === false ? t.dimensions.timeSpent.missing : ""}
               {f.name}
             </li>
           ))}
@@ -272,20 +277,20 @@ export default function DimensionenPage() {
           onClick={runTimeSpent}
           className="px-3 py-1.5 text-sm rounded-lg bg-blue-600 text-white disabled:opacity-50"
         >
-          Time Spent seeden
+          {t.dimensions.timeSpent.button}
         </button>
       </div>
 
       <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 space-y-3">
-        <h2 className="font-semibold">AM Gating Header</h2>
+        <h2 className="font-semibold">{t.dimensions.gating.title}</h2>
         <p className="text-sm text-slate-500">
-          AEM-Pfade (`/content/sites/…`) werden auf öffentliche URLs gemappt. Rollen, Live Copy und Titel landen als Dimension.
+          {t.dimensions.gating.description}
         </p>
         <p className="text-xs text-slate-500">
           {status?.gatingFile
             ? status.gatingFile.exists
               ? status.gatingFile.resolvedFile || status.gatingFile.file
-              : "Datei fehlt"
+              : t.dimensions.gating.fileMissing
             : "—"}
         </p>
         <button
@@ -294,12 +299,12 @@ export default function DimensionenPage() {
           onClick={runGating}
           className="px-3 py-1.5 text-sm rounded-lg bg-blue-600 text-white disabled:opacity-50"
         >
-          Gating seeden
+          {t.dimensions.gating.button}
         </button>
       </div>
 
       <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 space-y-3">
-        <h2 className="font-semibold">GSC-Sync</h2>
+        <h2 className="font-semibold">{t.dimensions.gscSync.title}</h2>
         <div className="flex flex-wrap gap-2 items-center">
           <select
             value={gscPeriod}
@@ -318,27 +323,27 @@ export default function DimensionenPage() {
             onClick={runGscSync}
             className="px-3 py-1.5 text-sm rounded-lg bg-blue-600 text-white disabled:opacity-50"
           >
-            GSC gegen Inventar synchronisieren
+            {t.dimensions.gscSync.button}
           </button>
         </div>
       </div>
 
       <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 space-y-3">
-        <h2 className="font-semibold">Keyword-Mapping overlay</h2>
+        <h2 className="font-semibold">{t.dimensions.keywordOverlay.title}</h2>
         <button
           type="button"
           disabled={busy}
           onClick={runKeywords}
           className="px-3 py-1.5 text-sm rounded-lg border border-slate-300 dark:border-slate-600 disabled:opacity-50"
         >
-          Fokuskeywords + ranked Keywords joinen
+          {t.dimensions.keywordOverlay.button}
         </button>
       </div>
 
       <RankedKeywordsSyncPanel />
 
       <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 space-y-3">
-        <h2 className="font-semibold">Excel-Dimension importieren</h2>
+        <h2 className="font-semibold">{t.dimensions.excelImport}</h2>
         <DimensionImport onImported={refresh} />
       </div>
 
@@ -347,10 +352,10 @@ export default function DimensionenPage() {
           <table className="min-w-full text-sm">
             <thead className="bg-slate-50 dark:bg-slate-900/40 text-xs uppercase text-slate-500">
               <tr>
-                <th className="px-4 py-2 text-left">Dimension</th>
-                <th className="px-4 py-2 text-left">Typ</th>
-                <th className="px-4 py-2 text-right">Matched</th>
-                <th className="px-4 py-2 text-right">Unmatched</th>
+                <th className="px-4 py-2 text-left">{t.dimensions.columns.dimension}</th>
+                <th className="px-4 py-2 text-left">{t.dimensions.columns.type}</th>
+                <th className="px-4 py-2 text-right">{t.dimensions.columns.matched}</th>
+                <th className="px-4 py-2 text-right">{t.dimensions.columns.unmatched}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
@@ -358,8 +363,8 @@ export default function DimensionenPage() {
                 <tr key={d.slug}>
                   <td className="px-4 py-2">{d.name}</td>
                   <td className="px-4 py-2">{d.sourceType}</td>
-                  <td className="px-4 py-2 text-right tabular-nums">{d.matchedCount.toLocaleString("de-CH")}</td>
-                  <td className="px-4 py-2 text-right tabular-nums">{d.unmatchedCount.toLocaleString("de-CH")}</td>
+                  <td className="px-4 py-2 text-right tabular-nums">{d.matchedCount.toLocaleString(t.displayLocale)}</td>
+                  <td className="px-4 py-2 text-right tabular-nums">{d.unmatchedCount.toLocaleString(t.displayLocale)}</td>
                 </tr>
               ))}
             </tbody>

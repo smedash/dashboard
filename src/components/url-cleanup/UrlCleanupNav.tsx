@@ -2,16 +2,19 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useMessages } from "@/i18n/I18nProvider";
+import { commonMessages } from "@/i18n/messages/common";
 
 const LINKS = [
-  { href: "/url-cleanup", label: "Übersicht" },
-  { href: "/url-cleanup/inventar", label: "Inventar" },
-  { href: "/url-cleanup/wolke", label: "3D-Wolke" },
-  { href: "/url-cleanup/dimensionen", label: "Dimensionen" },
-];
+  { href: "/url-cleanup", labelKey: "overview" },
+  { href: "/url-cleanup/inventar", labelKey: "inventory" },
+  { href: "/url-cleanup/wolke", labelKey: "cloud3d" },
+  { href: "/url-cleanup/dimensionen", labelKey: "dimensions" },
+] as const;
 
 export function UrlCleanupNav() {
   const pathname = usePathname();
+  const t = useMessages(commonMessages);
   return (
     <div className="flex flex-wrap gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg w-fit">
       {LINKS.map((l) => {
@@ -26,7 +29,7 @@ export function UrlCleanupNav() {
                 : "text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
             }`}
           >
-            {l.label}
+            {t.nav[l.labelKey]}
           </Link>
         );
       })}

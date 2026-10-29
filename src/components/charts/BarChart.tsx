@@ -10,6 +10,8 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
+import { useLocale, useMessages } from "@/i18n/I18nProvider";
+import { chartsMessages } from "@/i18n/messages/charts";
 
 interface BarChartProps {
   data: Array<Record<string, unknown>>;
@@ -41,6 +43,9 @@ export function BarChart({
   height = 300,
   horizontal = false,
 }: BarChartProps) {
+  const t = useMessages(chartsMessages);
+  const { intlLocale } = useLocale();
+
   if (horizontal) {
     return (
       <ResponsiveContainer width="100%" height={height}>
@@ -79,7 +84,7 @@ export function BarChart({
                   >
                     <p style={{ margin: 0, fontWeight: 500, color: "#f1f5f9" }}>{label}</p>
                     <p style={{ margin: "4px 0 0 0", color: "#ffffff" }}>
-                      Anzahl: {value.toLocaleString("de-DE")}
+                      {t.count}: {value.toLocaleString(intlLocale)}
                     </p>
                   </div>
                 );
@@ -127,7 +132,7 @@ export function BarChart({
                 >
                   <p style={{ margin: 0, fontWeight: 500, color: "#f1f5f9" }}>{label}</p>
                   <p style={{ margin: "4px 0 0 0", color: "#ffffff" }}>
-                    Anzahl: {value.toLocaleString("de-DE")}
+                    {t.count}: {value.toLocaleString(intlLocale)}
                   </p>
                 </div>
               );

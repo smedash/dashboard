@@ -2,6 +2,10 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { SunburstChart, SunburstChartRef } from "@/components/charts";
+import { useLocale, useMessages } from "@/i18n/I18nProvider";
+import { commonMessages } from "@/i18n/messages/common";
+import { seoMaturityMessages } from "@/i18n/messages/seo-maturity";
+import { seoMaturityItemMessages } from "@/i18n/messages/seo-maturity-items";
 
 interface Team {
   id: string;
@@ -329,6 +333,12 @@ const translateItems = (items: SEOMaturityItem[]): SEOMaturityItem[] => {
 };
 
 export default function SEOMaturityPage() {
+  const t = useMessages(seoMaturityMessages);
+  const tc = useMessages(commonMessages);
+  const ti = useMessages(seoMaturityItemMessages);
+  const { intlLocale } = useLocale();
+  const categoryLabel = (category: string) => ti.categories[category] ?? category;
+  const itemTitleLabel = (title: string) => ti.titles[title] ?? title;
   const [maturities, setMaturities] = useState<SEOMaturity[]>([]);
   const [selectedMaturity, setSelectedMaturity] = useState<SEOMaturity | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -509,7 +519,7 @@ export default function SEOMaturityPage() {
       }
     } catch (error) {
       console.error("Error creating maturity:", error);
-      alert("Fehler beim Erstellen der Analyse");
+      alert(t.errors.create);
     } finally {
       setIsSaving(false);
     }
@@ -664,7 +674,7 @@ export default function SEOMaturityPage() {
       }
     } catch (error) {
       console.error("Error updating item description:", error);
-      alert("Fehler beim Speichern der Beschreibung");
+      alert(t.errors.saveDescription);
     }
   };
 
@@ -713,7 +723,7 @@ export default function SEOMaturityPage() {
       }
     } catch (error) {
       console.error("Error adding item:", error);
-      alert("Fehler beim Hinzufügen des Punktes");
+      alert(t.errors.addItem);
     } finally {
       setIsAddingItem(false);
     }
@@ -765,7 +775,7 @@ export default function SEOMaturityPage() {
       }
     } catch (error) {
       console.error("Error updating item:", error);
-      alert("Fehler beim Speichern der Änderungen");
+      alert(t.errors.saveChanges);
     }
   };
 
@@ -788,11 +798,11 @@ export default function SEOMaturityPage() {
         setKvpLinksMap(restKvp);
         setConfirmDeleteItem(null);
       } else {
-        alert("Fehler beim Löschen des Punktes");
+        alert(t.errors.deleteItem);
       }
     } catch (error) {
       console.error("Error deleting item:", error);
-      alert("Fehler beim Löschen des Punktes");
+      alert(t.errors.deleteItem);
     } finally {
       setIsDeletingItem(null);
     }
@@ -824,35 +834,22 @@ export default function SEOMaturityPage() {
       if (data.differences) {
         setComparisonResult(data);
       } else {
-        alert("Fehler beim Vergleich");
+        alert(t.errors.compare);
       }
     } catch (error) {
       console.error("Error comparing:", error);
-      alert("Fehler beim Vergleich der Analysen");
+      alert(t.errors.compareAnalyses);
     } finally {
       setIsComparing(false);
     }
   };
 
   const getFieldLabel = (field: string | null): string => {
-    const labels: Record<string, string> = {
-      score: "Reifegrad",
-      title: "Titel",
-      category: "Kategorie",
-      priority: "Priorität",
-      description: "Beschreibung",
-      teams: "Teams",
-    };
-    return field ? labels[field] || field : "";
+    return field ? t.fieldLabels[field] || field : "";
   };
 
   const getActionLabel = (action: string): string => {
-    switch (action) {
-      case "create": return "Hinzugefügt";
-      case "update": return "Geändert";
-      case "delete": return "Gelöscht";
-      default: return action;
-    }
+    return t.actionLabels[action] || action;
   };
 
   const getActionColor = (action: string): string => {
@@ -866,7 +863,7 @@ export default function SEOMaturityPage() {
 
   const formatChangeLogDate = (dateStr: string): string => {
     const date = new Date(dateStr);
-    return date.toLocaleDateString("de-DE", {
+    return date.toLocaleDateString(intlLocale, {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -879,7 +876,7 @@ export default function SEOMaturityPage() {
   const groupChangeLogByDate = (logs: ChangeLogEntry[]) => {
     const groups: Record<string, ChangeLogEntry[]> = {};
     logs.forEach((log) => {
-      const dateKey = new Date(log.createdAt).toLocaleDateString("de-DE", {
+      const dateKey = new Date(log.createdAt).toLocaleDateString(intlLocale, {
         day: "2-digit",
         month: "2-digit",
         year: "numeric",
@@ -904,10 +901,10 @@ export default function SEOMaturityPage() {
   };
 
   const getScoreText = (score: number): string => {
-    if (score <= 3) return "Unausgereift";
-    if (score <= 5) return "Wenig ausgereift";
-    if (score <= 7) return "Ausgereift";
-    return "Vollständig ausgereift";
+    if (score <= 3) return t.scoreText.immature;
+    if (score <= 5) return t.scoreText.lowMaturity;
+    if (score <= 7) return t.scoreText.mature;
+    return t.scoreText.fullyMature;
   };
 
   const getPriorityColor = (priority: string | null | undefined): string => {
@@ -928,102 +925,7 @@ export default function SEOMaturityPage() {
 
   // SEO-Erklärungen für jeden Punkt
   const getSEOExplanation = (title: string): string => {
-    const explanations: Record<string, string> = {
-      "Google Analytics prüfen und einrichten": "Google Analytics ermöglicht es, das Nutzerverhalten zu verstehen und SEO-Maßnahmen datenbasiert zu optimieren. Ohne Analytics fehlt die Grundlage für fundierte SEO-Entscheidungen.",
-      "Google Search Console (GSC) prüfen und einrichten": "Die Search Console zeigt, wie Google Ihre Website sieht. Sie erhalten Einblicke in Indexierungsprobleme, Suchanfragen und Klickraten, die essentiell für SEO-Optimierungen sind.",
-      "SEO-Lösung für die Website prüfen und installieren": "Eine professionelle SEO-Lösung automatisiert viele technische SEO-Aufgaben und hilft dabei, Fehler frühzeitig zu erkennen und zu beheben.",
-      "Uptime-Monitoring einrichten": "Wenn Ihre Website häufig nicht erreichbar ist, wirkt sich das negativ auf Rankings aus. Uptime-Monitoring stellt sicher, dass Ausfälle schnell erkannt werden.",
-      "Prüfen auf Impressum, Kontakt, Datenschutz und AGB-Seiten": "Diese Seiten sind rechtlich erforderlich und erhöhen das Vertrauen bei Nutzern und Suchmaschinen. Fehlende Seiten können zu rechtlichen Problemen führen.",
-      "Keyword-Ranking-Tracking einrichten": "Ohne Tracking wissen Sie nicht, ob Ihre SEO-Maßnahmen erfolgreich sind. Ranking-Tracking zeigt Fortschritte und hilft bei der Priorisierung.",
-      "Prüfen auf benutzerfreundliche Permalinks": "Klare, beschreibende URLs verbessern die Nutzererfahrung und helfen Suchmaschinen, den Inhalt zu verstehen. Sie sind ein wichtiger Ranking-Faktor.",
-      "Prüfen ob die Website mobilfreundlich ist": "Seit 2015 ist Mobile-First ein wichtiger Ranking-Faktor. Die Mehrheit der Nutzer surft mobil - eine nicht mobile-optimierte Website verliert massiv an Rankings.",
-      "Prüfen ob die Website schnell lädt": "Ladezeiten sind ein direkter Ranking-Faktor. Langsame Seiten führen zu höheren Absprungraten und schlechteren Rankings.",
-      "URLs kurz halten": "Kurze URLs sind benutzerfreundlicher, einfacher zu teilen und werden von Suchmaschinen bevorzugt. Sie verbessern die Klickrate in den Suchergebnissen.",
-      "404-Seite prüfen und optimieren": "Eine gute 404-Seite hilft Nutzern, auf der Website zu bleiben, und reduziert die Absprungrate. Sie sollte Navigation und Suchfunktion bieten.",
-      "Content einfach teilbar machen": "Social Sharing erhöht die Sichtbarkeit und kann indirekt Rankings beeinflussen. Teilbare Inhalte erhalten mehr Backlinks und Traffic.",
-      "Marke auf mehreren Social-Media-Plattformen beanspruchen": "Social Signals sind zwar kein direkter Ranking-Faktor, aber sie erhöhen die Markensichtbarkeit und können zu mehr Traffic und Backlinks führen.",
-      "Heatmaps verwenden um zu sehen was Nutzer tatsächlich sehen": "Heatmaps zeigen, wie Nutzer mit Ihrer Website interagieren. Diese Erkenntnisse helfen dabei, Conversion-Rate und Nutzererfahrung zu optimieren.",
-      "Leistungsstarken Webhost verwenden": "Ein schneller, zuverlässiger Host ist die Grundlage für gute Performance. Schlechte Hosting-Qualität kann Rankings erheblich beeinträchtigen.",
-      "Prüfen ob der Server nahe am Servicegebiet liegt": "Die geografische Nähe des Servers zum Zielpublikum reduziert Latenzzeiten und verbessert die Ladegeschwindigkeit, was Rankings positiv beeinflusst.",
-      "CDN verwenden": "Ein Content Delivery Network beschleunigt die Auslieferung Ihrer Website weltweit und verbessert Ladezeiten erheblich - ein wichtiger Ranking-Faktor.",
-      "Prüfen auf GZIP-Komprimierung": "GZIP reduziert die Dateigröße um bis zu 70%, was die Ladezeiten deutlich verbessert. Dies ist ein einfacher, aber effektiver Performance-Boost.",
-      "Prüfen auf HTTP/2": "HTTP/2 ermöglicht Multiplexing und Header-Komprimierung, was die Performance deutlich verbessert. Moderne Websites sollten HTTP/2 verwenden.",
-      "Caching-Lösung verwenden": "Caching reduziert Server-Last und verbessert Ladezeiten erheblich. Es ist eine der effektivsten Methoden zur Performance-Optimierung.",
-      "JS/CSS-Dateien minifizieren": "Minifizierung reduziert die Dateigröße und verbessert Ladezeiten. Jede Millisekunde zählt für Rankings und Nutzererfahrung.",
-      "Große Bilder beim Upload anpassen": "Zu große Bilder verlangsamen die Website erheblich. Die richtige Bildgröße ist essentiell für gute Performance.",
-      "Bilder komprimieren und optimieren": "Optimierte Bilder reduzieren die Ladezeit erheblich, ohne sichtbare Qualitätsverluste. Dies verbessert Rankings und Nutzererfahrung.",
-      "Lazy Loading für Bilder & Iframes (YouTube-Einbettungen, etc.)": "Lazy Loading verbessert die initiale Ladezeit, da Bilder erst geladen werden, wenn sie benötigt werden. Dies ist besonders wichtig für mobile Nutzer.",
-      "Technologie aktualisieren": "Veraltete Technologien sind oft langsamer und unsicherer. Aktuelle Technologien bieten bessere Performance und Sicherheit.",
-      "Datenbank optimieren": "Eine optimierte Datenbank reduziert Query-Zeiten und verbessert die Gesamtperformance der Website erheblich.",
-      "Prüfen auf HTTPS": "HTTPS ist seit 2014 ein Ranking-Faktor. Nicht-verschlüsselte Websites werden von Google abgewertet und Nutzer sehen Warnungen.",
-      "Prüfen auf eine einzige www-Version": "Doppelte Versionen (www und non-www) können zu Duplicate-Content-Problemen führen. Eine kanonische Version ist essentiell.",
-      "Mixed Content beheben": "Mixed Content (HTTP-Ressourcen auf HTTPS-Seiten) kann Sicherheitswarnungen auslösen und das Vertrauen der Nutzer beeinträchtigen.",
-      "Sitemap erstellen und zu Google Search Console (GSC) hinzufügen": "Eine Sitemap hilft Google, alle Seiten Ihrer Website zu finden und zu indexieren. Sie ist besonders wichtig für große Websites.",
-      "robots.txt-Datei erstellen": "Die robots.txt steuert, welche Bereiche der Website von Suchmaschinen gecrawlt werden dürfen. Falsche Konfiguration kann zu Indexierungsproblemen führen.",
-      "Prüfen ob URLs Redirects zu / haben oder Canonical auf / gesetzt ist": "Kanonische URLs verhindern Duplicate-Content-Probleme und stellen sicher, dass der Linkjuice korrekt verteilt wird.",
-      "Defekte Links prüfen und beheben": "Defekte Links verschlechtern die Nutzererfahrung und können zu Ranking-Verlusten führen. Sie zeigen Suchmaschinen auch, dass die Website nicht gepflegt wird.",
-      "Redirect-Ketten prüfen und beheben": "Lange Redirect-Ketten verlangsamen die Website und können zu Ranking-Verlusten führen. Direkte Redirects sind optimal.",
-      "Fehlende und doppelte Meta-Titles und -Descriptions beheben": "Meta-Tags sind wichtig für Klickraten in den Suchergebnissen. Fehlende oder doppelte Tags können Rankings beeinträchtigen.",
-      "Redirects korrekt verwenden": "Richtige Redirects (301 für permanente, 302 für temporäre) erhalten Linkjuice und verhindern Ranking-Verluste beim Umzug von Seiten.",
-      "Prüfen auf Index-Abdeckungsprobleme": "Indexierungsprobleme bedeuten, dass Seiten nicht in den Suchergebnissen erscheinen. Dies muss regelmäßig überwacht werden.",
-      "Prüfen auf manuelle Penalties": "Manuelle Penalties von Google können zu massiven Ranking-Verlusten führen. Sie müssen in der Search Console überwacht werden.",
-      "Seiten maximal 3 Klicks von der Startseite entfernt halten": "Flache Site-Struktur hilft Suchmaschinen, alle Seiten zu finden und zu indexieren. Tiefe Hierarchien können zu Indexierungsproblemen führen.",
-      "\"noindex\" und \"nofollow\" Tags korrekt verwenden": "Diese Tags steuern die Indexierung und Linkwert-Weitergabe. Falsche Verwendung kann zu Ranking-Problemen führen.",
-      "Irrelevante Seiten von der Indexierung ausschließen": "Irrelevante Seiten können den Crawl-Budget verschwenden und die Indexierung wichtiger Seiten verzögern.",
-      "Solide SEO-Content-Strategie haben": "Ohne Strategie ist Content-Erstellung ineffizient. Eine klare Strategie stellt sicher, dass Content SEO-Ziele unterstützt.",
-      "Keyword-Recherche durchführen": "Keyword-Recherche zeigt, wonach Nutzer suchen. Sie ist die Grundlage für erfolgreiche SEO-Content-Erstellung.",
-      "Langform-Content erstellen": "Längere Inhalte ranken tendenziell besser, da sie Themen umfassend abdecken und mehr Backlinks erhalten. Sie zeigen Expertise.",
-      "10x Content erstellen": "10x Content ist deutlich besser als bestehende Inhalte. Solche Inhalte erhalten mehr Backlinks, Shares und Rankings.",
-      "Keyword-Kannibalisierung identifizieren und beheben": "Wenn mehrere Seiten für dasselbe Keyword ranken, konkurrieren sie miteinander. Dies schwächt die Rankings aller betroffenen Seiten.",
-      "Doppelten Content identifizieren und beheben": "Duplicate Content kann zu Ranking-Verlusten führen, da Google nicht weiß, welche Version ranken soll. Er muss konsolidiert werden.",
-      "Content-Hubs erstellen": "Content-Hubs organisieren verwandte Inhalte und zeigen Suchmaschinen die Themenkompetenz. Sie verbessern Rankings für alle enthaltenen Seiten.",
-      "Hubs mit unterstützendem Content \"füttern\"": "Regelmäßig neuer Content in Hubs stärkt die Themenkompetenz und hält die Inhalte aktuell, was Rankings verbessert.",
-      "Content regelmäßig aktualisieren": "Aktualisierter Content signalisiert Google, dass die Website aktiv gepflegt wird. Frische Inhalte ranken tendenziell besser.",
-      "Content zu Kategorien hinzufügen": "Kategorien mit Inhalten zeigen Themenkompetenz und helfen Nutzern und Suchmaschinen, die Website-Struktur zu verstehen.",
-      "E-A-T aufbauen": "Expertise, Authoritativeness und Trustworthiness sind wichtige Ranking-Faktoren. Sie zeigen, dass Ihre Website vertrauenswürdig ist.",
-      "Für Menschen schreiben, nicht für Suchmaschinen": "Google bevorzugt natürlichen, nutzerfreundlichen Content. Überoptimierung kann zu Penalties führen.",
-      "Prüfen ob das Ziel-Keyword der Nutzerabsicht entspricht": "Wenn Content nicht die Nutzerabsicht erfüllt, sinkt die Klickrate und die Rankings fallen. Intent-Matching ist entscheidend.",
-      "Ziel-Keyword in URL, Title und Überschrift haben": "Keywords in wichtigen Elementen helfen Suchmaschinen, den Inhalt zu verstehen. Dies ist ein wichtiger Ranking-Faktor.",
-      "Fokus-Keyword im ersten Absatz verwenden": "Das Keyword im ersten Absatz signalisiert Suchmaschinen sofort die Relevanz der Seite für die Suchanfrage.",
-      "Ein einzelnes H1 pro Seite verwenden": "Ein H1 hilft Suchmaschinen, die Hauptüberschrift zu identifizieren. Mehrere H1s können zu Verwirrung führen.",
-      "Ansprechenden, aber SEO-orientierten Meta-Title setzen": "Der Title ist wichtig für Klickraten in den Suchergebnissen. Er sollte ansprechend sein, aber auch relevante Keywords enthalten.",
-      "Überzeugende Meta-Description schreiben": "Die Description beeinflusst die Klickrate in den Suchergebnissen. Eine gute Description kann Rankings indirekt verbessern.",
-      "Unterüberschriften für Content-Hierarchie verwenden": "Strukturierte Überschriften helfen Suchmaschinen, den Inhalt zu verstehen und können für Featured Snippets verwendet werden.",
-      "Content korrekt formatieren und stylen": "Gut formatierter Content verbessert die Lesbarkeit und Nutzererfahrung, was zu besseren Rankings führt.",
-      "Zu relevanten internen Seiten verlinken": "Interne Verlinkung verteilt Linkjuice und hilft Suchmaschinen, die Website-Struktur zu verstehen. Sie ist essentiell für SEO.",
-      "Zu relevanten, autoritativen Websites verlinken": "Outbound-Links zu hochwertigen Quellen zeigen Expertise und können das Vertrauen in Ihre Inhalte erhöhen.",
-      "Nie zu einer Seite/Website mit demselben Anchor-Text verlinken, den die aktuelle Seite verwendet": "Dies kann zu Keyword-Kannibalisierung führen. Verschiedene Anchor-Texte sind natürlicher und effektiver.",
-      "Bilder korrekt benennen": "Bildnamen mit Keywords helfen Suchmaschinen, Bilder zu verstehen und können zu Image-Search-Rankings führen.",
-      "Alt-Texte für Bilder setzen": "Alt-Texte sind wichtig für Barrierefreiheit und helfen Suchmaschinen, Bilder zu verstehen. Sie können zu Image-Search-Rankings führen.",
-      "Prüfen auf Social-Markup": "Social-Markup (Open Graph, Twitter Cards) verbessert die Darstellung beim Teilen in Social Media und kann indirekt Rankings beeinflussen.",
-      "Dwell Time prüfen und optimieren": "Dwell Time zeigt, wie lange Nutzer auf Ihrer Seite bleiben. Hohe Dwell Time signalisiert Google, dass der Content relevant ist.",
-      "Auf Featured Snippet abzielen": "Featured Snippets bringen mehr Traffic und erhöhen die Sichtbarkeit. Strukturierter Content erhöht die Chancen darauf.",
-      "Nicht überoptimieren": "Überoptimierung kann zu Penalties führen. Natürlicher Content rankt besser als überoptimierter.",
-      "Solide Linkbuilding-Strategie haben": "Backlinks sind ein wichtiger Ranking-Faktor. Eine Strategie stellt sicher, dass Links gezielt und hochwertig sind.",
-      "Grundlegende Links aufbauen": "Grundlegende Links (z.B. Branchenverzeichnisse) bilden die Basis für weiteres Linkbuilding und zeigen lokale Relevanz.",
-      "Social-Media-Netzwerke verknüpfen": "Verknüpfte Social-Media-Profile erhöhen die Markensichtbarkeit und können zu mehr Traffic führen.",
-      "Gastbeiträge auf nischenbezogenen Blogs veröffentlichen": "Gastbeiträge bringen hochwertige Backlinks und erhöhen die Markensichtbarkeit in der Nische.",
-      "Partner um Links bitten, mit denen man zusammengearbeitet hat": "Partner-Links sind natürlicher und hochwertiger als gekaufte Links. Sie zeigen echte Beziehungen.",
-      "Markenerwähnungen in Links umwandeln": "Unerwähnte Markenerwähnungen sind verpasste Chancen für Backlinks. Sie sollten aktiv in Links umgewandelt werden.",
-      "Social Signals nutzen um Rankings zu steigern": "Während Social Signals kein direkter Ranking-Faktor sind, können sie zu mehr Traffic und Backlinks führen.",
-      "Social-Media-Posts planen": "Regelmäßige Social-Media-Aktivitäten erhöhen die Sichtbarkeit und können zu mehr Traffic und Backlinks führen.",
-      "Google My Business-Eintrag beanspruchen": "GMB ist essentiell für lokale Rankings. Ein optimierter Eintrag kann zu deutlich mehr lokalen Sichtbarkeiten führen.",
-      "Yelp-Eintrag beanspruchen": "Yelp ist wichtig für lokale Sichtbarkeit, besonders in bestimmten Branchen. Ein optimierter Eintrag bringt mehr Kunden.",
-      "Bing Places for Business-Eintrag beanspruchen": "Bing Places erhöht die Sichtbarkeit in Bing-Suchergebnissen und kann zusätzlichen Traffic bringen.",
-      "Einträge optimieren": "Optimierte Einträge mit vollständigen Informationen, Bildern und Kategorien ranken besser in lokalen Suchergebnissen.",
-      "In allgemeinen relevanten Verzeichnissen eintragen": "Verzeichniseinträge bringen Backlinks und erhöhen die lokale Sichtbarkeit. Sie sind wichtig für lokale SEO.",
-      "In nischen-spezifischen Verzeichnissen eintragen": "Nischen-Verzeichnisse bringen hochwertigere, relevantere Backlinks als allgemeine Verzeichnisse.",
-      "Auf Bewertungen antworten": "Antworten auf Bewertungen zeigen Engagement und können die lokalen Rankings verbessern. Sie zeigen auch anderen Nutzern, dass Sie kundenorientiert sind.",
-      "Um Bewertungen bitten": "Mehr Bewertungen verbessern die lokalen Rankings und das Vertrauen potenzieller Kunden. Sie sind ein wichtiger Ranking-Faktor.",
-      "Google Posts veröffentlichen": "Google Posts erhöhen die Sichtbarkeit in lokalen Suchergebnissen und zeigen aktive Präsenz. Sie können zu mehr Klicks führen.",
-      "Prüfen auf siteweite NAP-Details (Name, Adresse, Telefon)": "Konsistente NAP-Daten auf der gesamten Website helfen Google, die lokale Relevanz zu verstehen.",
-      "Konsistente NAP-Details auf der gesamten Website haben": "Inkonsistente NAP-Daten können zu Ranking-Verlusten führen. Konsistenz ist essentiell für lokale SEO.",
-      "Konsistente NAP-Details in Einträgen & Social-Media-Netzwerken haben": "Konsistente NAP-Daten überall erhöhen das Vertrauen von Google und verbessern lokale Rankings.",
-      "Content-Strategie für lokale Themen haben": "Lokaler Content zeigt Google die lokale Relevanz und kann zu besseren Rankings für lokale Suchanfragen führen.",
-      "Markenerwähnungen von lokalen Websites beanspruchen": "Lokale Markenerwähnungen können in wertvolle Backlinks umgewandelt werden und zeigen lokale Relevanz.",
-      "Local Business Markup zur Homepage hinzufügen": "Structured Data hilft Google, Ihre lokale Relevanz zu verstehen und kann zu Rich Snippets in den Suchergebnissen führen.",
-    };
-    return explanations[title] || "Dieser Punkt ist wichtig für die SEO-Performance Ihrer Website.";
+    return ti.explanations[title] || ti.defaultExplanation;
   };
 
   const prepareSunburstData = () => {
@@ -1065,11 +967,11 @@ export default function SEOMaturityPage() {
     });
 
     return Array.from(categoryMap.entries()).map(([category, items]) => ({
-      name: category,
+      name: categoryLabel(category),
       value: items.reduce((sum, item) => sum + item.score, 0) / items.length,
       score: items.reduce((sum, item) => sum + item.score, 0) / items.length,
       children: items.map((item) => ({
-        name: item.title,
+        name: itemTitleLabel(item.title),
         value: item.score,
         score: item.score,
         priority: item.priority || null,
@@ -1081,7 +983,7 @@ export default function SEOMaturityPage() {
   if (isLoading) {
     return (
       <div className="space-y-8">
-        <h1 className="text-2xl font-bold text-white">SEO Reifegrad</h1>
+        <h1 className="text-2xl font-bold text-white">{t.title}</h1>
         <div className="h-64 bg-slate-800 rounded-xl animate-pulse"></div>
       </div>
     );
@@ -1098,9 +1000,9 @@ export default function SEOMaturityPage() {
           >
             {/* Modal Header */}
             <div className="px-6 py-5 border-b border-slate-700">
-              <h2 className="text-xl font-bold text-white">SEO Reifegrad Analyse auswählen</h2>
+              <h2 className="text-xl font-bold text-white">{t.selectionModal.title}</h2>
               <p className="text-sm text-slate-400 mt-1">
-                Wähle eine bestehende Analyse aus, um sie anzuzeigen und zu bearbeiten.
+                {t.selectionModal.description}
               </p>
             </div>
 
@@ -1113,12 +1015,12 @@ export default function SEOMaturityPage() {
                       ? maturity.items.reduce((sum, item) => sum + item.score, 0) / maturity.items.length
                       : 0;
                   const categories = new Set(maturity.items.map((item) => item.category));
-                  const createdDate = new Date(maturity.createdAt).toLocaleDateString("de-DE", {
+                  const createdDate = new Date(maturity.createdAt).toLocaleDateString(intlLocale, {
                     day: "2-digit",
                     month: "2-digit",
                     year: "numeric",
                   });
-                  const updatedDate = new Date(maturity.updatedAt).toLocaleDateString("de-DE", {
+                  const updatedDate = new Date(maturity.updatedAt).toLocaleDateString(intlLocale, {
                     day: "2-digit",
                     month: "2-digit",
                     year: "numeric",
@@ -1145,25 +1047,25 @@ export default function SEOMaturityPage() {
                               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                               </svg>
-                              Erstellt: {createdDate}
+                              {t.selectionModal.created(createdDate)}
                             </span>
                             <span className="flex items-center gap-1">
                               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                               </svg>
-                              Aktualisiert: {updatedDate}
+                              {t.selectionModal.updated(updatedDate)}
                             </span>
                             <span className="flex items-center gap-1">
                               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                               </svg>
-                              {maturity.items.length} Punkte
+                              {t.selectionModal.items(maturity.items.length)}
                             </span>
                             <span className="flex items-center gap-1">
                               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z" />
                               </svg>
-                              {categories.size} Kategorien
+                              {t.selectionModal.categories(categories.size)}
                             </span>
                           </div>
                         </div>
@@ -1182,7 +1084,7 @@ export default function SEOMaturityPage() {
                           >
                             {avgScore.toFixed(1)}
                           </div>
-                          <span className="text-xs text-slate-500 mt-1">Ø Score</span>
+                          <span className="text-xs text-slate-500 mt-1">{t.selectionModal.avgScore}</span>
                         </div>
                       </div>
                     </button>
@@ -1194,7 +1096,7 @@ export default function SEOMaturityPage() {
             {/* Modal Footer */}
             <div className="px-6 py-4 border-t border-slate-700 flex items-center justify-between">
               <p className="text-xs text-slate-500">
-                {maturities.length} {maturities.length === 1 ? "Analyse" : "Analysen"} verfügbar
+                {t.selectionModal.available(maturities.length)}
               </p>
               <button
                 onClick={() => {
@@ -1206,7 +1108,7 @@ export default function SEOMaturityPage() {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
-                Neue Analyse erstellen
+                {t.selectionModal.createNew}
               </button>
             </div>
           </div>
@@ -1214,7 +1116,7 @@ export default function SEOMaturityPage() {
       )}
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h1 className="text-2xl font-bold text-white">SEO Reifegrad</h1>
+        <h1 className="text-2xl font-bold text-white">{t.title}</h1>
         <div className="flex gap-4">
           {maturities.length > 0 && (
             <select
@@ -1241,35 +1143,35 @@ export default function SEOMaturityPage() {
             onClick={() => setShowNewForm(!showNewForm)}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
           >
-            {showNewForm ? "Abbrechen" : "Neue Analyse"}
+            {showNewForm ? tc.actions.cancel : t.newAnalysis}
           </button>
         </div>
       </div>
 
       {showNewForm && (
         <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-          <h2 className="text-xl font-semibold text-white mb-4">Neue SEO Reifegrad Analyse</h2>
+          <h2 className="text-xl font-semibold text-white mb-4">{t.newForm.title}</h2>
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-2">
-                Name *
+                {t.newForm.name}
               </label>
               <input
                 type="text"
                 value={newMaturityName}
                 onChange={(e) => setNewMaturityName(e.target.value)}
-                placeholder="z.B. Q1 2024"
+                placeholder={t.newForm.namePlaceholder}
                 className="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-2">
-                Beschreibung
+                {t.newForm.description}
               </label>
               <textarea
                 value={newMaturityDescription}
                 onChange={(e) => setNewMaturityDescription(e.target.value)}
-                placeholder="Optionale Beschreibung"
+                placeholder={t.newForm.descriptionPlaceholder}
                 rows={3}
                 className="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white"
               />
@@ -1279,7 +1181,7 @@ export default function SEOMaturityPage() {
               disabled={isSaving || !newMaturityName.trim()}
               className="px-6 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
             >
-              {isSaving ? "Erstelle..." : "Erstellen"}
+              {isSaving ? t.newForm.creating : t.newForm.create}
             </button>
           </div>
         </div>
@@ -1297,16 +1199,16 @@ export default function SEOMaturityPage() {
             <div className="mb-8">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
                 <div className="flex items-center gap-3">
-                  <h3 className="text-lg font-semibold text-white">Übersicht</h3>
+                  <h3 className="text-lg font-semibold text-white">{t.overview}</h3>
                   <button
                     onClick={handleExportChart}
                     className="flex items-center gap-2 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded-lg transition-colors"
-                    title="Chart als PNG exportieren"
+                    title={t.exportPngTitle}
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
-                    PNG Export
+                    {t.exportPng}
                   </button>
                 </div>
                 
@@ -1314,7 +1216,7 @@ export default function SEOMaturityPage() {
                 <div className="flex flex-wrap items-center gap-4">
                   {/* Reifegrad-Filter */}
                   <div className="flex items-center gap-2">
-                    <label className="text-sm text-slate-300 whitespace-nowrap">Reifegrad:</label>
+                    <label className="text-sm text-slate-300 whitespace-nowrap">{t.filters.maturity}</label>
                     <div className="flex items-center gap-2">
                       <input
                         type="number"
@@ -1338,7 +1240,7 @@ export default function SEOMaturityPage() {
                   
                   {/* Prioritäts-Filter */}
                   <div className="flex items-center gap-2">
-                    <label className="text-sm text-slate-300 whitespace-nowrap">Priorität:</label>
+                    <label className="text-sm text-slate-300 whitespace-nowrap">{t.filters.priority}</label>
                     <div className="flex flex-wrap gap-2">
                       {["A", "B", "C", "D", "KEINE"].map((priority) => {
                         const isSelected = priorityFilter.includes(priority);
@@ -1366,7 +1268,7 @@ export default function SEOMaturityPage() {
                                 : "bg-slate-700 text-slate-300 hover:bg-slate-600"
                             }`}
                           >
-                            {priority}
+                            {priority === "KEINE" ? t.filters.none : priority}
                           </button>
                         );
                       })}
@@ -1376,7 +1278,7 @@ export default function SEOMaturityPage() {
                   {/* Team-Filter */}
                   {availableTeams.length > 0 && (
                     <div className="flex items-center gap-2">
-                      <label className="text-sm text-slate-300 whitespace-nowrap">Teams:</label>
+                      <label className="text-sm text-slate-300 whitespace-nowrap">{t.filters.teams}</label>
                       <div className="flex flex-wrap gap-2">
                         {availableTeams.map((team) => {
                           const isSelected = teamFilter.includes(team.id);
@@ -1414,7 +1316,7 @@ export default function SEOMaturityPage() {
                       }}
                       className="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm rounded transition-colors"
                     >
-                      Filter zurücksetzen
+                      {t.filters.reset}
                     </button>
                   )}
                 </div>
@@ -1427,7 +1329,7 @@ export default function SEOMaturityPage() {
             {/* Checkliste */}
             <div className="space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <h3 className="text-lg font-semibold text-white">Checkliste</h3>
+                <h3 className="text-lg font-semibold text-white">{t.checklist}</h3>
                 <div className="flex flex-wrap items-center gap-3">
                   {/* Kategorie-Filter */}
                   <div className="relative">
@@ -1456,13 +1358,13 @@ export default function SEOMaturityPage() {
                       defaultValue=""
                     >
                       <option value="" disabled>
-                        🔍 Zu Kategorie springen...
+                        {t.jumpToCategory}
                       </option>
                       {Array.from(new Set(selectedMaturity.items.map((item) => item.category)))
                         .sort()
                         .map((category) => (
                           <option key={category} value={category.replace(/\s+/g, "-")}>
-                            {category}
+                            {categoryLabel(category)}
                           </option>
                         ))}
                     </select>
@@ -1474,7 +1376,7 @@ export default function SEOMaturityPage() {
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                     </svg>
-                    Neuen Punkt hinzufügen
+                    {t.addNewItem}
                   </button>
                 </div>
               </div>
@@ -1482,11 +1384,11 @@ export default function SEOMaturityPage() {
               {/* Formular zum Hinzufügen eines neuen Punktes */}
               {showAddItemForm === "new" && (
                 <div className="bg-slate-900 rounded-lg border border-slate-700 p-4">
-                  <h4 className="text-md font-semibold text-white mb-4">Neuen Punkt hinzufügen</h4>
+                  <h4 className="text-md font-semibold text-white mb-4">{t.addNewItem}</h4>
                   <div className="space-y-3">
                     <div>
                       <label className="block text-sm font-medium text-slate-300 mb-1">
-                        Kategorie *
+                        {t.addItemForm.category}
                       </label>
                       <select
                         value={newItemCategory}
@@ -1498,51 +1400,51 @@ export default function SEOMaturityPage() {
                         }}
                         className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white text-sm"
                       >
-                        <option value="">Kategorie auswählen...</option>
+                        <option value="">{t.addItemForm.selectCategory}</option>
                         {getAvailableCategories().map((cat) => (
                           <option key={cat} value={cat}>
-                            {cat}
+                            {categoryLabel(cat)}
                           </option>
                         ))}
-                        <option value="__new__">Neue Kategorie erstellen</option>
+                        <option value="__new__">{t.addItemForm.createCategory}</option>
                       </select>
                       {newItemCategory === "__new__" && (
                         <input
                           type="text"
                           value={newItemCategoryInput}
                           onChange={(e) => setNewItemCategoryInput(e.target.value)}
-                          placeholder="Neue Kategorie eingeben..."
+                          placeholder={t.addItemForm.newCategoryPlaceholder}
                           className="w-full mt-2 px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white text-sm"
                         />
                       )}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-slate-300 mb-1">
-                        Titel *
+                        {t.addItemForm.title}
                       </label>
                       <input
                         type="text"
                         value={newItemTitle}
                         onChange={(e) => setNewItemTitle(e.target.value)}
-                        placeholder="Titel des Punktes..."
+                        placeholder={t.addItemForm.titlePlaceholder}
                         className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white text-sm"
                       />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-slate-300 mb-1">
-                        Beschreibung (optional)
+                        {t.addItemForm.description}
                       </label>
                       <textarea
                         value={newItemDescription}
                         onChange={(e) => setNewItemDescription(e.target.value)}
-                        placeholder="Beschreibung..."
+                        placeholder={t.addItemForm.descriptionPlaceholder}
                         rows={2}
                         className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white text-sm"
                       />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-slate-300 mb-1">
-                        Initiale Bewertung: {newItemScore}
+                        {t.addItemForm.initialScore(newItemScore)}
                       </label>
                       <input
                         type="range"
@@ -1564,7 +1466,7 @@ export default function SEOMaturityPage() {
                         disabled={isAddingItem || !newItemTitle.trim() || (!newItemCategory || (newItemCategory === "__new__" && !newItemCategoryInput.trim()))}
                         className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm"
                       >
-                        {isAddingItem ? "Hinzufügen..." : "Hinzufügen"}
+                        {isAddingItem ? t.addItemForm.adding : t.addItemForm.add}
                       </button>
                       <button
                         onClick={() => {
@@ -1577,7 +1479,7 @@ export default function SEOMaturityPage() {
                         }}
                         className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors text-sm"
                       >
-                        Abbrechen
+                        {tc.actions.cancel}
                       </button>
                     </div>
                   </div>
@@ -1592,7 +1494,7 @@ export default function SEOMaturityPage() {
                     className="space-y-3 scroll-mt-4"
                   >
                     <div className="flex items-center justify-between">
-                      <h4 className="text-md font-semibold text-slate-300">{category}</h4>
+                      <h4 className="text-md font-semibold text-slate-300">{categoryLabel(category)}</h4>
                       <button
                         onClick={() => {
                           setShowAddItemForm(category);
@@ -1603,42 +1505,42 @@ export default function SEOMaturityPage() {
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                         </svg>
-                        Punkt hinzufügen
+                        {t.addItem}
                       </button>
                     </div>
 
                     {/* Formular zum Hinzufügen eines Punktes zu einer Kategorie */}
                     {showAddItemForm === category && (
                       <div className="bg-slate-900 rounded-lg border border-slate-700 p-4 mb-3">
-                        <h5 className="text-sm font-semibold text-white mb-3">Neuen Punkt zu "{category}" hinzufügen</h5>
+                        <h5 className="text-sm font-semibold text-white mb-3">{t.addItemForm.addToCategory(categoryLabel(category))}</h5>
                         <div className="space-y-3">
                           <div>
                             <label className="block text-sm font-medium text-slate-300 mb-1">
-                              Titel *
+                              {t.addItemForm.title}
                             </label>
                             <input
                               type="text"
                               value={newItemTitle}
                               onChange={(e) => setNewItemTitle(e.target.value)}
-                              placeholder="Titel des Punktes..."
+                              placeholder={t.addItemForm.titlePlaceholder}
                               className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white text-sm"
                             />
                           </div>
                           <div>
                             <label className="block text-sm font-medium text-slate-300 mb-1">
-                              Beschreibung (optional)
+                              {t.addItemForm.description}
                             </label>
                             <textarea
                               value={newItemDescription}
                               onChange={(e) => setNewItemDescription(e.target.value)}
-                              placeholder="Beschreibung..."
+                              placeholder={t.addItemForm.descriptionPlaceholder}
                               rows={2}
                               className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white text-sm"
                             />
                           </div>
                           <div>
                             <label className="block text-sm font-medium text-slate-300 mb-1">
-                              Initiale Bewertung: {newItemScore}
+                              {t.addItemForm.initialScore(newItemScore)}
                             </label>
                             <input
                               type="range"
@@ -1655,7 +1557,7 @@ export default function SEOMaturityPage() {
                               disabled={isAddingItem || !newItemTitle.trim()}
                               className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm"
                             >
-                              {isAddingItem ? "Hinzufügen..." : "Hinzufügen"}
+                              {isAddingItem ? t.addItemForm.adding : t.addItemForm.add}
                             </button>
                             <button
                               onClick={() => {
@@ -1668,7 +1570,7 @@ export default function SEOMaturityPage() {
                               }}
                               className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors text-sm"
                             >
-                              Abbrechen
+                              {tc.actions.cancel}
                             </button>
                           </div>
                         </div>
@@ -1687,7 +1589,7 @@ export default function SEOMaturityPage() {
                               {editingItem === item.id ? (
                                 <div className="space-y-3 mb-2">
                                   <div>
-                                    <label className="block text-xs font-medium text-slate-400 mb-1">Titel</label>
+                                    <label className="block text-xs font-medium text-slate-400 mb-1">{t.editItem.title}</label>
                                     <input
                                       type="text"
                                       value={editItemTitle}
@@ -1701,7 +1603,7 @@ export default function SEOMaturityPage() {
                                     />
                                   </div>
                                   <div>
-                                    <label className="block text-xs font-medium text-slate-400 mb-1">Kategorie</label>
+                                    <label className="block text-xs font-medium text-slate-400 mb-1">{t.editItem.category}</label>
                                     <select
                                       value={editItemCategory}
                                       onChange={(e) => {
@@ -1711,16 +1613,16 @@ export default function SEOMaturityPage() {
                                       className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white text-sm"
                                     >
                                       {getAvailableCategories().map((cat) => (
-                                        <option key={cat} value={cat}>{cat}</option>
+                                        <option key={cat} value={cat}>{categoryLabel(cat)}</option>
                                       ))}
-                                      <option value="__new__">Neue Kategorie erstellen</option>
+                                      <option value="__new__">{t.addItemForm.createCategory}</option>
                                     </select>
                                     {editItemCategory === "__new__" && (
                                       <input
                                         type="text"
                                         value={editItemCategoryInput}
                                         onChange={(e) => setEditItemCategoryInput(e.target.value)}
-                                        placeholder="Neue Kategorie eingeben..."
+                                        placeholder={t.addItemForm.newCategoryPlaceholder}
                                         className="w-full mt-2 px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white text-sm"
                                       />
                                     )}
@@ -1731,20 +1633,20 @@ export default function SEOMaturityPage() {
                                       disabled={!editItemTitle.trim() || (editItemCategory === "__new__" && !editItemCategoryInput.trim())}
                                       className="px-3 py-1.5 bg-green-600 hover:bg-green-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white text-sm rounded transition-colors"
                                     >
-                                      Speichern
+                                      {tc.actions.save}
                                     </button>
                                     <button
                                       onClick={cancelEditingItem}
                                       className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded transition-colors"
                                     >
-                                      Abbrechen
+                                      {tc.actions.cancel}
                                     </button>
                                   </div>
                                 </div>
                               ) : (
                                 <>
                               <div className="flex items-center gap-2 mb-2">
-                                <h5 className="font-medium text-white">{item.title}</h5>
+                                <h5 className="font-medium text-white">{itemTitleLabel(item.title)}</h5>
                                 <div className="relative">
                                   <button
                                     onMouseEnter={() => setHoveredInfo(item.id)}
@@ -1785,7 +1687,7 @@ export default function SEOMaturityPage() {
                                         </svg>
                                         <div>
                                           <h6 className="text-sm font-semibold text-white mb-2">
-                                            Warum ist das wichtig für SEO?
+                                            {t.whyImportant}
                                           </h6>
                                           <p className="text-sm text-slate-300 leading-relaxed">
                                             {getSEOExplanation(item.title)}
@@ -1798,7 +1700,7 @@ export default function SEOMaturityPage() {
                                     <button
                                       onClick={() => startEditingItem(item)}
                                       className="text-slate-500 hover:text-blue-400 transition-colors ml-1"
-                                      title="Punkt bearbeiten"
+                                      title={t.editItemTitle}
                                     >
                                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -1811,20 +1713,20 @@ export default function SEOMaturityPage() {
                                           disabled={isDeletingItem === item.id}
                                           className="px-2 py-0.5 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors"
                                         >
-                                          {isDeletingItem === item.id ? "..." : "Ja, löschen"}
+                                          {isDeletingItem === item.id ? "..." : t.confirmDelete}
                                         </button>
                                         <button
                                           onClick={() => setConfirmDeleteItem(null)}
                                           className="px-2 py-0.5 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded transition-colors"
                                         >
-                                          Nein
+                                          {t.no}
                                         </button>
                                       </div>
                                     ) : (
                                       <button
                                         onClick={() => setConfirmDeleteItem(item.id)}
                                         className="text-slate-500 hover:text-red-400 transition-colors ml-1"
-                                        title="Punkt löschen"
+                                        title={t.deleteItemTitle}
                                       >
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -1839,7 +1741,7 @@ export default function SEOMaturityPage() {
                                   <textarea
                                     value={descriptionText}
                                     onChange={(e) => setDescriptionText(e.target.value)}
-                                    placeholder="Erklärungstext eingeben..."
+                                    placeholder={t.explanationPlaceholder}
                                     rows={3}
                                     className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     autoFocus
@@ -1849,13 +1751,13 @@ export default function SEOMaturityPage() {
                                       onClick={() => saveDescription(item.id)}
                                       className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded transition-colors"
                                     >
-                                      Speichern
+                                      {tc.actions.save}
                                     </button>
                                     <button
                                       onClick={cancelEditingDescription}
                                       className="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded transition-colors"
                                     >
-                                      Abbrechen
+                                      {tc.actions.cancel}
                                     </button>
                                   </div>
                                 </div>
@@ -1864,13 +1766,13 @@ export default function SEOMaturityPage() {
                                   {item.description ? (
                                     <p className="text-sm text-slate-400">{item.description}</p>
                                   ) : (
-                                    <p className="text-sm text-slate-500 italic">Keine Erklärung vorhanden</p>
+                                    <p className="text-sm text-slate-500 italic">{t.noExplanation}</p>
                                   )}
                                   <button
                                     onClick={() => startEditingDescription(item.id, item.description)}
                                     className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
                                   >
-                                    {item.description ? "Bearbeiten" : "Erklärung hinzufügen"}
+                                    {item.description ? tc.actions.edit : t.addExplanation}
                                   </button>
                                 </div>
                               )}
@@ -1908,7 +1810,7 @@ export default function SEOMaturityPage() {
                               </div>
                               {/* Prioritätsauswahl */}
                               <div className="flex flex-col items-center gap-1 pt-1">
-                                <label className="text-xs text-slate-400">Priorität</label>
+                                <label className="text-xs text-slate-400">{t.priority}</label>
                                 <select
                                   value={item.priority || ""}
                                   onChange={(e) =>
@@ -1933,7 +1835,7 @@ export default function SEOMaturityPage() {
                               </div>
                               {/* Team-Auswahl */}
                               <div className="flex flex-col gap-1 pt-1 min-w-[200px]">
-                                <label className="text-xs text-slate-400">Zuständige Teams</label>
+                                <label className="text-xs text-slate-400">{t.responsibleTeams}</label>
                                 <div className="flex flex-col gap-1">
                                   {availableTeams.map((team) => {
                                     const itemTeams = item.teams?.map((t) => t.team.id) || [];
@@ -1990,8 +1892,7 @@ export default function SEOMaturityPage() {
                                       />
                                     </svg>
                                     <span>
-                                      {kvpLinksMap[item.id].length} verknüpfte{" "}
-                                      {kvpLinksMap[item.id].length === 1 ? "KVP" : "KVPs"}
+                                      {t.linkedKvps(kvpLinksMap[item.id].length)}
                                     </span>
                                   </button>
 
@@ -2040,7 +1941,7 @@ export default function SEOMaturityPage() {
                                 </>
                               ) : (
                                 <span className="text-sm text-slate-500 italic">
-                                  Keine KVPs verknüpft
+                                  {t.noLinkedKvps}
                                 </span>
                               )}
                             </div>
@@ -2074,7 +1975,7 @@ export default function SEOMaturityPage() {
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  Änderungsprotokoll
+                  {t.changeLog.title}
                 </span>
               </button>
               <button
@@ -2095,7 +1996,7 @@ export default function SEOMaturityPage() {
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                   </svg>
-                  Analysen vergleichen
+                  {t.compare.title}
                 </span>
               </button>
             </div>
@@ -2103,11 +2004,11 @@ export default function SEOMaturityPage() {
             {/* ChangeLog Timeline */}
             {showChangeLog && (
               <div>
-                <h3 className="text-lg font-semibold text-white mb-4">Änderungsprotokoll</h3>
+                <h3 className="text-lg font-semibold text-white mb-4">{t.changeLog.title}</h3>
                 {isLoadingChangeLog ? (
                   <div className="h-32 bg-slate-900 rounded-lg animate-pulse"></div>
                 ) : changeLog.length === 0 ? (
-                  <p className="text-slate-500 text-sm italic">Noch keine Änderungen protokolliert. Änderungen werden ab jetzt aufgezeichnet.</p>
+                  <p className="text-slate-500 text-sm italic">{t.changeLog.empty}</p>
                 ) : (
                   <div className="space-y-6">
                     {Object.entries(groupChangeLogByDate(changeLog)).map(([dateKey, logs]) => (
@@ -2135,13 +2036,13 @@ export default function SEOMaturityPage() {
                                     </span>
                                   )}
                                   <span className="text-xs text-slate-500">
-                                    {new Date(log.createdAt).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}
+                                    {new Date(log.createdAt).toLocaleTimeString(intlLocale, { hour: "2-digit", minute: "2-digit" })}
                                   </span>
                                 </div>
                                 <p className="text-sm text-slate-300 mt-1">
-                                  <span className="text-slate-400">{log.itemCategory}</span>
+                                  <span className="text-slate-400">{log.itemCategory && categoryLabel(log.itemCategory)}</span>
                                   {" → "}
-                                  <span className="font-medium">{log.itemTitle}</span>
+                                  <span className="font-medium">{log.itemTitle && itemTitleLabel(log.itemTitle)}</span>
                                 </p>
                                 {log.action === "update" && log.oldValue !== null && log.newValue !== null && (
                                   <div className="flex items-center gap-2 mt-1.5 text-xs">
@@ -2154,7 +2055,7 @@ export default function SEOMaturityPage() {
                                 )}
                                 {log.action === "delete" && log.oldValue && (
                                   <p className="text-xs text-slate-500 mt-1">
-                                    Score war: {(() => { try { return JSON.parse(log.oldValue).score; } catch { return "?"; } })()}
+                                    {t.changeLog.scoreWas((() => { try { return String(JSON.parse(log.oldValue).score); } catch { return "?"; } })())}
                                   </p>
                                 )}
                               </div>
@@ -2165,7 +2066,7 @@ export default function SEOMaturityPage() {
                     ))}
                     {changeLogTotal > changeLog.length && (
                       <p className="text-xs text-slate-500 text-center">
-                        {changeLog.length} von {changeLogTotal} Einträgen angezeigt
+                        {t.changeLog.shownOf(changeLog.length, changeLogTotal)}
                       </p>
                     )}
                   </div>
@@ -2176,16 +2077,16 @@ export default function SEOMaturityPage() {
             {/* Vergleichsansicht */}
             {showComparison && (
               <div>
-                <h3 className="text-lg font-semibold text-white mb-4">Analysen vergleichen</h3>
+                <h3 className="text-lg font-semibold text-white mb-4">{t.compare.title}</h3>
                 <div className="flex flex-wrap items-end gap-4 mb-6">
                   <div className="flex-1 min-w-[200px]">
-                    <label className="block text-xs font-medium text-slate-400 mb-1">Basis (älter)</label>
+                    <label className="block text-xs font-medium text-slate-400 mb-1">{t.compare.base}</label>
                     <select
                       value={compareBaseId}
                       onChange={(e) => { setCompareBaseId(e.target.value); setComparisonResult(null); }}
                       className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white text-sm"
                     >
-                      <option value="">Analyse auswählen...</option>
+                      <option value="">{t.compare.selectAnalysis}</option>
                       {maturities.map((m) => (
                         <option key={m.id} value={m.id}>{m.name}</option>
                       ))}
@@ -2197,13 +2098,13 @@ export default function SEOMaturityPage() {
                     </svg>
                   </div>
                   <div className="flex-1 min-w-[200px]">
-                    <label className="block text-xs font-medium text-slate-400 mb-1">Ziel (neuer)</label>
+                    <label className="block text-xs font-medium text-slate-400 mb-1">{t.compare.target}</label>
                     <select
                       value={compareTargetId}
                       onChange={(e) => { setCompareTargetId(e.target.value); setComparisonResult(null); }}
                       className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white text-sm"
                     >
-                      <option value="">Analyse auswählen...</option>
+                      <option value="">{t.compare.selectAnalysis}</option>
                       {maturities.map((m) => (
                         <option key={m.id} value={m.id}>{m.name}</option>
                       ))}
@@ -2214,7 +2115,7 @@ export default function SEOMaturityPage() {
                     disabled={isComparing || !compareBaseId || !compareTargetId || compareBaseId === compareTargetId}
                     className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white rounded-lg text-sm transition-colors"
                   >
-                    {isComparing ? "Vergleiche..." : "Vergleichen"}
+                    {isComparing ? t.compare.comparing : t.compare.compare}
                   </button>
                 </div>
 
@@ -2224,23 +2125,23 @@ export default function SEOMaturityPage() {
                     <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                       <div className="bg-slate-900 rounded-lg p-3 border border-slate-700 text-center">
                         <div className="text-2xl font-bold text-white">{comparisonResult.summary.avgScoreDiff >= 0 ? "+" : ""}{comparisonResult.summary.avgScoreDiff.toFixed(2)}</div>
-                        <div className="text-xs text-slate-400 mt-1">Ø Score-Diff</div>
+                        <div className="text-xs text-slate-400 mt-1">{t.compare.avgScoreDiff}</div>
                       </div>
                       <div className="bg-slate-900 rounded-lg p-3 border border-green-800/50 text-center">
                         <div className="text-2xl font-bold text-green-400">{comparisonResult.summary.added}</div>
-                        <div className="text-xs text-slate-400 mt-1">Hinzugefügt</div>
+                        <div className="text-xs text-slate-400 mt-1">{t.compare.types.added}</div>
                       </div>
                       <div className="bg-slate-900 rounded-lg p-3 border border-red-800/50 text-center">
                         <div className="text-2xl font-bold text-red-400">{comparisonResult.summary.removed}</div>
-                        <div className="text-xs text-slate-400 mt-1">Entfernt</div>
+                        <div className="text-xs text-slate-400 mt-1">{t.compare.types.removed}</div>
                       </div>
                       <div className="bg-slate-900 rounded-lg p-3 border border-blue-800/50 text-center">
                         <div className="text-2xl font-bold text-blue-400">{comparisonResult.summary.changed}</div>
-                        <div className="text-xs text-slate-400 mt-1">Geändert</div>
+                        <div className="text-xs text-slate-400 mt-1">{t.compare.types.changed}</div>
                       </div>
                       <div className="bg-slate-900 rounded-lg p-3 border border-slate-700 text-center">
                         <div className="text-2xl font-bold text-slate-400">{comparisonResult.summary.unchanged}</div>
-                        <div className="text-xs text-slate-400 mt-1">Unverändert</div>
+                        <div className="text-xs text-slate-400 mt-1">{t.compare.types.unchanged}</div>
                       </div>
                     </div>
 
@@ -2249,25 +2150,24 @@ export default function SEOMaturityPage() {
                       <div className="text-center">
                         <div className="text-sm text-slate-400">{comparisonResult.base.name}</div>
                         <div className="text-xl font-bold text-white">{comparisonResult.base.avgScore.toFixed(1)}</div>
-                        <div className="text-xs text-slate-500">{comparisonResult.base.itemCount} Punkte</div>
+                        <div className="text-xs text-slate-500">{t.compare.items(comparisonResult.base.itemCount)}</div>
                       </div>
                       <div className="text-center px-4">
                         <div className={`text-3xl font-bold ${comparisonResult.summary.avgScoreDiff > 0 ? "text-green-400" : comparisonResult.summary.avgScoreDiff < 0 ? "text-red-400" : "text-slate-400"}`}>
                           {comparisonResult.summary.avgScoreDiff > 0 ? "+" : ""}{comparisonResult.summary.avgScoreDiff.toFixed(2)}
                         </div>
-                        <div className="text-xs text-slate-500">Veränderung</div>
+                        <div className="text-xs text-slate-500">{t.compare.change}</div>
                       </div>
                       <div className="text-center">
                         <div className="text-sm text-slate-400">{comparisonResult.target.name}</div>
                         <div className="text-xl font-bold text-white">{comparisonResult.target.avgScore.toFixed(1)}</div>
-                        <div className="text-xs text-slate-500">{comparisonResult.target.itemCount} Punkte</div>
+                        <div className="text-xs text-slate-500">{t.compare.items(comparisonResult.target.itemCount)}</div>
                       </div>
                     </div>
 
                     {/* Filter */}
                     <div className="flex flex-wrap gap-2">
                       {(["all", "changed", "added", "removed", "unchanged"] as const).map((type) => {
-                        const labels: Record<string, string> = { all: "Alle", changed: "Geändert", added: "Hinzugefügt", removed: "Entfernt", unchanged: "Unverändert" };
                         const count = type === "all"
                           ? comparisonResult.differences.length
                           : comparisonResult.differences.filter((d) => d.type === type).length;
@@ -2281,7 +2181,7 @@ export default function SEOMaturityPage() {
                                 : "bg-slate-700 text-slate-300 hover:bg-slate-600"
                             }`}
                           >
-                            {labels[type]} ({count})
+                            {t.compare.types[type]} ({count})
                           </button>
                         );
                       })}
@@ -2308,10 +2208,10 @@ export default function SEOMaturityPage() {
                             }`}></div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
-                                <span className="text-xs text-slate-500">{diff.category}</span>
+                                <span className="text-xs text-slate-500">{categoryLabel(diff.category)}</span>
                               </div>
                               <p className={`text-sm font-medium ${diff.type === "removed" ? "text-red-300 line-through" : "text-white"}`}>
-                                {diff.title}
+                                {itemTitleLabel(diff.title)}
                               </p>
                             </div>
                             <div className="flex items-center gap-3 shrink-0">
@@ -2339,10 +2239,10 @@ export default function SEOMaturityPage() {
                                 </div>
                               )}
                               {diff.type === "added" && (
-                                <span className="text-xs text-green-400 font-medium">NEU</span>
+                                <span className="text-xs text-green-400 font-medium">{t.compare.newBadge}</span>
                               )}
                               {diff.type === "removed" && (
-                                <span className="text-xs text-red-400 font-medium">ENTFERNT</span>
+                                <span className="text-xs text-red-400 font-medium">{t.compare.removedBadge}</span>
                               )}
                             </div>
                           </div>
@@ -2358,8 +2258,8 @@ export default function SEOMaturityPage() {
         <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 text-center">
           <p className="text-slate-400">
             {maturities.length === 0
-              ? "Erstelle deine erste SEO Reifegrad Analyse"
-              : "Wähle eine Analyse aus oder erstelle eine neue"}
+              ? t.emptyFirst
+              : t.emptySelect}
           </p>
         </div>
       )}

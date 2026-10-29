@@ -4,6 +4,10 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { StatCard } from "@/components/ui/StatCard";
 import { BarChart, PieChart } from "@/components/charts";
+import { useLocale, useMessages } from "@/i18n/I18nProvider";
+import { reportingTasksMessages } from "@/i18n/messages/reporting-tasks";
+
+type TaskReportMessages = (typeof reportingTasksMessages)["de"];
 
 const STATUS_COLORS: Record<string, string> = {
   backlog: "bg-slate-200 dark:bg-slate-600 text-slate-700 dark:text-slate-200",
@@ -98,22 +102,23 @@ interface TaskReportData {
   unassignedTasks: TaskData[];
 }
 
-const formatDate = (dateString: string): string => {
-  return new Date(dateString).toLocaleDateString("de-DE", {
+const formatDate = (dateString: string, intlLocale: string): string => {
+  return new Date(dateString).toLocaleDateString(intlLocale, {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
   });
 };
 
-const formatRelativeDays = (days: number): string => {
-  if (days === 0) return "Heute fällig";
-  if (days === 1) return "Morgen fällig";
-  if (days < 0) return `${Math.abs(days)} ${Math.abs(days) === 1 ? "Tag" : "Tage"} überfällig`;
-  return `In ${days} ${days === 1 ? "Tag" : "Tagen"} fällig`;
+const formatRelativeDays = (days: number, t: TaskReportMessages): string => {
+  if (days === 0) return t.due.today;
+  if (days === 1) return t.due.tomorrow;
+  if (days < 0) return t.due.overdue(Math.abs(days));
+  return t.due.inDays(days);
 };
 
 export default function TaskReportPage() {
+  const t = useMessages(reportingTasksMessages);
   const [mounted, setMounted] = useState(false);
   const [data, setData] = useState<TaskReportData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -145,37 +150,37 @@ export default function TaskReportPage() {
     if (!data) return [];
     return data.statusDistribution
       .filter((s) => s.count > 0)
-      .map((s) => ({ name: s.label, value: s.count }));
-  }, [data]);
+      .map((s) => ({ name: t.status[s.status] ?? s.label, value: s.count }));
+  }, [data, t]);
 
   // Chart-Daten: Prioritäts-Verteilung (Pie)
   const priorityPieData = useMemo(() => {
     if (!data) return [];
     return data.priorityDistribution
       .filter((p) => p.count > 0)
-      .map((p) => ({ name: p.label, value: p.count }));
-  }, [data]);
+      .map((p) => ({ name: t.priority[p.priority] ?? p.label, value: p.count }));
+  }, [data, t]);
 
   // Chart-Daten: Workload Bar
   const workloadBarData = useMemo(() => {
     if (!data) return [];
     return data.workloadStats.map((w) => ({
       name: w.name || w.email.split("@")[0],
-      "In Arbeit": w.byStatus["in_progress"] || 0,
-      "To Do": w.byStatus["todo"] || 0,
-      Review: w.byStatus["review"] || 0,
-      Backlog: w.byStatus["backlog"] || 0,
+      [t.status.in_progress]: w.byStatus["in_progress"] || 0,
+      [t.status.todo]: w.byStatus["todo"] || 0,
+      [t.status.review]: w.byStatus["review"] || 0,
+      [t.status.backlog]: w.byStatus["backlog"] || 0,
     }));
-  }, [data]);
+  }, [data, t]);
 
   // Chart-Daten: Kategorie
   const categoryBarData = useMemo(() => {
     if (!data) return [];
     return data.categoryDistribution.map((c) => ({
       category: c.category,
-      Aufgaben: c.count,
+      [t.tasksSeries]: c.count,
     }));
-  }, [data]);
+  }, [data, t]);
 
   if (!mounted) {
     return (
@@ -196,11 +201,11 @@ export default function TaskReportPage() {
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
-          Zurück zu Reporting
+          {t.backToReporting}
         </Link>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Task Report</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Übersicht aller Aufgaben im Kanban Board mit Status, Workload und Timeline
+          {t.subtitle}
         </p>
       </div>
 
@@ -210,35 +215,35 @@ export default function TaskReportPage() {
         </div>
       ) : !data ? (
         <div className="bg-white dark:bg-slate-800 rounded-xl p-8 border border-slate-200 dark:border-slate-700 text-center">
-          <p className="text-slate-500 dark:text-slate-400">Fehler beim Laden der Daten.</p>
+          <p className="text-slate-500 dark:text-slate-400">{t.loadError}</p>
         </div>
       ) : data.stats.totalTasks === 0 ? (
         <div className="bg-white dark:bg-slate-800 rounded-xl p-8 border border-slate-200 dark:border-slate-700 text-center">
           <svg className="w-16 h-16 mx-auto mb-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
           </svg>
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Keine Tasks vorhanden</h3>
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">{t.empty.title}</h3>
           <p className="text-slate-500 dark:text-slate-400 mb-4">
-            Erstelle zuerst Aufgaben im Kanban Board.
+            {t.empty.description}
           </p>
           <Link href="/tasks" className="inline-block px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
-            Zum Kanban Board
+            {t.empty.cta}
           </Link>
         </div>
       ) : (
         <>
           {/* Übersicht Stats */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            <StatCard title="Gesamt Tasks" value={data.stats.totalTasks} />
-            <StatCard title="Aktiv" value={data.stats.activeTasks} subtitle="Nicht erledigt" />
-            <StatCard title="Erledigt" value={data.stats.doneTasks} trend="up" subtitle="Gesamt" />
+            <StatCard title={t.stats.totalTasks} value={data.stats.totalTasks} />
+            <StatCard title={t.stats.active} value={data.stats.activeTasks} subtitle={t.stats.notDone} />
+            <StatCard title={t.stats.done} value={data.stats.doneTasks} trend="up" subtitle={t.stats.total} />
             <StatCard
-              title="Überfällig"
+              title={t.stats.overdue}
               value={data.stats.overdueCount}
               trend={data.stats.overdueCount > 0 ? "down" : undefined}
             />
-            <StatCard title="Bald fällig" value={data.stats.upcomingCount} subtitle="Nächste 7 Tage" />
-            <StatCard title="Ohne Zuweisung" value={data.stats.unassignedCount} />
+            <StatCard title={t.stats.dueSoon} value={data.stats.upcomingCount} subtitle={t.stats.next7Days} />
+            <StatCard title={t.stats.unassigned} value={data.stats.unassignedCount} />
           </div>
 
           {/* Zusätzliche KPIs */}
@@ -252,7 +257,7 @@ export default function TaskReportPage() {
                 </div>
                 <div>
                   <div className="text-2xl font-bold text-slate-900 dark:text-white">{data.stats.recentlyCompletedCount}</div>
-                  <div className="text-sm text-slate-500 dark:text-slate-400">Tasks in den letzten 30 Tagen erledigt</div>
+                  <div className="text-sm text-slate-500 dark:text-slate-400">{t.recentlyCompleted}</div>
                 </div>
               </div>
               {data.stats.avgCompletionDays !== null && (
@@ -263,8 +268,8 @@ export default function TaskReportPage() {
                     </svg>
                   </div>
                   <div>
-                    <div className="text-2xl font-bold text-slate-900 dark:text-white">{data.stats.avgCompletionDays} Tage</div>
-                    <div className="text-sm text-slate-500 dark:text-slate-400">Durchschnittliche Bearbeitungszeit</div>
+                    <div className="text-2xl font-bold text-slate-900 dark:text-white">{t.avgCompletionDays(data.stats.avgCompletionDays)}</div>
+                    <div className="text-sm text-slate-500 dark:text-slate-400">{t.avgCompletionLabel}</div>
                   </div>
                 </div>
               )}
@@ -274,19 +279,19 @@ export default function TaskReportPage() {
           {/* Charts Row 1: Status & Priorität */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Status-Verteilung</h3>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">{t.statusDistribution}</h3>
               {statusPieData.length > 0 ? (
                 <PieChart data={statusPieData} height={280} />
               ) : (
-                <div className="h-[280px] flex items-center justify-center text-slate-500">Keine Daten</div>
+                <div className="h-[280px] flex items-center justify-center text-slate-500">{t.noData}</div>
               )}
             </div>
             <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Prioritäts-Verteilung (aktive Tasks)</h3>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">{t.priorityDistribution}</h3>
               {priorityPieData.length > 0 ? (
                 <PieChart data={priorityPieData} height={280} />
               ) : (
-                <div className="h-[280px] flex items-center justify-center text-slate-500">Keine Daten</div>
+                <div className="h-[280px] flex items-center justify-center text-slate-500">{t.noData}</div>
               )}
             </div>
           </div>
@@ -294,9 +299,9 @@ export default function TaskReportPage() {
           {/* Workload pro Benutzer */}
           {data.workloadStats.length > 0 && (
             <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">Workload pro Benutzer</h3>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">{t.workload.title}</h3>
               <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-                Aktive Tasks nach Status pro zugewiesenem Benutzer
+                {t.workload.description}
               </p>
 
               {workloadBarData.length > 0 && (
@@ -304,7 +309,7 @@ export default function TaskReportPage() {
                   <BarChart
                     data={workloadBarData}
                     xKey="name"
-                    yKey="In Arbeit"
+                    yKey={t.status.in_progress}
                     height={280}
                     color="#f59e0b"
                   />
@@ -340,12 +345,7 @@ export default function TaskReportPage() {
                           key={status}
                           className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${STATUS_COLORS[status] || "bg-slate-200 text-slate-700"}`}
                         >
-                          {count}x {
-                            status === "backlog" ? "Backlog" :
-                            status === "todo" ? "To Do" :
-                            status === "in_progress" ? "In Arbeit" :
-                            status === "review" ? "Review" : status
-                          }
+                          {count}x {t.status[status] ?? status}
                         </span>
                       ))}
                     </div>
@@ -354,17 +354,17 @@ export default function TaskReportPage() {
                     <div className="flex items-center gap-3 text-xs">
                       {user.overdue > 0 && (
                         <span className="text-red-600 dark:text-red-400 font-medium">
-                          {user.overdue} überfällig
+                          {t.workload.overdue(user.overdue)}
                         </span>
                       )}
                       {user.upcoming > 0 && (
                         <span className="text-amber-600 dark:text-amber-400 font-medium">
-                          {user.upcoming} bald fällig
+                          {t.workload.dueSoon(user.upcoming)}
                         </span>
                       )}
                       {user.overdue === 0 && user.upcoming === 0 && (
                         <span className="text-emerald-600 dark:text-emerald-400">
-                          Keine fälligen Tasks
+                          {t.workload.noneDue}
                         </span>
                       )}
                     </div>
@@ -377,11 +377,11 @@ export default function TaskReportPage() {
           {/* Kategorie-Verteilung */}
           {categoryBarData.length > 0 && (
             <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Aktive Tasks nach Kategorie</h3>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">{t.tasksByCategory}</h3>
               <BarChart
                 data={categoryBarData}
                 xKey="category"
-                yKey="Aufgaben"
+                yKey={t.tasksSeries}
                 height={250}
                 color="#6366f1"
               />
@@ -397,7 +397,7 @@ export default function TaskReportPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <h3 className="text-lg font-semibold text-red-700 dark:text-red-400">
-                    Überfällige Tasks ({data.overdueTasks.length})
+                    {t.overdueTasks(data.overdueTasks.length)}
                   </h3>
                 </div>
               </div>
@@ -418,7 +418,7 @@ export default function TaskReportPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <h3 className="text-lg font-semibold text-amber-700 dark:text-amber-400">
-                    Bald fällig - nächste 7 Tage ({data.upcomingTasks.length})
+                    {t.upcomingTasks(data.upcomingTasks.length)}
                   </h3>
                 </div>
               </div>
@@ -439,11 +439,11 @@ export default function TaskReportPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
                   <h3 className="text-lg font-semibold text-orange-700 dark:text-orange-400">
-                    Nicht zugewiesen ({data.unassignedTasks.length})
+                    {t.unassignedTasks(data.unassignedTasks.length)}
                   </h3>
                 </div>
                 <p className="text-sm text-orange-600 dark:text-orange-400/80 mt-1">
-                  Aktive Tasks ohne zugewiesene Bearbeiter
+                  {t.unassignedDescription}
                 </p>
               </div>
               <div className="divide-y divide-slate-100 dark:divide-slate-700">
@@ -458,23 +458,19 @@ export default function TaskReportPage() {
           <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
             <div className="p-6 border-b border-slate-200 dark:border-slate-700">
               <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-                Alle aktiven Tasks ({data.stats.activeTasks})
+                {t.allActiveTasks(data.stats.activeTasks)}
               </h3>
               <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                Nach Status gruppiert (ohne erledigte Tasks)
+                {t.allActiveDescription}
               </p>
             </div>
 
             {["in_progress", "review", "todo", "backlog"].map((status) => {
               const statusTasks = data.tasks.filter(
-                (t) => t.status === status
+                (task) => task.status === status
               );
               if (statusTasks.length === 0) return null;
-              const label =
-                status === "in_progress" ? "In Arbeit" :
-                status === "review" ? "Review" :
-                status === "todo" ? "To Do" :
-                "Backlog";
+              const label = t.status[status];
 
               return (
                 <div key={status}>
@@ -486,7 +482,7 @@ export default function TaskReportPage() {
                         </span>
                       </div>
                       <span className="text-xs text-slate-500 dark:text-slate-400">
-                        {statusTasks.length} {statusTasks.length === 1 ? "Task" : "Tasks"}
+                        {t.taskCount(statusTasks.length)}
                       </span>
                     </div>
                   </div>
@@ -513,6 +509,8 @@ function TaskRow({
   task: TaskData;
   highlight?: "overdue" | "upcoming";
 }) {
+  const t = useMessages(reportingTasksMessages);
+  const { intlLocale } = useLocale();
   return (
     <div className="px-6 py-3 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
       <div className="flex items-start justify-between gap-4">
@@ -525,7 +523,7 @@ function TaskRow({
               {task.title}
             </Link>
             <span className={`inline-flex px-1.5 py-0.5 text-xs font-medium rounded-full ${PRIORITY_COLORS[task.priority]}`}>
-              {task.priorityLabel}
+              {t.priority[task.priority] ?? task.priorityLabel}
             </span>
             {task.category && (
               <span className="text-xs text-slate-500 dark:text-slate-400">
@@ -544,9 +542,9 @@ function TaskRow({
                     : "text-slate-500 dark:text-slate-400"
                 }`}
               >
-                {formatDate(task.dueDate)}
+                {formatDate(task.dueDate, intlLocale)}
                 {task.daysUntilDue !== null && (
-                  <> ({formatRelativeDays(task.daysUntilDue)})</>
+                  <> ({formatRelativeDays(task.daysUntilDue, t)})</>
                 )}
               </span>
             )}
@@ -592,11 +590,11 @@ function TaskRow({
             </div>
           ) : (
             <span className="text-xs text-orange-500 dark:text-orange-400 italic">
-              Keine Zuweisung
+              {t.noAssignee}
             </span>
           )}
           <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${STATUS_COLORS[task.status]}`}>
-            {task.statusLabel}
+            {t.status[task.status] ?? task.statusLabel}
           </span>
         </div>
       </div>

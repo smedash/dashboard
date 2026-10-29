@@ -1,5 +1,7 @@
 "use client";
 
+import { useMessages } from "@/i18n/I18nProvider";
+import { urlCleanupMessages } from "@/i18n/messages/url-cleanup";
 import type { InventoryFilters } from "./filter-state";
 
 type Facets = { countries: string[]; languages: string[] };
@@ -16,16 +18,17 @@ export function FilterBar({
   facets: Facets;
   sitemaps: Sitemap[];
 }) {
+  const t = useMessages(urlCleanupMessages);
   const set = (k: keyof InventoryFilters, v: string) => onChange({ ...filters, [k]: v });
 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-2">
         {[
-          { id: "", label: "Alle" },
-          { id: "high", label: "Kill-Kandidaten (high)" },
-          { id: "zero", label: "0/0/0 Traffic" },
-          { id: "protected", label: "MustKeep (Allowlist)" },
+          { id: "", label: t.filters.presets.all },
+          { id: "high", label: t.filters.presets.high },
+          { id: "zero", label: t.filters.presets.zero },
+          { id: "protected", label: t.filters.presets.protected },
         ].map((p) => (
           <button
             key={p.id || "all"}
@@ -46,7 +49,7 @@ export function FilterBar({
         <input
           value={filters.q}
           onChange={(e) => set("q", e.target.value)}
-          placeholder="URL / Pfad…"
+          placeholder={t.filters.searchPlaceholder}
           className="px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
         />
         <select
@@ -54,7 +57,7 @@ export function FilterBar({
           onChange={(e) => set("country", e.target.value)}
           className="px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
         >
-          <option value="">Alle Länder</option>
+          <option value="">{t.filters.allCountries}</option>
           {facets.countries.map((c) => (
             <option key={c} value={c}>
               {c}
@@ -66,7 +69,7 @@ export function FilterBar({
           onChange={(e) => set("language", e.target.value)}
           className="px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
         >
-          <option value="">Alle Sprachen</option>
+          <option value="">{t.filters.allLanguages}</option>
           {facets.languages.map((c) => (
             <option key={c} value={c}>
               {c}
@@ -78,24 +81,24 @@ export function FilterBar({
           onChange={(e) => set("sitemapId", e.target.value)}
           className="px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
         >
-          <option value="">Alle Sitemaps</option>
+          <option value="">{t.filters.allSitemaps}</option>
           {sitemaps.map((s) => (
             <option key={s.id} value={s.id}>
               {s.countryPath || s.sitemapUrl.replace("https://www.ubs.com/", "")}
             </option>
           ))}
         </select>
-        <Tri label="GSC-Daten" value={filters.gscHasData} onChange={(v) => set("gscHasData", v)} />
-        <Tri label="Adobe-Daten" value={filters.aaHasData} onChange={(v) => set("aaHasData", v)} />
-        <Tri label="Time Spent" value={filters.aaTimeSpentHasData} onChange={(v) => set("aaTimeSpentHasData", v)} />
-        <Tri label="Gating-Daten" value={filters.gatingHasData} onChange={(v) => set("gatingHasData", v)} />
-        <Tri label="Gated" value={filters.gatingIsGated} onChange={(v) => set("gatingIsGated", v)} />
+        <Tri label={t.filters.gscData} value={filters.gscHasData} onChange={(v) => set("gscHasData", v)} />
+        <Tri label={t.filters.adobeData} value={filters.aaHasData} onChange={(v) => set("aaHasData", v)} />
+        <Tri label={t.filters.timeSpent} value={filters.aaTimeSpentHasData} onChange={(v) => set("aaTimeSpentHasData", v)} />
+        <Tri label={t.filters.gatingData} value={filters.gatingHasData} onChange={(v) => set("gatingHasData", v)} />
+        <Tri label={t.filters.gated} value={filters.gatingIsGated} onChange={(v) => set("gatingIsGated", v)} />
         <select
           value={filters.aaSegment}
           onChange={(e) => set("aaSegment", e.target.value)}
           className="px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
         >
-          <option value="">Adobe-Segment (any)</option>
+          <option value="">{t.filters.adobeSegmentAny}</option>
           {["AM", "WM", "IB", "About_us", "Swiss_website"].map((s) => (
             <option key={s} value={s}>
               {s}
@@ -107,7 +110,7 @@ export function FilterBar({
           onChange={(e) => set("gatingRole", e.target.value)}
           className="px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
         >
-          <option value="">Gating-Rolle (any)</option>
+          <option value="">{t.filters.gatingRoleAny}</option>
           {["institutional-investor", "distribution-partner", "private-investor", "liquidity-investor"].map((s) => (
             <option key={s} value={s}>
               {s}
@@ -121,8 +124,8 @@ export function FilterBar({
           inputMode="numeric"
           value={filters.minTimeSpentShortPct}
           onChange={(e) => set("minTimeSpentShortPct", clampScore(e.target.value))}
-          placeholder="Min. % <15s"
-          aria-label="Mindestanteil Time Spent unter 15 Sekunden"
+          placeholder={t.filters.minShortPctPlaceholder}
+          aria-label={t.filters.minShortPctLabel}
           className="px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
         />
         <select
@@ -130,12 +133,12 @@ export function FilterBar({
           onChange={(e) => set("killBand", e.target.value)}
           className="px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
         >
-          <option value="">Konfidenz-Band</option>
+          <option value="">{t.filters.confidenceBand}</option>
           <option value="high">high (≥ 75)</option>
           <option value="medium">medium (50–74)</option>
           <option value="low">low (1–49)</option>
           <option value="keep">keep (0)</option>
-          <option value="protected">MustKeep / Allowlist (blau)</option>
+          <option value="protected">{t.filters.protectedBand}</option>
         </select>
         <div className="grid grid-cols-2 gap-2">
           <input
@@ -145,8 +148,8 @@ export function FilterBar({
             inputMode="numeric"
             value={filters.minKillConfidence}
             onChange={(e) => set("minKillConfidence", clampScore(e.target.value))}
-            placeholder="Konfidenz ab"
-            aria-label="Konfidenz mindestens"
+            placeholder={t.filters.minConfidencePlaceholder}
+            aria-label={t.filters.minConfidenceLabel}
             className="px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
           />
           <input
@@ -156,8 +159,8 @@ export function FilterBar({
             inputMode="numeric"
             value={filters.maxKillConfidence}
             onChange={(e) => set("maxKillConfidence", clampScore(e.target.value))}
-            placeholder="Konfidenz bis"
-            aria-label="Konfidenz höchstens"
+            placeholder={t.filters.maxConfidencePlaceholder}
+            aria-label={t.filters.maxConfidenceLabel}
             className="px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
           />
         </div>
@@ -167,8 +170,8 @@ export function FilterBar({
           inputMode="numeric"
           value={filters.minGscClicks}
           onChange={(e) => set("minGscClicks", nonNegInt(e.target.value))}
-          placeholder="Min. GSC-Klicks"
-          aria-label="Mindestens GSC-Klicks"
+          placeholder={t.filters.minGscClicksPlaceholder}
+          aria-label={t.filters.minGscClicksLabel}
           className="px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
         />
         <input
@@ -177,8 +180,8 @@ export function FilterBar({
           inputMode="numeric"
           value={filters.minAaVisits}
           onChange={(e) => set("minAaVisits", nonNegInt(e.target.value))}
-          placeholder="Min. Adobe-Visits"
-          aria-label="Mindestens Adobe-Visits"
+          placeholder={t.filters.minAaVisitsPlaceholder}
+          aria-label={t.filters.minAaVisitsLabel}
           className="px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
         />
         <input
@@ -187,27 +190,27 @@ export function FilterBar({
           inputMode="numeric"
           value={filters.minAaFormSuccess}
           onChange={(e) => set("minAaFormSuccess", nonNegInt(e.target.value))}
-          placeholder="Min. Leads"
-          aria-label="Mindestens Adobe-Leads"
+          placeholder={t.filters.minLeadsPlaceholder}
+          aria-label={t.filters.minLeadsLabel}
           className="px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
         />
-        <Tri label="Fokuskeyword" value={filters.hasFocusKeywords} onChange={(v) => set("hasFocusKeywords", v)} />
-        <Tri label="Redaktionsplan" value={filters.inEditorialPlan} onChange={(v) => set("inEditorialPlan", v)} />
+        <Tri label={t.filters.focusKeyword} value={filters.hasFocusKeywords} onChange={(v) => set("hasFocusKeywords", v)} />
+        <Tri label={t.filters.editorialPlan} value={filters.inEditorialPlan} onChange={(v) => set("inEditorialPlan", v)} />
         <select
           value={filters.labsHasData}
           onChange={(e) => set("labsHasData", e.target.value)}
           className="px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
         >
-          <option value="">ranked Keywords: alle</option>
-          <option value="true">mit Rankings</option>
-          <option value="false">ohne Rankings</option>
+          <option value="">{t.filters.rankedKeywordsAll}</option>
+          <option value="true">{t.filters.withRankings}</option>
+          <option value="false">{t.filters.withoutRankings}</option>
         </select>
         <select
           value={filters.cleanupStatus}
           onChange={(e) => set("cleanupStatus", e.target.value)}
           className="px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
         >
-          <option value="">Status</option>
+          <option value="">{t.filters.status}</option>
           <option value="kill">Kill</option>
           <option value="candidate">Candidate</option>
           <option value="keep">Keep</option>
@@ -241,15 +244,16 @@ function Tri({
   value: string;
   onChange: (v: string) => void;
 }) {
+  const t = useMessages(urlCleanupMessages);
   return (
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
       className="px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
     >
-      <option value="">{label}: alle</option>
-      <option value="true">{label}: ja</option>
-      <option value="false">{label}: nein</option>
+      <option value="">{t.filters.triAll(label)}</option>
+      <option value="true">{t.filters.triYes(label)}</option>
+      <option value="false">{t.filters.triNo(label)}</option>
     </select>
   );
 }

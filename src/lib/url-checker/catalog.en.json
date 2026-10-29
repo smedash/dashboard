@@ -1,0 +1,1810 @@
+{
+  "anchors_anchor.linkTags": {
+    "checkDescription": "Information about link type and source page – partially derivable from rel attributes.",
+    "recommendation": "IMPORTANT: Information about link type and source page – partially derivable from rel attributes. Recommendation: Analyze and classify rel attributes (nofollow, sponsored, ugc) in <a> tags."
+  },
+  "anchors_anchor.source": {
+    "checkDescription": "Source document information of the anchor – can be approximated via backlink APIs.",
+    "recommendation": "IMPORTANT: Source document information of the anchor – can be approximated via backlink APIs. Recommendation: Use backlink APIs to determine source domain, authority and link context."
+  },
+  "repository_webref_simplified_anchors.anchor": {
+    "checkDescription": "Simplified anchor data for Webref entity linking.",
+    "recommendation": "IMPORTANT: Simplified anchor data for Webref entity linking. Recommendation: Analyze anchor texts of incoming links and check them for entity names."
+  },
+  "nlp_semantic_parsing_models_media_news_info.publisher": {
+    "checkDescription": "Checks whether the publisher is correctly marked up in Schema.org markup.",
+    "recommendation": "IMPORTANT: Checks whether the publisher is correctly marked up in Schema.org markup. Recommendation: Validate the publisher field in NewsArticle/Article schema and check whether the Organization markup is complete."
+  },
+  "official_pages_query_set.queries": {
+    "checkDescription": "Checks for which official queries a page is considered the official page.",
+    "recommendation": "IMPORTANT: Checks for which official queries a page is considered the official page. Recommendation: Use SERP APIs to check whether your own page appears as the official page for brand queries."
+  },
+  "science_citation.NumBackwardLinks": {
+    "checkDescription": "Checks the number of backward citations via external backlink APIs",
+    "recommendation": "IMPORTANT: Checks the number of backward citations via external backlink APIs Recommendation: Use the Ahrefs/Majestic/Moz API to determine the number of backlinks"
+  },
+  "science_citation.author": {
+    "checkDescription": "Checks whether author information is complete and correctly stated in the document",
+    "recommendation": "IMPORTANT: Checks whether author information is complete and correctly stated in the document Recommendation: Extract Schema.org author fields and check them for completeness (name, affiliation, ORCID)"
+  },
+  "science_citation.DOI": {
+    "checkDescription": "Checks whether a Digital Object Identifier is present and valid",
+    "recommendation": "IMPORTANT: Checks whether a Digital Object Identifier is present and valid Recommendation: Validate the DOI format (10.XXXX/...) and check resolvability via doi.org"
+  },
+  "science_index_signal.NumBackwardLinks": {
+    "checkDescription": "Measure the number of incoming links to the page via backlink APIs.",
+    "recommendation": "IMPORTANT: Measure the number of incoming links to the page via backlink APIs. Recommendation: Retrieve the backlink count via the Ahrefs, Moz or SEMrush API and compare it with competitors."
+  },
+  "extra_snippet_info_response_match_info.titleMatches": {
+    "checkDescription": "Bitvector of query items matching in the title – can be approximated through title keyword analysis.",
+    "recommendation": "IMPORTANT: Bitvector of query items matching in the title – can be approximated through title keyword analysis. Recommendation: Check the title tag for the presence of the most important target keywords; measure the keyword coverage of the title."
+  },
+  "extra_snippet_info_response_tidbit.text": {
+    "checkDescription": "Tidbit text with highlighted search terms – can be approximated from HTML text content.",
+    "recommendation": "IMPORTANT: Tidbit text with highlighted search terms – can be approximated from HTML text content. Recommendation: Analyze text passages for keyword density, relevance and readability; compare the meta description with typical snippet texts."
+  },
+  "quality_shopping_shopping_attachment_product.nonDisplayableTitle": {
+    "checkDescription": "Product title (internal) – checkable via Schema.org Product.name.",
+    "recommendation": "IMPORTANT: Product title (internal) – checkable via Schema.org Product.name. Recommendation: Check whether Schema.org Product.name is present and not empty."
+  },
+  "science_citation.AbstractText": {
+    "checkDescription": "Checks whether an abstract text is present and of high quality",
+    "recommendation": "IMPORTANT: Checks whether an abstract text is present and of high quality Recommendation: Extract the abstract from Schema.org description or the meta description and check its length and unique content"
+  },
+  "science_citation.AbstractHtml": {
+    "checkDescription": "Checks whether an HTML-formatted abstract is present and correctly structured",
+    "recommendation": "IMPORTANT: Checks whether an HTML-formatted abstract is present and correctly structured Recommendation: Validate the abstract HTML for correct structure and check for unsanitized tags"
+  },
+  "science_citation.AbstractDisplay": {
+    "checkDescription": "Checks whether the abstract to be displayed is present and of high quality",
+    "recommendation": "IMPORTANT: Checks whether the abstract to be displayed is present and of high quality Recommendation: Check the abstract for length (at least 150 characters), unique content and correct language"
+  },
+  "video_content_search_dolphin_features.title": {
+    "checkDescription": "Video title used to build the Dolphin inference example.",
+    "recommendation": "IMPORTANT: Video title used to build the Dolphin inference example. Recommendation: Check the video title for relevance, length and keyword optimization."
+  },
+  "video_content_search_span_dolphin_features.title": {
+    "checkDescription": "Video title used for span matching",
+    "recommendation": "IMPORTANT: Video title used for span matching Recommendation: Extract the video title from the HTML title tag or og:title and check its length and keyword relevance"
+  },
+  "nlp_saft_entity_profile_attribute.type": {
+    "checkDescription": "Type of an entity attribute (e.g. /birth/date) for the Knowledge Graph",
+    "recommendation": "IMPORTANT: Type of an entity attribute (e.g. /birth/date) for the Knowledge Graph Recommendation: Check Schema.org markup for person/entity attributes (birthDate, jobTitle, etc.)"
+  },
+  "nlp_saft_entity_profile_attribute.value": {
+    "checkDescription": "String value of an entity attribute (e.g. date of birth)",
+    "recommendation": "IMPORTANT: String value of an entity attribute (e.g. date of birth) Recommendation: Check entity values in Schema.org markup and compare them with known Knowledge Graph entries"
+  },
+  "nlp_semantic_parsing_local_service_constraint.serviceType": {
+    "checkDescription": "Checks whether the service type is clearly communicated in the content and structured data.",
+    "recommendation": "IMPORTANT: Checks whether the service type is clearly communicated in the content and structured data. Recommendation: Make sure the offered service type is explicitly named in the content and marked up via Schema.org (service types)."
+  },
+  "nlp_semantic_parsing_models_person_person.name": {
+    "checkDescription": "Checks whether person names are present correctly and consistently in the content and Schema.org markup.",
+    "recommendation": "IMPORTANT: Checks whether person names are present correctly and consistently in the content and Schema.org markup. Recommendation: Validate the Schema.org Person name field and check its consistency with the HTML content."
+  },
+  "quality_sherlock_knex_annotation_item.equivalentMid": {
+    "checkDescription": "Equivalent Knowledge Graph MID (/m/ or /g/) – checkable via Schema.org sameAs or Wikidata linking.",
+    "recommendation": "IMPORTANT: Equivalent Knowledge Graph MID (/m/ or /g/) – checkable via Schema.org sameAs or Wikidata linking. Recommendation: Check whether sameAs markup points to Freebase/Wikidata MIDs; compare with the Google Entity Search API."
+  },
+  "repository_webref_triple_annotation.triple": {
+    "checkDescription": "Knowledge Graph triple from the document.",
+    "recommendation": "IMPORTANT: Knowledge Graph triple from the document. Recommendation: Check structured data for KG-compliant triples and match them against Schema.org properties."
+  },
+  "knowledge_graph_triple_obj.idValue": {
+    "checkDescription": "Checks whether entity IDs (MIDs/HRIDs) are correctly referenced in structured data",
+    "recommendation": "IMPORTANT: Checks whether entity IDs (MIDs/HRIDs) are correctly referenced in structured data Recommendation: Check @id fields in JSON-LD for Wikidata/Google KG references"
+  },
+  "knowledge_graph_triple_obj.stringValue": {
+    "checkDescription": "Checks whether string values in Knowledge Graph properties are correct and complete",
+    "recommendation": "IMPORTANT: Checks whether string values in Knowledge Graph properties are correct and complete Recommendation: Extract string properties from JSON-LD and check them for completeness and correctness"
+  },
+  "knowledge_graph_triple_obj.uriValue": {
+    "checkDescription": "Checks whether URI values in Knowledge Graph properties are valid and reachable URLs",
+    "recommendation": "IMPORTANT: Checks whether URI values in Knowledge Graph properties are valid and reachable URLs Recommendation: Extract URI fields from JSON-LD and check them for HTTP reachability and canonicity"
+  },
+  "nlp_semantic_parsing_models_media_news_info.publicationTime": {
+    "checkDescription": "Checks whether the publication time is correctly specified in the HTML and structured data.",
+    "recommendation": "IMPORTANT: Checks whether the publication time is correctly specified in the HTML and structured data. Recommendation: Validate datePublished in the NewsArticle schema and check whether the date matches the HTML content."
+  },
+  "quality_timebased_last_significant_update.date": {
+    "checkDescription": "Date of the last significant update as a UNIX timestamp.",
+    "recommendation": "IMPORTANT: Date of the last significant update as a UNIX timestamp. Recommendation: Extract the date from meta tags, JSON-LD dateModified and the HTTP Last-Modified header and compare it with the current date."
+  },
+  "science_citation.PublicationYear": {
+    "checkDescription": "Checks whether the publication year is stated in the document",
+    "recommendation": "IMPORTANT: Checks whether the publication year is stated in the document Recommendation: Extract the publication year from Schema.org datePublished or meta publication_date"
+  },
+  "composite_doc_localized_variations.dupsComputedAlternateNames": {
+    "checkDescription": "Computed duplicate URLs with localized alternate names – can be approximated via hreflang analysis.",
+    "recommendation": "IMPORTANT: Computed duplicate URLs with localized alternate names – can be approximated via hreflang analysis. Recommendation: Check the hreflang implementation; analyze canonical tags for consistency with duplicated localized versions."
+  },
+  "composite_doc_localized_variations.webmasterAlternateNames": {
+    "checkDescription": "Localized alternate URLs provided by the webmaster – directly extractable from hreflang tags.",
+    "recommendation": "IMPORTANT: Localized alternate URLs provided by the webmaster – directly extractable from hreflang tags. Recommendation: Check all hreflang attributes in the <head> and in Link headers for correct implementation and reciprocal linking."
+  },
+  "indexing_converter_localized_alternate_name.language": {
+    "checkDescription": "Check the language code of the hreflang attribute",
+    "recommendation": "IMPORTANT: Check the language code of the hreflang attribute Recommendation: Check hreflang attributes in the HTML head for valid BCP 47 language codes."
+  },
+  "indexing_converter_localized_alternate_name.parsedLanguage": {
+    "checkDescription": "Check the parsed language and region code from the hreflang attribute",
+    "recommendation": "IMPORTANT: Check the parsed language and region code from the hreflang attribute Recommendation: Validate hreflang values for the correct format (e.g. 'de-DE')."
+  },
+  "indexing_converter_localized_alternate_name.url": {
+    "checkDescription": "Check the alternate URL in the hreflang tag for reachability",
+    "recommendation": "IMPORTANT: Check the alternate URL in the hreflang tag for reachability Recommendation: Fetch all hreflang URLs and check their HTTP status."
+  },
+  "indexing_dups_computed_localized_alternate_names_locale_entry.language": {
+    "checkDescription": "Check the language-region code of the locale entry (e.g. 'en-US', 'de')",
+    "recommendation": "IMPORTANT: Check the language-region code of the locale entry (e.g. 'en-US', 'de') Recommendation: Check hreflang attributes and the lang attribute in the HTML for BCP 47 compliance."
+  },
+  "indexing_dups_computed_localized_alternate_names_locale_entry.url": {
+    "checkDescription": "Check the alternate URL for the language/region for reachability",
+    "recommendation": "IMPORTANT: Check the alternate URL for the language/region for reachability Recommendation: Test all hreflang URLs for HTTP 200 status."
+  },
+  "indexing_dups_localized_localized_cluster.documentLanguage": {
+    "checkDescription": "Check the detected language of the document (on-page language detection)",
+    "recommendation": "IMPORTANT: Check the detected language of the document (on-page language detection) Recommendation: Check the lang attribute in the HTML tag; evaluate the Content-Language HTTP header."
+  },
+  "indexing_dups_localized_localized_cluster.hreflangTargetLink": {
+    "checkDescription": "Check hreflang target links for completeness and reciprocity",
+    "recommendation": "IMPORTANT: Check hreflang target links for completeness and reciprocity Recommendation: Extract all hreflang tags; validate reciprocal linking between language variants."
+  },
+  "indexing_dups_localized_localized_cluster_cluster.language": {
+    "checkDescription": "Check the cluster language for language-specific queries",
+    "recommendation": "IMPORTANT: Check the cluster language for language-specific queries Recommendation: Check hreflang and the lang attribute for a consistent language declaration."
+  },
+  "indexing_dups_localized_localized_cluster_cluster.regionCode": {
+    "checkDescription": "Check the stable region code of the cluster",
+    "recommendation": "IMPORTANT: Check the stable region code of the cluster Recommendation: Extract the region code from hreflang tags and the TLD and validate it."
+  },
+  "indexing_dups_localized_localized_cluster_link_based_cluster_info_link_member.languageCode": {
+    "checkDescription": "Check the language codes of the cluster member",
+    "recommendation": "IMPORTANT: Check the language codes of the cluster member Recommendation: Validate hreflang tags for valid BCP 47 language codes."
+  },
+  "indexing_dups_localized_localized_cluster_target_link_sets.directTargetLink": {
+    "checkDescription": "Check direct hreflang target links (A links directly to B)",
+    "recommendation": "IMPORTANT: Check direct hreflang target links (A links directly to B) Recommendation: Check hreflang tags for direct reciprocal linking between language variants."
+  },
+  "quality_navboost_craps_feature_craps_data.language": {
+    "checkDescription": "Checks whether the language is set correctly in the HTML lang attribute.",
+    "recommendation": "IMPORTANT: Checks whether the language is set correctly in the HTML lang attribute. Recommendation: Validate whether the lang attribute in the HTML tag matches the actual page content."
+  },
+  "science_citation.Language": {
+    "checkDescription": "Checks whether the language of the document is correctly specified",
+    "recommendation": "IMPORTANT: Checks whether the language of the document is correctly specified Recommendation: Check the html lang attribute and the Content-Language HTTP header and compare them with the detected language"
+  },
+  "knowledge_graph_triple_obj.locale": {
+    "checkDescription": "Checks whether language specifications are BCP 47 compliant",
+    "recommendation": "IMPORTANT: Checks whether language specifications are BCP 47 compliant Recommendation: Validate hreflang tags and Content-Language headers for BCP 47 compliance"
+  },
+  "local_w_w_w_info_cluster.hours": {
+    "checkDescription": "Business opening hours from structured data or extraction",
+    "recommendation": "IMPORTANT: Business opening hours from structured data or extraction Recommendation: Check Schema.org OpeningHoursSpecification in the HTML; alternatively verify OpeningHours in the Google Business Profile"
+  },
+  "local_w_w_w_info_cluster.latitudeE6": {
+    "checkDescription": "Geographic latitude of the business for local search",
+    "recommendation": "IMPORTANT: Geographic latitude of the business for local search Recommendation: Check Schema.org GeoCoordinates (latitude) in the HTML or NAP consistency with the Google Business Profile"
+  },
+  "local_w_w_w_info_cluster.longitudeE6": {
+    "checkDescription": "Geographic longitude of the business for local search",
+    "recommendation": "IMPORTANT: Geographic longitude of the business for local search Recommendation: Check Schema.org GeoCoordinates (longitude) in the HTML or NAP consistency"
+  },
+  "local_w_w_w_info_cluster.phoneNumber": {
+    "checkDescription": "Business phone number for NAP consistency",
+    "recommendation": "IMPORTANT: Business phone number for NAP consistency Recommendation: Extract the phone number from the page and check it against the Google Business Profile for NAP consistency; check Schema.org telephone"
+  },
+  "local_w_w_w_info_cluster.postalAddress": {
+    "checkDescription": "Business postal address for local relevance",
+    "recommendation": "IMPORTANT: Business postal address for local relevance Recommendation: Check Schema.org PostalAddress in the HTML and check it against the Google Business Profile for NAP consistency"
+  },
+  "local_w_w_w_info_cluster.title": {
+    "checkDescription": "Name/title of the business for local search",
+    "recommendation": "IMPORTANT: Name/title of the business for local search Recommendation: Compare the business name in the title tag and Schema.org name with the Google Business Profile"
+  },
+  "nlp_semantic_parsing_local_gcid_constraint.gcid": {
+    "checkDescription": "Google Category ID (GCID) for classifying local businesses",
+    "recommendation": "IMPORTANT: Google Category ID (GCID) for classifying local businesses Recommendation: Check Schema.org additionalType or the Google Business Profile category for the correct GCID equivalent; check for the gcid: prefix in structured data"
+  },
+  "quality_navboost_craps_feature_craps_data.country": {
+    "checkDescription": "Checks whether country-specific signals are present in the content and HTTP headers.",
+    "recommendation": "IMPORTANT: Checks whether country-specific signals are present in the content and HTTP headers. Recommendation: Check hreflang tags and Content-Language headers for country-specific correctness."
+  },
+  "quality_shopping_shopping_attachment_product.images": {
+    "checkDescription": "Product images – checkable via Schema.org Product.image.",
+    "recommendation": "IMPORTANT: Product images – checkable via Schema.org Product.image. Recommendation: Check whether Schema.org Product.image is present, reachable and sufficiently large (at least 160x160px)."
+  },
+  "image_repository_video_link_indexing_info.url": {
+    "checkDescription": "Checks whether the video URL is set correctly, reachable and crawlable",
+    "recommendation": "IMPORTANT: Checks whether the video URL is set correctly, reachable and crawlable Recommendation: Send an HTTP request to the video URL and check the status code as well as robots.txt accessibility"
+  },
+  "image_search_image_selection_info.url": {
+    "checkDescription": "Checks whether the image URL is correct, reachable and indexable",
+    "recommendation": "IMPORTANT: Checks whether the image URL is correct, reachable and indexable Recommendation: Send an HTTP request to the image URL and check the status code, Content-Type and robots.txt"
+  },
+  "quality_navboost_craps_feature_craps_data.device": {
+    "checkDescription": "Checks device-specific usage patterns (mobile vs. desktop).",
+    "recommendation": "IMPORTANT: Checks device-specific usage patterns (mobile vs. desktop). Recommendation: Use CrUX data or the PageSpeed API to determine device-specific performance metrics."
+  },
+  "science_citation.TitleHtml": {
+    "checkDescription": "Checks whether the HTML title is formatted correctly and without problematic HTML entities",
+    "recommendation": "IMPORTANT: Checks whether the HTML title is formatted correctly and without problematic HTML entities Recommendation: Validate TitleHtml for unsanitized HTML/XML tags and entities"
+  },
+  "htmlrender_webkit_headless_proto_render_event.initialLoad": {
+    "checkDescription": "Analyze the initial loading behavior of the page",
+    "recommendation": "IMPORTANT: Analyze the initial loading behavior of the page Recommendation: Use the PageSpeed Insights API to measure LCP, FCP and TTI"
+  },
+  "indexing_privacy_access_access_requirements.restrictionCategories": {
+    "checkDescription": "Check the access restriction categories of the document",
+    "recommendation": "IMPORTANT: Check the access restriction categories of the document Recommendation: Check whether the page contains login walls, paywalls or other access restrictions; analyze HTTP status and redirect behavior."
+  },
+  "video_content_search_anchor_thumbnail_info.isUnsafe": {
+    "checkDescription": "Check whether a thumbnail is classified as unsafe (NSFW).",
+    "recommendation": "IMPORTANT: Check whether a thumbnail is classified as unsafe (NSFW). Recommendation: Apply the SafeSearch API or comparable content moderation APIs to thumbnails."
+  },
+  "quality_shopping_shopping_attachment_offer.condition": {
+    "checkDescription": "Condition of the product offer (new, used) – checkable via Schema.org Offer.itemCondition.",
+    "recommendation": "IMPORTANT: Condition of the product offer (new, used) – checkable via Schema.org Offer.itemCondition. Recommendation: Check whether Schema.org Offer.itemCondition is present with correct values (NewCondition, UsedCondition, etc.)."
+  },
+  "quality_shopping_shopping_attachment_offer.gtinValue": {
+    "checkDescription": "GTIN values of the product – checkable via Schema.org Offer.gtin or gtin13/gtin8.",
+    "recommendation": "IMPORTANT: GTIN values of the product – checkable via Schema.org Offer.gtin or gtin13/gtin8. Recommendation: Check whether Schema.org Offer.gtin, gtin8, gtin12, gtin13 or gtin14 are present and valid."
+  },
+  "quality_shopping_shopping_attachment_product.aggregateRating": {
+    "checkDescription": "Aggregate product rating – checkable via Schema.org AggregateRating.",
+    "recommendation": "IMPORTANT: Aggregate product rating – checkable via Schema.org AggregateRating. Recommendation: Check whether Schema.org AggregateRating with ratingValue, reviewCount and ratingCount is present and correct."
+  },
+  "repository_annotations_rdfa_breadcrumbs.crumb": {
+    "checkDescription": "Individual breadcrumb entries from RDFa markup.",
+    "recommendation": "IMPORTANT: Individual breadcrumb entries from RDFa markup. Recommendation: Parse RDFa, JSON-LD or Microdata breadcrumb markup and check it for correct hierarchy and link structure."
+  },
+  "repository_annotations_rdfa_rdfa_rich_snippets_application_country_price.price": {
+    "checkDescription": "Price of the app as a string.",
+    "recommendation": "IMPORTANT: Price of the app as a string. Recommendation: Check the price field in Schema.org Offer for presence and correct format."
+  },
+  "ocean_g_e_price_locale.offerPrice": {
+    "checkDescription": "Checks whether prices are correctly implemented in Schema.org Offer markup",
+    "recommendation": "IMPORTANT: Checks whether prices are correctly implemented in Schema.org Offer markup Recommendation: Extract Schema.org Offer markup and validate price, priceCurrency and availability"
+  },
+  "htmlrender_webkit_headless_proto_redirect_hop.type": {
+    "checkDescription": "Check the redirect type (301, 302, meta refresh, JS redirect)",
+    "recommendation": "IMPORTANT: Check the redirect type (301, 302, meta refresh, JS redirect) Recommendation: Analyze HTTP status codes and meta refresh tags; check whether permanent (301) rather than temporary (302) redirects are used"
+  },
+  "htmlrender_webkit_headless_proto_redirect_hop.url": {
+    "checkDescription": "Check the redirect target URL for a correct redirect chain",
+    "recommendation": "IMPORTANT: Check the redirect target URL for a correct redirect chain Recommendation: Follow all redirect hops and check whether the redirect chain has at most 3 hops and points to canonical URLs"
+  },
+  "htmlrender_webkit_headless_proto_render_event.redirect": {
+    "checkDescription": "Identify redirects during rendering",
+    "recommendation": "IMPORTANT: Identify redirects during rendering Recommendation: Trace all HTTP redirects and JavaScript redirects with a headless browser"
+  },
+  "image_moosedog_crawl_state.notCrawledReason": {
+    "checkDescription": "Check why the image was not crawled (e.g. robots.txt, HTTP errors)",
+    "recommendation": "IMPORTANT: Check why the image was not crawled (e.g. robots.txt, HTTP errors) Recommendation: Check the HTTP status of the image URL; test robots.txt for Disallow rules for images."
+  },
+  "image_moosedog_crawl_state.robotedAgents": {
+    "checkDescription": "Check whether Googlebot-Images is excluded in robots.txt",
+    "recommendation": "IMPORTANT: Check whether Googlebot-Images is excluded in robots.txt Recommendation: Check robots.txt for Disallow entries for 'Googlebot-image'."
+  },
+  "image_moosedog_crawl_state.urlDeleted": {
+    "checkDescription": "Check whether the image URL was removed by the client (404/410)",
+    "recommendation": "IMPORTANT: Check whether the image URL was removed by the client (404/410) Recommendation: Check the HTTP status of the image URL; 404 or 410 indicates a deleted URL."
+  },
+  "nlp_semantic_parsing_models_media_podcast_info.feedUrl": {
+    "checkDescription": "Checks whether a valid RSS feed link is present in the HTML or header.",
+    "recommendation": "IMPORTANT: Checks whether a valid RSS feed link is present in the HTML or header. Recommendation: Check whether <link rel='alternate' type='application/rss+xml'> is set correctly in the HTML head and the feed is reachable."
+  },
+  "science_citation.WorldViewable": {
+    "checkDescription": "Checks whether the document is publicly accessible (no paywall/login)",
+    "recommendation": "IMPORTANT: Checks whether the document is publicly accessible (no paywall/login) Recommendation: Check HTTP status, robots.txt, paywall indicators and meta robots noindex tags"
+  },
+  "science_citation.accessurl": {
+    "checkDescription": "Checks whether access URLs are reachable and correctly configured",
+    "recommendation": "IMPORTANT: Checks whether access URLs are reachable and correctly configured Recommendation: Test all access URLs for HTTP 200 status and redirect chains"
+  },
+  "snapshot_snapshot_document.metaNoPreview": {
+    "checkDescription": "Checks whether a nopreview meta tag is set – directly readable from the HTML head.",
+    "recommendation": "IMPORTANT: Checks whether a nopreview meta tag is set – directly readable from the HTML head. Recommendation: Check the meta robots tag and X-Robots-Tag for 'nopreview'."
+  },
+  "snapshot_snapshot_document.metaNoSnippet": {
+    "checkDescription": "Checks whether the nosnippet directive is set – directly readable from meta tags or HTTP headers.",
+    "recommendation": "IMPORTANT: Checks whether the nosnippet directive is set – directly readable from meta tags or HTTP headers. Recommendation: Check the meta robots tag for 'nosnippet' and the X-Robots-Tag in the HTTP header."
+  },
+  "country_click_distribution.item": {
+    "checkDescription": "Country-specific click distribution – can be approximated via GSC or CrUX",
+    "recommendation": "IMPORTANT: Country-specific click distribution – can be approximated via GSC or CrUX Recommendation: Use Google Search Console or the CrUX API to analyze the country distribution of traffic"
+  },
+  "country_click_distribution.total": {
+    "checkDescription": "Total clicks on a page or domain – can be determined via GSC",
+    "recommendation": "IMPORTANT: Total clicks on a page or domain – can be determined via GSC Recommendation: Retrieve total clicks via the Google Search Console Performance API"
+  },
+  "anchors.targetSite": {
+    "checkDescription": "Host-level site chunking of the link target – can be determined from URL analysis.",
+    "recommendation": "Host-level site chunking of the link target – can be determined from URL analysis. Recommendation: Extract the domain/host from the linked URL and compare it with the source host."
+  },
+  "anchors.targetUrl": {
+    "checkDescription": "Target URL of the anchor – directly extractable from HTML link attributes.",
+    "recommendation": "Target URL of the anchor – directly extractable from HTML link attributes. Recommendation: Parse all href attributes in <a> tags and collect the target URLs."
+  },
+  "anchors_anchor.isLocal": {
+    "checkDescription": "Indicates whether the source and target page are on the same domain.",
+    "recommendation": "Indicates whether the source and target page are on the same domain. Recommendation: Compare the domains of the source and target URL to classify internal vs. external links."
+  },
+  "anchors_anchor.fullLeftContext": {
+    "checkDescription": "Full left context around the anchor text – determinable via HTML parsing.",
+    "recommendation": "Full left context around the anchor text – determinable via HTML parsing. Recommendation: Extract the text before the anchor element and check it for topical relevance to the anchor text."
+  },
+  "anchors_anchor.parallelLinks": {
+    "checkDescription": "Number of additional links from the same source page to the same target domain.",
+    "recommendation": "Number of additional links from the same source page to the same target domain. Recommendation: Query the number of links from one domain to the target domain via backlink APIs and check for concentration."
+  },
+  "anchors_anchor.fullRightContext": {
+    "checkDescription": "Full right context after the anchor text – extractable from HTML.",
+    "recommendation": "Full right context after the anchor text – extractable from HTML. Recommendation: Extract the text after the anchor element and check it for topical relevance to the anchor text."
+  },
+  "anchors_anchor.type": {
+    "checkDescription": "Link type (deprecated, now in link_tags) – partially derivable from rel attributes.",
+    "recommendation": "Link type (deprecated, now in link_tags) – partially derivable from rel attributes. Recommendation: Check rel attributes for nofollow, sponsored, ugc, canonical."
+  },
+  "anchors_anchor_source.outdegree": {
+    "checkDescription": "Number of outgoing links of the source page – directly determinable by counting links.",
+    "recommendation": "Number of outgoing links of the source page – directly determinable by counting links. Recommendation: Count all outgoing <a href> links on the page and check for an unnaturally high number."
+  },
+  "anchors_anchor_source.outsites": {
+    "checkDescription": "Approximate number of linked domains – determinable by extracting and deduplicating the target domains.",
+    "recommendation": "Approximate number of linked domains – determinable by extracting and deduplicating the target domains. Recommendation: Extract and count unique target domains from all outbound links."
+  },
+  "anchors_anchor_source.site": {
+    "checkDescription": "Site/domain of the source page – directly extractable from the URL.",
+    "recommendation": "Site/domain of the source page – directly extractable from the URL. Recommendation: Extract the domain from the source URL and compare it with the target domain for local/external classification."
+  },
+  "anchors_redundant_anchor_info.domain": {
+    "checkDescription": "Domain of the redundant anchor source – extractable from the URL.",
+    "recommendation": "Domain of the redundant anchor source – extractable from the URL. Recommendation: Analyze the frequency of links from the same domain to detect redundancy."
+  },
+  "anchors_redundant_anchor_info.text": {
+    "checkDescription": "Text of the redundant anchors – extractable from HTML anchor texts.",
+    "recommendation": "Text of the redundant anchors – extractable from HTML anchor texts. Recommendation: Count duplicate anchor texts from the same domain and check for over-optimization."
+  },
+  "composite_doc_included_content.linkUrl": {
+    "checkDescription": "URL of the included document – directly extractable from HTML.",
+    "recommendation": "URL of the included document – directly extractable from HTML. Recommendation: Check included document URLs for reachability and correct linking."
+  },
+  "indexing_docjoiner_anchor_statistics_redundant_anchor_info_for_phrase_cap.domain": {
+    "checkDescription": "Check the domain that redundant anchors originate from",
+    "recommendation": "Check the domain that redundant anchors originate from Recommendation: Use a backlink API (Ahrefs, Moz) to analyze the anchor distribution per domain."
+  },
+  "indexing_embedded_content_embedded_links_info.link": {
+    "checkDescription": "Check embedded links on the page",
+    "recommendation": "Check embedded links on the page Recommendation: Analyze the DOM and extract all embedded resource links."
+  },
+  "indexing_embedded_content_embedder_info.linkInfo": {
+    "checkDescription": "Check the embedder's link information",
+    "recommendation": "Check the embedder's link information Recommendation: Extract embedded resource URLs from the DOM and analyze them."
+  },
+  "quality_shopping_shopping_attachment_offer.refType": {
+    "checkDescription": "Reference type of the offer (e.g. OUTLINK) – can be approximated through link analysis.",
+    "recommendation": "Reference type of the offer (e.g. OUTLINK) – can be approximated through link analysis. Recommendation: Analyze whether the product page points to external merchant URLs (outlinks) or internal purchase processes."
+  },
+  "quality_shopping_shopping_attachment_product.outlinkDomainRelationship": {
+    "checkDescription": "Relationship between outlink domain and product page – analyzable by comparing link domains.",
+    "recommendation": "Relationship between outlink domain and product page – analyzable by comparing link domains. Recommendation: Check whether purchase links point to your own domain or to external merchant domains."
+  },
+  "repository_annotations_rdfa_rdfa_rich_snippets_application_rank.appStoreLink": {
+    "checkDescription": "Link to the App Store page.",
+    "recommendation": "Link to the App Store page. Recommendation: Check App Store links in the HTML for validity and reachability."
+  },
+  "science_citation.Anchors": {
+    "checkDescription": "Analyzes anchor texts pointing to the document",
+    "recommendation": "Analyzes anchor texts pointing to the document Recommendation: Analyze internal and external anchor texts for semantic relevance to the page title and main keywords"
+  },
+  "science_citation.NumForwardLinks": {
+    "checkDescription": "Counts the number of outgoing links (forward citations) in the document",
+    "recommendation": "Counts the number of outgoing links (forward citations) in the document Recommendation: Count outgoing links in the document and check their quality and relevance"
+  },
+  "corpus_selection_info.referrerUrls": {
+    "checkDescription": "Checks whether images are referenced by multiple relevant pages",
+    "recommendation": "Checks whether images are referenced by multiple relevant pages Recommendation: Crawl linking pages and determine the number and quality of referrer URLs for an image"
+  },
+  "nlp_sciencelit_author.firstName": {
+    "checkDescription": "First name of the author of a scientific publication",
+    "recommendation": "First name of the author of a scientific publication Recommendation: Check author markup via Schema.org Person (givenName) or meta tags on the page"
+  },
+  "nlp_sciencelit_author.lastName": {
+    "checkDescription": "Last name of the author of a scientific publication",
+    "recommendation": "Last name of the author of a scientific publication Recommendation: Check author markup via Schema.org Person (familyName) or meta tags on the page"
+  },
+  "repository_annotations_rdfa_rdfa_rich_snippets_application_rank.rank": {
+    "checkDescription": "Ranking position of the app in the store.",
+    "recommendation": "Ranking position of the app in the store. Recommendation: Query the App Store ranking via external APIs and represent it in structured data."
+  },
+  "repository_annotations_rdfa_rdfa_rich_snippets_application_rank_data.rank": {
+    "checkDescription": "Ranking data of the app including category and chart type.",
+    "recommendation": "Ranking data of the app including category and chart type. Recommendation: Query App Store ranking data via external store APIs."
+  },
+  "science_citation.LegalCitation": {
+    "checkDescription": "Checks whether legal citation metadata is correctly structured",
+    "recommendation": "Checks whether legal citation metadata is correctly structured Recommendation: Check whether legal references are marked up with Schema.org LegalDocument or equivalent markup"
+  },
+  "science_citation.CitationSourceUrl": {
+    "checkDescription": "Checks whether a citation source URL is present and reachable",
+    "recommendation": "Checks whether a citation source URL is present and reachable Recommendation: Validate the citation source URL for HTTP 200 and check the canonical relation"
+  },
+  "science_citation.PublicationVenue": {
+    "checkDescription": "Checks whether the publication venue is stated in the document",
+    "recommendation": "Checks whether the publication venue is stated in the document Recommendation: Extract Schema.org publishedIn or isPartOf fields and check them for completeness"
+  },
+  "science_citation.WOSID": {
+    "checkDescription": "Checks whether a Web of Science ID is present",
+    "recommendation": "Checks whether a Web of Science ID is present Recommendation: Validate the WOSID via the Web of Science API or CrossRef"
+  },
+  "science_citation.NumBackwardLinksInWoS": {
+    "checkDescription": "Checks the number of citations in Web of Science",
+    "recommendation": "Checks the number of citations in Web of Science Recommendation: Use the Web of Science API or similar scientific citation databases"
+  },
+  "science_citation.PublisherOrg": {
+    "checkDescription": "Checks whether the publishing organization is stated in the document",
+    "recommendation": "Checks whether the publishing organization is stated in the document Recommendation: Extract Schema.org publisher.name or organization fields"
+  },
+  "science_index_signal.author": {
+    "checkDescription": "Extract author information from the document's structured data or meta tags.",
+    "recommendation": "Extract author information from the document's structured data or meta tags. Recommendation: Check schema.org/author, meta[name='author'] and visible author information in the content."
+  },
+  "extra_snippet_info_response_tidbit.type": {
+    "checkDescription": "Type of the tidbit (e.g. snippet, anchor) – can be approximated through content structure analysis.",
+    "recommendation": "Type of the tidbit (e.g. snippet, anchor) – can be approximated through content structure analysis. Recommendation: Analyze the content structure for list items, tables and other snippet-eligible formats."
+  },
+  "goodoc_document_page_block.Paragraph": {
+    "checkDescription": "Analyze the paragraph structure of the content block",
+    "recommendation": "Analyze the paragraph structure of the content block Recommendation: Check the number and length of p tags in the DOM for an appropriate paragraph structure"
+  },
+  "htmlrender_webkit_headless_proto_render_tree_node.renderedText": {
+    "checkDescription": "Analyze the actually rendered text and compare it with the HTML source code",
+    "recommendation": "Analyze the actually rendered text and compare it with the HTML source code Recommendation: Compare text extracted from the rendered DOM with the HTML source for differences (JS-generated content)"
+  },
+  "nlp_sciencelit_publication_type.name": {
+    "checkDescription": "Display name of the publication type (e.g. Journal Article)",
+    "recommendation": "Display name of the publication type (e.g. Journal Article) Recommendation: Check the markup for Schema.org ScholarlyArticle or Article subtypes"
+  },
+  "nlp_semantic_parsing_models_media_news_info.newsContentType": {
+    "checkDescription": "Checks whether the news content can be clearly classified as a specific content type (article, video, etc.).",
+    "recommendation": "Checks whether the news content can be clearly classified as a specific content type (article, video, etc.). Recommendation: Check whether the Article/NewsArticle schema is implemented correctly and the content type is clearly recognizable."
+  },
+  "quality_preview_snippet_experimental_features.numVisibleTokens": {
+    "checkDescription": "Number of visible tokens in the page content – can be approximated through text extraction.",
+    "recommendation": "Number of visible tokens in the page content – can be approximated through text extraction. Recommendation: Extract the visible text of the page and count tokens (words/tokens split by whitespace)."
+  },
+  "quality_preview_snippet_radish_features.passageCoverage": {
+    "checkDescription": "Share of overlapping tokens between the passage and the snippet candidate.",
+    "recommendation": "Share of overlapping tokens between the passage and the snippet candidate. Recommendation: Compare the token overlap between identified text passages and potential snippet texts."
+  },
+  "quality_preview_snippet_radish_features.passageType": {
+    "checkDescription": "Type of the text passage (e.g. FAQ, answer, list) – can be approximated through DOM analysis.",
+    "recommendation": "Type of the text passage (e.g. FAQ, answer, list) – can be approximated through DOM analysis. Recommendation: Analyze the DOM structure for passage types such as FAQ blocks, list items or answer sections."
+  },
+  "quality_preview_snippet_radish_features.snippetCoverage": {
+    "checkDescription": "Coverage rate of the snippet – can be approximated through token comparison.",
+    "recommendation": "Coverage rate of the snippet – can be approximated through token comparison. Recommendation: Calculate the share of the meta description or h1/h2 texts that cover typical query terms."
+  },
+  "quality_shopping_shopping_attachment_product.nonDisplayableDescription": {
+    "checkDescription": "Product description (internal) – can be checked via Schema.org Product.description.",
+    "recommendation": "Product description (internal) – can be checked via Schema.org Product.description. Recommendation: Check whether Schema.org Product.description is present and sufficiently long (>20 characters)."
+  },
+  "quality_timebased_page_type.isForumPage": {
+    "checkDescription": "Classification of whether the page is a forum.",
+    "recommendation": "Classification of whether the page is a forum. Recommendation: Check the page for typical forum elements: thread structure, post metadata, user profiles, recurring reply patterns."
+  },
+  "quality_timebased_page_type.isQnaPage": {
+    "checkDescription": "Classification of whether the page is a Q&A page.",
+    "recommendation": "Classification of whether the page is a Q&A page. Recommendation: Check the page for Q&A structures: question-answer markup, Schema.org QAPage, typical Q&A patterns in the DOM."
+  },
+  "repository_webref_mention_debug_info.snippet": {
+    "checkDescription": "Text excerpt surrounding an entity mention.",
+    "recommendation": "Text excerpt surrounding an entity mention. Recommendation: Analyze context snippets around entity mentions and check them for semantic relevance."
+  },
+  "science_citation.NumGoodEmbeddedRefs": {
+    "checkDescription": "Analyzes the quality and number of embedded references in the document",
+    "recommendation": "Analyzes the quality and number of embedded references in the document Recommendation: Count and evaluate outbound links to trustworthy scientific sources"
+  },
+  "science_citation.Keywords": {
+    "checkDescription": "Checks whether keywords are specified in the document or in meta tags",
+    "recommendation": "Checks whether keywords are specified in the document or in meta tags Recommendation: Extract <meta name='keywords'> and Schema.org keywords fields and check their relevance to the content"
+  },
+  "science_citation.referencediscussion": {
+    "checkDescription": "Analyzes the depth and quality of reference discussions in the document",
+    "recommendation": "Analyzes the depth and quality of reference discussions in the document Recommendation: Analyze reference sections for depth of content and quality of discussion"
+  },
+  "science_citation.LevelOfDiscussion": {
+    "checkDescription": "Analyzes the depth of discussion of a reference in the text",
+    "recommendation": "Analyzes the depth of discussion of a reference in the text Recommendation: Analyze the context around citations for the depth of topical engagement via NLP"
+  },
+  "science_index_signal.VisiblePrefixTerms": {
+    "checkDescription": "Estimate the length of the document prefix visible to most users for subscription content.",
+    "recommendation": "Estimate the length of the document prefix visible to most users for subscription content. Recommendation: Detect paywalled content: check whether the visible text prefix is significantly shorter than the full content."
+  },
+  "video_content_search_description_anchor_features.inAsr": {
+    "checkDescription": "Check whether a description anchor also appears in the ASR transcript.",
+    "recommendation": "Check whether a description anchor also appears in the ASR transcript. Recommendation: Analyze the video description and the available transcript for matches."
+  },
+  "video_content_search_description_anchor_set_features.asrAnchorCount": {
+    "checkDescription": "Number of description anchors that were matched to ASR captions.",
+    "recommendation": "Number of description anchors that were matched to ASR captions. Recommendation: Match the video description against the available transcript and calculate the match rate."
+  },
+  "video_content_search_description_anchor_set_features.asrAnchorFraction": {
+    "checkDescription": "Share of anchors that were matched to ASR captions.",
+    "recommendation": "Share of anchors that were matched to ASR captions. Recommendation: Calculate the ratio of matched to total anchors from the description and transcript."
+  },
+  "video_content_search_generative_prediction_features.passage": {
+    "checkDescription": "Passage text from the video transcript for generative model inference.",
+    "recommendation": "Passage text from the video transcript for generative model inference. Recommendation: Analyze video transcript passages for information density and relevance."
+  },
+  "video_content_search_ocr_asr_feature.minCharEditDistance": {
+    "checkDescription": "Minimum character edit distance between OCR text and ASR candidates.",
+    "recommendation": "Minimum character edit distance between OCR text and ASR candidates. Recommendation: Compare OCR text from video frames with transcript text via edit distance."
+  },
+  "video_content_search_ocr_asr_feature.minCharEditDistancePercent": {
+    "checkDescription": "Normalized character edit distance (divided by OCR text length).",
+    "recommendation": "Normalized character edit distance (divided by OCR text length). Recommendation: Calculate the relative difference between OCR and ASR text."
+  },
+  "video_content_search_ocr_asr_feature.wordOverlapCount": {
+    "checkDescription": "Number of words that appear in both the OCR text and the ASR.",
+    "recommendation": "Number of words that appear in both the OCR text and the ASR. Recommendation: Calculate the intersection of words from OCR and the ASR transcript within a time window."
+  },
+  "video_content_search_ocr_asr_feature.wordOverlapPercent": {
+    "checkDescription": "Share of matching words between OCR and ASR.",
+    "recommendation": "Share of matching words between OCR and ASR. Recommendation: Calculate the word overlap ratio between OCR text and ASR transcript."
+  },
+  "video_content_search_ocr_asr_set_feature.normalizedWordOverlapScore": {
+    "checkDescription": "Normalized word overlap score across all clusters in the VideoAnchorSets.",
+    "recommendation": "Normalized word overlap score across all clusters in the VideoAnchorSets. Recommendation: Normalize word overlap scores across all video anchors and evaluate cluster quality."
+  },
+  "video_content_search_ocr_asr_set_feature.wordOverlapScore": {
+    "checkDescription": "Score based on word overlaps between OCR and ASR for anchors in the cluster.",
+    "recommendation": "Score based on word overlaps between OCR and ASR for anchors in the cluster. Recommendation: Aggregate and evaluate word overlap frequencies across all anchors of a video cluster."
+  },
+  "video_content_search_similarity_match_info.instructionText": {
+    "checkDescription": "Checks whether structured instruction steps (HowTo content) are present in the web document",
+    "recommendation": "Checks whether structured instruction steps (HowTo content) are present in the web document Recommendation: Extract HowTo steps from the HTML and check whether they match the Schema.org HowToStep markup"
+  },
+  "video_content_search_span_dolphin_scores_span_candidate.sourcePassage": {
+    "checkDescription": "Checks whether source passages are present in the video description text and are relevant in content",
+    "recommendation": "Checks whether source passages are present in the video description text and are relevant in content Recommendation: Analyze video descriptions for sentence structure and content coherence with the video title"
+  },
+  "video_content_search_text_match_info.matchedDescriptionText": {
+    "checkDescription": "Checks whether structured list descriptions in video descriptions match the ASR",
+    "recommendation": "Checks whether structured list descriptions in video descriptions match the ASR Recommendation: Analyze video descriptions for list structures and check their content match with the title"
+  },
+  "video_content_search_text_similarity_features.referenceText": {
+    "checkDescription": "Checks whether reference text for video text similarity is present in the content",
+    "recommendation": "Checks whether reference text for video text similarity is present in the content Recommendation: Compare video description and transcript texts for keyword overlap"
+  },
+  "sentence_boundary_annotations_instance.cleanText": {
+    "checkDescription": "Cleaned text of the sentence without unnecessary whitespace – can be approximated by text cleaning algorithms.",
+    "recommendation": "Cleaned text of the sentence without unnecessary whitespace – can be approximated by text cleaning algorithms. Recommendation: Extract text from HTML, normalize whitespace and clean it up with regular expressions."
+  },
+  "sentence_boundary_annotations_instance.context": {
+    "checkDescription": "Surrounding plain-text context of an annotation – can be approximated through content extraction from HTML.",
+    "recommendation": "Surrounding plain-text context of an annotation – can be approximated through content extraction from HTML. Recommendation: Extract the full text of the page and identify context windows around annotations."
+  },
+  "image_data_multibang_entities_multibang_entity.entityId": {
+    "checkDescription": "Check the entity ID for detected objects/entities in images",
+    "recommendation": "Check the entity ID for detected objects/entities in images Recommendation: Use the Google Cloud Vision API to detect entities in images and match them against the Knowledge Graph"
+  },
+  "image_data_multibang_entities_multibang_entity.score": {
+    "checkDescription": "Analyze the Multibang score for detected image entities",
+    "recommendation": "Analyze the Multibang score for detected image entities Recommendation: Use the Google Cloud Vision API or similar APIs to determine confidence scores for image entities"
+  },
+  "nlp_saft_entity_profile_attribute.valueType": {
+    "checkDescription": "Data type of an entity's attribute value",
+    "recommendation": "Data type of an entity's attribute value Recommendation: Check Schema.org types for correct data types (Date, Text, Number, etc.)"
+  },
+  "nlp_sciencelit_dataset.association": {
+    "checkDescription": "Association type between publication and dataset",
+    "recommendation": "Association type between publication and dataset Recommendation: Check Schema.org Dataset markup and links to datasets"
+  },
+  "nlp_semantic_parsing_local_price_constraint.cheap": {
+    "checkDescription": "Checks whether the content contains 'affordable/cheap' signals for local search queries.",
+    "recommendation": "Checks whether the content contains 'affordable/cheap' signals for local search queries. Recommendation: Check whether prices and budget signals are present in the content to cover price-oriented search queries."
+  },
+  "nlp_semantic_parsing_models_person_person.alternativeNameInfo": {
+    "checkDescription": "Checks whether alternative spellings of person names are taken into account in the content.",
+    "recommendation": "Checks whether alternative spellings of person names are taken into account in the content. Recommendation: Analyze whether known name alternatives (synonyms, alternative spellings) are present in the content or in Schema.org Person markup."
+  },
+  "nlp_semantic_parsing_models_person_person.alternativeNames": {
+    "checkDescription": "Checks whether alternative person names with similar pronunciation are covered in the content.",
+    "recommendation": "Checks whether alternative person names with similar pronunciation are covered in the content. Recommendation: Check whether the Schema.org Person markup contains alternateName fields."
+  },
+  "nlp_semantic_parsing_models_person_person.rawText": {
+    "checkDescription": "Checks whether the raw person name text is present in the content.",
+    "recommendation": "Checks whether the raw person name text is present in the content. Recommendation: Check whether person names are recognizable in the raw text of the content and correctly marked up."
+  },
+  "nlp_semantic_parsing_models_shopping_assistant_product_media_product_media_attribute_value.rawText": {
+    "checkDescription": "Checks whether media attributes such as the author are clearly stated in the content.",
+    "recommendation": "Checks whether media attributes such as the author are clearly stated in the content. Recommendation: Check whether product media attributes (e.g. author, format) are present in the content and Schema.org markup."
+  },
+  "quality_genie_complex_queries_complex_queries_output_rewrite.entities": {
+    "checkDescription": "Checks whether relevant entities for complex query rewrites are present in the content.",
+    "recommendation": "Checks whether relevant entities for complex query rewrites are present in the content. Recommendation: Analyze whether the most important entities are explicitly named in the content and linked to KG entities."
+  },
+  "quality_genie_complex_queries_complex_queries_output_rewrite_entity.name": {
+    "checkDescription": "Checks whether entity names for complex queries are present in the content.",
+    "recommendation": "Checks whether entity names for complex queries are present in the content. Recommendation: Check whether important named entities are clearly named and contextualized in the content."
+  },
+  "quality_shopping_shopping_attachment_product.brandEntityId": {
+    "checkDescription": "Brand entity ID – can be approximated via Schema.org Brand.name and sameAs.",
+    "recommendation": "Brand entity ID – can be approximated via Schema.org Brand.name and sameAs. Recommendation: Check whether Schema.org Product.brand is present with a sameAs reference to known entities."
+  },
+  "repository_webref_mention_debug_info.text": {
+    "checkDescription": "Original UTF-8 text of an entity mention.",
+    "recommendation": "Original UTF-8 text of an entity mention. Recommendation: Identify entity names in the content and check that they are mentioned correctly."
+  },
+  "repository_webref_preprocessing_original_names.name": {
+    "checkDescription": "List of the original name variants of an entity.",
+    "recommendation": "List of the original name variants of an entity. Recommendation: Extract entity names from different sources (KG, page content) and check them for consistency."
+  },
+  "repository_webref_preprocessing_original_names_original_name.text": {
+    "checkDescription": "Actual text of a name variant of an entity.",
+    "recommendation": "Actual text of a name variant of an entity. Recommendation: Check entity names in the content for a match with known entity names."
+  },
+  "repository_webref_triple_annotation.mentions": {
+    "checkDescription": "Occurrence of a triple in the document.",
+    "recommendation": "Occurrence of a triple in the document. Recommendation: Analyze entity relationships in the content and check them for consistency with known KG triples."
+  },
+  "repository_webref_triple_mention.predMention": {
+    "checkDescription": "Document mention of a triple's predicate.",
+    "recommendation": "Document mention of a triple's predicate. Recommendation: Check predicate mentions in the text for semantic correctness."
+  },
+  "repository_webref_triple_mention.subMention": {
+    "checkDescription": "Document mention of a triple's subject.",
+    "recommendation": "Document mention of a triple's subject. Recommendation: Identify subject entities in the content and check them for relevance."
+  },
+  "repository_webref_triple_mention.valueMention": {
+    "checkDescription": "Document mention of a triple's value.",
+    "recommendation": "Document mention of a triple's value. Recommendation: Check value mentions in the content for semantic correctness."
+  },
+  "science_citation.subject": {
+    "checkDescription": "Checks whether subject areas/subjects are specified in the document",
+    "recommendation": "Checks whether subject areas/subjects are specified in the document Recommendation: Extract Schema.org about or subject fields and check their semantic relevance"
+  },
+  "science_citation.category": {
+    "checkDescription": "Checks whether categories for the document are specified in structured data",
+    "recommendation": "Checks whether categories for the document are specified in structured data Recommendation: Extract Schema.org articleSection or category fields and check their consistency"
+  },
+  "video_content_search_description_anchor_features.entityTextCoverage": {
+    "checkDescription": "Share of the description anchor text covered by a recognized entity.",
+    "recommendation": "Share of the description anchor text covered by a recognized entity. Recommendation: Apply named entity recognition to the video description text and calculate entity coverage."
+  },
+  "video_content_search_entity_group_info.label": {
+    "checkDescription": "Analyze the label for a group of video anchors.",
+    "recommendation": "Analyze the label for a group of video anchors. Recommendation: Apply entity recognition to video chapter markers and descriptions."
+  },
+  "knowledge_graph_triple_obj.boolValue": {
+    "checkDescription": "Boolean property values in Knowledge Graph triples",
+    "recommendation": "Boolean property values in Knowledge Graph triples Recommendation: Check Schema.org markup for boolean properties such as noindex or isAccessibleForFree"
+  },
+  "knowledge_graph_triple_obj.datetimeValue": {
+    "checkDescription": "Datetime values in Knowledge Graph properties",
+    "recommendation": "Datetime values in Knowledge Graph properties Recommendation: Check Schema.org markup for datePublished/dateModified and their format compliance"
+  },
+  "knowledge_graph_triple_obj.durationValue": {
+    "checkDescription": "Checks whether duration values are correctly present in the Schema.org markup",
+    "recommendation": "Checks whether duration values are correctly present in the Schema.org markup Recommendation: Extract duration fields from the Schema.org markup and check ISO 8601 compliance"
+  },
+  "knowledge_graph_triple_obj.nestedStructValue": {
+    "checkDescription": "Checks whether nested structures in Knowledge Graph properties are implemented correctly",
+    "recommendation": "Checks whether nested structures in Knowledge Graph properties are implemented correctly Recommendation: Analyze JSON-LD for correct nesting of Schema.org types"
+  },
+  "vending_consumer_proto_trusted_genome_policy_target_region.mid": {
+    "checkDescription": "Knowledge Graph MID for a region – can be retrieved via the Google Knowledge Graph API or Wikidata.",
+    "recommendation": "Knowledge Graph MID for a region – can be retrieved via the Google Knowledge Graph API or Wikidata. Recommendation: Validate the entity MID via the Google Knowledge Graph Search API or Wikidata."
+  },
+  "anchors_anchor_source.crawlTimestamp": {
+    "checkDescription": "Crawl timestamp of the source page – can be approximated via the Last-Modified header.",
+    "recommendation": "Crawl timestamp of the source page – can be approximated via the Last-Modified header. Recommendation: Check the Last-Modified and ETag headers of the linking page to approximate freshness."
+  },
+  "crawler_changerate_url_history.latestVersion": {
+    "checkDescription": "Last seen version of a URL – can be approximated via ETag/Last-Modified.",
+    "recommendation": "Last seen version of a URL – can be approximated via ETag/Last-Modified. Recommendation: Check the Last-Modified and ETag headers for freshness; compare with Wayback Machine data."
+  },
+  "nlp_semantic_parsing_models_media_rental_info.validUntilTimestampSec": {
+    "checkDescription": "Checks whether availability periods are correctly marked up in structured data.",
+    "recommendation": "Checks whether availability periods are correctly marked up in structured data. Recommendation: Validate availabilityEnds in the Schema.org Offer markup for correctness."
+  },
+  "quality_timebased_last_significant_update.source": {
+    "checkDescription": "Source of the LSU signal (e.g. meta tag, HTTP header, structured data).",
+    "recommendation": "Source of the LSU signal (e.g. meta tag, HTTP header, structured data). Recommendation: Check whether consistent dates are present across meta tags, Schema.org and HTTP headers."
+  },
+  "quality_timebased_page_type.isPageWithFreshRepeatedDates": {
+    "checkDescription": "Detection of whether the page contains fresh, recurring dates.",
+    "recommendation": "Detection of whether the page contains fresh, recurring dates. Recommendation: Analyze dates in the content and check them for frequency, freshness and repetition."
+  },
+  "science_citation.OnlineYear": {
+    "checkDescription": "Checks whether an online publication year is specified in the document",
+    "recommendation": "Checks whether an online publication year is specified in the document Recommendation: Extract datePublished from Schema.org or meta tags and compare it with the current year"
+  },
+  "science_citation.PublicationDay": {
+    "checkDescription": "Checks whether a publication day is specified in the document or in structured data",
+    "recommendation": "Checks whether a publication day is specified in the document or in structured data Recommendation: Extract datePublished from Schema.org, OpenGraph og:published_time or meta tags"
+  },
+  "science_citation.PublicationMonth": {
+    "checkDescription": "Checks whether a publication month is specified in the document (zero-based)",
+    "recommendation": "Checks whether a publication month is specified in the document (zero-based) Recommendation: Extract the month from Schema.org datePublished or meta publication_date"
+  },
+  "science_index_signal.PublicationDay": {
+    "checkDescription": "Extract the publication day from the document's meta tags or structured data.",
+    "recommendation": "Extract the publication day from the document's meta tags or structured data. Recommendation: Check meta[name='publication_date'], time tags or schema.org datePublished."
+  },
+  "science_index_signal.PublicationMonth": {
+    "checkDescription": "Extract the publication month from the document's meta tags or structured data.",
+    "recommendation": "Extract the publication month from the document's meta tags or structured data. Recommendation: Check meta[name='publication_date'], time tags or schema.org datePublished."
+  },
+  "science_index_signal.PublicationYear": {
+    "checkDescription": "Extract the publication year from the document's meta tags or structured data.",
+    "recommendation": "Extract the publication year from the document's meta tags or structured data. Recommendation: Check schema.org datePublished or meta tags for the year."
+  },
+  "ocean_g_e_price_locale.onSaleTimeSecs": {
+    "checkDescription": "Checks whether sale start times are correctly set as priceValidUntil or availabilityStarts in the Schema.org markup",
+    "recommendation": "Checks whether sale start times are correctly set as priceValidUntil or availabilityStarts in the Schema.org markup Recommendation: Check the Schema.org Offer for priceValidUntil and availabilityStarts fields and validate their ISO 8601 format"
+  },
+  "anchors_anchor_source.language": {
+    "checkDescription": "Language identifier of the source page – can be determined via the lang attribute or language detection.",
+    "recommendation": "Language identifier of the source page – can be determined via the lang attribute or language detection. Recommendation: Check the HTML lang attribute; alternatively analyze the text content with a language detection tool."
+  },
+  "indexing_converter_localized_alternate_name.feedUrl": {
+    "checkDescription": "Check the sitemap feed URL for hreflang entries",
+    "recommendation": "Check the sitemap feed URL for hreflang entries Recommendation: Fetch the sitemap and analyze it for hreflang entries."
+  },
+  "indexing_converter_localized_alternate_name.parsedRegion": {
+    "checkDescription": "Check the parsed region information from the hreflang attribute",
+    "recommendation": "Check the parsed region information from the hreflang attribute Recommendation: Extract the region code from hreflang tags and check that it is a valid ISO 3166 code."
+  },
+  "indexing_dups_computed_localized_alternate_names_locale_entry.urlRegionCode": {
+    "checkDescription": "Check the region code extracted from the URL (TLD or path element)",
+    "recommendation": "Check the region code extracted from the URL (TLD or path element) Recommendation: Check the URL's TLD and path elements for country codes (ISO 3166)."
+  },
+  "indexing_dups_localized_localized_cluster.inbodyTargetLink": {
+    "checkDescription": "Check language target links contained in the body",
+    "recommendation": "Check language target links contained in the body Recommendation: Analyze links in the body for language alternatives."
+  },
+  "indexing_dups_localized_localized_cluster.outlinksTargetLink": {
+    "checkDescription": "Check outbound links as language alternatives",
+    "recommendation": "Check outbound links as language alternatives Recommendation: Analyze outbound links for language alternatives and a correct hreflang implementation."
+  },
+  "indexing_dups_localized_localized_cluster_cluster.urlRegionCode": {
+    "checkDescription": "Check the region code extracted from the URL",
+    "recommendation": "Check the region code extracted from the URL Recommendation: Check the URL's TLD and path elements for country codes."
+  },
+  "indexing_dups_localized_localized_cluster_link_based_cluster_info_link_data.url": {
+    "checkDescription": "Check the URL of the link record for reachability",
+    "recommendation": "Check the URL of the link record for reachability Recommendation: Send an HTTP request to the URL and validate the status code."
+  },
+  "indexing_dups_localized_localized_cluster_link_based_cluster_info_link_member.url": {
+    "checkDescription": "Check the URL of the cluster member for reachability",
+    "recommendation": "Check the URL of the cluster member for reachability Recommendation: Check the URL's HTTP status; watch out for redirects."
+  },
+  "indexing_dups_localized_localized_cluster_target_link_sets.indirectTargetLink": {
+    "checkDescription": "Check indirect target links (linking via a third-party document)",
+    "recommendation": "Check indirect target links (linking via a third-party document) Recommendation: Analyze the hreflang network for indirect linking chains."
+  },
+  "nlp_saft_entity_profile_attribute.language": {
+    "checkDescription": "Language of the attribute value if it is a string",
+    "recommendation": "Language of the attribute value if it is a string Recommendation: Check the Content-Language header and the lang attribute in the HTML"
+  },
+  "quality_shopping_shopping_attachment_locale.languageId": {
+    "checkDescription": "Language ID of the shopping content – can be checked via the Content-Language header or hreflang.",
+    "recommendation": "Language ID of the shopping content – can be checked via the Content-Language header or hreflang. Recommendation: Check the Content-Language HTTP header and hreflang attributes for the correct language identifier."
+  },
+  "quality_shopping_shopping_attachment_product.locale": {
+    "checkDescription": "Locale of the product – can be checked via hreflang and Content-Language.",
+    "recommendation": "Locale of the product – can be checked via hreflang and Content-Language. Recommendation: Check whether hreflang is set correctly and the Content-Language header matches the locale."
+  },
+  "quality_sitemap_co_click_target.language": {
+    "checkDescription": "Language of the co-click target – can be checked via the lang attribute and Content-Language header.",
+    "recommendation": "Language of the co-click target – can be checked via the lang attribute and Content-Language header. Recommendation: Check whether the html lang attribute and the Content-Language header match."
+  },
+  "quality_sitemap_co_click_target_doc_co_click_by_locale.locale": {
+    "checkDescription": "Locale of the co-click data – can be checked via hreflang and Content-Language.",
+    "recommendation": "Locale of the co-click data – can be checked via hreflang and Content-Language. Recommendation: Check whether hreflang tags correctly cover the target locales."
+  },
+  "quality_travel_good_sites_data_i18n.locale": {
+    "checkDescription": "Locale of a travel site rated as high quality.",
+    "recommendation": "Locale of a travel site rated as high quality. Recommendation: Check the HTML lang attribute, hreflang tags and Content-Language header for correct locale information."
+  },
+  "quality_webanswers_video_transcript_annotations.lang": {
+    "checkDescription": "Language of the video transcript.",
+    "recommendation": "Language of the video transcript. Recommendation: Match the YouTube caption language against the page language."
+  },
+  "repository_annotations_rdfa_rdfa_rich_snippets_application_localized_trusted_genome.language": {
+    "checkDescription": "Selected language for localized TG tags.",
+    "recommendation": "Selected language for localized TG tags. Recommendation: Check the HTML lang attribute and hreflang for correct language markup."
+  },
+  "science_citation.AbstractLanguage": {
+    "checkDescription": "Detects the language of the abstract and compares it with the document language",
+    "recommendation": "Detects the language of the abstract and compares it with the document language Recommendation: Use language detection on the abstract text and compare it with the hreflang/lang attribute"
+  },
+  "ocean_g_e_price_locale.locale": {
+    "checkDescription": "Checks whether the ISO country code is set correctly for prices",
+    "recommendation": "Checks whether the ISO country code is set correctly for prices Recommendation: Check hreflang attributes and the Content-Language header for a correct two-letter ISO country code"
+  },
+  "anchors_anchor_source.localCountryCodes": {
+    "checkDescription": "Country codes for which the source page is locally relevant – can be derived from hreflang and TLD.",
+    "recommendation": "Country codes for which the source page is locally relevant – can be derived from hreflang and TLD. Recommendation: Analyze the hreflang attribute, TLD and geographic signals of the source page."
+  },
+  "geostore_job_metadata.jobRelatedCategories": {
+    "checkDescription": "Check whether job categories are correctly specified as structured data or metadata",
+    "recommendation": "Check whether job categories are correctly specified as structured data or metadata Recommendation: Analyze page content for job category information and compare it with known Schema.org Occupation/JobPosting categories"
+  },
+  "geostore_job_metadata.jobTypeId": {
+    "checkDescription": "Check whether a unique job type ID is present in structured data",
+    "recommendation": "Check whether a unique job type ID is present in structured data Recommendation: Search Schema.org JobPosting for identifier fields with the job_type_id prefix"
+  },
+  "local_w_w_w_info_cluster.hoursSource": {
+    "checkDescription": "Source of the opening hours (Local Attributes vs. extracted annotations)",
+    "recommendation": "Source of the opening hours (Local Attributes vs. extracted annotations) Recommendation: Check whether opening hours are provided via Schema.org markup or only as text"
+  },
+  "local_w_w_w_info_cluster.menuUrl": {
+    "checkDescription": "Menu URL of a restaurant from Local Attributes",
+    "recommendation": "Menu URL of a restaurant from Local Attributes Recommendation: Check whether a dedicated menu page is linked and reachable; check Schema.org hasMenu"
+  },
+  "nlp_semantic_parsing_local_ev_charging_station_connector_constraint.connectorType": {
+    "checkDescription": "Connector type of an EV charging station as a local search requirement",
+    "recommendation": "Connector type of an EV charging station as a local search requirement Recommendation: Check Schema.org amenityFeature for EV charging station connector types"
+  },
+  "nlp_semantic_parsing_local_vicinity_location.base": {
+    "checkDescription": "Checks whether a base location is specified in the content/schema or implicitly means 'here'.",
+    "recommendation": "Checks whether a base location is specified in the content/schema or implicitly means 'here'. Recommendation: Validate whether local reference points are marked up in the content or via Schema.org GeoCoordinates."
+  },
+  "nlp_semantic_parsing_local_vicinity_location.extent": {
+    "checkDescription": "Checks whether spatial extent/distance is communicated in the content.",
+    "recommendation": "Checks whether spatial extent/distance is communicated in the content. Recommendation: Check whether range or distance information is present in the content (e.g. 'delivery radius 10km')."
+  },
+  "quality_shopping_shopping_attachment_locale.regionId": {
+    "checkDescription": "Region ID of the shopping content – can be checked via Schema.org areaServed or the hreflang region tag.",
+    "recommendation": "Region ID of the shopping content – can be checked via Schema.org areaServed or the hreflang region tag. Recommendation: Check hreflang region tags (e.g. de-DE) and Schema.org Offer.areaServed markup for the correct region identifier."
+  },
+  "quality_travel_good_sites_data_i18n.type": {
+    "checkDescription": "Type of the travel site (e.g. hotel, flight, travel guide).",
+    "recommendation": "Type of the travel site (e.g. hotel, flight, travel guide). Recommendation: Check Schema.org TravelAction, LodgingBusiness or similar markup types in the structured data."
+  },
+  "repository_annotations_geo_topicality.geotopics": {
+    "checkDescription": "Geographic topical relevance of the page, ordered by score.",
+    "recommendation": "Geographic topical relevance of the page, ordered by score. Recommendation: Identify geographic entities in the content and match them with Schema.org GeoCoordinates or Local Business markup."
+  },
+  "repository_annotations_geo_topicality_score.type": {
+    "checkDescription": "Type of the geographic topicality score.",
+    "recommendation": "Type of the geographic topicality score. Recommendation: Analyze the content for geographic signals and match them with structured data for local pages."
+  },
+  "vending_consumer_proto_trusted_genome_policy_target_region.localizedRegion": {
+    "checkDescription": "Localized name of a target region – can be approximated through geo data and localization APIs.",
+    "recommendation": "Localized name of a target region – can be approximated through geo data and localization APIs. Recommendation: Validate region names from structured data (Schema.org) or geo APIs."
+  },
+  "image_content_query_boost_query_boost.query": {
+    "checkDescription": "Analyze canonicalized query strings for image relevance boost",
+    "recommendation": "Analyze canonicalized query strings for image relevance boost Recommendation: Analyze alt texts, image titles and surrounding text for relevant search terms for images"
+  },
+  "image_data_thumbnail.height": {
+    "checkDescription": "Check the height of the thumbnail in pixels",
+    "recommendation": "Check the height of the thumbnail in pixels Recommendation: Download the image and determine its size with PIL/Pillow; check the minimum height."
+  },
+  "image_data_thumbnail.mimeType": {
+    "checkDescription": "Check the MIME type of the thumbnail (e.g. image/jpeg, image/webp)",
+    "recommendation": "Check the MIME type of the thumbnail (e.g. image/jpeg, image/webp) Recommendation: Evaluate the HTTP Content-Type header when fetching the image URL."
+  },
+  "image_data_thumbnail.width": {
+    "checkDescription": "Check the width of the thumbnail in pixels",
+    "recommendation": "Check the width of the thumbnail in pixels Recommendation: Download the image and determine its size with PIL/Pillow; check the minimum width."
+  },
+  "image_repository_video_properties.audioOnly": {
+    "checkDescription": "Check whether a video URL contains audio only",
+    "recommendation": "Check whether a video URL contains audio only Recommendation: Analyze the file extension and MIME type of the URL; detect audio containers such as .mp3, .ogg."
+  },
+  "image_repository_video_properties.url": {
+    "checkDescription": "Check the video URL for reachability and correct HTTP status",
+    "recommendation": "Check the video URL for reachability and correct HTTP status Recommendation: Send an HTTP request to the video URL and check the status code."
+  },
+  "image_search_unindexed_image_link.url": {
+    "checkDescription": "Check the image URL for reachability and correct embedding",
+    "recommendation": "Check the image URL for reachability and correct embedding Recommendation: Send an HTTP request to the image URL; check for a 200 status and the correct MIME type."
+  },
+  "nlp_semantic_parsing_models_media_you_tube_playlist_info.videoCount": {
+    "checkDescription": "Checks the number of videos in a YouTube playlist.",
+    "recommendation": "Checks the number of videos in a YouTube playlist. Recommendation: Use the YouTube Data API to determine the number of videos in playlists and check whether it is correctly reflected in the Schema.org markup (ItemList)."
+  },
+  "quality_calypso_apps_universal_image.fifeUrl": {
+    "checkDescription": "Checks whether app images are embedded via reachable URLs.",
+    "recommendation": "Checks whether app images are embedded via reachable URLs. Recommendation: Check whether image URLs are reachable and do not return 404 errors."
+  },
+  "quality_calypso_apps_universal_image_data.featureGraphic": {
+    "checkDescription": "Checks whether a promotional/feature image exists for the app.",
+    "recommendation": "Checks whether a promotional/feature image exists for the app. Recommendation: Check whether a high-quality feature graphic is present in the app listing and correctly embedded."
+  },
+  "quality_calypso_apps_universal_image_data.screenshot": {
+    "checkDescription": "Checks whether app screenshots are present and reachable.",
+    "recommendation": "Checks whether app screenshots are present and reachable. Recommendation: Check whether app screenshots are available in sufficient number and quality."
+  },
+  "quality_shopping_shopping_attachment_offer.imageId": {
+    "checkDescription": "Image IDs of the offer – the presence of product images can be checked.",
+    "recommendation": "Image IDs of the offer – the presence of product images can be checked. Recommendation: Check whether Schema.org Offer.image or Product.image is present and whether the images are reachable."
+  },
+  "quality_webanswers_video_transcript_annotations.punctuatedTranscript": {
+    "checkDescription": "Punctuated transcript of the video.",
+    "recommendation": "Punctuated transcript of the video. Recommendation: Check whether a structured transcript for the video is available and accessible."
+  },
+  "quality_webanswers_video_transcript_annotations.transcriptSource": {
+    "checkDescription": "Source of the video transcript (e.g. manual, auto-generated).",
+    "recommendation": "Source of the video transcript (e.g. manual, auto-generated). Recommendation: Check whether manual captions are available, as they are of higher quality than auto-generated ASR captions."
+  },
+  "video_content_search_anchors_thumbnail_info.hasMissingThumbnails": {
+    "checkDescription": "Check whether thumbnails are missing for video anchors.",
+    "recommendation": "Check whether thumbnails are missing for video anchors. Recommendation: Fetch video thumbnails and check for 404 errors or missing images."
+  },
+  "video_content_search_similarity_match_info.referenceText": {
+    "checkDescription": "Checks whether reference text for video matching (e.g. description anchors) is present in the content",
+    "recommendation": "Checks whether reference text for video matching (e.g. description anchors) is present in the content Recommendation: Analyze video descriptions and anchor texts for structured timestamp references"
+  },
+  "snapshot_image_node.url": {
+    "checkDescription": "Absolute URL of an image on the page – directly extractable from HTML img tags.",
+    "recommendation": "Absolute URL of an image on the page – directly extractable from HTML img tags. Recommendation: Fetch the HTML, extract all img src attributes and check for absolute URLs; test reachability."
+  },
+  "snapshot_snapshot_document.imageNode": {
+    "checkDescription": "List of all image nodes in the snapshot document – directly extractable from HTML.",
+    "recommendation": "List of all image nodes in the snapshot document – directly extractable from HTML. Recommendation: Parse the HTML and list all img elements including their attributes."
+  },
+  "video_video_stream.bitrate": {
+    "checkDescription": "Video bitrate in bits/s – can be determined via the YouTube Data API or media analysis tools.",
+    "recommendation": "Video bitrate in bits/s – can be determined via the YouTube Data API or media analysis tools. Recommendation: Use the YouTube Data API or ffprobe (for locally accessible videos) for bitrate analysis."
+  },
+  "video_video_stream.height": {
+    "checkDescription": "Video height in pixels – can be determined via the YouTube Data API or media analysis.",
+    "recommendation": "Video height in pixels – can be determined via the YouTube Data API or media analysis. Recommendation: Use the YouTube Data API (contentDetails) or ffprobe for resolution analysis."
+  },
+  "video_video_stream.lengthSec": {
+    "checkDescription": "Video length in seconds – retrievable via the YouTube Data API or structured data (schema:duration).",
+    "recommendation": "Video length in seconds – retrievable via the YouTube Data API or structured data (schema:duration). Recommendation: Check the YouTube Data API (contentDetails.duration) or the VideoObject schema."
+  },
+  "video_video_stream.width": {
+    "checkDescription": "Video width in pixels – can be determined via the YouTube Data API or media analysis.",
+    "recommendation": "Video width in pixels – can be determined via the YouTube Data API or media analysis. Recommendation: Use the YouTube Data API (contentDetails) or ffprobe for resolution analysis."
+  },
+  "htmlrender_webkit_headless_proto_image.viewport": {
+    "checkDescription": "Check the viewport settings from which the image was generated",
+    "recommendation": "Check the viewport settings from which the image was generated Recommendation: Check the meta viewport tag and compare it with standard viewport sizes (mobile: 375px, desktop: 1280px)"
+  },
+  "indexing_converter_localized_alternate_name.deviceMatchInfo": {
+    "checkDescription": "Check URL-pattern-based device matching",
+    "recommendation": "Check URL-pattern-based device matching Recommendation: Check URL patterns for mobile prefixes/suffixes (e.g. m., /mobile/)."
+  },
+  "indexing_dups_computed_localized_alternate_names_locale_entry.deviceMatchInfo": {
+    "checkDescription": "Check device-specific URL pattern matching",
+    "recommendation": "Check device-specific URL pattern matching Recommendation: Analyze URL patterns for mobile subdomains or paths."
+  },
+  "anchors_anchor_source.homePageInfo": {
+    "checkDescription": "Information on whether the source page is a homepage – derivable from URL structure and depth.",
+    "recommendation": "Information on whether the source page is a homepage – derivable from URL structure and depth. Recommendation: Analyze URL depth: treat / or /index.html paths as a homepage indicator."
+  },
+  "quality_preview_snippet_experimental_features.isLikelyHomepage": {
+    "checkDescription": "Checks whether a page is likely a homepage (URL patterns, breadcrumbs, internal links).",
+    "recommendation": "Checks whether a page is likely a homepage (URL patterns, breadcrumbs, internal links). Recommendation: Check whether the URL path is empty or '/', whether there are many outgoing internal links and whether breadcrumb markup is missing."
+  },
+  "quality_sitemap_breadcrumb_target_doc.title": {
+    "checkDescription": "Title of the target page in breadcrumbs – checkable via Schema.org BreadcrumbList or HTML breadcrumb.",
+    "recommendation": "Title of the target page in breadcrumbs – checkable via Schema.org BreadcrumbList or HTML breadcrumb. Recommendation: Check whether a Schema.org BreadcrumbList with correct item.name values is present."
+  },
+  "quality_sitemap_breadcrumb_target_doc.url": {
+    "checkDescription": "URL of the target page in breadcrumbs – checkable via Schema.org BreadcrumbList item.id.",
+    "recommendation": "URL of the target page in breadcrumbs – checkable via Schema.org BreadcrumbList item.id. Recommendation: Check whether Schema.org BreadcrumbList.item.id points to correct, canonical URLs."
+  },
+  "quality_sitemap_co_click_target_doc.title": {
+    "checkDescription": "Title of the co-click target document – checkable via the title tag.",
+    "recommendation": "Title of the co-click target document – checkable via the title tag. Recommendation: Check whether the title tag is present, unique and descriptive."
+  },
+  "science_citation.alternatetitle": {
+    "checkDescription": "Checks whether alternative titles are present in the document or in structured data",
+    "recommendation": "Checks whether alternative titles are present in the document or in structured data Recommendation: Look for alternative title fields in Schema.org alternativeHeadline or corresponding meta tags"
+  },
+  "sitemap_d_e_p_r_e_c_a_t_e_d_target.displaytitle": {
+    "checkDescription": "Display title in the sitemap – can be compared with the actual page title.",
+    "recommendation": "Display title in the sitemap – can be compared with the actual page title. Recommendation: Parse the sitemap XML and compare displaytitle with the title tag of the target page."
+  },
+  "htmlrender_webkit_headless_proto_render_event.modalDialog": {
+    "checkDescription": "Check for modal dialogs or interstitials that could block crawlers",
+    "recommendation": "Check for modal dialogs or interstitials that could block crawlers Recommendation: Check for overlay elements with a high z-index and position:fixed after the initial render"
+  },
+  "snapshot_snapshot_metadata.countDistinctResources": {
+    "checkDescription": "Measure the number of distinct resources required for rendering.",
+    "recommendation": "Measure the number of distinct resources required for rendering. Recommendation: Use the PageSpeed Insights API or WebPageTest to determine the number of resource requests."
+  },
+  "snapshot_snapshot_metadata.totalContentSize": {
+    "checkDescription": "Measure the total size of all resources required for rendering (HTML, CSS, images, etc.).",
+    "recommendation": "Measure the total size of all resources required for rendering (HTML, CSS, images, etc.). Recommendation: Use the PageSpeed Insights API or WebPageTest to determine the total page size; target under 3MB."
+  },
+  "snippet_extra_info.containVulgarCandidates": {
+    "checkDescription": "Check whether snippet candidates contain offensive content.",
+    "recommendation": "Check whether snippet candidates contain offensive content. Recommendation: Analyze content for vulgar language using profanity lists or NLP models."
+  },
+  "video_content_search_anchor_thumbnail_info.imageData": {
+    "checkDescription": "Analyze thumbnail image data for SafeSearch classification.",
+    "recommendation": "Analyze thumbnail image data for SafeSearch classification. Recommendation: Apply Google Vision API SafeSearch detection to thumbnail images."
+  },
+  "geostore_job_metadata.duration": {
+    "checkDescription": "Check whether the service duration is available as structured data (Schema.org)",
+    "recommendation": "Check whether the service duration is available as structured data (Schema.org) Recommendation: Extract Schema.org ServiceTime or duration fields and validate the ISO 8601 duration format (60s to 31536000s)"
+  },
+  "nlp_sciencelit_dataset.datasetMetadata": {
+    "checkDescription": "Metadata of a linked scientific dataset",
+    "recommendation": "Metadata of a linked scientific dataset Recommendation: Check Schema.org Dataset markup (name, description, url, license) for completeness"
+  },
+  "nlp_sciencelit_publication_type.ui": {
+    "checkDescription": "MeSH Unique Identifier of the publication type for scientific classification",
+    "recommendation": "MeSH Unique Identifier of the publication type for scientific classification Recommendation: Check MeSH IDs in the page's structured data or metadata"
+  },
+  "nlp_semantic_parsing_local_price_constraint.currencyCode": {
+    "checkDescription": "Checks whether currency codes are correctly specified in structured data (Schema.org PriceSpecification).",
+    "recommendation": "Checks whether currency codes are correctly specified in structured data (Schema.org PriceSpecification). Recommendation: Validate Schema.org markup for correct priceCurrency values according to ISO 4217."
+  },
+  "nlp_semantic_parsing_local_price_constraint.maxPrice": {
+    "checkDescription": "Checks whether maximum prices are correctly marked up in structured data.",
+    "recommendation": "Checks whether maximum prices are correctly marked up in structured data. Recommendation: Validate Schema.org markup for maxPrice fields in PriceSpecification."
+  },
+  "nlp_semantic_parsing_local_price_constraint.minPrice": {
+    "checkDescription": "Checks whether minimum prices are correctly marked up in structured data.",
+    "recommendation": "Checks whether minimum prices are correctly marked up in structured data. Recommendation: Validate Schema.org markup for minPrice fields in PriceSpecification."
+  },
+  "nlp_semantic_parsing_models_media_purchase_info.orderType": {
+    "checkDescription": "Checks whether purchase/order types are clearly communicated and marked up in the content.",
+    "recommendation": "Checks whether purchase/order types are clearly communicated and marked up in the content. Recommendation: Check whether purchase options (download, stream, etc.) are marked up with Schema.org Offer markup."
+  },
+  "quality_calypso_apps_link.applicationId": {
+    "checkDescription": "Checks whether app IDs are correctly linked in the content or specified in structured data.",
+    "recommendation": "Checks whether app IDs are correctly linked in the content or specified in structured data. Recommendation: Check whether app store links with correct app IDs are present in Schema.org SoftwareApplication markup."
+  },
+  "quality_richsnippets_apps_protos_launch_app_info_per_doc_data.app": {
+    "checkDescription": "List of launchable apps for a page – checkable via Schema.org SoftwareApplication markup.",
+    "recommendation": "List of launchable apps for a page – checkable via Schema.org SoftwareApplication markup. Recommendation: Check whether Schema.org SoftwareApplication or MobileApplication markup is present and whether deep links are set correctly."
+  },
+  "quality_shopping_shopping_attachment_offer.nonDisplayableCurrency": {
+    "checkDescription": "Currency of the offer – checkable via Schema.org Offer.priceCurrency.",
+    "recommendation": "Currency of the offer – checkable via Schema.org Offer.priceCurrency. Recommendation: Check whether Schema.org Offer.priceCurrency is present with a valid ISO 4217 code."
+  },
+  "repository_annotations_rdfa_breadcrumbs.url": {
+    "checkDescription": "URL of the document from which the breadcrumb path was extracted.",
+    "recommendation": "URL of the document from which the breadcrumb path was extracted. Recommendation: Ensure that the breadcrumb URL matches the canonical URL of the page."
+  },
+  "repository_annotations_rdfa_rdfa_rich_snippets_application_app_type_data.playStoreAppType": {
+    "checkDescription": "App category (GAME or APPLICATION) from the Play Store.",
+    "recommendation": "App category (GAME or APPLICATION) from the Play Store. Recommendation: Check Schema.org SoftwareApplication applicationCategory and compare it with the Play Store categorization."
+  },
+  "repository_annotations_rdfa_rdfa_rich_snippets_application_country_price.countryCode": {
+    "checkDescription": "Country code for app pricing.",
+    "recommendation": "Country code for app pricing. Recommendation: Check Schema.org Offer countryCode and availability in structured data."
+  },
+  "repository_annotations_rdfa_rdfa_rich_snippets_application_country_price.currencyCode": {
+    "checkDescription": "ISO 4217 currency code for app pricing.",
+    "recommendation": "ISO 4217 currency code for app pricing. Recommendation: Check priceCurrency in Schema.org Offer for a valid ISO 4217 code."
+  },
+  "repository_annotations_rdfa_rdfa_rich_snippets_application_rank.categoryId": {
+    "checkDescription": "Category ID for app ranking.",
+    "recommendation": "Category ID for app ranking. Recommendation: Check Schema.org applicationCategory for existing category IDs."
+  },
+  "repository_annotations_rdfa_rdfa_rich_snippets_application_rank.categoryName": {
+    "checkDescription": "Category name for app ranking.",
+    "recommendation": "Category name for app ranking. Recommendation: Check Schema.org applicationCategory for understandable category names."
+  },
+  "science_citation.Type": {
+    "checkDescription": "Checks whether the article type is correctly classified",
+    "recommendation": "Checks whether the article type is correctly classified Recommendation: Analyze Schema.org @type and content characteristics to determine the article type"
+  },
+  "anchors_anchor.forwardingTypes": {
+    "checkDescription": "Type of forwarding of an anchor to the canonical URL.",
+    "recommendation": "Type of forwarding of an anchor to the canonical URL. Recommendation: Analyze HTTP redirect chains for linked URLs (301, 302, meta-refresh)."
+  },
+  "extra_snippet_info_response_match_info.urlMatches": {
+    "checkDescription": "Bit vector of the query items that match in the URL – directly determinable via URL analysis.",
+    "recommendation": "Bit vector of the query items that match in the URL – directly determinable via URL analysis. Recommendation: Check the URL path and parameters for the presence of target keywords."
+  },
+  "htmlrender_webkit_headless_proto_pdf.data": {
+    "checkDescription": "Check PDF binary data for indexability and content",
+    "recommendation": "Check PDF binary data for indexability and content Recommendation: Check the Content-Type header for application/pdf and test whether the PDF content can be extracted"
+  },
+  "htmlrender_webkit_headless_proto_resource_http_header.name": {
+    "checkDescription": "Check HTTP header names for SEO-relevant headers",
+    "recommendation": "Check HTTP header names for SEO-relevant headers Recommendation: Check whether important headers such as X-Robots-Tag, Canonical, Cache-Control are present"
+  },
+  "htmlrender_webkit_headless_proto_resource_http_header.value": {
+    "checkDescription": "Check HTTP header values for correct SEO configuration",
+    "recommendation": "Check HTTP header values for correct SEO configuration Recommendation: Check X-Robots-Tag for noindex/nofollow, Cache-Control for an appropriate caching duration"
+  },
+  "image_moosedog_crawl_state.url": {
+    "checkDescription": "Check the crawled URL of the image",
+    "recommendation": "Check the crawled URL of the image Recommendation: Test the image URL for reachability and correct HTTP status."
+  },
+  "indexing_embedded_content_embedded_links_info.pageSizeInfo": {
+    "checkDescription": "Check the download size of the page including embedded resources",
+    "recommendation": "Check the download size of the page including embedded resources Recommendation: Measure the Content-Length header and the actual download size of all resources."
+  },
+  "indexing_embedded_content_embedded_links_info.sumHttpResponseLength": {
+    "checkDescription": "Check the sum of HTTP response lengths of all embedded resources",
+    "recommendation": "Check the sum of HTTP response lengths of all embedded resources Recommendation: Calculate the total size of all HTTP responses of the page and embedded resources."
+  },
+  "indexing_embedded_content_embedded_links_info.uncrawledLinkUrl": {
+    "checkDescription": "Identify uncrawled link URLs on the page",
+    "recommendation": "Identify uncrawled link URLs on the page Recommendation: Extract all links on the page and check their HTTP status; flag unreachable URLs."
+  },
+  "indexing_url_pattern_url_tree_url_feature.type": {
+    "checkDescription": "Type of a URL feature (e.g. path segment, parameter)",
+    "recommendation": "Type of a URL feature (e.g. path segment, parameter) Recommendation: Analyze the URL structure and classify parameters vs. path segments; identify URLs with many parameters"
+  },
+  "indexing_url_pattern_url_tree_url_feature.value": {
+    "checkDescription": "Value of a URL feature such as a URL parameter or segment",
+    "recommendation": "Value of a URL feature such as a URL parameter or segment Recommendation: Extract URL parameter and segment values and check for typical issues (session IDs, UTM parameters)"
+  },
+  "indexing_url_pattern_url_tree_url_tree.site": {
+    "checkDescription": "Site key of the URL tree, corresponds to the domain/site identifier",
+    "recommendation": "Site key of the URL tree, corresponds to the domain/site identifier Recommendation: Extract the domain from the URL and check for correct canonicalization"
+  },
+  "nlp_semantic_parsing_models_media_podcast_info.episodeGuid": {
+    "checkDescription": "Checks whether podcast episodes have a unique GUID in the RSS feed.",
+    "recommendation": "Checks whether podcast episodes have a unique GUID in the RSS feed. Recommendation: Validate whether each podcast episode has a unique guid in the RSS feed."
+  },
+  "quality_actions_customized_notification_payload.url": {
+    "checkDescription": "Checks whether the notification payload URL is reachable and correct.",
+    "recommendation": "Checks whether the notification payload URL is reachable and correct. Recommendation: Perform an HTTP request on the URL and check that the status code is 200."
+  },
+  "quality_sitemap_co_click_target_doc.url": {
+    "checkDescription": "URL of the co-click target document – checkable for reachability and canonicity.",
+    "recommendation": "URL of the co-click target document – checkable for reachability and canonicity. Recommendation: Check whether the URL is reachable (HTTP 200) and whether a canonical URL is set correctly."
+  },
+  "quality_sitemap_top_u_r_l.url": {
+    "checkDescription": "Check whether the URL in the sitemap is valid and reachable.",
+    "recommendation": "Check whether the URL in the sitemap is valid and reachable. Recommendation: Parse the sitemap and check each URL for HTTP 200 and canonicality."
+  },
+  "quality_sitemap_two_level_target.firstLevelTarget": {
+    "checkDescription": "First navigation level in the sitemap target path.",
+    "recommendation": "First navigation level in the sitemap target path. Recommendation: Analyze the sitemap hierarchy and check the first level for completeness."
+  },
+  "quality_sitemap_two_level_target.secondLevelTarget": {
+    "checkDescription": "Second navigation level in the sitemap target path.",
+    "recommendation": "Second navigation level in the sitemap target path. Recommendation: Analyze the sitemap hierarchy at the second level and evaluate its depth."
+  },
+  "repository_webref_simplified_forwarding_dup.url": {
+    "checkDescription": "URL of a forwarded duplicate.",
+    "recommendation": "URL of a forwarded duplicate. Recommendation: Check HTTP redirects and ensure that canonical URLs are set correctly."
+  },
+  "science_citation.downloadurl": {
+    "checkDescription": "Checks whether download URLs for the document are present and reachable",
+    "recommendation": "Checks whether download URLs for the document are present and reachable Recommendation: Extract download link URLs and validate their reachability (HTTP 200)"
+  },
+  "science_citation.NumVersions": {
+    "checkDescription": "Checks the number of known versions of the document",
+    "recommendation": "Checks the number of known versions of the document Recommendation: Use Google Scholar or the CrossRef API to determine the number of versions"
+  },
+  "anchors_anchor.fragment": {
+    "checkDescription": "URL fragment of the anchor (e.g. #section) – directly extractable from href.",
+    "recommendation": "URL fragment of the anchor (e.g. #section) – directly extractable from href. Recommendation: Parse the URL fragment from href attributes and check consistency with existing anchor IDs in the target document."
+  },
+  "anchors_anchor.offset": {
+    "checkDescription": "Offset of the first anchor term in the document – can be used as a unique ID.",
+    "recommendation": "Offset of the first anchor term in the document – can be used as a unique ID. Recommendation: Analyze the link's position in the DOM tree; distinguish links in the header vs. footer vs. content."
+  },
+  "snapshot_image_node.isExternal": {
+    "checkDescription": "Checks whether an image is linked externally (different organization) – can be approximated via URL analysis.",
+    "recommendation": "Checks whether an image is linked externally (different organization) – can be approximated via URL analysis. Recommendation: Extract image URLs and compare them with the document's domain; flag external domains."
+  },
+  "science_citation.funding": {
+    "checkDescription": "Checks whether funding sources are specified for scientific work",
+    "recommendation": "Checks whether funding sources are specified for scientific work Recommendation: Look for funding sections in the content or schema.org FundingAgency markup"
+  },
+  "science_citation.Editor": {
+    "checkDescription": "Checks whether editor information is present in the document",
+    "recommendation": "Checks whether editor information is present in the document Recommendation: Look for the Schema.org editor field or corresponding meta tags"
+  },
+  "science_citation.NumBackwardLinksFromLegal": {
+    "checkDescription": "Checks the number of backward links from legal documents",
+    "recommendation": "Checks the number of backward links from legal documents Recommendation: Use specialized legal citation databases or backlink APIs"
+  },
+  "science_citation.PublisherId": {
+    "checkDescription": "Checks whether a publisher ID is present in the document or in structured data",
+    "recommendation": "Checks whether a publisher ID is present in the document or in structured data Recommendation: Extract Schema.org publisher.identifier or corresponding meta tags"
+  },
+  "science_citation.UnmatchedInstitution": {
+    "checkDescription": "Analyzes whether institution details could not be assigned to any author",
+    "recommendation": "Analyzes whether institution details could not be assigned to any author Recommendation: Check author affiliations for complete assignment via NLP analysis"
+  },
+  "science_citation.DblpId": {
+    "checkDescription": "Checks whether a DBLP ID exists for the document",
+    "recommendation": "Checks whether a DBLP ID exists for the document Recommendation: Validate the DBLP ID via the DBLP API or a dblp.org search"
+  },
+  "science_citation.LCCN": {
+    "checkDescription": "Checks whether a Library of Congress Call Number is present",
+    "recommendation": "Checks whether a Library of Congress Call Number is present Recommendation: Look for LCCN patterns in metadata or Schema.org"
+  },
+  "science_citation.UnmatchedEmailAddr": {
+    "checkDescription": "Checks whether email addresses could not be assigned to any author",
+    "recommendation": "Checks whether email addresses could not be assigned to any author Recommendation: Extract email patterns and check their assignment to authors via regex matching"
+  },
+  "anchors_anchor_source.doclength": {
+    "checkDescription": "Document length of the source page – determinable via the Content-Length header or HTML parsing.",
+    "recommendation": "Document length of the source page – determinable via the Content-Length header or HTML parsing. Recommendation: Check the Content-Length header or count the text content of the source page."
+  },
+  "goodoc_paragraph_route.Word": {
+    "checkDescription": "Analyze words on the OCR route",
+    "recommendation": "Analyze words on the OCR route Recommendation: Extract text content from DOM text nodes and analyze the word list"
+  },
+  "repository_webref_mention_debug_info.cleanText": {
+    "checkDescription": "Cleaned text of an entity mention without HTML tags.",
+    "recommendation": "Cleaned text of an entity mention without HTML tags. Recommendation: Check HTML content for clean text quality and remove HTML tags from text passages."
+  },
+  "science_citation.NumSectionRefs": {
+    "checkDescription": "Analyzes the number of references in marked sections",
+    "recommendation": "Analyzes the number of references in marked sections Recommendation: Count references/citations within defined content sections"
+  },
+  "science_citation.NumKeyQuotes": {
+    "checkDescription": "Analyzes the number of key quotes in the document",
+    "recommendation": "Analyzes the number of key quotes in the document Recommendation: Count <blockquote> elements and marked quotes in the HTML content"
+  },
+  "science_citation.alternateabstract": {
+    "checkDescription": "Checks whether alternative abstracts in different languages are present",
+    "recommendation": "Checks whether alternative abstracts in different languages are present Recommendation: Identify multilingual abstract blocks in the content and check their language attributes"
+  },
+  "science_citation.AbstractHtmlLeftOver": {
+    "checkDescription": "Checks whether unparsable HTML/XML remnants are present in the abstract",
+    "recommendation": "Checks whether unparsable HTML/XML remnants are present in the abstract Recommendation: Validate the abstract HTML for correct structure and unrecognized entities"
+  },
+  "science_citation.TranslatedAuthorListHasEtAl": {
+    "checkDescription": "Checks whether the translated author list contains 'et al.'",
+    "recommendation": "Checks whether the translated author list contains 'et al.' Recommendation: Check translated author list fields for the presence of 'et al.'"
+  },
+  "science_citation.AuthorListHasEtAl": {
+    "checkDescription": "Checks whether the author list is abbreviated with 'et al.'",
+    "recommendation": "Checks whether the author list is abbreviated with 'et al.' Recommendation: Look for 'et al.' in the document's author list fields"
+  },
+  "science_citation.Note": {
+    "checkDescription": "Checks whether unparsed note fields contain relevant additional information",
+    "recommendation": "Checks whether unparsed note fields contain relevant additional information Recommendation: Analyze note fields for structurable information such as preprints or status details"
+  },
+  "snippet_extra_info.containUserQuotes": {
+    "checkDescription": "Check whether snippet candidates contain user quotes.",
+    "recommendation": "Check whether snippet candidates contain user quotes. Recommendation: Analyze content for quotation mark patterns and quote structures."
+  },
+  "video_content_search_caption_span_anchor_features.wordCount": {
+    "checkDescription": "Word count of the span text, tokenized with SAFT.",
+    "recommendation": "Word count of the span text, tokenized with SAFT. Recommendation: Analyze video transcript segments for word count; short segments may be less informative."
+  },
+  "video_content_search_ocr_asr_feature.minCharEditDistanceAsrText": {
+    "checkDescription": "ASR candidate with the minimum character edit distance to the OCR text.",
+    "recommendation": "ASR candidate with the minimum character edit distance to the OCR text. Recommendation: Analyze the OCR and ASR transcripts for matches."
+  },
+  "video_content_search_ocr_asr_feature.ocrTextNormalizedForCharMatch": {
+    "checkDescription": "Normalized OCR text for character matching.",
+    "recommendation": "Normalized OCR text for character matching. Recommendation: Apply OCR recognition to video frames and normalize the text."
+  },
+  "video_content_search_ocr_asr_feature.ocrTextNormalizedForCharMatchLength": {
+    "checkDescription": "Length of the normalized OCR text for matching.",
+    "recommendation": "Length of the normalized OCR text for matching. Recommendation: Measure the length of the OCR text extracted from video frames."
+  },
+  "video_content_search_ocr_asr_feature.wordOverlapAsrText": {
+    "checkDescription": "ASR text used for the word overlap calculation.",
+    "recommendation": "ASR text used for the word overlap calculation. Recommendation: Analyze the video transcript and OCR text for common words."
+  },
+  "sentence_boundary_annotations_instance.begin": {
+    "checkDescription": "Byte offset of the sentence start in the document – can be approximated via NLP analysis.",
+    "recommendation": "Byte offset of the sentence start in the document – can be approximated via NLP analysis. Recommendation: Use an NLP sentence detection tool to determine sentence boundaries."
+  },
+  "sentence_boundary_annotations_instance.contextBegin": {
+    "checkDescription": "Byte offset of the context start – can be approximated via NLP analysis.",
+    "recommendation": "Byte offset of the context start – can be approximated via NLP analysis. Recommendation: Calculate byte positions in the extracted plain text."
+  },
+  "sentence_boundary_annotations_instance.contextEnd": {
+    "checkDescription": "Byte offset of the context end – can be approximated via NLP analysis.",
+    "recommendation": "Byte offset of the context end – can be approximated via NLP analysis. Recommendation: Calculate byte positions in the extracted plain text."
+  },
+  "sentence_boundary_annotations_instance.end": {
+    "checkDescription": "Byte offset of the sentence end – can be approximated via NLP sentence boundary detection.",
+    "recommendation": "Byte offset of the sentence end – can be approximated via NLP sentence boundary detection. Recommendation: Use an NLP sentence detection tool to determine sentence boundaries."
+  },
+  "nlp_semantic_parsing_local_joiner.text": {
+    "checkDescription": "The original joiner string from the tokenized query – provides hints about connecting words in search queries.",
+    "recommendation": "The original joiner string from the tokenized query – provides hints about connecting words in search queries. Recommendation: Analyze connecting words in search queries (e.g. 'and', 'or', 'with') and optimize content accordingly for long-tail queries."
+  },
+  "nlp_semantic_parsing_local_price_constraint.expensive": {
+    "checkDescription": "Checks whether the content contains 'expensive/premium' signals.",
+    "recommendation": "Checks whether the content contains 'expensive/premium' signals. Recommendation: Analyze whether premium price signals are present in the content and optimized for high-price-segment queries."
+  },
+  "nlp_semantic_parsing_local_price_constraint.moderatelyPriced": {
+    "checkDescription": "Checks whether the content contains 'mid-price segment' signals.",
+    "recommendation": "Checks whether the content contains 'mid-price segment' signals. Recommendation: Check whether mid-segment price positioning signals are recognizable in the content."
+  },
+  "nlp_semantic_parsing_models_media_rental_info.activatePeriodSec": {
+    "checkDescription": "Checks whether the activation period for rental content is communicated in the content.",
+    "recommendation": "Checks whether the activation period for rental content is communicated in the content. Recommendation: Check whether rental periods are explicitly stated in the content and/or Schema.org markup."
+  },
+  "nlp_semantic_parsing_models_media_rental_info.grantPeriodSec": {
+    "checkDescription": "Checks whether the start period for rental content is communicated in the content.",
+    "recommendation": "Checks whether the start period for rental content is communicated in the content. Recommendation: Check whether the access period after purchase is clearly communicated in the content."
+  },
+  "science_citation.ArxivSection": {
+    "checkDescription": "Checks whether an ArXiv section is specified in the document",
+    "recommendation": "Checks whether an ArXiv section is specified in the document Recommendation: Extract the ArXiv section from URL patterns or metadata"
+  },
+  "knowledge_graph_triple_obj.doubleValue": {
+    "checkDescription": "Numeric double values in Knowledge Graph triples",
+    "recommendation": "Numeric double values in Knowledge Graph triples Recommendation: Check numeric properties in structured data for correctness"
+  },
+  "knowledge_graph_triple_obj.int64Value": {
+    "checkDescription": "Integer values in Knowledge Graph triples",
+    "recommendation": "Integer values in Knowledge Graph triples Recommendation: Check numeric integer fields in structured data for correctness"
+  },
+  "science_citation.FileCreationYear": {
+    "checkDescription": "Checks the file's creation year via HTTP headers or document metadata",
+    "recommendation": "Checks the file's creation year via HTTP headers or document metadata Recommendation: Read Last-Modified or Creation-Date from HTTP headers or PDF metadata"
+  },
+  "science_citation.FileCreationMonth": {
+    "checkDescription": "Checks the file's creation month (zero-based index)",
+    "recommendation": "Checks the file's creation month (zero-based index) Recommendation: Extract the month from the HTTP Last-Modified header or file metadata"
+  },
+  "science_citation.OnlineDay": {
+    "checkDescription": "Checks whether an online publication day is specified",
+    "recommendation": "Checks whether an online publication day is specified Recommendation: Extract datePublished from Schema.org or OpenGraph tags"
+  },
+  "science_citation.FileCreationDay": {
+    "checkDescription": "Checks the file's creation day",
+    "recommendation": "Checks the file's creation day Recommendation: Extract the day from the HTTP Last-Modified header or document metadata"
+  },
+  "science_citation.CitationSourceCrawlTimestamp": {
+    "checkDescription": "Checks the crawl timestamp of the citation source",
+    "recommendation": "Checks the crawl timestamp of the citation source Recommendation: Compare the crawl timestamp with the current date for freshness evaluation"
+  },
+  "science_citation.OnlineMonth": {
+    "checkDescription": "Checks whether an online publication month is specified (zero-based)",
+    "recommendation": "Checks whether an online publication month is specified (zero-based) Recommendation: Extract the month from Schema.org datePublished or corresponding meta tags"
+  },
+  "indexing_converter_localized_alternate_name.urlEncoding": {
+    "checkDescription": "Check the URL encoding of the hreflang URL",
+    "recommendation": "Check the URL encoding of the hreflang URL Recommendation: Check the URL for correct percent-encoding."
+  },
+  "indexing_dups_computed_localized_alternate_names_locale_entry.urlEncoding": {
+    "checkDescription": "Check the URL encoding of the alternate URL",
+    "recommendation": "Check the URL encoding of the alternate URL Recommendation: Validate the URL for correct percent-encoding."
+  },
+  "nlp_semantic_parsing_datetime_time_zone.timezone": {
+    "checkDescription": "Time zone for semantic datetime parsing",
+    "recommendation": "Time zone for semantic datetime parsing Recommendation: Check time zone information in date/time markup (Schema.org) and hreflang for consistency"
+  },
+  "science_citation.translatedauthor": {
+    "checkDescription": "Checks whether translated author information is present",
+    "recommendation": "Checks whether translated author information is present Recommendation: Check Schema.org author fields for multilingual alternate names"
+  },
+  "science_citation.PatentCountry": {
+    "checkDescription": "Checks whether a two-letter country code for the patent issuance is specified",
+    "recommendation": "Checks whether a two-letter country code for the patent issuance is specified Recommendation: Extract country codes from structured patent data or meta tags"
+  },
+  "science_citation.PublisherAddress": {
+    "checkDescription": "Checks whether a publisher address is specified in the document or in Schema.org",
+    "recommendation": "Checks whether a publisher address is specified in the document or in Schema.org Recommendation: Look for schema.org Publisher.address or address details in the legal notice (imprint)"
+  },
+  "anchors_anchor.compressedImageUrls": {
+    "checkDescription": "Image URLs within an anchor – directly extractable from HTML.",
+    "recommendation": "Image URLs within an anchor – directly extractable from HTML. Recommendation: Check links to image content; analyze alt attributes of linked images."
+  },
+  "goodoc_document_page.Height": {
+    "checkDescription": "Page height in pixels for rendered documents",
+    "recommendation": "Page height in pixels for rendered documents Recommendation: Check image dimensions via Content-Length and rendering output"
+  },
+  "goodoc_document_page.HorizontalDpi": {
+    "checkDescription": "Check the horizontal resolution of the document in DPI",
+    "recommendation": "Check the horizontal resolution of the document in DPI Recommendation: Analyze image metadata for DPI values using EXIF tools"
+  },
+  "goodoc_document_page.VerticalDpi": {
+    "checkDescription": "Check the vertical resolution of the document in DPI",
+    "recommendation": "Check the vertical resolution of the document in DPI Recommendation: Analyze image metadata for DPI values using EXIF tools"
+  },
+  "goodoc_document_page.Width": {
+    "checkDescription": "Page width in pixels for rendered documents",
+    "recommendation": "Page width in pixels for rendered documents Recommendation: Check image dimensions via rendering output"
+  },
+  "image_data_thumbnail.size": {
+    "checkDescription": "Check the file size of the thumbnail in bytes",
+    "recommendation": "Check the file size of the thumbnail in bytes Recommendation: Measure the Content-Length header or the actual file size on download."
+  },
+  "image_data_thumbnail.type": {
+    "checkDescription": "Check the thumbnail type (e.g. format category)",
+    "recommendation": "Check the thumbnail type (e.g. format category) Recommendation: Analyze the MIME type and file extension of the thumbnail URL."
+  },
+  "quality_calypso_apps_universal_image.height": {
+    "checkDescription": "Checks whether image heights are specified in the HTML.",
+    "recommendation": "Checks whether image heights are specified in the HTML. Recommendation: Check whether the height attribute is set on image tags to avoid layout shifts."
+  },
+  "quality_calypso_apps_universal_image.width": {
+    "checkDescription": "Checks whether image widths are specified in the HTML.",
+    "recommendation": "Checks whether image widths are specified in the HTML. Recommendation: Check whether the width attribute is set on image tags to avoid CLS."
+  },
+  "quality_calypso_apps_universal_image_data.enhancedImage": {
+    "checkDescription": "Checks whether an iOS cover image is present and reachable.",
+    "recommendation": "Checks whether an iOS cover image is present and reachable. Recommendation: Check whether app cover images are embedded in sufficient quality and are reachable."
+  },
+  "quality_shopping_shopping_attachment_p_block_image_info.height": {
+    "checkDescription": "Image height of the PBlock product image – verifiable via img attribute or Schema.org.",
+    "recommendation": "Image height of the PBlock product image – verifiable via img attribute or Schema.org. Recommendation: Check whether img tags have height attributes or Schema.org ImageObject.height is present."
+  },
+  "quality_shopping_shopping_attachment_p_block_image_info.width": {
+    "checkDescription": "Image width of the PBlock product image – verifiable via img attribute or Schema.org.",
+    "recommendation": "Image width of the PBlock product image – verifiable via img attribute or Schema.org. Recommendation: Check whether img tags have width attributes or Schema.org ImageObject.width is present."
+  },
+  "video_content_search_anchor_thumbnail_info.colorEntropy": {
+    "checkDescription": "Measure the color entropy of the thumbnail color distribution as a measure of visual diversity.",
+    "recommendation": "Measure the color entropy of the thumbnail color distribution as a measure of visual diversity. Recommendation: Analyze thumbnail images and calculate the color distribution entropy."
+  },
+  "video_content_search_anchor_thumbnail_info.thumbnailBytes": {
+    "checkDescription": "Check the raw data of the thumbnail image.",
+    "recommendation": "Check the raw data of the thumbnail image. Recommendation: Fetch the thumbnail URL and check image size, format and quality."
+  },
+  "video_content_search_anchors_thumbnail_info.thumbnailDiversity": {
+    "checkDescription": "Assess the diversity of a video's thumbnail images.",
+    "recommendation": "Assess the diversity of a video's thumbnail images. Recommendation: Calculate cosine similarity between thumbnails and determine a diversity score."
+  },
+  "video_content_search_caption_span_anchor_features.postGapInMs": {
+    "checkDescription": "Time gap to the next anchor in the video in milliseconds.",
+    "recommendation": "Time gap to the next anchor in the video in milliseconds. Recommendation: Analyze video transcript timestamps and calculate gaps between anchors."
+  },
+  "video_content_search_caption_span_anchor_features.preGapInMs": {
+    "checkDescription": "Time gap to the previous anchor in the video in milliseconds.",
+    "recommendation": "Time gap to the previous anchor in the video in milliseconds. Recommendation: Analyze video transcript timestamps and calculate gaps between anchors."
+  },
+  "video_content_search_dolphin_features.timeMs": {
+    "checkDescription": "Timestamp of the video anchor in milliseconds.",
+    "recommendation": "Timestamp of the video anchor in milliseconds. Recommendation: Extract video anchor timestamps from the transcript or chapter markers."
+  },
+  "deep_crop_pixels.x0": {
+    "checkDescription": "Crop box left X coordinate for the image section",
+    "recommendation": "Crop box left X coordinate for the image section Recommendation: Use computer vision tools to analyze optimal crop areas of an image"
+  },
+  "deep_crop_pixels.x1": {
+    "checkDescription": "Crop box right X coordinate for the image section",
+    "recommendation": "Crop box right X coordinate for the image section Recommendation: Use computer vision tools to analyze optimal crop areas of an image"
+  },
+  "deep_crop_pixels.y0": {
+    "checkDescription": "Crop box top Y coordinate for the image section",
+    "recommendation": "Crop box top Y coordinate for the image section Recommendation: Use computer vision tools to analyze optimal crop areas of an image"
+  },
+  "deep_crop_pixels.y1": {
+    "checkDescription": "Crop box bottom Y coordinate for the image section",
+    "recommendation": "Crop box bottom Y coordinate for the image section Recommendation: Use computer vision tools to analyze optimal crop areas of an image"
+  },
+  "snapshot_image_node.boundingBox": {
+    "checkDescription": "Position and size of an image node on the page – can be approximated via rendering/DOM analysis.",
+    "recommendation": "Position and size of an image node on the page – can be approximated via rendering/DOM analysis. Recommendation: Use a headless browser (e.g. Puppeteer) to determine the bounding boxes of images."
+  },
+  "video_video_stream.codecId": {
+    "checkDescription": "Video codec ID – can be approximated using media analysis tools such as ffprobe.",
+    "recommendation": "Video codec ID – can be approximated using media analysis tools such as ffprobe. Recommendation: Use ffprobe or similar tools for codec detection."
+  },
+  "video_video_stream.fps": {
+    "checkDescription": "Frames per second of the video – can be determined using media analysis tools.",
+    "recommendation": "Frames per second of the video – can be determined using media analysis tools. Recommendation: Use ffprobe or the YouTube Data API for FPS analysis."
+  },
+  "anchors_anchor.fontsize": {
+    "checkDescription": "Font size of the anchor text – can be determined from CSS.",
+    "recommendation": "Font size of the anchor text – can be determined from CSS. Recommendation: Analyze the CSS font size of anchor elements; unusually small fonts can be a spam signal."
+  },
+  "goodoc_document_header.font": {
+    "checkDescription": "Check which fonts are used in the document",
+    "recommendation": "Check which fonts are used in the document Recommendation: Extract all font-family definitions from CSS and the DOM and check for web font usage"
+  },
+  "goodoc_document_header_font.FontName": {
+    "checkDescription": "Check which fonts are used in the document",
+    "recommendation": "Check which fonts are used in the document Recommendation: Extract all @font-face and font-family declarations from CSS stylesheets"
+  },
+  "goodoc_document_page.stats": {
+    "checkDescription": "Analyze statistical page characteristics such as font size and line spacing",
+    "recommendation": "Analyze statistical page characteristics such as font size and line spacing Recommendation: Extract CSS properties such as font-size and line-height from the DOM and calculate averages"
+  },
+  "goodoc_document_page_block.BlockType": {
+    "checkDescription": "Analyze the type of content block (text, image, table, etc.)",
+    "recommendation": "Analyze the type of content block (text, image, table, etc.) Recommendation: Classify DOM elements by block type (div, p, table, img) using pattern matching"
+  },
+  "htmlrender_webkit_headless_proto_render_tree_node.inlineTextBox": {
+    "checkDescription": "Analyze inline text boxes in the render tree",
+    "recommendation": "Analyze inline text boxes in the render tree Recommendation: Analyze text flow and inline elements in the DOM for correct structure"
+  },
+  "quality_actions_customized_notification_button.label": {
+    "checkDescription": "Checks whether notification button labels are clear and action-oriented.",
+    "recommendation": "Checks whether notification button labels are clear and action-oriented. Recommendation: Analyze button texts for clarity and call-to-action quality."
+  },
+  "quality_actions_customized_notification_button.tapAction": {
+    "checkDescription": "Checks whether notification button actions have a valid URL.",
+    "recommendation": "Checks whether notification button actions have a valid URL. Recommendation: Check whether the linked URL is reachable and does not return a 404."
+  },
+  "science_citation.AuthorMetatagLeftOver": {
+    "checkDescription": "Checks whether unparsed leftovers from author meta tags are present",
+    "recommendation": "Checks whether unparsed leftovers from author meta tags are present Recommendation: Check <meta name='author'> for complete parsability"
+  },
+  "science_citation.TitleHtmlLeftOver": {
+    "checkDescription": "Checks whether unparsable HTML/XML leftovers are present in the title",
+    "recommendation": "Checks whether unparsable HTML/XML leftovers are present in the title Recommendation: Validate the title HTML for unknown entities and malformed tags"
+  },
+  "htmlrender_webkit_headless_proto_image.height": {
+    "checkDescription": "Check the height of the rendered page image",
+    "recommendation": "Check the height of the rendered page image Recommendation: Measure the page height via headless browser rendering"
+  },
+  "htmlrender_webkit_headless_proto_image.pageNumber": {
+    "checkDescription": "Analyze the page number for multi-page documents",
+    "recommendation": "Analyze the page number for multi-page documents Recommendation: Analyze pagination elements in the DOM for page numbering"
+  },
+  "htmlrender_webkit_headless_proto_image.width": {
+    "checkDescription": "Check the width of the rendered page image",
+    "recommendation": "Check the width of the rendered page image Recommendation: Measure the page width via headless browser rendering"
+  },
+  "htmlrender_webkit_headless_proto_offset.unit": {
+    "checkDescription": "Check the unit of the CSS offset value (px, em, rem, etc.)",
+    "recommendation": "Check the unit of the CSS offset value (px, em, rem, etc.) Recommendation: Analyze CSS properties for the units used and check for consistent unit usage"
+  },
+  "htmlrender_webkit_headless_proto_offset.value": {
+    "checkDescription": "Analyze the numeric offset value from CSS",
+    "recommendation": "Analyze the numeric offset value from CSS Recommendation: Extract numeric values from CSS offset properties"
+  },
+  "htmlrender_webkit_headless_proto_rectangle.bottom": {
+    "checkDescription": "Check the bottom edge of a rendered rectangle element",
+    "recommendation": "Check the bottom edge of a rendered rectangle element Recommendation: Extract the bottom CSS property from computed styles"
+  },
+  "htmlrender_webkit_headless_proto_rectangle.left": {
+    "checkDescription": "Check the left edge of a rendered rectangle element",
+    "recommendation": "Check the left edge of a rendered rectangle element Recommendation: Extract the left CSS property from computed styles"
+  },
+  "htmlrender_webkit_headless_proto_rectangle.right": {
+    "checkDescription": "Check the right edge of a rendered rectangle element",
+    "recommendation": "Check the right edge of a rendered rectangle element Recommendation: Extract the right CSS property from computed styles"
+  },
+  "htmlrender_webkit_headless_proto_rectangle.top": {
+    "checkDescription": "Check the top edge of a rendered rectangle element",
+    "recommendation": "Check the top edge of a rendered rectangle element Recommendation: Extract the top CSS property from computed styles"
+  },
+  "htmlrender_webkit_headless_proto_render_event.frameResize": {
+    "checkDescription": "Analyze frame resize events during rendering",
+    "recommendation": "Analyze frame resize events during rendering Recommendation: Monitor JavaScript resize events with a headless browser and check for layout instability"
+  },
+  "htmlrender_webkit_headless_proto_render_event.windowOpen": {
+    "checkDescription": "Analyze window.open() calls triggered during rendering",
+    "recommendation": "Analyze window.open() calls triggered during rendering Recommendation: Analyze JavaScript for window.open() calls and check whether popups affect the crawler"
+  },
+  "htmlrender_webkit_headless_proto_render_tree_node.box": {
+    "checkDescription": "Check the render box of a DOM element",
+    "recommendation": "Check the render box of a DOM element Recommendation: Determine getBoundingClientRect() for DOM elements with a headless browser"
+  },
+  "htmlrender_webkit_headless_proto_render_tree_node.styleIndex": {
+    "checkDescription": "Analyze the style reference for rendered elements",
+    "recommendation": "Analyze the style reference for rendered elements Recommendation: Extract computed CSS styles for DOM elements"
+  },
+  "anchors_anchor_source.ipaddr": {
+    "checkDescription": "IP address of the source page (deprecated) – determinable via DNS lookup.",
+    "recommendation": "IP address of the source page (deprecated) – determinable via DNS lookup. Recommendation: Perform a DNS lookup of the linking domain and check the IP against spam networks."
+  },
+  "anchors_anchor_source.packedIpaddress": {
+    "checkDescription": "Packed IP address of the source page – determinable via DNS lookup.",
+    "recommendation": "Packed IP address of the source page – determinable via DNS lookup. Recommendation: Perform a DNS lookup for the linking domain; check IP ranges against known spam networks."
+  },
+  "htmlrender_webkit_headless_proto_cookie.httpOnly": {
+    "checkDescription": "Check whether cookies have the HttpOnly flag set",
+    "recommendation": "Check whether cookies have the HttpOnly flag set Recommendation: Analyze Set-Cookie headers for the HttpOnly flag on security-relevant cookies"
+  },
+  "htmlrender_webkit_headless_proto_cookie.sameSite": {
+    "checkDescription": "Check whether cookies have the SameSite attribute set for security",
+    "recommendation": "Check whether cookies have the SameSite attribute set for security Recommendation: Analyze Set-Cookie headers for the SameSite attribute (Strict/Lax/None)"
+  },
+  "htmlrender_webkit_headless_proto_cookie.secure": {
+    "checkDescription": "Check whether cookies have the Secure flag set",
+    "recommendation": "Check whether cookies have the Secure flag set Recommendation: Analyze Set-Cookie headers for the Secure flag on HTTPS pages"
+  },
+  "htmlrender_webkit_headless_proto_d_o_m_storage_item.securityOrigin": {
+    "checkDescription": "Check the security origin of the DOM storage entry",
+    "recommendation": "Check the security origin of the DOM storage entry Recommendation: Check whether DOM storage entries come from the correct origin"
+  },
+  "spam_muppetjoins_muppet_signals.site": {
+    "checkDescription": "Domain/site identifier for site-level spam signals.",
+    "recommendation": "Domain/site identifier for site-level spam signals. Recommendation: Extract the domain and check it against known spam databases (e.g. Google Safe Browsing API)."
+  },
+  "repository_annotations_rdfa_rdfa_rich_snippets_application_rank.chartType": {
+    "checkDescription": "Chart type of the app ranking (e.g. Top Free, Top Paid).",
+    "recommendation": "Chart type of the app ranking (e.g. Top Free, Top Paid). Recommendation: Check app ranking information in the structured data for the chart type."
+  },
+  "science_citation.PatentPublicationNumber": {
+    "checkDescription": "Checks whether a patent number is present in the document",
+    "recommendation": "Checks whether a patent number is present in the document Recommendation: Extract patent numbers from meta tags or structured data via Schema.org Patent"
+  },
+  "science_citation.ISBNVariant": {
+    "checkDescription": "Checks whether ISBN variants are present in the document or in structured data",
+    "recommendation": "Checks whether ISBN variants are present in the document or in structured data Recommendation: Look for ISBN patterns (ISBN-10/ISBN-13) in the HTML content or in Schema.org Book markup"
+  },
+  "science_citation.Number": {
+    "checkDescription": "Checks whether an issue number is specified in structured data",
+    "recommendation": "Checks whether an issue number is specified in structured data Recommendation: Check Schema.org issueNumber or corresponding meta tags"
+  },
+  "science_citation.PMID": {
+    "checkDescription": "Checks whether a PubMed ID is present in the document",
+    "recommendation": "Checks whether a PubMed ID is present in the document Recommendation: Look for the PMID pattern in meta tags, Schema.org or HTML content"
+  },
+  "science_citation.ISSN": {
+    "checkDescription": "Checks whether an ISSN is present in the document or in structured data",
+    "recommendation": "Checks whether an ISSN is present in the document or in structured data Recommendation: Look for the ISSN pattern in the HTML or in Schema.org Periodical markup"
+  },
+  "science_citation.PMCID": {
+    "checkDescription": "Checks whether a PubMed Central ID is present in the document",
+    "recommendation": "Checks whether a PubMed Central ID is present in the document Recommendation: Look for the PMCID pattern in meta tags or structured data"
+  },
+  "science_citation.ConferenceNumber": {
+    "checkDescription": "Checks whether a conference number is specified in the document",
+    "recommendation": "Checks whether a conference number is specified in the document Recommendation: Look for conference number patterns in Schema.org Event markup or HTML content"
+  },
+  "science_citation.Series": {
+    "checkDescription": "Checks whether a series name is present in the document",
+    "recommendation": "Checks whether a series name is present in the document Recommendation: Check Schema.org isPartOf or seriesName fields"
+  },
+  "science_citation.Chapter": {
+    "checkDescription": "Checks whether a chapter name is present in structured data",
+    "recommendation": "Checks whether a chapter name is present in structured data Recommendation: Look for Schema.org Chapter markup or corresponding meta information"
+  },
+  "science_citation.PatentApplicationNumber": {
+    "checkDescription": "Checks whether a patent application number is present in the document",
+    "recommendation": "Checks whether a patent application number is present in the document Recommendation: Look for patent application number patterns in metadata or Schema.org"
+  },
+  "science_citation.JOI": {
+    "checkDescription": "Checks whether a Journal Online Identifier is present",
+    "recommendation": "Checks whether a Journal Online Identifier is present Recommendation: Look for JOI identifiers in meta tags or structured data"
+  },
+  "science_citation.OtherID": {
+    "checkDescription": "Checks whether other document identifiers (e.g. ERIC, TR number) are present",
+    "recommendation": "Checks whether other document identifiers (e.g. ERIC, TR number) are present Recommendation: Look for known identifier patterns (ERIC, TR) in metadata"
+  },
+  "science_citation.PublicationVenueVariant": {
+    "checkDescription": "Checks whether variants of the publication venue are specified",
+    "recommendation": "Checks whether variants of the publication venue are specified Recommendation: Extract alternative venue names from structured data"
+  },
+  "science_citation.SICI": {
+    "checkDescription": "Checks whether a Serial Item Contribution Identifier is present",
+    "recommendation": "Checks whether a Serial Item Contribution Identifier is present Recommendation: Look for the SICI pattern in metadata or structured data"
+  },
+  "science_citation.PatentClassification": {
+    "checkDescription": "Checks whether patent classifications are specified in the document",
+    "recommendation": "Checks whether patent classifications are specified in the document Recommendation: Look for IPC/CPC patent classification patterns in metadata"
+  },
+  "science_citation.PatentNumber": {
+    "checkDescription": "Checks whether a patent number following the USPTO/EPO/JPO scheme is specified",
+    "recommendation": "Checks whether a patent number following the USPTO/EPO/JPO scheme is specified Recommendation: Validate the patent number format against USPTO/EPO/JPO schemes"
+  },
+  "science_citation.Volume": {
+    "checkDescription": "Checks whether the volume number is specified in the document or in structured data",
+    "recommendation": "Checks whether the volume number is specified in the document or in structured data Recommendation: Extract Schema.org volumeNumber or corresponding meta tags"
+  },
+  "science_citation.Edition": {
+    "checkDescription": "Checks whether an edition name is present in the document",
+    "recommendation": "Checks whether an edition name is present in the document Recommendation: Look for Schema.org bookEdition or edition fields"
+  },
+  "science_citation.ISBN": {
+    "checkDescription": "Checks whether an ISBN is present in the document or in structured data",
+    "recommendation": "Checks whether an ISBN is present in the document or in structured data Recommendation: Look for the ISBN-10/ISBN-13 pattern in meta tags or the Schema.org isbn field"
+  },
+  "science_citation.PatentOffice": {
+    "checkDescription": "Checks which patent office is relevant for the document",
+    "recommendation": "Checks which patent office is relevant for the document Recommendation: Extract the patent office designation from patent-specific metadata"
+  },
+  "science_citation.DspaceID": {
+    "checkDescription": "Checks whether a DSpace Handle.net ID is present",
+    "recommendation": "Checks whether a DSpace Handle.net ID is present Recommendation: Look for the Handle.net URL pattern (hdl.handle.net) in the document"
+  },
+  "science_citation.ISSNVariant": {
+    "checkDescription": "Checks whether ISSN variants are present in the document or in structured data",
+    "recommendation": "Checks whether ISSN variants are present in the document or in structured data Recommendation: Look for ISSN pattern variants (print ISSN, online ISSN) in metadata"
+  },
+  "science_citation.ConferenceId": {
+    "checkDescription": "Checks whether a conference identifier is present",
+    "recommendation": "Checks whether a conference identifier is present Recommendation: Extract the conference ISSN or ID from structured data"
+  },
+  "science_citation.Pages": {
+    "checkDescription": "Checks whether page information is present in the document or in structured data",
+    "recommendation": "Checks whether page information is present in the document or in structured data Recommendation: Extract Schema.org pagination or pageStart/pageEnd fields"
+  },
+  "video_content_search_similarity_match_info.stepIndex": {
+    "checkDescription": "Checks whether HowTo steps are correctly indexed and present in the Schema.org markup",
+    "recommendation": "Checks whether HowTo steps are correctly indexed and present in the Schema.org markup Recommendation: Count HowToStep elements in the Schema.org markup and check their order"
+  },
+  "anchors_anchor.targetUrlEncoding": {
+    "checkDescription": "URL encoding of the anchor target – determinable from HTTP response headers.",
+    "recommendation": "URL encoding of the anchor target – determinable from HTTP response headers. Recommendation: Check the Content-Type header and charset declarations for consistency."
+  },
+  "crawler_changerate_url_history.url": {
+    "checkDescription": "URL in the change history – directly available.",
+    "recommendation": "URL in the change history – directly available. Recommendation: Check the URL format for technical correctness (no special characters, correct scheme)."
+  },
+  "htmlrender_webkit_headless_proto_cookie.domain": {
+    "checkDescription": "Check whether cookies are set correctly for the domain",
+    "recommendation": "Check whether cookies are set correctly for the domain Recommendation: Analyze Set-Cookie headers for the Domain attribute and check for cross-domain cookies"
+  },
+  "htmlrender_webkit_headless_proto_cookie.expiration": {
+    "checkDescription": "Check whether cookie expiration dates are set correctly",
+    "recommendation": "Check whether cookie expiration dates are set correctly Recommendation: Analyze Set-Cookie headers for Expires/Max-Age attributes"
+  },
+  "htmlrender_webkit_headless_proto_cookie.name": {
+    "checkDescription": "Analyze cookie names and check for problematic tracking cookies",
+    "recommendation": "Analyze cookie names and check for problematic tracking cookies Recommendation: Extract cookie names from Set-Cookie headers and check for known tracking cookie patterns"
+  },
+  "htmlrender_webkit_headless_proto_cookie.path": {
+    "checkDescription": "Check whether cookie paths are configured correctly",
+    "recommendation": "Check whether cookie paths are configured correctly Recommendation: Analyze Set-Cookie headers for the Path attribute"
+  },
+  "htmlrender_webkit_headless_proto_cookie.value": {
+    "checkDescription": "Check cookie values for problematic content or excessive size",
+    "recommendation": "Check cookie values for problematic content or excessive size Recommendation: Check cookie value size against the 4096-byte limit"
+  },
+  "htmlrender_webkit_headless_proto_d_o_m_storage_item.key": {
+    "checkDescription": "Analyze LocalStorage/SessionStorage keys to see whether they affect crawlers",
+    "recommendation": "Analyze LocalStorage/SessionStorage keys to see whether they affect crawlers Recommendation: Analyze JavaScript code for localStorage.setItem/getItem calls and check whether content depends on them"
+  },
+  "htmlrender_webkit_headless_proto_d_o_m_storage_item.value": {
+    "checkDescription": "Check DOM storage values for content dependencies",
+    "recommendation": "Check DOM storage values for content dependencies Recommendation: Analyze whether page content relies on LocalStorage values (rendering comparison with/without storage)"
+  },
+  "htmlrender_webkit_headless_proto_render_event.scriptOriginUrl": {
+    "checkDescription": "Check the URL of the script that triggered a render event",
+    "recommendation": "Check the URL of the script that triggered a render event Recommendation: Analyze script src attributes and external script sources for problematic third-party scripts"
+  },
+  "science_index_signal.HtmlTitleFp": {
+    "checkDescription": "Check the fingerprint of the HTML title to determine whether the version matches the index.",
+    "recommendation": "Check the fingerprint of the HTML title to determine whether the version matches the index. Recommendation: Extract the HTML title and calculate a fingerprint to detect changes."
+  },
+  "video_content_search_dolphin_features.url": {
+    "checkDescription": "URL of the video in the Dolphin inference context.",
+    "recommendation": "URL of the video in the Dolphin inference context. Recommendation: Check the URL for correct structure, length and canonical tags."
+  },
+  "anchors.anchor": {
+    "checkDescription": "List of all anchor objects pointing to a target page – central to link analysis.",
+    "recommendation": "CRITICAL: List of all anchor objects pointing to a target page – central to link analysis. Recommendation: Use backlink APIs (Ahrefs, Moz, SEMrush) to approximate the anchor list."
+  },
+  "anchors_anchor.origText": {
+    "checkDescription": "Original anchor text including capitalization and punctuation.",
+    "recommendation": "CRITICAL: Original anchor text including capitalization and punctuation. Recommendation: Extract anchor text from <a> tags and check it for relevance, keyword usage and variation."
+  },
+  "anchors_anchor.text": {
+    "checkDescription": "Space-separated anchor text – directly extractable from HTML.",
+    "recommendation": "CRITICAL: Space-separated anchor text – directly extractable from HTML. Recommendation: Extract anchor texts from all <a> tags and analyze them for keyword relevance and diversity."
+  },
+  "anchors_anchor_source.pagerank": {
+    "checkDescription": "PageRank of the source page (uint16 scale) – approximable via backlink APIs (DR, DA).",
+    "recommendation": "CRITICAL: PageRank of the source page (uint16 scale) – approximable via backlink APIs (DR, DA). Recommendation: Use Domain Rating (Ahrefs), Domain Authority (Moz) or similar metrics as a proxy."
+  },
+  "nlp_semantic_parsing_models_media_podcast_info.title": {
+    "checkDescription": "Checks whether the podcast title is correct and consistent in the RSS feed and on the website.",
+    "recommendation": "CRITICAL: Checks whether the podcast title is correct and consistent in the RSS feed and on the website. Recommendation: Compare the podcast title in the RSS feed with the page title and Schema.org markup for consistency."
+  },
+  "science_index_signal.Title": {
+    "checkDescription": "Check the article title used when the HTML title is insufficient.",
+    "recommendation": "CRITICAL: Check the article title used when the HTML title is insufficient. Recommendation: Check the HTML title tag for meaningfulness, length (50-60 characters) and keyword relevance."
+  },
+  "sentence_boundary_annotations_instance.text": {
+    "checkDescription": "Original UTF-8 document text for a text span – directly extractable from the HTML.",
+    "recommendation": "CRITICAL: Original UTF-8 document text for a text span – directly extractable from the HTML. Recommendation: Fetch the HTML, extract plain text and segment it into sentences."
+  },
+  "snapshot_snapshot_document.textNode": {
+    "checkDescription": "Text node in the snapshot document – directly extractable via HTML parsing.",
+    "recommendation": "CRITICAL: Text node in the snapshot document – directly extractable via HTML parsing. Recommendation: Parse the HTML, extract all visible text nodes and analyze them for quality."
+  },
+  "science_citation.Title": {
+    "checkDescription": "Checks whether a title is present in the document and optimized",
+    "recommendation": "CRITICAL: Checks whether a title is present in the document and optimized Recommendation: Extract the <title> tag and check length (50-60 characters), keyword presence and duplicates"
+  },
+  "snapshot_snapshot_document.title": {
+    "checkDescription": "Title of the snapshot document – directly extractable from the title tag.",
+    "recommendation": "CRITICAL: Title of the snapshot document – directly extractable from the title tag. Recommendation: Fetch the HTML and read the title tag; check length, uniqueness and keyword relevance."
+  },
+  "quality_shopping_shopping_attachment_product.offer": {
+    "checkDescription": "Product offer – verifiable via Schema.org Offer with price and availability.",
+    "recommendation": "CRITICAL: Product offer – verifiable via Schema.org Offer with price and availability. Recommendation: Check whether Schema.org Offer is correctly implemented with price, priceCurrency and availability."
+  },
+  "science_index_signal.RemoveLink": {
+    "checkDescription": "Check whether a URL is identified as an error page or broken landing page (deprecated).",
+    "recommendation": "CRITICAL: Check whether a URL is identified as an error page or broken landing page (deprecated). Recommendation: Check the HTTP status code: 4xx/5xx indicate error pages that should be removed from the index."
+  },
+  "sitemap_d_e_p_r_e_c_a_t_e_d_target.url": {
+    "checkDescription": "URL of the sitemap entry – can be extracted directly from the sitemap XML and validated.",
+    "recommendation": "CRITICAL: URL of the sitemap entry – can be extracted directly from the sitemap XML and validated. Recommendation: Parse the sitemap XML, extract all URLs and check them for reachability (HTTP 200)."
+  }
+}

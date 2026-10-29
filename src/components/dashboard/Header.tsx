@@ -7,6 +7,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { PropertySelector } from "@/components/ui/PropertySelector";
 import { useProperty } from "@/contexts/PropertyContext";
+import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher";
+import { useMessages } from "@/i18n/I18nProvider";
+import { commonMessages } from "@/i18n/messages/common";
 
 interface HeaderProps {
   user: {
@@ -23,6 +26,7 @@ export function Header({ user }: HeaderProps) {
   const { selectedProperty, setSelectedProperty } = useProperty();
   const { data: session } = useSession();
   const pathname = usePathname();
+  const t = useMessages(commonMessages).header;
   
   const hasAdminRights = session?.user?.role === "superadmin" || session?.user?.role === "agentur";
   const isAdminActive = pathname.startsWith("/admin");
@@ -71,9 +75,11 @@ export function Header({ user }: HeaderProps) {
                 <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
               </svg>
-              <span className="hidden sm:inline">Connect with Google</span>
+              <span className="hidden sm:inline">{t.connectGoogle}</span>
             </button>
           )}
+          <LanguageSwitcher />
+
           {/* Direct Logout Button */}
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
@@ -82,7 +88,7 @@ export function Header({ user }: HeaderProps) {
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
-            <span className="hidden sm:inline">Abmelden</span>
+            <span className="hidden sm:inline">{t.signOut}</span>
           </button>
 
           {/* User Menu */}
@@ -94,7 +100,7 @@ export function Header({ user }: HeaderProps) {
               {!showFallback ? (
                 <Image
                   src={user.image!}
-                  alt={user.name || "Profilbild"}
+                  alt={user.name || t.profileImage}
                   width={32}
                   height={32}
                   className="h-8 w-8 rounded-full bg-slate-200 dark:bg-slate-700"
@@ -129,7 +135,7 @@ export function Header({ user }: HeaderProps) {
             {showDropdown && (
               <div className="absolute right-0 mt-2 w-56 rounded-lg bg-white dark:bg-slate-700 shadow-lg ring-1 ring-slate-200 dark:ring-slate-600 py-1">
                 <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-600">
-                  <p className="text-sm text-slate-600 dark:text-slate-300">Angemeldet als</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-300">{t.signedInAs}</p>
                   <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
                     {user.email}
                   </p>
@@ -150,7 +156,7 @@ export function Header({ user }: HeaderProps) {
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                       </svg>
-                      Nutzerverwaltung
+                      {t.userManagement}
                     </Link>
                   )}
                   
@@ -166,7 +172,7 @@ export function Header({ user }: HeaderProps) {
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                    Reporting
+                    {t.reporting}
                   </Link>
                   
                   <Link
@@ -181,7 +187,7 @@ export function Header({ user }: HeaderProps) {
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
                     </svg>
-                    Bugs & Features
+                    {t.tickets}
                   </Link>
                   
                   <Link
@@ -196,7 +202,7 @@ export function Header({ user }: HeaderProps) {
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
                     </svg>
-                    Changelog
+                    {t.changelog}
                   </Link>
                   
                   <Link
@@ -211,7 +217,7 @@ export function Header({ user }: HeaderProps) {
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                     </svg>
-                    Dokumentation
+                    {t.documentation}
                   </Link>
                   
                   <Link
@@ -227,7 +233,7 @@ export function Header({ user }: HeaderProps) {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
-                    Einstellungen
+                    {t.settings}
                   </Link>
                 </div>
                 
@@ -238,7 +244,7 @@ export function Header({ user }: HeaderProps) {
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                   </svg>
-                  Abmelden
+                  {t.signOut}
                 </button>
               </div>
             )}

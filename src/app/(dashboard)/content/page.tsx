@@ -16,6 +16,9 @@ import {
 } from "@/lib/content-workflow";
 import { applyCanonicalArticleStyles, extractArticleMeta } from "@/lib/article-html";
 import { SeoMetaPanel } from "@/components/content-check/SeoMetaPanel";
+import { useMessages } from "@/i18n/I18nProvider";
+import { commonMessages } from "@/i18n/messages/common";
+import { contentMessages } from "@/i18n/messages/content";
 
 interface SavedArticle {
   id: string;
@@ -58,6 +61,8 @@ export default function ContentPage() {
 }
 
 function ContentPageInner() {
+  const t = useMessages(contentMessages);
+  const common = useMessages(commonMessages);
   const searchParams = useSearchParams();
   const [title, setTitle] = useState(searchParams.get("title") || "");
   const [funnelStage, setFunnelStage] = useState(
@@ -110,7 +115,7 @@ function ContentPageInner() {
 
   const handleGenerate = async () => {
     if (!title || !funnelStage || !category || targetAudiences.length === 0) {
-      setError("Bitte alle Felder ausfüllen.");
+      setError(t.errors.fillAllFields);
       return;
     }
 
@@ -142,14 +147,14 @@ function ContentPageInner() {
 
       if (!res.ok) {
         const data = await res.json();
-        setError(data.error || "Fehler bei der Generierung");
+        setError(data.error || t.errors.generation);
         setIsGenerating(false);
         return;
       }
 
       const reader = res.body?.getReader();
       if (!reader) {
-        setError("Stream nicht verfügbar");
+        setError(t.errors.streamUnavailable);
         setIsGenerating(false);
         return;
       }
@@ -193,7 +198,7 @@ function ContentPageInner() {
       setHtmlContent(cleaned);
     } catch (err) {
       if (!(err instanceof DOMException && err.name === "AbortError")) {
-        setError("Verbindungsfehler: " + String(err));
+        setError(t.errors.connection(String(err)));
       }
     } finally {
       setIsGenerating(false);
@@ -234,17 +239,15 @@ function ContentPageInner() {
         const saved = await res.json();
         setSavedArticleId(saved.id);
         setSavedMessage(
-          fromRedaktionsplan
-            ? "Artikel gespeichert und mit Redaktionsplan verknüpft. Weiter zum Content-Check zur Freigabe."
-            : "Artikel gespeichert"
+          fromRedaktionsplan ? t.savedAndLinked : t.saved
         );
         if (showArticles) loadArticles();
       } else {
         const data = await res.json();
-        setError(data.error || "Fehler beim Speichern");
+        setError(data.error || t.errors.save);
       }
     } catch {
-      setError("Fehler beim Speichern");
+      setError(t.errors.save);
     } finally {
       setIsSaving(false);
     }
@@ -263,7 +266,7 @@ function ContentPageInner() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${slugify(title) || "artikel"}.html`;
+    a.download = `${slugify(title) || t.downloadFallbackName}.html`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -282,23 +285,23 @@ function ContentPageInner() {
         <div className="bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 rounded-xl p-4 flex items-center gap-3">
           <div className="flex-1">
             <p className="text-sm font-medium text-violet-900 dark:text-violet-200">
-              Aus Redaktionsplan übernommen
+              {t.fromPlan.title}
             </p>
             <p className="text-xs text-violet-600 dark:text-violet-400 mt-0.5">
-              Titel, Kategorie und Funnel wurden vorausgefüllt. Wähle die Zielgruppe und starte die Generierung.
+              {t.fromPlan.hint}
             </p>
           </div>
           <a href="/redaktionsplan" className="text-xs text-violet-600 dark:text-violet-400 hover:underline">
-            Zurück zum Plan
+            {t.fromPlan.back}
           </a>
         </div>
       )}
 
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Contentproduktion</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            SEO-optimierte Artikel per KI erstellen und als Entwurf im Content-Check speichern
+            {t.subtitle}
           </p>
         </div>
         <button
@@ -308,16 +311,16 @@ function ContentPageInner() {
           }}
           className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
         >
-          {showArticles ? "Archiv ausblenden" : "Archiv anzeigen"}
+          {showArticles ? t.hideArchive : t.showArchive}
         </button>
       </div>
 
       {showArticles && (
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
           {loadingArticles ? (
-            <div className="p-6 text-center text-slate-500">Lade Artikel…</div>
+            <div className="p-6 text-center text-slate-500">{t.loadingArticles}</div>
           ) : articles.length === 0 ? (
-            <div className="p-6 text-center text-slate-500">Noch keine Artikel gespeichert.</div>
+            <div className="p-6 text-center text-slate-500">{t.noArticles}</div>
           ) : (
             <div className="divide-y divide-slate-200 dark:divide-slate-700">
               {articles.map((article) => (
@@ -325,14 +328,14 @@ function ContentPageInner() {
                   <div className="min-w-0">
                     <h3 className="text-sm font-medium text-slate-900 dark:text-white truncate">{article.title}</h3>
                     <p className="text-xs text-slate-500 mt-1">
-                      {article.category} · {article.funnelStage} · {article.wordCount} Wörter
+                      {article.category} · {article.funnelStage} · {t.words(article.wordCount)}
                     </p>
                   </div>
                   <a
                     href={`/content-check?article=${article.id}`}
                     className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
                   >
-                    Zum Check
+                    {t.toCheck}
                   </a>
                 </div>
               ))}
@@ -352,34 +355,34 @@ function ContentPageInner() {
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 space-y-5">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Artikel-Parameter</h2>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{t.parameters}</h2>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Titel</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.fields.title}</label>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-              placeholder="Artikeltitel"
+              placeholder={t.fields.titlePlaceholder}
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Kategorie</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.fields.category}</label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
                 className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
               >
-                <option value="">Bitte wählen</option>
+                <option value="">{t.pleaseSelect}</option>
                 {CONTENT_CATEGORIES.map((c) => (
                   <option key={c} value={c}>{c}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Location</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.fields.location}</label>
               <select
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
@@ -394,34 +397,34 @@ function ContentPageInner() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Funnel</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.fields.funnel}</label>
               <select
                 value={funnelStage}
                 onChange={(e) => setFunnelStage(e.target.value)}
                 className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
               >
-                <option value="">Bitte wählen</option>
+                <option value="">{t.pleaseSelect}</option>
                 {FUNNEL_OPTIONS.map((f) => (
                   <option key={f.value} value={f.value}>{f.label}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Sprache</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.fields.language}</label>
               <select
                 value={language}
                 onChange={(e) => setLanguage(normalizeContentLanguage(e.target.value))}
                 className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
               >
                 {CONTENT_LANGUAGES.map((l) => (
-                  <option key={l.value} value={l.value}>{l.label}</option>
+                  <option key={l.value} value={l.value}>{t.languages[l.value] ?? l.label}</option>
                 ))}
               </select>
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Zielgruppe</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{t.fields.targetAudience}</label>
             <div className="flex flex-wrap gap-2">
               {ZIELGRUPPEN.map((z) => (
                 <button
@@ -434,7 +437,7 @@ function ContentPageInner() {
                       : "border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300"
                   }`}
                 >
-                  {z}
+                  {t.audiences[z] ?? z}
                 </button>
               ))}
               {showCustomInput ? (
@@ -449,12 +452,12 @@ function ContentPageInner() {
                     }
                   }}
                   className="px-2 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-600 bg-transparent"
-                  placeholder="Eigene Zielgruppe"
+                  placeholder={t.customAudiencePlaceholder}
                   autoFocus
                 />
               ) : (
                 <button type="button" onClick={() => setShowCustomInput(true)} className="px-3 py-1.5 text-xs rounded-full border border-dashed border-slate-300 text-slate-500">
-                  + Eigene
+                  {t.addCustomAudience}
                 </button>
               )}
             </div>
@@ -462,7 +465,7 @@ function ContentPageInner() {
 
           {editorialDescription && (
             <p className="text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900 rounded-lg p-3">
-              Briefing: {editorialDescription}
+              {t.briefing(editorialDescription)}
             </p>
           )}
 
@@ -472,7 +475,7 @@ function ContentPageInner() {
               {savedMessage}{" "}
               {savedArticleId && (
                 <a href={`/content-check?article=${savedArticleId}`} className="underline font-medium">
-                  Content-Check öffnen
+                  {t.openContentCheck}
                 </a>
               )}
             </div>
@@ -485,7 +488,7 @@ function ContentPageInner() {
                 onClick={() => abortControllerRef.current?.abort()}
                 className="px-4 py-2 bg-slate-200 dark:bg-slate-700 rounded-lg text-sm"
               >
-                Abbrechen
+                {common.actions.cancel}
               </button>
             ) : (
               <button
@@ -493,7 +496,7 @@ function ContentPageInner() {
                 onClick={handleGenerate}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
               >
-                Generieren
+                {t.generate}
               </button>
             )}
             <button
@@ -502,7 +505,7 @@ function ContentPageInner() {
               disabled={!htmlContent || isSaving || isGenerating}
               className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-50"
             >
-              {isSaving ? "Speichert…" : "Speichern"}
+              {isSaving ? t.saving : common.actions.save}
             </button>
             <button
               type="button"
@@ -517,11 +520,11 @@ function ContentPageInner() {
 
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden min-h-[480px]">
           {isGenerating && !htmlContent && (
-            <div className="flex items-center justify-center h-full text-slate-500 text-sm">Generiere Artikel…</div>
+            <div className="flex items-center justify-center h-full text-slate-500 text-sm">{t.generating}</div>
           )}
           {htmlContent ? (
             <iframe
-              title="Vorschau"
+              title={t.previewTitle}
               srcDoc={htmlContent}
               className="w-full h-[calc(100vh-12rem)] min-h-[480px] bg-white"
               sandbox="allow-same-origin"
@@ -529,7 +532,7 @@ function ContentPageInner() {
           ) : (
             !isGenerating && (
               <div className="flex items-center justify-center h-full text-slate-400 text-sm">
-                Die Vorschau erscheint nach der Generierung.
+                {t.previewEmpty}
               </div>
             )
           )}

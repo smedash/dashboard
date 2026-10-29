@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useMemo, Fragment } from "react";
+import { useMessages } from "@/i18n/I18nProvider";
+import { uiMessages } from "@/i18n/messages/ui";
 
 interface Column<T> {
   key: keyof T | string;
@@ -27,6 +29,7 @@ export function DataTable<T extends Record<string, unknown>>({
   pageSize = 50,
   expandableRow,
 }: DataTableProps<T>) {
+  const t = useMessages(uiMessages).dataTable;
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [currentPage, setCurrentPage] = useState(1);
@@ -173,7 +176,7 @@ export function DataTable<T extends Record<string, unknown>>({
         </table>
         {data.length === 0 && (
           <div className="py-12 text-center text-slate-500 dark:text-slate-500">
-            Keine Daten vorhanden
+            {t.noData}
           </div>
         )}
       </div>
@@ -182,12 +185,13 @@ export function DataTable<T extends Record<string, unknown>>({
       {totalPages > 1 && (
         <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200 dark:border-slate-700">
           <div className="text-sm text-slate-600 dark:text-slate-400">
-            {startIndex + 1}-{Math.min(endIndex, sortedData.length)} von {sortedData.length}
+            {t.range(startIndex + 1, Math.min(endIndex, sortedData.length), sortedData.length)}
           </div>
           <div className="flex items-center gap-1">
             <button
               onClick={() => goToPage(currentPage - 1)}
               disabled={currentPage === 1}
+              aria-label={t.previousPage}
               className="px-3 py-1 text-sm rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               ←
@@ -214,6 +218,7 @@ export function DataTable<T extends Record<string, unknown>>({
             <button
               onClick={() => goToPage(currentPage + 1)}
               disabled={currentPage === totalPages}
+              aria-label={t.nextPage}
               className="px-3 py-1 text-sm rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               →

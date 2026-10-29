@@ -1,22 +1,27 @@
+import type { Locale } from '@/i18n/config';
+import { urlCheckerFreshnessMessages } from '@/i18n/messages/url-checker/freshness';
 import { CheckResult, ParsedPage } from '../types';
 
-export function runFreshnessChecks(page: ParsedPage): CheckResult[] {
+type Messages = (typeof urlCheckerFreshnessMessages)[Locale];
+
+export function runFreshnessChecks(page: ParsedPage, locale: Locale): CheckResult[] {
+  const t = urlCheckerFreshnessMessages[locale];
   const checks: CheckResult[] = [];
 
-  checks.push(checkPublishedDate(page));
-  checks.push(checkModifiedDate(page));
-  checks.push(checkLastModifiedHeader(page));
+  checks.push(checkPublishedDate(page, t));
+  checks.push(checkModifiedDate(page, t));
+  checks.push(checkLastModifiedHeader(page, t));
 
   return checks;
 }
 
-function checkPublishedDate(page: ParsedPage): CheckResult {
+function checkPublishedDate(page: ParsedPage, t: Messages): CheckResult {
   if (!page.dates.published) {
     return {
-      factor: 'Ver\u00f6ffentlichungsdatum',
+      factor: t.published.factor,
       status: 'warn',
       value: null,
-      recommendation: 'Kein datePublished in Schema oder Meta-Tags gefunden. Google\'s FreshnessTwiddler nutzt Datumsangaben zur Freshness-Bewertung.',
+      recommendation: t.published.missing,
       leakAttribute: 'freshnessTwiddler.datePublished',
     };
   }
@@ -24,10 +29,10 @@ function checkPublishedDate(page: ParsedPage): CheckResult {
   const pubDate = new Date(page.dates.published);
   if (isNaN(pubDate.getTime())) {
     return {
-      factor: 'Ver\u00f6ffentlichungsdatum',
+      factor: t.published.factor,
       status: 'warn',
       value: page.dates.published,
-      recommendation: 'Datumsformat nicht parsebar. Verwende ISO 8601 (YYYY-MM-DD) f\u00fcr eindeutige Interpretation.',
+      recommendation: t.published.unparsable,
       leakAttribute: 'freshnessTwiddler.datePublished',
     };
   }
@@ -36,30 +41,30 @@ function checkPublishedDate(page: ParsedPage): CheckResult {
 
   if (ageInDays > 730) {
     return {
-      factor: 'Ver\u00f6ffentlichungsdatum',
+      factor: t.published.factor,
       status: 'warn',
-      value: `${page.dates.published} (${ageInDays} Tage alt)`,
-      recommendation: `Content ist \u00fcber 2 Jahre alt. F\u00fcr zeitkritische Themen empfiehlt sich ein regelm\u00e4\u00dfiges Update (LastSignificantUpdate-Signal).`,
+      value: t.published.ageValue(page.dates.published, ageInDays),
+      recommendation: t.published.old,
       leakAttribute: 'freshnessTwiddler.datePublished',
     };
   }
 
   return {
-    factor: 'Ver\u00f6ffentlichungsdatum',
+    factor: t.published.factor,
     status: 'pass',
     value: page.dates.published,
-    recommendation: 'Ver\u00f6ffentlichungsdatum vorhanden und aktuell.',
+    recommendation: t.published.ok,
     leakAttribute: 'freshnessTwiddler.datePublished',
   };
 }
 
-function checkModifiedDate(page: ParsedPage): CheckResult {
+function checkModifiedDate(page: ParsedPage, t: Messages): CheckResult {
   if (!page.dates.modified) {
     return {
-      factor: '\u00c4nderungsdatum (dateModified)',
+      factor: t.modified.factor,
       status: 'warn',
       value: null,
-      recommendation: 'Kein dateModified gefunden. Google nutzt LastSignificantUpdate um zu erkennen, ob Content aktualisiert wurde. Setze dateModified bei echten Inhalts\u00e4nderungen.',
+      recommendation: t.modified.missing,
       leakAttribute: 'lastSignificantUpdate',
     };
   }
@@ -67,10 +72,10 @@ function checkModifiedDate(page: ParsedPage): CheckResult {
   const modDate = new Date(page.dates.modified);
   if (isNaN(modDate.getTime())) {
     return {
-      factor: '\u00c4nderungsdatum (dateModified)',
+      factor: t.modified.factor,
       status: 'warn',
       value: page.dates.modified,
-      recommendation: 'Datumsformat nicht parsebar. Verwende ISO 8601.',
+      recommendation: t.modified.unparsable,
       leakAttribute: 'lastSignificantUpdate',
     };
   }
@@ -79,39 +84,39 @@ function checkModifiedDate(page: ParsedPage): CheckResult {
 
   if (ageInDays > 365) {
     return {
-      factor: '\u00c4nderungsdatum (dateModified)',
+      factor: t.modified.factor,
       status: 'warn',
-      value: `${page.dates.modified} (${ageInDays} Tage seit letzter \u00c4nderung)`,
-      recommendation: 'Letzte \u00c4nderung ist \u00fcber 1 Jahr her. Regelm\u00e4\u00dfige Updates (mindestens quartalsweise) senden positive Freshness-Signale.',
+      value: t.modified.ageValue(page.dates.modified, ageInDays),
+      recommendation: t.modified.old,
       leakAttribute: 'lastSignificantUpdate',
     };
   }
 
   return {
-    factor: '\u00c4nderungsdatum (dateModified)',
+    factor: t.modified.factor,
     status: 'pass',
     value: page.dates.modified,
-    recommendation: 'Content wurde k\u00fcrzlich aktualisiert \u2013 gutes Freshness-Signal.',
+    recommendation: t.modified.ok,
     leakAttribute: 'lastSignificantUpdate',
   };
 }
 
-function checkLastModifiedHeader(page: ParsedPage): CheckResult {
+function checkLastModifiedHeader(page: ParsedPage, t: Messages): CheckResult {
   if (!page.dates.lastModifiedHeader) {
     return {
-      factor: 'Last-Modified Header',
+      factor: t.lastModifiedHeader.factor,
       status: 'warn',
       value: null,
-      recommendation: 'Kein Last-Modified HTTP-Header gesetzt. Dieser hilft Googlebot beim effizienten Crawling (Conditional GET).',
+      recommendation: t.lastModifiedHeader.missing,
       leakAttribute: 'crawl.lastModifiedHeader',
     };
   }
 
   return {
-    factor: 'Last-Modified Header',
+    factor: t.lastModifiedHeader.factor,
     status: 'pass',
     value: page.dates.lastModifiedHeader,
-    recommendation: 'Last-Modified Header vorhanden \u2013 unterst\u00fctzt effizientes Crawling.',
+    recommendation: t.lastModifiedHeader.ok,
     leakAttribute: 'crawl.lastModifiedHeader',
   };
 }

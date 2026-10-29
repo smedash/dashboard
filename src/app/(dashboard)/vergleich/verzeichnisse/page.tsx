@@ -3,6 +3,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { DataTable } from "@/components/ui/DataTable";
 import { StatCard } from "@/components/ui/StatCard";
+import { useLocale, useMessages } from "@/i18n/I18nProvider";
+import { comparisonDirectoriesMessages } from "@/i18n/messages/comparison-directories";
 
 interface Snapshot {
   id: string;
@@ -55,6 +57,8 @@ interface DirectoryComparison {
 }
 
 export default function VerzeichnisseVergleichPage() {
+  const t = useMessages(comparisonDirectoriesMessages);
+  const { intlLocale } = useLocale();
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [selectedSnapshotIds, setSelectedSnapshotIds] = useState<string[]>([]);
   const [snapshot1Data, setSnapshot1Data] = useState<SnapshotData[]>([]);
@@ -293,7 +297,7 @@ export default function VerzeichnisseVergleichPage() {
   const selectedSnapshots = snapshots.filter((s) => selectedSnapshotIds.includes(s.id));
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("de-DE", {
+    return new Date(dateString).toLocaleDateString(intlLocale, {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -326,15 +330,15 @@ export default function VerzeichnisseVergleichPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
           </svg>
         </div>
-        <h2 className="text-xl font-bold text-white mb-2">Keine Snapshots vorhanden</h2>
+        <h2 className="text-xl font-bold text-white mb-2">{t.noSnapshotsTitle}</h2>
         <p className="text-slate-400 mb-4">
-          Erstelle zuerst mindestens zwei Snapshots, um einen Verzeichnis-Vergleich durchzuführen.
+          {t.noSnapshotsHint}
         </p>
         <a
           href="/snapshots"
           className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg transition-colors"
         >
-          Zu den Snapshots
+          {t.toSnapshots}
         </a>
       </div>
     );
@@ -344,17 +348,17 @@ export default function VerzeichnisseVergleichPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <h1 className="text-2xl font-bold text-white">Verzeichnisse-Vergleich</h1>
+        <h1 className="text-2xl font-bold text-white">{t.title}</h1>
       </div>
 
       {/* Snapshot Selection */}
       <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-        <h2 className="text-lg font-semibold text-white mb-4">Snapshots auswählen</h2>
+        <h2 className="text-lg font-semibold text-white mb-4">{t.selectSnapshots}</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {[0, 1].map((index) => (
             <div key={index}>
               <label className="block text-sm font-medium text-slate-300 mb-2">
-                Snapshot {index + 1} {index === 0 && "(Basis)"}
+                {t.snapshotLabel(index + 1)} {index === 0 && t.base}
               </label>
               <select
                 value={selectedSnapshotIds[index] || ""}
@@ -365,7 +369,7 @@ export default function VerzeichnisseVergleichPage() {
                 }}
                 className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">-- Bitte wählen --</option>
+                <option value="">{t.pleaseSelect}</option>
                 {snapshots.map((snapshot) => (
                   <option key={snapshot.id} value={snapshot.id}>
                     {snapshot.name} ({formatDate(snapshot.startDate)} - {formatDate(snapshot.endDate)})
@@ -377,7 +381,7 @@ export default function VerzeichnisseVergleichPage() {
         </div>
         <div className="mt-4">
           <label className="block text-sm font-medium text-slate-300 mb-2">
-            Verzeichnis-Tiefe
+            {t.directoryDepth}
           </label>
           <select
             value={directoryDepth}
@@ -386,7 +390,7 @@ export default function VerzeichnisseVergleichPage() {
           >
             {[1, 2, 3, 4, 5].map((depth) => (
               <option key={depth} value={depth}>
-                {depth} {depth === 1 ? "Ebene" : "Ebenen"}
+                {t.levels(depth)}
               </option>
             ))}
           </select>
@@ -398,9 +402,9 @@ export default function VerzeichnisseVergleichPage() {
         <>
           {/* Statistics */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <StatCard title="Gefundene Matches" value={stats.matched} />
+            <StatCard title={t.stats.matches} value={stats.matched} />
             <StatCard 
-              title="Ø Ähnlichkeit" 
+              title={t.stats.avgSimilarity} 
               value={`${(stats.avgSimilarity * 100).toFixed(1)}%`}
             />
           </div>
@@ -408,7 +412,7 @@ export default function VerzeichnisseVergleichPage() {
           {/* Filters and Sort */}
           <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-2">
-              <span className="text-sm text-slate-300">Mindest-Ähnlichkeit:</span>
+              <span className="text-sm text-slate-300">{t.minSimilarity}</span>
               <input
                 type="range"
                 min="0"
@@ -421,7 +425,7 @@ export default function VerzeichnisseVergleichPage() {
               <span className="text-sm text-white w-12">{(minSimilarity * 100).toFixed(0)}%</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-slate-300">Top Keywords:</span>
+              <span className="text-sm text-slate-300">{t.topKeywords}</span>
               <select
                 value={topKeywordsCount}
                 onChange={(e) => setTopKeywordsCount(parseInt(e.target.value))}
@@ -434,16 +438,16 @@ export default function VerzeichnisseVergleichPage() {
               </select>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-slate-300">Sortieren nach:</span>
+              <span className="text-sm text-slate-300">{t.sortBy}</span>
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
                 className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="similarity">Ähnlichkeit</option>
-                <option value="clicks">Klicks-Differenz</option>
-                <option value="impressions">Impressionen-Differenz</option>
-                <option value="position">Position-Differenz</option>
+                <option value="similarity">{t.sortOptions.similarity}</option>
+                <option value="clicks">{t.sortOptions.clicks}</option>
+                <option value="impressions">{t.sortOptions.impressions}</option>
+                <option value="position">{t.sortOptions.position}</option>
               </select>
             </div>
           </div>
@@ -451,7 +455,7 @@ export default function VerzeichnisseVergleichPage() {
           {/* Directories Table */}
           <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
             <div className="p-4 border-b border-slate-700">
-              <h3 className="text-lg font-semibold text-white">Verzeichnisse-Vergleich</h3>
+              <h3 className="text-lg font-semibold text-white">{t.title}</h3>
             </div>
             {isLoadingData ? (
               <div className="p-8 flex items-center justify-center">
@@ -482,7 +486,7 @@ export default function VerzeichnisseVergleichPage() {
                 columns={[
                   {
                     key: "path1",
-                    header: `${selectedSnapshots[0]?.name} - Verzeichnis`,
+                    header: t.columns.directory(selectedSnapshots[0]?.name),
                     sortable: true,
                     render: (value) => (
                       <span className="font-medium text-white">{String(value)}</span>
@@ -490,7 +494,7 @@ export default function VerzeichnisseVergleichPage() {
                   },
                   {
                     key: "path2",
-                    header: `${selectedSnapshots[1]?.name} - Verzeichnis`,
+                    header: t.columns.directory(selectedSnapshots[1]?.name),
                     sortable: true,
                     render: (value) => (
                       <span className="font-medium text-slate-300">{String(value)}</span>
@@ -498,7 +502,7 @@ export default function VerzeichnisseVergleichPage() {
                   },
                   {
                     key: "similarityScore",
-                    header: "Ähnlichkeit",
+                    header: t.columns.similarity,
                     sortable: true,
                     render: (value) => {
                       const score = Number(value);
@@ -515,78 +519,78 @@ export default function VerzeichnisseVergleichPage() {
                   },
                   {
                     key: "commonKeywords",
-                    header: "Gemeinsame Keywords",
+                    header: t.columns.commonKeywords,
                     sortable: false,
                     render: (value) => {
                       const keywords = value as string[];
                       return (
                         <span className="text-sm text-slate-400" title={keywords.join(", ")}>
-                          {keywords.length} {keywords.length === 1 ? "Keyword" : "Keywords"}
+                          {t.columns.keywordCount(keywords.length)}
                         </span>
                       );
                     },
                   },
                   {
                     key: "snapshot1Clicks",
-                    header: `${selectedSnapshots[0]?.name} - Klicks`,
+                    header: t.columns.clicks(selectedSnapshots[0]?.name),
                     sortable: true,
                     render: (value) => (
-                      <span className="text-white">{Number(value).toLocaleString("de-DE")}</span>
+                      <span className="text-white">{Number(value).toLocaleString(intlLocale)}</span>
                     ),
                   },
                   {
                     key: "snapshot2Clicks",
-                    header: `${selectedSnapshots[1]?.name} - Klicks`,
+                    header: t.columns.clicks(selectedSnapshots[1]?.name),
                     sortable: true,
                     render: (value) => (
-                      <span className="text-slate-300">{Number(value).toLocaleString("de-DE")}</span>
+                      <span className="text-slate-300">{Number(value).toLocaleString(intlLocale)}</span>
                     ),
                   },
                   {
                     key: "clicksDiff",
-                    header: "Klicks-Differenz",
+                    header: t.columns.clicksDiff,
                     sortable: true,
                     render: (value) => {
                       const diff = Number(value);
                       return (
                         <span className={`font-medium ${diff > 0 ? "text-green-400" : diff < 0 ? "text-red-400" : "text-slate-400"}`}>
-                          {diff > 0 ? "+" : ""}{diff.toLocaleString("de-DE")}
+                          {diff > 0 ? "+" : ""}{diff.toLocaleString(intlLocale)}
                         </span>
                       );
                     },
                   },
                   {
                     key: "snapshot1Impressions",
-                    header: `${selectedSnapshots[0]?.name} - Impr.`,
+                    header: t.columns.impressions(selectedSnapshots[0]?.name),
                     sortable: true,
                     render: (value) => (
-                      <span className="text-white">{Number(value).toLocaleString("de-DE")}</span>
+                      <span className="text-white">{Number(value).toLocaleString(intlLocale)}</span>
                     ),
                   },
                   {
                     key: "snapshot2Impressions",
-                    header: `${selectedSnapshots[1]?.name} - Impr.`,
+                    header: t.columns.impressions(selectedSnapshots[1]?.name),
                     sortable: true,
                     render: (value) => (
-                      <span className="text-slate-300">{Number(value).toLocaleString("de-DE")}</span>
+                      <span className="text-slate-300">{Number(value).toLocaleString(intlLocale)}</span>
                     ),
                   },
                   {
                     key: "impressionsDiff",
-                    header: "Impr.-Differenz",
+                    header: t.columns.impressionsDiff,
                     sortable: true,
                     render: (value) => {
                       const diff = Number(value);
                       return (
                         <span className={`font-medium ${diff > 0 ? "text-green-400" : diff < 0 ? "text-red-400" : "text-slate-400"}`}>
-                          {diff > 0 ? "+" : ""}{diff.toLocaleString("de-DE")}
+                          {diff > 0 ? "+" : ""}{diff.toLocaleString(intlLocale)}
                         </span>
                       );
                     },
                   },
                   {
                     key: "snapshot1Position",
-                    header: `${selectedSnapshots[0]?.name} - Pos.`,
+                    header: t.columns.position(selectedSnapshots[0]?.name),
                     sortable: true,
                     render: (value) => (
                       <span className="text-white">{Number(value).toFixed(1)}</span>
@@ -594,7 +598,7 @@ export default function VerzeichnisseVergleichPage() {
                   },
                   {
                     key: "snapshot2Position",
-                    header: `${selectedSnapshots[1]?.name} - Pos.`,
+                    header: t.columns.position(selectedSnapshots[1]?.name),
                     sortable: true,
                     render: (value) => (
                       <span className="text-slate-300">{Number(value).toFixed(1)}</span>
@@ -602,7 +606,7 @@ export default function VerzeichnisseVergleichPage() {
                   },
                   {
                     key: "positionDiff",
-                    header: "Pos.-Differenz",
+                    header: t.columns.positionDiff,
                     sortable: true,
                     render: (value) => {
                       const diff = Number(value);
@@ -615,29 +619,29 @@ export default function VerzeichnisseVergleichPage() {
                   },
                   {
                     key: "snapshot1PageCount",
-                    header: `${selectedSnapshots[0]?.name} - Seiten`,
+                    header: t.columns.pages(selectedSnapshots[0]?.name),
                     sortable: true,
                     render: (value) => (
-                      <span className="text-white">{Number(value).toLocaleString("de-DE")}</span>
+                      <span className="text-white">{Number(value).toLocaleString(intlLocale)}</span>
                     ),
                   },
                   {
                     key: "snapshot2PageCount",
-                    header: `${selectedSnapshots[1]?.name} - Seiten`,
+                    header: t.columns.pages(selectedSnapshots[1]?.name),
                     sortable: true,
                     render: (value) => (
-                      <span className="text-slate-300">{Number(value).toLocaleString("de-DE")}</span>
+                      <span className="text-slate-300">{Number(value).toLocaleString(intlLocale)}</span>
                     ),
                   },
                   {
                     key: "pageCountDiff",
-                    header: "Seiten-Differenz",
+                    header: t.columns.pagesDiff,
                     sortable: true,
                     render: (value) => {
                       const diff = Number(value);
                       return (
                         <span className={`font-medium ${diff > 0 ? "text-green-400" : diff < 0 ? "text-red-400" : "text-slate-400"}`}>
-                          {diff > 0 ? "+" : ""}{diff.toLocaleString("de-DE")}
+                          {diff > 0 ? "+" : ""}{diff.toLocaleString(intlLocale)}
                         </span>
                       );
                     },
@@ -652,7 +656,7 @@ export default function VerzeichnisseVergleichPage() {
       {selectedSnapshotIds.length < 2 && (
         <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 text-center">
           <p className="text-slate-400">
-            Bitte wähle zwei Snapshots aus, um einen Verzeichnis-Vergleich durchzuführen.
+            {t.selectTwoHint}
           </p>
         </div>
       )}

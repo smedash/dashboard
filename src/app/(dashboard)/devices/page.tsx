@@ -5,6 +5,8 @@ import { PeriodSelector } from "@/components/ui/PeriodSelector";
 import { PieChart } from "@/components/charts/PieChart";
 import { StatCard } from "@/components/ui/StatCard";
 import { useProperty } from "@/contexts/PropertyContext";
+import { useLocale, useMessages } from "@/i18n/I18nProvider";
+import { devicesMessages } from "@/i18n/messages/devices";
 
 interface DeviceRow {
   keys: string[];
@@ -13,12 +15,6 @@ interface DeviceRow {
   ctr: number;
   position: number;
 }
-
-const deviceNames: Record<string, string> = {
-  DESKTOP: "Desktop",
-  MOBILE: "Mobile",
-  TABLET: "Tablet",
-};
 
 const deviceIcons: Record<string, React.ReactNode> = {
   DESKTOP: (
@@ -40,6 +36,9 @@ const deviceIcons: Record<string, React.ReactNode> = {
 
 export default function DevicesPage() {
   const { selectedProperty } = useProperty();
+  const t = useMessages(devicesMessages);
+  const { intlLocale } = useLocale();
+  const deviceNames = t.deviceNames;
   const [period, setPeriod] = useState("28d");
   const [data, setData] = useState<DeviceRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -81,7 +80,7 @@ export default function DevicesPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h1 className="text-2xl font-bold text-white">Geräte</h1>
+        <h1 className="text-2xl font-bold text-white">{t.title}</h1>
         <div className="flex flex-wrap items-center gap-4">
           <PeriodSelector value={period} onChange={setPeriod} />
         </div>
@@ -92,10 +91,10 @@ export default function DevicesPage() {
           <div className="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full mb-4"></div>
           <div className="text-center">
             <p className="text-lg font-medium text-white mb-2">
-              Hole Live-Daten aus der GSC...
+              {t.loadingTitle}
             </p>
             <p className="text-sm text-slate-400">
-              Das kann einige Sekunden dauern!
+              {t.loadingHint}
             </p>
           </div>
         </div>
@@ -119,30 +118,30 @@ export default function DevicesPage() {
                       <h3 className="text-lg font-semibold text-white">
                         {deviceNames[deviceType] || deviceType}
                       </h3>
-                      <p className="text-sm text-slate-400">{percentage.toFixed(1)}% der Klicks</p>
+                      <p className="text-sm text-slate-400">{t.shareOfClicks(percentage.toFixed(1))}</p>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-sm text-slate-400">Klicks</p>
+                      <p className="text-sm text-slate-400">{t.clicks}</p>
                       <p className="text-xl font-bold text-white">
-                        {device.clicks.toLocaleString("de-DE")}
+                        {device.clicks.toLocaleString(intlLocale)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-sm text-slate-400">Impressionen</p>
+                      <p className="text-sm text-slate-400">{t.impressions}</p>
                       <p className="text-xl font-bold text-white">
-                        {device.impressions.toLocaleString("de-DE")}
+                        {device.impressions.toLocaleString(intlLocale)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-sm text-slate-400">CTR</p>
+                      <p className="text-sm text-slate-400">{t.ctr}</p>
                       <p className="text-xl font-bold text-white">
                         {(device.ctr * 100).toFixed(2)}%
                       </p>
                     </div>
                     <div>
-                      <p className="text-sm text-slate-400">Position</p>
+                      <p className="text-sm text-slate-400">{t.position}</p>
                       <p className="text-xl font-bold text-white">
                         {device.position.toFixed(1)}
                       </p>
@@ -155,23 +154,23 @@ export default function DevicesPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-              <h3 className="text-lg font-semibold text-white mb-4">Klicks nach Gerät</h3>
+              <h3 className="text-lg font-semibold text-white mb-4">{t.clicksByDevice}</h3>
               {pieDataClicks.length > 0 ? (
                 <PieChart data={pieDataClicks} height={300} />
               ) : (
                 <div className="h-[300px] flex items-center justify-center text-slate-500">
-                  Keine Daten verfügbar
+                  {t.noData}
                 </div>
               )}
             </div>
 
             <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-              <h3 className="text-lg font-semibold text-white mb-4">Impressionen nach Gerät</h3>
+              <h3 className="text-lg font-semibold text-white mb-4">{t.impressionsByDevice}</h3>
               {pieDataImpressions.length > 0 ? (
                 <PieChart data={pieDataImpressions} height={300} />
               ) : (
                 <div className="h-[300px] flex items-center justify-center text-slate-500">
-                  Keine Daten verfügbar
+                  {t.noData}
                 </div>
               )}
             </div>

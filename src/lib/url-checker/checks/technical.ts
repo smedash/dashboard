@@ -1,36 +1,41 @@
+import type { Locale } from '@/i18n/config';
+import { urlCheckerTechnicalMessages } from '@/i18n/messages/url-checker/technical';
 import { CheckResult, ParsedPage } from '../types';
 
-export function runTechnicalChecks(page: ParsedPage): CheckResult[] {
+type Messages = (typeof urlCheckerTechnicalMessages)[Locale];
+
+export function runTechnicalChecks(page: ParsedPage, locale: Locale): CheckResult[] {
+  const t = urlCheckerTechnicalMessages[locale];
   const checks: CheckResult[] = [];
 
   // 1. Canonical tag
-  checks.push(checkCanonical(page));
+  checks.push(checkCanonical(page, t));
 
   // 2. Robots meta
-  checks.push(checkRobotsMeta(page));
+  checks.push(checkRobotsMeta(page, t));
 
   // 3. Viewport meta (mobile)
-  checks.push(checkViewport(page));
+  checks.push(checkViewport(page, t));
 
   // 4. HTTPS
-  checks.push(checkHttps(page));
+  checks.push(checkHttps(page, t));
 
   // 5. HTML size / DOM complexity
-  checks.push(checkHtmlSize(page));
+  checks.push(checkHtmlSize(page, t));
 
   // 6. Redirect chains
-  checks.push(checkRedirects(page));
+  checks.push(checkRedirects(page, t));
 
   return checks;
 }
 
-function checkCanonical(page: ParsedPage): CheckResult {
+function checkCanonical(page: ParsedPage, t: Messages): CheckResult {
   if (!page.canonical) {
     return {
-      factor: 'Canonical-Tag',
+      factor: t.canonical.factor,
       status: 'fail',
       value: null,
-      recommendation: 'Kein Canonical-Tag gefunden. Setze einen self-referencing Canonical, um Duplicate Content zu vermeiden.',
+      recommendation: t.canonical.missing,
       leakAttribute: 'indexing.canonicalUrl',
     };
   }
@@ -40,30 +45,30 @@ function checkCanonical(page: ParsedPage): CheckResult {
 
   if (!isSelfReferencing) {
     return {
-      factor: 'Canonical-Tag',
+      factor: t.canonical.factor,
       status: 'warn',
       value: page.canonical,
-      recommendation: `Canonical verweist auf eine andere URL (${page.canonical}). Stelle sicher, dass dies beabsichtigt ist.`,
+      recommendation: t.canonical.otherUrl(page.canonical),
       leakAttribute: 'indexing.canonicalUrl',
     };
   }
 
   return {
-    factor: 'Canonical-Tag',
+    factor: t.canonical.factor,
     status: 'pass',
     value: page.canonical,
-    recommendation: 'Self-referencing Canonical korrekt gesetzt.',
+    recommendation: t.canonical.ok,
     leakAttribute: 'indexing.canonicalUrl',
   };
 }
 
-function checkRobotsMeta(page: ParsedPage): CheckResult {
+function checkRobotsMeta(page: ParsedPage, t: Messages): CheckResult {
   if (!page.robotsMeta) {
     return {
-      factor: 'Robots-Meta',
+      factor: t.robots.factor,
       status: 'pass',
-      value: 'nicht gesetzt (Standard: index, follow)',
-      recommendation: 'Kein Robots-Meta-Tag gesetzt \u2013 Seite ist standardm\u00e4\u00dfig indexierbar.',
+      value: t.robots.notSetValue,
+      recommendation: t.robots.notSet,
       leakAttribute: 'indexing.robotsMeta',
     };
   }
@@ -73,143 +78,143 @@ function checkRobotsMeta(page: ParsedPage): CheckResult {
 
   if (hasNoindex) {
     return {
-      factor: 'Robots-Meta',
+      factor: t.robots.factor,
       status: 'fail',
       value: page.robotsMeta,
-      recommendation: 'Seite ist auf noindex gesetzt und wird nicht indexiert. Entferne noindex, wenn die Seite ranken soll.',
+      recommendation: t.robots.noindex,
       leakAttribute: 'indexing.robotsMeta',
     };
   }
 
   if (hasNofollow) {
     return {
-      factor: 'Robots-Meta',
+      factor: t.robots.factor,
       status: 'warn',
       value: page.robotsMeta,
-      recommendation: 'nofollow verhindert, dass Google den Links auf dieser Seite folgt. Das kann die interne Verlinkungsstruktur schw\u00e4chen.',
+      recommendation: t.robots.nofollow,
       leakAttribute: 'indexing.robotsMeta',
     };
   }
 
   return {
-    factor: 'Robots-Meta',
+    factor: t.robots.factor,
     status: 'pass',
     value: page.robotsMeta,
-    recommendation: 'Robots-Meta erlaubt Indexierung und Link-Following.',
+    recommendation: t.robots.ok,
     leakAttribute: 'indexing.robotsMeta',
   };
 }
 
-function checkViewport(page: ParsedPage): CheckResult {
+function checkViewport(page: ParsedPage, t: Messages): CheckResult {
   if (!page.viewport) {
     return {
-      factor: 'Viewport-Meta (Mobile)',
+      factor: t.viewport.factor,
       status: 'fail',
       value: null,
-      recommendation: 'Kein Viewport-Meta-Tag gefunden. Mobile-First-Indexing erfordert ein responsives Layout mit viewport-Tag.',
+      recommendation: t.viewport.missing,
       leakAttribute: 'rendering.mobileViewport',
     };
   }
 
   if (!page.viewport.includes('width=device-width')) {
     return {
-      factor: 'Viewport-Meta (Mobile)',
+      factor: t.viewport.factor,
       status: 'warn',
       value: page.viewport,
-      recommendation: 'Viewport-Tag ist gesetzt, aber enth\u00e4lt nicht "width=device-width". Optimiere f\u00fcr mobile Ger\u00e4te.',
+      recommendation: t.viewport.noDeviceWidth,
       leakAttribute: 'rendering.mobileViewport',
     };
   }
 
   return {
-    factor: 'Viewport-Meta (Mobile)',
+    factor: t.viewport.factor,
     status: 'pass',
     value: page.viewport,
-    recommendation: 'Viewport korrekt f\u00fcr Mobile-First-Indexing konfiguriert.',
+    recommendation: t.viewport.ok,
     leakAttribute: 'rendering.mobileViewport',
   };
 }
 
-function checkHttps(page: ParsedPage): CheckResult {
+function checkHttps(page: ParsedPage, t: Messages): CheckResult {
   if (!page.isHttps) {
     return {
-      factor: 'HTTPS',
+      factor: t.https.factor,
       status: 'fail',
       value: 'HTTP',
-      recommendation: 'Die Seite verwendet kein HTTPS. Google bevorzugt verschl\u00fcsselte Seiten als Vertrauenssignal.',
+      recommendation: t.https.missing,
       leakAttribute: 'security.isHttps',
     };
   }
 
   return {
-    factor: 'HTTPS',
+    factor: t.https.factor,
     status: 'pass',
     value: 'HTTPS',
-    recommendation: 'Seite nutzt HTTPS \u2013 Vertrauenssignal erf\u00fcllt.',
+    recommendation: t.https.ok,
     leakAttribute: 'security.isHttps',
   };
 }
 
-function checkHtmlSize(page: ParsedPage): CheckResult {
+function checkHtmlSize(page: ParsedPage, t: Messages): CheckResult {
   const sizeKb = Math.round(page.htmlSize / 1024);
 
   if (sizeKb > 500) {
     return {
-      factor: 'HTML-Gr\u00f6\u00dfe',
+      factor: t.htmlSize.factor,
       status: 'fail',
       value: `${sizeKb} KB`,
-      recommendation: `HTML ist ${sizeKb} KB gro\u00df (empfohlen: < 200 KB). Gro\u00dfe Dokumente verlangsamen Crawling und Rendering.`,
+      recommendation: t.htmlSize.tooLarge(sizeKb),
       leakAttribute: 'indexing.rawSize',
     };
   }
 
   if (sizeKb > 200) {
     return {
-      factor: 'HTML-Gr\u00f6\u00dfe',
+      factor: t.htmlSize.factor,
       status: 'warn',
       value: `${sizeKb} KB`,
-      recommendation: `HTML ist ${sizeKb} KB. Versuche unter 200 KB zu bleiben f\u00fcr schnelleres Crawling.`,
+      recommendation: t.htmlSize.large(sizeKb),
       leakAttribute: 'indexing.rawSize',
     };
   }
 
   return {
-    factor: 'HTML-Gr\u00f6\u00dfe',
+    factor: t.htmlSize.factor,
     status: 'pass',
     value: `${sizeKb} KB`,
-    recommendation: 'HTML-Gr\u00f6\u00dfe ist optimal f\u00fcr schnelles Crawling.',
+    recommendation: t.htmlSize.ok,
     leakAttribute: 'indexing.rawSize',
   };
 }
 
-function checkRedirects(page: ParsedPage): CheckResult {
+function checkRedirects(page: ParsedPage, t: Messages): CheckResult {
   const chainLength = page.redirectChain.length;
 
   if (chainLength > 3) {
     return {
-      factor: 'Redirect-Ketten',
+      factor: t.redirects.factor,
       status: 'fail',
-      value: `${chainLength} Weiterleitungen`,
-      recommendation: `${chainLength} Redirects in der Kette. Google folgt maximal 5 Redirects, aber jeder kostet Crawl-Budget.`,
+      value: t.redirects.countValue(chainLength),
+      recommendation: t.redirects.tooMany(chainLength),
       leakAttribute: 'indexing.redirectChain',
     };
   }
 
   if (chainLength > 1) {
     return {
-      factor: 'Redirect-Ketten',
+      factor: t.redirects.factor,
       status: 'warn',
-      value: `${chainLength} Weiterleitungen`,
-      recommendation: `${chainLength} Redirects erkannt. Versuche, direkte URLs ohne Weiterleitungen zu verwenden.`,
+      value: t.redirects.countValue(chainLength),
+      recommendation: t.redirects.some(chainLength),
       leakAttribute: 'indexing.redirectChain',
     };
   }
 
   return {
-    factor: 'Redirect-Ketten',
+    factor: t.redirects.factor,
     status: 'pass',
-    value: chainLength === 0 ? 'Keine' : '1 Weiterleitung',
-    recommendation: 'Keine problematischen Redirect-Ketten.',
+    value: chainLength === 0 ? t.redirects.noneValue : t.redirects.oneValue,
+    recommendation: t.redirects.ok,
     leakAttribute: 'indexing.redirectChain',
   };
 }

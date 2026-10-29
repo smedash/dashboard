@@ -5,6 +5,8 @@ import Link from "next/link";
 import { StatCard } from "@/components/ui/StatCard";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { PieChart } from "@/components/charts";
+import { useMessages } from "@/i18n/I18nProvider";
+import { reportingMessages } from "@/i18n/messages/reporting";
 
 interface RankingStats {
   total: number;
@@ -51,8 +53,6 @@ interface RankingReportData {
 const REPORT_TYPES = [
   {
     id: "ranking",
-    title: "Ranking Report",
-    description: "Analyse der Keyword-Rankings aus dem Ranktracker mit Positions-Verteilung, Trends und Gewinner/Verlierer.",
     href: "/reporting/ranking",
     icon: (
       <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -64,8 +64,6 @@ const REPORT_TYPES = [
   },
   {
     id: "traffic",
-    title: "Traffic Report",
-    description: "Analyse des organischen Traffics aus der Google Search Console mit Klicks, Impressionen, CTR und Verzeichnis-Auswertung.",
     href: "/reporting/traffic",
     icon: (
       <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -77,8 +75,6 @@ const REPORT_TYPES = [
   },
   {
     id: "kvp",
-    title: "KVP Report",
-    description: "Monatliche Übersicht der SEO-Massnahmen: neue KVPs, Fokus-/Subkeywords und adressierte Reifegradpunkte.",
     href: "/reporting/kvp",
     icon: (
       <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -90,8 +86,6 @@ const REPORT_TYPES = [
   },
   {
     id: "tasks",
-    title: "Task Report",
-    description: "Kanban-Übersicht mit Status, Workload pro Benutzer, überfällige Tasks und Timeline-Informationen.",
     href: "/reporting/tasks",
     icon: (
       <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -103,8 +97,6 @@ const REPORT_TYPES = [
   },
   {
     id: "competitor",
-    title: "Wettbewerbs-Report",
-    description: "Vergleich der eigenen Rankings mit Wettbewerbern und Identifikation von Keyword-Lücken.",
     href: "/reporting/competitor",
     icon: (
       <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -117,6 +109,7 @@ const REPORT_TYPES = [
 ];
 
 export default function ReportingPage() {
+  const t = useMessages(reportingMessages);
   const [mounted, setMounted] = useState(false);
   const [data, setData] = useState<RankingReportData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -174,13 +167,13 @@ export default function ReportingPage() {
       bestCategory: bestCategory?.category || null,
       bestCategoryAvg: bestCategory?.avgPosition || null,
       topImprover: topImprover
-        ? `"${topImprover.keyword}" (+${topImprover.deltaLast} Positionen)`
+        ? t.summary.keywordDelta(topImprover.keyword, `+${topImprover.deltaLast}`)
         : null,
       topDecliner: topDecliner
-        ? `"${topDecliner.keyword}" (${topDecliner.deltaLast} Positionen)`
+        ? t.summary.keywordDelta(topDecliner.keyword, `${topDecliner.deltaLast}`)
         : null,
     };
-  }, [data]);
+  }, [data, t]);
 
   // Distribution data für kleines Pie Chart
   const distributionData = useMemo(() => {
@@ -191,9 +184,9 @@ export default function ReportingPage() {
       { name: "Top 11-20", value: data.stats.top20 },
       { name: "Top 21-50", value: data.stats.top50 },
       { name: "Top 51-100", value: data.stats.top100 },
-      { name: "Nicht rankend", value: data.stats.notRanking },
+      { name: t.distribution.notRanking, value: data.stats.notRanking },
     ].filter((d) => d.value > 0);
-  }, [data]);
+  }, [data, t]);
 
   const generateAiReport = async () => {
     if (!data) return;
@@ -243,14 +236,14 @@ export default function ReportingPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "Fehler beim Generieren des Reports");
+        throw new Error(errorData.error || t.ai.errorGenerating);
       }
 
       const result = await response.json();
       setAiReport(result.report);
     } catch (error) {
       console.error("Error generating AI report:", error);
-      setAiReportError(error instanceof Error ? error.message : "Unbekannter Fehler");
+      setAiReportError(error instanceof Error ? error.message : t.ai.unknownError);
     } finally {
       setIsGeneratingAiReport(false);
     }
@@ -268,9 +261,9 @@ export default function ReportingPage() {
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Reporting</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Wähle einen Report-Typ aus oder generiere einen KI-Report
+          {t.subtitle}
         </p>
       </div>
 
@@ -279,27 +272,27 @@ export default function ReportingPage() {
         <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
           <div className="flex items-center gap-3">
             <div className="animate-spin h-5 w-5 border-2 border-blue-500 border-t-transparent rounded-full"></div>
-            <span className="text-sm text-slate-500 dark:text-slate-400">Lade Daten...</span>
+            <span className="text-sm text-slate-500 dark:text-slate-400">{t.loadingData}</span>
           </div>
         </div>
       ) : data && executiveSummary ? (
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
           <div className="p-6">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Executive Summary</h2>
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">{t.executiveSummary}</h2>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Kennzahlen */}
               <div className="lg:col-span-2 space-y-4">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <StatCard title="Keywords gesamt" value={executiveSummary.total} />
-                  <StatCard title="Ø Position" value={executiveSummary.avgPosition} format="position" />
+                  <StatCard title={t.stats.totalKeywords} value={executiveSummary.total} />
+                  <StatCard title={t.stats.avgPosition} value={executiveSummary.avgPosition} format="position" />
                   <StatCard
-                    title="Top 10"
+                    title={t.stats.top10}
                     value={executiveSummary.top10Total}
-                    subtitle={`${executiveSummary.top10Pct}% aller Keywords`}
+                    subtitle={t.stats.top10Subtitle(executiveSummary.top10Pct)}
                     trend="up"
                   />
                   <StatCard
-                    title="Verbessert / Verschlechtert"
+                    title={t.stats.improvedDeclined}
                     value={`${executiveSummary.improved} / ${executiveSummary.declined}`}
                   />
                 </div>
@@ -308,34 +301,42 @@ export default function ReportingPage() {
                 <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
                   <div className="text-sm text-slate-700 dark:text-slate-300 space-y-2">
                     <p>
-                      Von <strong className="text-slate-900 dark:text-white">{executiveSummary.total} getrackte Keywords</strong> ranken{" "}
-                      <strong className="text-slate-900 dark:text-white">{executiveSummary.rankingPct}%</strong> in den Top 100.
-                      Davon befinden sich <strong className="text-blue-600 dark:text-blue-400">{executiveSummary.top10Total}</strong> in den Top 10
-                      (Durchschnittsposition: <strong className="text-slate-900 dark:text-white">{executiveSummary.avgPosition}</strong>).
+                      {t.summary.rankingIntro}
+                      <strong className="text-slate-900 dark:text-white">{t.summary.trackedKeywords(executiveSummary.total)}</strong>
+                      {t.summary.rankingVerb}
+                      <strong className="text-slate-900 dark:text-white">{executiveSummary.rankingPct}%</strong>
+                      {t.summary.inTop100}
+                      <strong className="text-blue-600 dark:text-blue-400">{executiveSummary.top10Total}</strong>
+                      {t.summary.inTop10}
+                      <strong className="text-slate-900 dark:text-white">{executiveSummary.avgPosition}</strong>
+                      {t.summary.inTop10End}
                     </p>
                     <p>
-                      Seit dem letzten Update haben sich{" "}
-                      <strong className="text-emerald-600 dark:text-emerald-400">{executiveSummary.improved} Keywords verbessert</strong> und{" "}
-                      <strong className="text-red-600 dark:text-red-400">{executiveSummary.declined} Keywords verschlechtert</strong>.
+                      {t.summary.changeIntro}
+                      <strong className="text-emerald-600 dark:text-emerald-400">{t.summary.improved(executiveSummary.improved)}</strong>
+                      {t.summary.and}
+                      <strong className="text-red-600 dark:text-red-400">{t.summary.declined(executiveSummary.declined)}</strong>
+                      {t.summary.changeEnd}
                     </p>
                     {executiveSummary.bestCategory && (
                       <p>
-                        Die beste Kategorie ist{" "}
-                        <strong className="text-slate-900 dark:text-white">{executiveSummary.bestCategory}</strong> mit einer
-                        durchschnittlichen Position von{" "}
-                        <strong className="text-slate-900 dark:text-white">{executiveSummary.bestCategoryAvg}</strong>.
+                        {t.summary.bestCategoryIntro}
+                        <strong className="text-slate-900 dark:text-white">{executiveSummary.bestCategory}</strong>
+                        {t.summary.bestCategoryMid}
+                        <strong className="text-slate-900 dark:text-white">{executiveSummary.bestCategoryAvg}</strong>
+                        {t.summary.bestCategoryEnd}
                       </p>
                     )}
                     {(executiveSummary.topImprover || executiveSummary.topDecliner) && (
                       <p>
                         {executiveSummary.topImprover && (
                           <>
-                            Grösster Gewinner: <strong className="text-emerald-600 dark:text-emerald-400">{executiveSummary.topImprover}</strong>.{" "}
+                            {t.summary.topImprover}<strong className="text-emerald-600 dark:text-emerald-400">{executiveSummary.topImprover}</strong>.{" "}
                           </>
                         )}
                         {executiveSummary.topDecliner && (
                           <>
-                            Grösster Verlierer: <strong className="text-red-600 dark:text-red-400">{executiveSummary.topDecliner}</strong>.
+                            {t.summary.topDecliner}<strong className="text-red-600 dark:text-red-400">{executiveSummary.topDecliner}</strong>.
                           </>
                         )}
                       </p>
@@ -346,12 +347,12 @@ export default function ReportingPage() {
 
               {/* Mini Pie Chart */}
               <div>
-                <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Ranking-Verteilung</h3>
+                <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">{t.distribution.title}</h3>
                 {distributionData.length > 0 ? (
                   <PieChart data={distributionData} height={200} />
                 ) : (
                   <div className="h-[200px] flex items-center justify-center text-sm text-slate-400">
-                    Keine Daten
+                    {t.noData}
                   </div>
                 )}
               </div>
@@ -361,11 +362,11 @@ export default function ReportingPage() {
       ) : (
         <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 text-center">
           <p className="text-slate-500 dark:text-slate-400 text-sm">
-            Noch keine Ranking-Daten vorhanden. Füge Keywords im{" "}
+            {t.noRankingData.before}
             <Link href="/ranktracker" className="text-blue-600 dark:text-blue-400 hover:underline">
-              Ranktracker
-            </Link>{" "}
-            hinzu.
+              {t.noRankingData.link}
+            </Link>
+            {t.noRankingData.after}
           </p>
         </div>
       )}
@@ -375,10 +376,10 @@ export default function ReportingPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-2">
           <div>
             <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">
-              KI-generierter Ranking Report
+              {t.ai.title}
             </h2>
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              Generiere eine umfassende KI-Analyse der aktuellen Ranking-Situation mit Handlungsempfehlungen
+              {t.ai.description}
             </p>
           </div>
           <button
@@ -389,7 +390,7 @@ export default function ReportingPage() {
             {isGeneratingAiReport ? (
               <>
                 <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                <span>Generiere Report...</span>
+                <span>{t.ai.generating}</span>
               </>
             ) : (
               <>
@@ -401,7 +402,7 @@ export default function ReportingPage() {
                     d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
                   />
                 </svg>
-                <span>KI-Report generieren</span>
+                <span>{t.ai.generate}</span>
               </>
             )}
           </button>
@@ -458,7 +459,7 @@ export default function ReportingPage() {
 
       {/* Report-Typen Auswahl */}
       <div>
-        <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Report-Typen</h2>
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">{t.reportTypesTitle}</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {REPORT_TYPES.map((report) => (
             <div key={report.id} className="relative">
@@ -474,14 +475,14 @@ export default function ReportingPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <h3 className="text-base font-semibold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                          {report.title}
+                          {t.reportTypes[report.id].title}
                         </h3>
                         <svg className="w-4 h-4 text-slate-400 group-hover:text-blue-500 group-hover:translate-x-0.5 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                         </svg>
                       </div>
                       <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                        {report.description}
+                        {t.reportTypes[report.id].description}
                       </p>
                     </div>
                   </div>
@@ -495,14 +496,14 @@ export default function ReportingPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <h3 className="text-base font-semibold text-slate-900 dark:text-white">
-                          {report.title}
+                          {t.reportTypes[report.id].title}
                         </h3>
                         <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-300">
-                          Demnächst
+                          {t.comingSoon}
                         </span>
                       </div>
                       <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                        {report.description}
+                        {t.reportTypes[report.id].description}
                       </p>
                     </div>
                   </div>

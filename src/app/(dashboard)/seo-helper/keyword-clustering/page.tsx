@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useMessages } from "@/i18n/I18nProvider";
+import { seoHelperKeywordClusteringMessages } from "@/i18n/messages/seo-helper-keyword-clustering";
 
 interface Keyword {
   text: string;
@@ -26,6 +28,7 @@ const clusterColors = [
 ];
 
 export default function KeywordClusteringPage() {
+  const t = useMessages(seoHelperKeywordClusteringMessages);
   const [keywordsInput, setKeywordsInput] = useState("");
   const [clusters, setClusters] = useState<Cluster[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -98,7 +101,7 @@ export default function KeywordClusteringPage() {
       
       for (const keyword of unassigned) {
         const words = keyword.split(/\s+/).filter(w => w.length > 2 && !isStopWord(w));
-        const groupWord = words[0] || "Sonstige";
+        const groupWord = words[0] || t.miscCluster;
         const existing = otherClusters.get(groupWord) || [];
         existing.push(keyword);
         otherClusters.set(groupWord, existing);
@@ -109,9 +112,9 @@ export default function KeywordClusteringPage() {
         if (kws.length >= 2) {
           clusters.set(capitalizeFirst(name), kws);
         } else {
-          const misc = clusters.get("Sonstige") || [];
+          const misc = clusters.get(t.miscCluster) || [];
           misc.push(...kws);
-          clusters.set("Sonstige", misc);
+          clusters.set(t.miscCluster, misc);
         }
       }
     }
@@ -163,8 +166,8 @@ export default function KeywordClusteringPage() {
           </svg>
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Keyword Clustering</h1>
-          <p className="text-slate-500 dark:text-slate-400">Gruppiere Keywords in thematische Cluster</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h1>
+          <p className="text-slate-500 dark:text-slate-400">{t.subtitle}</p>
         </div>
       </div>
 
@@ -174,24 +177,15 @@ export default function KeywordClusteringPage() {
           <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 space-y-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                Keywords eingeben
+                {t.inputLabel}
               </label>
               <p className="text-xs text-slate-500 mb-2">
-                Ein Keyword pro Zeile oder kommagetrennt
+                {t.inputHint}
               </p>
               <textarea
                 value={keywordsInput}
                 onChange={(e) => setKeywordsInput(e.target.value)}
-                placeholder={`hypothek schweiz
-hypothek berechnen
-hypothek zinsen
-hypothek vergleich
-immobilien kaufen
-haus kaufen schweiz
-wohnung kaufen
-immobilien finanzierung
-kredit aufnehmen
-privatkredit vergleich`}
+                placeholder={t.inputPlaceholder}
                 rows={12}
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none font-mono text-sm"
               />
@@ -208,21 +202,21 @@ privatkredit vergleich`}
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
-                  Clustere Keywords...
+                  {t.processing}
                 </span>
               ) : (
-                "Keywords clustern"
+                t.process
               )}
             </button>
           </div>
 
           {/* Tips */}
           <div className="bg-violet-50 dark:bg-violet-900/20 rounded-xl p-4 border border-violet-200 dark:border-violet-800">
-            <h3 className="font-medium text-violet-900 dark:text-violet-100 mb-2">Tipps</h3>
+            <h3 className="font-medium text-violet-900 dark:text-violet-100 mb-2">{t.tipsTitle}</h3>
             <ul className="text-sm text-violet-800 dark:text-violet-200 space-y-1">
-              <li>• Verwende mindestens 10 Keywords für bessere Ergebnisse</li>
-              <li>• Keywords werden automatisch nach Themen gruppiert</li>
-              <li>• Exportiere die Cluster als CSV für weitere Analysen</li>
+              {t.tips.map((tip) => (
+                <li key={tip}>• {tip}</li>
+              ))}
             </ul>
           </div>
         </div>
@@ -234,8 +228,8 @@ privatkredit vergleich`}
               {/* Stats */}
               <div className="flex items-center justify-between">
                 <div className="text-sm text-slate-500">
-                  <span className="font-semibold text-slate-900 dark:text-white">{totalKeywords}</span> Keywords in{" "}
-                  <span className="font-semibold text-slate-900 dark:text-white">{clusters.length}</span> Clustern
+                  <span className="font-semibold text-slate-900 dark:text-white">{totalKeywords}</span> {t.statsKeywords}{" "}
+                  <span className="font-semibold text-slate-900 dark:text-white">{clusters.length}</span> {t.statsClusters}
                 </div>
                 <button
                   onClick={exportClusters}
@@ -244,7 +238,7 @@ privatkredit vergleich`}
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                   </svg>
-                  CSV Export
+                  {t.csvExport}
                 </button>
               </div>
 
@@ -260,7 +254,7 @@ privatkredit vergleich`}
                         {cluster.name}
                       </h3>
                       <span className="text-sm text-slate-500">
-                        {cluster.keywords.length} Keywords
+                        {t.keywordCount(cluster.keywords.length)}
                       </span>
                     </div>
                     <div className="p-4 flex flex-wrap gap-2">
@@ -283,7 +277,7 @@ privatkredit vergleich`}
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
               </svg>
               <p className="text-slate-500">
-                Gib Keywords ein und klicke auf "Keywords clustern"
+                {t.emptyState}
               </p>
             </div>
           )}

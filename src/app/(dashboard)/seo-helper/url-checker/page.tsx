@@ -2,6 +2,8 @@
 
 import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
+import { useLocale, useMessages } from "@/i18n/I18nProvider";
+import { seoHelperUrlCheckerMessages } from "@/i18n/messages/seo-helper-url-checker";
 
 interface CheckResult {
   factor: string;
@@ -69,6 +71,8 @@ interface HistoryEntry {
 type TabId = "results" | "ai" | "speed" | "backlinks" | "history" | "batch" | "competitor" | "site" | "monitor";
 
 export default function UrlCheckerPage() {
+  const t = useMessages(seoHelperUrlCheckerMessages);
+  const { intlLocale } = useLocale();
   const [url, setUrl] = useState("");
   const [keyword, setKeyword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -198,7 +202,7 @@ export default function UrlCheckerPage() {
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Fehler bei der Analyse");
+      if (!response.ok) throw new Error(data.error || t.errors.analysis);
 
       setResult(data);
       setExpandedCategories(new Set(data.categories.filter((c: CategoryResult) => c.score < 80).map((c: CategoryResult) => c.name)));
@@ -216,7 +220,7 @@ export default function UrlCheckerPage() {
         }),
       }).catch(() => {});
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unbekannter Fehler");
+      setError(err instanceof Error ? err.message : t.errors.unknown);
     } finally {
       setIsLoading(false);
     }
@@ -232,7 +236,7 @@ export default function UrlCheckerPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           url: result.url,
-          title: result.categories.find(c => c.name === "Content Quality")?.checks.find(ch => ch.factor === "Title-Tag")?.value,
+          title: result.categories.find(c => c.name === "Content Quality")?.checks.find(ch => ch.leakAttribute === "originalTitleHardTokenCount")?.value,
           metaDescription: "",
           textContent: "", // Will be refetched server-side if needed
           keyword: keyword.trim() || undefined,
@@ -243,7 +247,7 @@ export default function UrlCheckerPage() {
       if (!resp.ok) throw new Error(data.error);
       setAiAnalysis(data.analysis);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "KI-Analyse fehlgeschlagen");
+      setError(err instanceof Error ? err.message : t.errors.ai);
     } finally {
       setIsAiLoading(false);
     }
@@ -263,7 +267,7 @@ export default function UrlCheckerPage() {
       if (!resp.ok) throw new Error(data.error);
       setPageSpeed(data.metrics);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "PageSpeed-Analyse fehlgeschlagen");
+      setError(err instanceof Error ? err.message : t.errors.pageSpeed);
     } finally {
       setIsSpeedLoading(false);
     }
@@ -283,7 +287,7 @@ export default function UrlCheckerPage() {
       if (!resp.ok) throw new Error(data.error);
       setBacklinks(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Backlink-Analyse fehlgeschlagen");
+      setError(err instanceof Error ? err.message : t.errors.backlinks);
     } finally {
       setIsBacklinksLoading(false);
     }
@@ -328,7 +332,7 @@ export default function UrlCheckerPage() {
       if (!resp.ok) throw new Error(data.error);
       setBatchResults(data.results || []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Batch-Analyse fehlgeschlagen");
+      setError(err instanceof Error ? err.message : t.errors.batch);
     } finally {
       setIsBatchLoading(false);
     }
@@ -354,7 +358,7 @@ export default function UrlCheckerPage() {
       if (!resp.ok) throw new Error(data.error);
       setCompetitorData(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Vergleich fehlgeschlagen");
+      setError(err instanceof Error ? err.message : t.errors.competitor);
     } finally {
       setIsCompetitorLoading(false);
     }
@@ -375,7 +379,7 @@ export default function UrlCheckerPage() {
       if (!resp.ok) throw new Error(data.error);
       setSiteScore(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Site-Score fehlgeschlagen");
+      setError(err instanceof Error ? err.message : t.errors.siteScore);
     } finally {
       setIsSiteLoading(false);
     }
@@ -397,7 +401,7 @@ export default function UrlCheckerPage() {
       handleLoadMonitors();
       if (data.created) setError("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Monitor-Erstellung fehlgeschlagen");
+      setError(err instanceof Error ? err.message : t.errors.monitor);
     } finally {
       setIsMonitorLoading(false);
     }
@@ -425,18 +429,18 @@ export default function UrlCheckerPage() {
       });
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.error);
-      alert(`${data.tasksCount} Optimierungsaufgaben in KVP exportiert!`);
+      alert(t.kvpExported(data.tasksCount));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "KVP-Export fehlgeschlagen");
+      setError(err instanceof Error ? err.message : t.errors.kvpExport);
     }
   };
 
   const handleExportCsv = () => {
     if (!result) return;
-    const lines = ["Kategorie;Faktor;Status;Wert;Empfehlung;Leak-Attribut"];
+    const lines = [t.csvHeader];
     for (const cat of result.categories) {
       for (const check of cat.checks) {
-        lines.push(`"${cat.name}";"${check.factor}";"${check.status}";"${check.value ?? ''}";"${check.recommendation}";"${check.leakAttribute}"`);
+        lines.push(`"${getCategoryName(cat.name)}";"${check.factor}";"${check.status}";"${check.value ?? ''}";"${check.recommendation}";"${check.leakAttribute}"`);
       }
     }
     const csv = lines.join("\n");
@@ -467,20 +471,10 @@ export default function UrlCheckerPage() {
     return "from-red-500 to-rose-500";
   };
 
+  const getCategoryName = (name: string): string => t.categoryNames[name] ?? name;
+
   const getCategoryExplanation = (name: string): string => {
-    const explanations: Record<string, string> = {
-      "Technical / Indexing": "Technische Grundlagen wie Canonical-Tags, Robots-Direktiven und Ladegeschwindigkeit. Ohne korrekte Indexierung können Seiten gar nicht ranken — hier zuerst optimieren.",
-      "Content Quality": "Qualität und Tiefe deines Contents nach Googles NSR- und QualityBoost-Metriken. Umfassende, einzigartige Inhalte mit klarem Mehrwert werden bevorzugt.",
-      "Entity & Topicality": "Wie klar deine Seite mit bestimmten Themen und Entitäten verknüpft ist (WebRef). Verwende klare Definitionen, verlinke relevante Konzepte und stärke die semantische Klarheit.",
-      "Freshness": "Aktualität des Contents. Google misst das letzte signifikante Update — regelmässig überarbeitete Inhalte mit neuen Erkenntnissen werden belohnt.",
-      "Authority & Trust": "Vertrauenswürdigkeit der Domain und Seite (PageRank, NSR). Baue Authority durch hochwertige Backlinks, konsistente Qualität und transparente Absender-Informationen auf.",
-      "User Experience": "Nutzererfahrung gemessen an NavBoost-Signalen (Klickverhalten) und ClutterScore (visuelle Überladung). Klare Navigation, wenig Ablenkung und schnelle Interaktion verbessern diesen Score.",
-      "Hreflang & i18n": "Internationale Ausrichtung und Sprachauszeichnung. Für mehrsprachige Seiten sind korrekte hreflang-Tags entscheidend, damit Google die richtige Sprachversion anzeigt.",
-      "Spam-Risiko": "Risikobewertung durch SpamBrain. Vermeide überaggressive Keyword-Stuffing, versteckte Inhalte, Link-Schemes und andere manipulative Taktiken.",
-      "Keyword-Relevanz": "Wie gut dein Fokus-Keyword in Title, Headings und Content integriert ist — natürlich und semantisch breit, nicht nur exakte Matches.",
-      "Structured Data": "Schema.org Markup für Rich Snippets. Strukturierte Daten helfen Google, den Inhalt zu verstehen und prominent in den Suchergebnissen darzustellen.",
-    };
-    return explanations[name] || "Optimiere diesen Bereich, um dein Gesamtranking zu verbessern.";
+    return t.categoryExplanations[name] || t.categoryExplanationFallback;
   };
 
   const getStatusIcon = (status: "pass" | "warn" | "fail") => {
@@ -500,15 +494,15 @@ export default function UrlCheckerPage() {
   };
 
   const tabs: { id: TabId; label: string; show: boolean }[] = [
-    { id: "results", label: "Ergebnisse", show: !!result },
-    { id: "ai", label: "KI-Analyse", show: !!result },
-    { id: "speed", label: "Core Web Vitals", show: !!result },
-    { id: "backlinks", label: "Backlinks", show: !!result },
-    { id: "competitor", label: "Wettbewerber", show: !!result },
-    { id: "site", label: "Site Score", show: true },
-    { id: "batch", label: "Batch", show: true },
-    { id: "monitor", label: "Monitoring", show: true },
-    { id: "history", label: "Verlauf", show: true },
+    { id: "results", label: t.tabs.results, show: !!result },
+    { id: "ai", label: t.tabs.ai, show: !!result },
+    { id: "speed", label: t.tabs.speed, show: !!result },
+    { id: "backlinks", label: t.tabs.backlinks, show: !!result },
+    { id: "competitor", label: t.tabs.competitor, show: !!result },
+    { id: "site", label: t.tabs.site, show: true },
+    { id: "batch", label: t.tabs.batch, show: true },
+    { id: "monitor", label: t.tabs.monitor, show: true },
+    { id: "history", label: t.tabs.history, show: true },
   ];
 
   return (
@@ -526,29 +520,29 @@ export default function UrlCheckerPage() {
           </svg>
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">URL Ranking Factor Checker</h1>
-          <p className="text-slate-500 dark:text-slate-400">Google API Leak Ranking-Faktoren + KI + CWV + Backlinks</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h1>
+          <p className="text-slate-500 dark:text-slate-400">{t.subtitle}</p>
         </div>
       </div>
 
       {/* URL + Keyword Input */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 space-y-4">
         <div className="flex gap-3">
-          <input type="url" value={url} onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleCheck()} placeholder="https://example.com/seite" className="flex-1 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent" />
+          <input type="url" value={url} onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleCheck()} placeholder={t.urlPlaceholder} className="flex-1 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent" />
           <button onClick={() => handleCheck()} disabled={isLoading || !url.trim()} className="px-6 py-3 bg-gradient-to-r from-violet-500 to-purple-600 text-white font-medium rounded-xl hover:from-violet-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-violet-500/25">
             {isLoading ? (
               <div className="flex items-center gap-2">
                 <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" /></svg>
-                Pr&uuml;fe...
+                {t.checking}
               </div>
-            ) : "Prüfen"}
+            ) : t.check}
           </button>
         </div>
         <div className="flex gap-3">
-          <input type="text" value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="Fokus-Keyword (optional)" className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent text-sm" />
+          <input type="text" value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder={t.keywordPlaceholder} className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent text-sm" />
         </div>
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          27+ Checks basierend auf Google Content Warehouse API Leak (2024): NSR, QualityBoost, NavBoost, WebRef, FreshnessTwiddler, SpamBrain
+          {t.inputHint}
         </p>
       </div>
 
@@ -572,19 +566,19 @@ export default function UrlCheckerPage() {
           <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-8">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">Gesamtbewertung</h2>
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">{t.results.overallHeading}</h2>
                 <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md">
-                  Gewichteter Score – {result.categories.length} Kategorien
-                  {result.keyword && <span className="ml-2 px-2 py-0.5 bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 rounded text-xs">Keyword: {result.keyword}</span>}
+                  {t.results.weightedScore(result.categories.length)}
+                  {result.keyword && <span className="ml-2 px-2 py-0.5 bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 rounded text-xs">{t.results.keyword(result.keyword)}</span>}
                 </p>
                 <p className="text-xs text-slate-400 dark:text-slate-500 mt-2 font-mono truncate max-w-sm">{result.url}</p>
                 <button onClick={handleExportCsv} className="mt-3 text-xs text-violet-600 dark:text-violet-400 hover:underline flex items-center gap-1">
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                  CSV Export
+                  {t.results.csvExport}
                 </button>
                 <button onClick={handleExportToKvp} className="mt-1 text-xs text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1">
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
-                  In KVP exportieren
+                  {t.results.kvpExport}
                 </button>
               </div>
               <div className="relative w-32 h-32">
@@ -601,7 +595,7 @@ export default function UrlCheckerPage() {
               {result.categories.map((cat) => (
                 <div key={cat.name} className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-slate-600 dark:text-slate-400 truncate">{cat.name}</span>
+                    <span className="text-xs font-medium text-slate-600 dark:text-slate-400 truncate">{getCategoryName(cat.name)}</span>
                     <span className={`text-xs font-bold ${getScoreColor(cat.score)}`}>{cat.score}</span>
                   </div>
                   <div className="h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
@@ -619,7 +613,7 @@ export default function UrlCheckerPage() {
                 <div className="flex items-center gap-3">
                   <div className={`w-3 h-3 rounded-full bg-gradient-to-r ${getScoreBg(category.score)}`} />
                   <div className="text-left">
-                    <h3 className="font-semibold text-slate-900 dark:text-white">{category.name}</h3>
+                    <h3 className="font-semibold text-slate-900 dark:text-white">{getCategoryName(category.name)}</h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400">{category.leakReference}</p>
                   </div>
                 </div>
@@ -650,13 +644,13 @@ export default function UrlCheckerPage() {
                               onClick={() => openTaskForm(checkKey)}
                               className="ml-auto text-xs px-2.5 py-1 rounded-lg bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 hover:bg-violet-200 dark:hover:bg-violet-900/50 transition-colors font-medium"
                             >
-                              Task erstellen
+                              {t.results.createTask}
                             </button>
                           )}
                           {isTaskCreated && (
                             <span className="ml-auto text-xs px-2.5 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium flex items-center gap-1">
                               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                              Task erstellt
+                              {t.results.taskCreated}
                             </span>
                           )}
                         </div>
@@ -667,7 +661,7 @@ export default function UrlCheckerPage() {
                               onChange={e => setTaskAssignee(e.target.value)}
                               className="flex-1 text-xs px-2 py-1.5 rounded-md border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
                             >
-                              <option value="">Ohne Zuweisung</option>
+                              <option value="">{t.results.unassigned}</option>
                               {taskUsers.map(u => (
                                 <option key={u.id} value={u.id}>{u.name || u.email}</option>
                               ))}
@@ -676,7 +670,7 @@ export default function UrlCheckerPage() {
                               onClick={() => handleCreateTask(check, category.name)}
                               className="text-xs px-3 py-1.5 rounded-md bg-violet-600 text-white hover:bg-violet-700 font-medium whitespace-nowrap"
                             >
-                              Erstellen
+                              {t.results.create}
                             </button>
                             <button
                               onClick={() => setTaskCreatingKey(null)}
@@ -700,9 +694,9 @@ export default function UrlCheckerPage() {
       {/* Tab: AI Analysis */}
       {activeTab === "ai" && (
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">KI-gestützte Content-Analyse</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Bewertung basierend auf E-E-A-T, Topical Authority und Entity-Erkennung (WebRef-Analog)</p>
-          {isAiLoading && <div className="flex items-center gap-3 text-slate-500"><svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>KI analysiert...</div>}
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">{t.ai.heading}</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">{t.ai.description}</p>
+          {isAiLoading && <div className="flex items-center gap-3 text-slate-500"><svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>{t.ai.loading}</div>}
           {aiAnalysis && (
             <div className="space-y-4">
               {Object.entries(aiAnalysis).map(([key, val]) => (
@@ -719,21 +713,21 @@ export default function UrlCheckerPage() {
               ))}
             </div>
           )}
-          {!isAiLoading && !aiAnalysis && <button onClick={handleAiAnalysis} className="px-4 py-2 bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 rounded-lg text-sm hover:bg-violet-200">KI-Analyse starten</button>}
+          {!isAiLoading && !aiAnalysis && <button onClick={handleAiAnalysis} className="px-4 py-2 bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 rounded-lg text-sm hover:bg-violet-200">{t.ai.start}</button>}
         </div>
       )}
 
       {/* Tab: PageSpeed */}
       {activeTab === "speed" && (
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Core Web Vitals (NavBoost-Proxy)</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Google PageSpeed Insights – Bezug: NavBoost bevorzugt schnelle Seiten mit guter Nutzererfahrung</p>
-          {isSpeedLoading && <div className="flex items-center gap-3 text-slate-500"><svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>Messe Performance...</div>}
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">{t.speed.heading}</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">{t.speed.description}</p>
+          {isSpeedLoading && <div className="flex items-center gap-3 text-slate-500"><svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>{t.speed.loading}</div>}
           {pageSpeed && (
             <div className="space-y-4">
               <div className="flex items-center gap-4 mb-6">
                 <div className={`text-4xl font-bold ${getScoreColor(pageSpeed.performanceScore)}`}>{pageSpeed.performanceScore}</div>
-                <div className="text-sm text-slate-500">Performance Score ({pageSpeed.strategy})</div>
+                <div className="text-sm text-slate-500">{t.speed.performanceScore(pageSpeed.strategy)}</div>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 {[
@@ -751,25 +745,25 @@ export default function UrlCheckerPage() {
               </div>
             </div>
           )}
-          {!isSpeedLoading && !pageSpeed && <button onClick={handlePageSpeed} className="px-4 py-2 bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 rounded-lg text-sm hover:bg-violet-200">CWV messen</button>}
+          {!isSpeedLoading && !pageSpeed && <button onClick={handlePageSpeed} className="px-4 py-2 bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 rounded-lg text-sm hover:bg-violet-200">{t.speed.measure}</button>}
         </div>
       )}
 
       {/* Tab: Backlinks */}
       {activeTab === "backlinks" && (
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Authority & Backlinks</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Bezug: NSR siteAuthority, PageRank, siteLinkIn</p>
-          {isBacklinksLoading && <div className="flex items-center gap-3 text-slate-500"><svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>Lade Backlink-Daten...</div>}
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">{t.backlinks.heading}</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">{t.backlinks.description}</p>
+          {isBacklinksLoading && <div className="flex items-center gap-3 text-slate-500"><svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>{t.backlinks.loading}</div>}
           {backlinks && (
             <div className="space-y-6">
-              <h3 className="font-medium text-slate-700 dark:text-slate-300">Domain: {backlinks.domain.target}</h3>
+              <h3 className="font-medium text-slate-700 dark:text-slate-300">{t.backlinks.domain(backlinks.domain.target)}</h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
-                  { label: "Domain Rank", value: backlinks.domain.domainRank },
-                  { label: "Backlinks", value: backlinks.domain.totalBacklinks.toLocaleString() },
-                  { label: "Referring Domains", value: backlinks.domain.referringDomains.toLocaleString() },
-                  { label: "Dofollow", value: backlinks.domain.dofollowBacklinks.toLocaleString() },
+                  { label: t.backlinks.domainRank, value: backlinks.domain.domainRank },
+                  { label: t.backlinks.backlinks, value: backlinks.domain.totalBacklinks.toLocaleString(intlLocale) },
+                  { label: t.backlinks.referringDomains, value: backlinks.domain.referringDomains.toLocaleString(intlLocale) },
+                  { label: t.backlinks.dofollow, value: backlinks.domain.dofollowBacklinks.toLocaleString(intlLocale) },
                 ].map(m => (
                   <div key={m.label} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-700/50">
                     <div className="text-xs font-medium text-slate-500">{m.label}</div>
@@ -779,35 +773,35 @@ export default function UrlCheckerPage() {
               </div>
               {backlinks.page && (
                 <>
-                  <h3 className="font-medium text-slate-700 dark:text-slate-300 mt-4">Diese Seite</h3>
+                  <h3 className="font-medium text-slate-700 dark:text-slate-300 mt-4">{t.backlinks.thisPage}</h3>
                   <div className="grid grid-cols-3 gap-4">
-                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-700/50"><div className="text-xs text-slate-500">Backlinks</div><div className="text-xl font-bold text-slate-900 dark:text-white">{backlinks.page.totalBacklinks}</div></div>
-                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-700/50"><div className="text-xs text-slate-500">Ref. Domains</div><div className="text-xl font-bold text-slate-900 dark:text-white">{backlinks.page.referringDomains}</div></div>
-                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-700/50"><div className="text-xs text-slate-500">Page Rank</div><div className="text-xl font-bold text-slate-900 dark:text-white">{backlinks.page.domainRank}</div></div>
+                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-700/50"><div className="text-xs text-slate-500">{t.backlinks.backlinks}</div><div className="text-xl font-bold text-slate-900 dark:text-white">{backlinks.page.totalBacklinks}</div></div>
+                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-700/50"><div className="text-xs text-slate-500">{t.backlinks.refDomains}</div><div className="text-xl font-bold text-slate-900 dark:text-white">{backlinks.page.referringDomains}</div></div>
+                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-700/50"><div className="text-xs text-slate-500">{t.backlinks.pageRank}</div><div className="text-xl font-bold text-slate-900 dark:text-white">{backlinks.page.domainRank}</div></div>
                   </div>
                 </>
               )}
             </div>
           )}
-          {!isBacklinksLoading && !backlinks && <button onClick={handleBacklinks} className="px-4 py-2 bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 rounded-lg text-sm hover:bg-violet-200">Backlinks laden</button>}
+          {!isBacklinksLoading && !backlinks && <button onClick={handleBacklinks} className="px-4 py-2 bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 rounded-lg text-sm hover:bg-violet-200">{t.backlinks.load}</button>}
         </div>
       )}
 
       {/* Tab: Batch */}
       {activeTab === "batch" && (
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 space-y-4">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Batch-Analyse (max. 10 URLs)</h2>
-          <textarea value={batchUrls} onChange={e => setBatchUrls(e.target.value)} placeholder="Eine URL pro Zeile..." rows={6} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm font-mono" />
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{t.batch.heading}</h2>
+          <textarea value={batchUrls} onChange={e => setBatchUrls(e.target.value)} placeholder={t.batch.placeholder} rows={6} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm font-mono" />
           <button onClick={handleBatch} disabled={isBatchLoading || !batchUrls.trim()} className="px-5 py-2.5 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl text-sm font-medium disabled:opacity-50">
-            {isBatchLoading ? "Analysiere..." : "Batch prüfen"}
+            {isBatchLoading ? t.batch.analyzing : t.batch.run}
           </button>
           {batchResults.length > 0 && (
             <div className="mt-4 overflow-x-auto">
               <table className="w-full text-sm">
                 <thead><tr className="border-b border-slate-200 dark:border-slate-700">
-                  <th className="text-left py-2 px-3 text-slate-600 dark:text-slate-400">URL</th>
-                  <th className="text-center py-2 px-3 text-slate-600 dark:text-slate-400">Score</th>
-                  <th className="text-left py-2 px-3 text-slate-600 dark:text-slate-400">Status</th>
+                  <th className="text-left py-2 px-3 text-slate-600 dark:text-slate-400">{t.batch.url}</th>
+                  <th className="text-center py-2 px-3 text-slate-600 dark:text-slate-400">{t.batch.score}</th>
+                  <th className="text-left py-2 px-3 text-slate-600 dark:text-slate-400">{t.batch.status}</th>
                 </tr></thead>
                 <tbody>
                   {batchResults.map((r, i) => (
@@ -816,7 +810,7 @@ export default function UrlCheckerPage() {
                       <td className="py-2 px-3 text-center">
                         {'overallScore' in r ? <span className={`font-bold ${getScoreColor(r.overallScore)}`}>{r.overallScore}</span> : <span className="text-red-500">-</span>}
                       </td>
-                      <td className="py-2 px-3">{'error' in r ? <span className="text-red-500 text-xs">{r.error}</span> : <span className="text-emerald-500 text-xs">OK</span>}</td>
+                      <td className="py-2 px-3">{'error' in r ? <span className="text-red-500 text-xs">{r.error}</span> : <span className="text-emerald-500 text-xs">{t.batch.ok}</span>}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -829,16 +823,16 @@ export default function UrlCheckerPage() {
       {/* Tab: History */}
       {activeTab === "history" && (
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Analyse-Verlauf</h2>
-          {isHistoryLoading && <p className="text-slate-500">Lade...</p>}
-          {!isHistoryLoading && history.length === 0 && <p className="text-slate-500 text-sm">Noch keine gespeicherten Analysen.</p>}
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">{t.history.heading}</h2>
+          {isHistoryLoading && <p className="text-slate-500">{t.history.loading}</p>}
+          {!isHistoryLoading && history.length === 0 && <p className="text-slate-500 text-sm">{t.history.empty}</p>}
           {history.length > 0 && (
             <div className="space-y-2">
               {history.map(entry => (
                 <button key={entry.id} onClick={() => handleCheck(entry.url, entry.keyword || "")} className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-left">
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-mono text-slate-700 dark:text-slate-300 truncate">{entry.url}</p>
-                    <p className="text-xs text-slate-500">{new Date(entry.createdAt).toLocaleString("de-DE")} {entry.keyword && `• Keyword: ${entry.keyword}`}</p>
+                    <p className="text-xs text-slate-500">{new Date(entry.createdAt).toLocaleString(intlLocale)} {entry.keyword && t.history.keyword(entry.keyword)}</p>
                   </div>
                   <span className={`text-lg font-bold ml-4 ${getScoreColor(entry.overallScore)}`}>{entry.overallScore}</span>
                 </button>
@@ -851,23 +845,23 @@ export default function UrlCheckerPage() {
       {/* Tab: Competitor */}
       {activeTab === "competitor" && (
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 space-y-4">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Wettbewerbs-Vergleich</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Vergleiche deine Seite mit bis zu 3 Wettbewerber-URLs</p>
-          <textarea value={competitorUrls} onChange={e => setCompetitorUrls(e.target.value)} placeholder="Wettbewerber-URLs (eine pro Zeile, max. 3)..." rows={3} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm font-mono" />
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{t.competitor.heading}</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{t.competitor.description}</p>
+          <textarea value={competitorUrls} onChange={e => setCompetitorUrls(e.target.value)} placeholder={t.competitor.placeholder} rows={3} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm font-mono" />
           <button onClick={handleCompetitor} disabled={isCompetitorLoading || !competitorUrls.trim()} className="px-5 py-2.5 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl text-sm font-medium disabled:opacity-50">
-            {isCompetitorLoading ? "Vergleiche..." : "Vergleichen"}
+            {isCompetitorLoading ? t.competitor.comparing : t.competitor.compare}
           </button>
           {competitorData && (
             <div className="space-y-4 mt-4">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="p-4 rounded-xl bg-violet-50 dark:bg-violet-900/20 border-2 border-violet-200 dark:border-violet-800">
-                  <div className="text-xs text-violet-600 dark:text-violet-400 font-medium">Eigene Seite</div>
+                  <div className="text-xs text-violet-600 dark:text-violet-400 font-medium">{t.competitor.ownPage}</div>
                   <div className={`text-2xl font-bold ${getScoreColor(competitorData.own.overallScore)}`}>{competitorData.own.overallScore}</div>
                   <div className="text-xs text-slate-500 truncate">{competitorData.own.url}</div>
                 </div>
                 {competitorData.competitors.map((c, i) => (
                   <div key={i} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-700/50">
-                    <div className="text-xs text-slate-500 font-medium">Wettbewerber {i + 1}</div>
+                    <div className="text-xs text-slate-500 font-medium">{t.competitor.competitor(i + 1)}</div>
                     {'overallScore' in c ? (
                       <>
                         <div className={`text-2xl font-bold ${getScoreColor(c.overallScore)}`}>{c.overallScore}</div>
@@ -881,14 +875,14 @@ export default function UrlCheckerPage() {
               </div>
               {competitorData.gaps.length > 0 && (
                 <div className="mt-4">
-                  <h3 className="font-medium text-slate-900 dark:text-white mb-2">Größter Rückstand</h3>
+                  <h3 className="font-medium text-slate-900 dark:text-white mb-2">{t.competitor.biggestGaps}</h3>
                   <div className="space-y-2">
                     {competitorData.gaps.map(gap => (
                       <div key={gap.category} className="flex items-center justify-between p-3 rounded-lg bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30">
-                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{gap.category}</span>
+                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{getCategoryName(gap.category)}</span>
                         <div className="flex items-center gap-3">
-                          <span className="text-sm text-red-600">Du: {gap.ownScore}</span>
-                          <span className="text-sm text-emerald-600">Ø Wettbewerb: {gap.avgCompetitor}</span>
+                          <span className="text-sm text-red-600">{t.competitor.you(gap.ownScore)}</span>
+                          <span className="text-sm text-emerald-600">{t.competitor.avgCompetitor(gap.avgCompetitor)}</span>
                           <span className="text-xs font-bold text-red-700 bg-red-100 px-2 py-0.5 rounded">-{gap.gap}</span>
                         </div>
                       </div>
@@ -904,12 +898,12 @@ export default function UrlCheckerPage() {
       {/* Tab: Site Score (NSR + Topical Authority) */}
       {activeTab === "site" && (
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 space-y-4">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Site-Level NSR Score & Topical Authority</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Analysiert mehrere Seiten einer Domain um siteFocusScore, siteRadius und NSR abzuschätzen</p>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{t.site.heading}</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{t.site.description}</p>
           <div className="flex gap-3">
             <input type="text" value={siteDomain} onChange={e => setSiteDomain(e.target.value)} placeholder={result ? new URL(result.url).hostname : "domain.com"} className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm" />
             <button onClick={handleSiteScore} disabled={isSiteLoading} className="px-5 py-2.5 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl text-sm font-medium disabled:opacity-50">
-              {isSiteLoading ? "Analysiere..." : "Domain prüfen"}
+              {isSiteLoading ? t.site.analyzing : t.site.run}
             </button>
           </div>
           {siteScore && (
@@ -917,42 +911,42 @@ export default function UrlCheckerPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-700/50">
                   <div className="text-center">
-                    <div className="text-xs text-slate-500 font-medium uppercase tracking-wide">NSR Score</div>
+                    <div className="text-xs text-slate-500 font-medium uppercase tracking-wide">{t.site.nsrScore}</div>
                     <div className={`text-3xl font-bold ${getScoreColor(siteScore.nsrScore)}`}>{siteScore.nsrScore}</div>
                   </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 text-center">Gesamtqualität der Domain (0–100). Basiert auf Googles Normalized Site Rank — je höher, desto autoritärer stuft Google die Seite ein.</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 text-center">{t.site.nsrHint}</p>
                 </div>
                 <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-700/50">
                   <div className="text-center">
-                    <div className="text-xs text-slate-500 font-medium uppercase tracking-wide">Site Focus</div>
+                    <div className="text-xs text-slate-500 font-medium uppercase tracking-wide">{t.site.siteFocus}</div>
                     <div className={`text-3xl font-bold ${getScoreColor(siteScore.siteFocusScore)}`}>{siteScore.siteFocusScore}</div>
                   </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 text-center">Thematische Konsistenz (0–100). Ein hoher Wert bedeutet, dass alle Seiten einer klaren Themenlinie folgen — wichtig für Topical Authority.</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 text-center">{t.site.siteFocusHint}</p>
                 </div>
                 <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-700/50">
                   <div className="text-center">
-                    <div className="text-xs text-slate-500 font-medium uppercase tracking-wide">Site Radius</div>
+                    <div className="text-xs text-slate-500 font-medium uppercase tracking-wide">{t.site.siteRadius}</div>
                     <div className="text-3xl font-bold text-slate-700 dark:text-slate-300">{siteScore.siteRadius}</div>
                   </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 text-center">Qualitäts-Streuung zwischen Seiten. Niedrig = gleichmässig gute Qualität. Hoch = grosse Schwankungen — schwache Seiten ziehen die Domain runter.</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 text-center">{t.site.siteRadiusHint}</p>
                 </div>
                 <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-700/50">
                   <div className="text-center">
-                    <div className="text-xs text-slate-500 font-medium uppercase tracking-wide">Seiten</div>
+                    <div className="text-xs text-slate-500 font-medium uppercase tracking-wide">{t.site.pages}</div>
                     <div className="text-3xl font-bold text-slate-700 dark:text-slate-300">{siteScore.pagesAnalyzed}</div>
                   </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 text-center">Anzahl erfolgreich analysierter Unterseiten. Mehr analysierte Seiten = zuverlässigere Gesamtbewertung.</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 text-center">{t.site.pagesHint}</p>
                 </div>
               </div>
 
               <div className="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-4">
-                <h3 className="font-medium text-slate-700 dark:text-slate-300 mb-1">Schwächste Kategorien</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">Diese Bereiche haben den grössten negativen Einfluss auf dein Ranking. Fokussiere deine Optimierung hier.</p>
+                <h3 className="font-medium text-slate-700 dark:text-slate-300 mb-1">{t.site.weakestHeading}</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">{t.site.weakestHint}</p>
                 <div className="space-y-3">
                   {siteScore.weakestCategories.map(cat => (
                     <div key={cat.name} className="p-3 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{cat.name}</span>
+                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{getCategoryName(cat.name)}</span>
                         <span className={`text-lg font-bold ${getScoreColor(cat.score)}`}>{cat.score}</span>
                       </div>
                       <div className="w-full bg-slate-200 dark:bg-slate-600 rounded-full h-1.5 mb-2">
@@ -965,8 +959,8 @@ export default function UrlCheckerPage() {
               </div>
 
               <div>
-                <h3 className="font-medium text-slate-700 dark:text-slate-300 mb-1">Analysierte Seiten</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">Einzelergebnisse der geprüften Unterseiten — grosse Score-Unterschiede deuten auf inkonsistente Qualität hin.</p>
+                <h3 className="font-medium text-slate-700 dark:text-slate-300 mb-1">{t.site.analyzedPages}</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">{t.site.analyzedPagesHint}</p>
                 {siteScore.pages.map((p, i) => (
                   <div key={i} className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-700 last:border-0">
                     <span className="text-xs font-mono text-slate-500 truncate max-w-[300px]">{p.url}</span>
@@ -987,12 +981,12 @@ export default function UrlCheckerPage() {
       {/* Tab: Monitor */}
       {activeTab === "monitor" && (
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 space-y-4">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Automatisches Monitoring</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Wöchentliche Checks + Alerts bei Score-Veränderungen</p>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{t.monitor.heading}</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{t.monitor.description}</p>
           <div className="flex gap-3">
-            <input type="text" value={monitorUrl} onChange={e => setMonitorUrl(e.target.value)} placeholder={result ? result.url : "URL zum Monitoren..."} className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm font-mono" />
+            <input type="text" value={monitorUrl} onChange={e => setMonitorUrl(e.target.value)} placeholder={result ? result.url : t.monitor.placeholder} className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm font-mono" />
             <button onClick={handleAddMonitor} disabled={isMonitorLoading} className="px-5 py-2.5 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl text-sm font-medium disabled:opacity-50">
-              Hinzufügen
+              {t.monitor.add}
             </button>
           </div>
           {monitors.length > 0 && (
@@ -1001,20 +995,20 @@ export default function UrlCheckerPage() {
                 <div key={m.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-700/50">
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-mono text-slate-700 dark:text-slate-300 truncate">{m.url}</p>
-                    <p className="text-xs text-slate-500">{m.frequency} {m.keyword && `• ${m.keyword}`} {m.lastCheckAt && `• Letzter Check: ${new Date(m.lastCheckAt).toLocaleDateString('de-DE')}`}</p>
+                    <p className="text-xs text-slate-500">{m.frequency} {m.keyword && `• ${m.keyword}`} {m.lastCheckAt && t.monitor.lastCheck(new Date(m.lastCheckAt).toLocaleDateString(intlLocale))}</p>
                   </div>
                   {m.lastScore !== null && <span className={`text-lg font-bold ml-4 ${getScoreColor(m.lastScore)}`}>{m.lastScore}</span>}
                 </div>
               ))}
             </div>
           )}
-          {monitors.length === 0 && !isMonitorLoading && <p className="text-sm text-slate-500">Noch keine URLs im Monitoring.</p>}
+          {monitors.length === 0 && !isMonitorLoading && <p className="text-sm text-slate-500">{t.monitor.empty}</p>}
         </div>
       )}
 
       {result && activeTab === "results" && (
         <div className="text-center text-xs text-slate-400 dark:text-slate-500 py-4">
-          Analyse: {new Date(result.fetchedAt).toLocaleString("de-DE")} · Google Content Warehouse API Leak
+          {t.results.footer(new Date(result.fetchedAt).toLocaleString(intlLocale))}
         </div>
       )}
     </div>

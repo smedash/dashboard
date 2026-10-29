@@ -1,13 +1,17 @@
+"use client";
+
+import { useMessages } from "@/i18n/I18nProvider";
+import { urlCleanupMessages } from "@/i18n/messages/url-cleanup";
 import type { RecomputeProgress } from "./run-recompute";
-import { formatEta } from "./run-recompute";
 
 export function RecomputeProgressBar({
   progress,
-  title = "Scores werden berechnet…",
+  title,
 }: {
   progress: RecomputeProgress;
   title?: string;
 }) {
+  const t = useMessages(urlCleanupMessages);
   return (
     <div className="rounded-lg border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/40 p-3 space-y-2">
       <div className="flex items-center gap-2 text-sm font-medium text-slate-800 dark:text-slate-100">
@@ -15,7 +19,7 @@ export function RecomputeProgressBar({
           className="inline-block h-4 w-4 shrink-0 rounded-full border-2 border-blue-600 border-t-transparent animate-spin"
           aria-hidden
         />
-        {title}
+        {title ?? t.progress.defaultTitle}
       </div>
       <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
         <div
@@ -24,14 +28,13 @@ export function RecomputeProgressBar({
         />
       </div>
       <p className="text-xs text-slate-600 dark:text-slate-300 tabular-nums">
-        {progress.processed.toLocaleString("de-CH")} / {progress.total.toLocaleString("de-CH")} URLs
+        {progress.processed.toLocaleString(t.displayLocale)} / {progress.total.toLocaleString(t.displayLocale)} URLs
         {progress.total > 0 ? ` · ${progress.percent} %` : ""}
         {" · "}
-        {progress.label ?? formatEta(progress.etaSeconds)}
+        {progress.aligning ? t.progress.aligning : t.progress.eta(progress.etaSeconds)}
       </p>
       <p className="text-xs text-amber-800 dark:text-amber-200">
-        Bitte dieses Fenster geöffnet lassen und nicht neu laden. Die Berechnung hängt am Browser-Request
-        und läuft auch in Production nicht im Hintergrund weiter, wenn der Tab geschlossen wird.
+        {t.progress.keepOpen}
       </p>
     </div>
   );

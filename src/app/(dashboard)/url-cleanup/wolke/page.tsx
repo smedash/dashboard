@@ -9,13 +9,21 @@ import {
   type InventoryFilters,
 } from "@/components/url-cleanup/filter-state";
 import type { CloudPoint } from "@/components/url-cleanup/Cloud3D";
+import { useMessages } from "@/i18n/I18nProvider";
+import { urlCleanupMessages } from "@/i18n/messages/url-cleanup";
 
 const Cloud3D = dynamic(
   () => import("@/components/url-cleanup/Cloud3D").then((m) => m.Cloud3D),
-  { ssr: false, loading: () => <p className="text-sm text-slate-500">Wolke lädt…</p> }
+  { ssr: false, loading: () => <CloudLoading /> }
 );
 
+function CloudLoading() {
+  const t = useMessages(urlCleanupMessages);
+  return <p className="text-sm text-slate-500">{t.cloud.loadingCloud}</p>;
+}
+
 export default function WolkePage() {
+  const t = useMessages(urlCleanupMessages);
   const [filters, setFilters] = useState<InventoryFilters>(EMPTY_FILTERS);
   const [debounced, setDebounced] = useState(filters);
   const [points, setPoints] = useState<CloudPoint[]>([]);
@@ -30,8 +38,8 @@ export default function WolkePage() {
   );
 
   useEffect(() => {
-    const t = setTimeout(() => setDebounced(filters), 400);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setDebounced(filters), 400);
+    return () => clearTimeout(timer);
   }, [filters]);
 
   useEffect(() => {
@@ -64,11 +72,11 @@ export default function WolkePage() {
       <FilterBar filters={filters} onChange={setFilters} facets={facets} sitemaps={sitemaps} />
       {truncated && (
         <p className="text-xs text-amber-700 dark:text-amber-300">
-          Anzeige auf 70.000 Punkte begrenzt — Filter enger setzen für die volle Menge.
+          {t.cloud.truncated}
         </p>
       )}
       {loading ? (
-        <p className="text-sm text-slate-500">Punkte laden…</p>
+        <p className="text-sm text-slate-500">{t.cloud.loadingPoints}</p>
       ) : (
         <Cloud3D
           points={points}

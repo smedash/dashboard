@@ -5,6 +5,8 @@ import { PeriodSelector } from "@/components/ui/PeriodSelector";
 import { BarChart } from "@/components/charts/BarChart";
 import { DataTable } from "@/components/ui/DataTable";
 import { useProperty } from "@/contexts/PropertyContext";
+import { useLocale, useMessages } from "@/i18n/I18nProvider";
+import { countriesMessages } from "@/i18n/messages/countries";
 
 interface CountryRow {
   keys: string[];
@@ -14,34 +16,10 @@ interface CountryRow {
   position: number;
 }
 
-const countryNames: Record<string, string> = {
-  deu: "Deutschland",
-  aut: "Österreich",
-  che: "Schweiz",
-  usa: "USA",
-  gbr: "Großbritannien",
-  fra: "Frankreich",
-  nld: "Niederlande",
-  bel: "Belgien",
-  ita: "Italien",
-  esp: "Spanien",
-  pol: "Polen",
-  cze: "Tschechien",
-  dnk: "Dänemark",
-  swe: "Schweden",
-  nor: "Norwegen",
-  fin: "Finnland",
-  rus: "Russland",
-  jpn: "Japan",
-  chn: "China",
-  ind: "Indien",
-  bra: "Brasilien",
-  can: "Kanada",
-  aus: "Australien",
-};
-
 export default function CountriesPage() {
   const { selectedProperty } = useProperty();
+  const t = useMessages(countriesMessages);
+  const { intlLocale } = useLocale();
   const [period, setPeriod] = useState("28d");
   const [data, setData] = useState<CountryRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -68,7 +46,7 @@ export default function CountriesPage() {
   }, [selectedProperty, period]);
 
   const getCountryName = (code: string) => {
-    return countryNames[code.toLowerCase()] || code.toUpperCase();
+    return t.countryNames[code.toLowerCase()] || code.toUpperCase();
   };
 
   const chartData = data.slice(0, 10).map((row) => ({
@@ -89,7 +67,7 @@ export default function CountriesPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h1 className="text-2xl font-bold text-white">Länder</h1>
+        <h1 className="text-2xl font-bold text-white">{t.title}</h1>
         <div className="flex flex-wrap items-center gap-4">
           <PeriodSelector value={period} onChange={setPeriod} />
         </div>
@@ -100,17 +78,17 @@ export default function CountriesPage() {
           <div className="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full mb-4"></div>
           <div className="text-center">
             <p className="text-lg font-medium text-white mb-2">
-              Hole Live-Daten aus der GSC...
+              {t.loadingTitle}
             </p>
             <p className="text-sm text-slate-400">
-              Das kann einige Sekunden dauern!
+              {t.loadingHint}
             </p>
           </div>
         </div>
       ) : (
         <>
           <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-            <h3 className="text-lg font-semibold text-white mb-4">Top 10 Länder nach Klicks</h3>
+            <h3 className="text-lg font-semibold text-white mb-4">{t.topCountries}</h3>
             {chartData.length > 0 ? (
               <BarChart
                 data={chartData}
@@ -121,7 +99,7 @@ export default function CountriesPage() {
               />
             ) : (
               <div className="h-[400px] flex items-center justify-center text-slate-500">
-                Keine Daten verfügbar
+                {t.noData}
               </div>
             )}
           </div>
@@ -133,7 +111,7 @@ export default function CountriesPage() {
               columns={[
                 {
                   key: "countryName",
-                  header: "Land",
+                  header: t.columns.country,
                   sortable: true,
                   render: (value) => (
                     <span className="font-medium text-white">{String(value)}</span>
@@ -141,27 +119,27 @@ export default function CountriesPage() {
                 },
                 {
                   key: "clicks",
-                  header: "Klicks",
+                  header: t.columns.clicks,
                   sortable: true,
                   render: (value) => (
-                    <span className="text-blue-400">{Number(value).toLocaleString("de-DE")}</span>
+                    <span className="text-blue-400">{Number(value).toLocaleString(intlLocale)}</span>
                   ),
                 },
                 {
                   key: "impressions",
-                  header: "Impressionen",
+                  header: t.columns.impressions,
                   sortable: true,
-                  render: (value) => Number(value).toLocaleString("de-DE"),
+                  render: (value) => Number(value).toLocaleString(intlLocale),
                 },
                 {
                   key: "ctr",
-                  header: "CTR",
+                  header: t.columns.ctr,
                   sortable: true,
                   render: (value) => `${(Number(value) * 100).toFixed(2)}%`,
                 },
                 {
                   key: "position",
-                  header: "Position",
+                  header: t.columns.position,
                   sortable: true,
                   render: (value) => Number(value).toFixed(1),
                 },

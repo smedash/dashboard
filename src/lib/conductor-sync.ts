@@ -1,25 +1,40 @@
 /**
  * Shared sync logic for Conductor Monitoring data.
  * Used by both the manual sync API route and the cron job.
+ *
+ * A sync run is resumable: pages are upserted batch by batch and the API cursor is
+ * stored on the sync log, so a run that hits its time budget pauses and the next
+ * invocation continues where it stopped. Pages that disappeared from Conductor are
+ * only removed once a run has completed, so readers always see a full data set.
  */
 
+import { randomUUID } from "crypto";
 import { prisma } from "./prisma";
-import { Prisma } from "@prisma/client";
+import { Prisma, type ConductorSyncLog } from "@prisma/client";
 import {
-  streamAllPages,
+  getPages,
   getIssues,
   getWebsites,
-  resolveWebsiteId,
   type ConductorPageData,
   type ConductorIssueData,
+  type ConductorWebsiteData,
 } from "./conductor-monitoring";
 
-function toJson(value: unknown): Prisma.InputJsonValue | undefined {
-  if (value === null || value === undefined) return undefined;
-  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
-}
+const PAGE_BATCH_SIZE = 1000;
+/** 39 bind parameters per row; Prisma allows at most 32,767 per statement. */
+const UPSERT_CHUNK_SIZE = 500;
+const LOCK_TTL_MS = 5 * 60 * 1000;
+/** Cursors of older runs are not trusted anymore; such runs are restarted. */
+const MAX_RESUME_AGE_MS = 24 * 60 * 60 * 1000;
+/** A website counts as due for the cron once its last completed sync is older than this. */
+const SYNC_INTERVAL_MS = 20 * 60 * 60 * 1000;
+/** Time reserved after the budget for the final cleanup + issue sync. */
+const FINALIZE_RESERVE_MS = 60 * 1000;
+
+export type SyncOutcome = "completed" | "paused" | "locked";
 
 export interface SyncResult {
+  status: SyncOutcome;
   websiteId: string;
   conductorId: string;
   domain: string;
@@ -28,149 +43,9 @@ export interface SyncResult {
   durationMs: number;
 }
 
-/**
- * Sync ALL websites from the Conductor account.
- * Each website is wrapped in try/catch so one failure doesn't abort the rest.
- */
-export async function syncAllConductorWebsites(
-  syncType: "manual" | "cron"
-): Promise<SyncResult[]> {
-  const websites = await getWebsites();
-  if (websites.length === 0) {
-    throw new Error("No websites found in Conductor Monitoring account");
-  }
-  const results: SyncResult[] = [];
-  for (const ws of websites) {
-    try {
-      const result = await syncConductorData(syncType, ws.id);
-      results.push(result);
-    } catch (error) {
-      console.error(`[Conductor Sync] Failed for ${ws.domain} (${ws.id}):`, error);
-    }
-  }
-  return results;
-}
-
-/**
- * Find the Conductor website ID that matches a given domain string.
- * Returns undefined if no match found.
- */
-export async function findConductorWebsiteByDomain(
-  domain: string
-): Promise<string | undefined> {
-  const websites = await getWebsites();
-  const normalized = domain.toLowerCase().replace(/^www\./, "");
-  const match = websites.find((w) =>
-    w.domain.toLowerCase().includes(normalized)
-  );
-  return match?.id;
-}
-
-export async function syncConductorData(
-  syncType: "manual" | "cron",
-  conductorWebsiteId?: string
-): Promise<SyncResult> {
-  const startTime = Date.now();
-  const cId = conductorWebsiteId || (await resolveWebsiteId());
-
-  const websites = await getWebsites();
-  const websiteData = websites.find((w) => w.id === cId);
-  if (!websiteData) {
-    throw new Error(`Website ${cId} not found in Conductor account`);
-  }
-
-  const website = await prisma.conductorWebsite.upsert({
-    where: { conductorId: cId },
-    update: {
-      domain: websiteData.domain,
-      name: websiteData.name,
-      pageCapacity: websiteData.page_capacity,
-    },
-    create: {
-      conductorId: cId,
-      domain: websiteData.domain,
-      name: websiteData.name,
-      pageCapacity: websiteData.page_capacity,
-    },
-  });
-
-  // Create sync log entry
-  const syncLog = await prisma.conductorSyncLog.create({
-    data: {
-      websiteId: website.id,
-      type: syncType,
-      status: "running",
-    },
-  });
-
-  try {
-    // 1. Clear old page data upfront (single fast query)
-    console.log(`[Conductor Sync] Clearing old pages for ${cId}...`);
-    await prisma.conductorPage.deleteMany({ where: { websiteId: website.id } });
-
-    // 2. Stream pages: fetch each batch from API and write to DB immediately
-    console.log(`[Conductor Sync] Streaming pages for ${cId}...`);
-    let pagesProcessed = 0;
-    const totalPages = await streamAllPages(cId, async (batch, capturedAt) => {
-      const records = batch.map((p) => buildPageRecord(website.id, p, capturedAt));
-      await prisma.conductorPage.createMany({ data: records });
-      pagesProcessed += batch.length;
-      console.log(`[Conductor Sync] Written ${pagesProcessed} pages so far...`);
-    });
-    console.log(`[Conductor Sync] All ${totalPages} pages written`);
-
-    // 3. Sync issues (small dataset, single request)
-    console.log(`[Conductor Sync] Fetching issues for ${cId}...`);
-    const { issues, capturedAt: issuesCapturedAt } = await getIssues(cId);
-    console.log(`[Conductor Sync] Received ${issues.length} issues`);
-
-    await prisma.conductorIssue.deleteMany({ where: { websiteId: website.id } });
-    if (issues.length > 0) {
-      const issueRecords = issues.map((i) => buildIssueRecord(website.id, i, issuesCapturedAt));
-      await prisma.conductorIssue.createMany({ data: issueRecords });
-    }
-
-    const durationMs = Date.now() - startTime;
-
-    await prisma.conductorSyncLog.update({
-      where: { id: syncLog.id },
-      data: {
-        status: "completed",
-        pagesProcessed: totalPages,
-        issuesProcessed: issues.length,
-        durationMs,
-      },
-    });
-
-    await prisma.conductorWebsite.update({
-      where: { id: website.id },
-      data: { lastSyncAt: new Date() },
-    });
-
-    console.log(
-      `[Conductor Sync] Completed: ${totalPages} pages, ${issues.length} issues in ${durationMs}ms`
-    );
-
-    return {
-      websiteId: website.id,
-      conductorId: cId,
-      domain: websiteData.domain,
-      pagesProcessed: totalPages,
-      issuesProcessed: issues.length,
-      durationMs,
-    };
-  } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
-    await prisma.conductorSyncLog.update({
-      where: { id: syncLog.id },
-      data: {
-        status: "failed",
-        error: errMsg,
-        durationMs: Date.now() - startTime,
-      },
-    });
-    throw error;
-  }
+function toJson(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  return JSON.stringify(value);
 }
 
 function parseDateSafe(value: string | null | undefined): Date | null {
@@ -179,51 +54,112 @@ function parseDateSafe(value: string | null | undefined): Date | null {
   return isNaN(d.getTime()) ? null : d;
 }
 
-function buildPageRecord(websiteId: string, p: ConductorPageData, capturedAt: string) {
-  return {
-    websiteId,
-    url: p.url,
-    health: p.health ?? null,
-    statusCode: p.status_code ?? null,
-    type: p.type ?? null,
-    relevance: p.relevance ?? null,
-    isIndexable: p.is_indexable ?? false,
-    isInSitemap: p.is_in_sitemap ?? false,
-    isDisallowedInRobotsTxt: p.is_disallowed_in_robots_txt ?? false,
-    isLinked: p.is_linked ?? true,
-    isHttps: p.is_https ?? true,
-    urlDepth: typeof p.url_depth === "number" ? p.url_depth : null,
-    title: typeof p.title === "string" && p.title !== "null" ? p.title : null,
-    h1: typeof p.h1 === "string" && p.h1 !== "null" ? p.h1 : null,
-    metaDescription:
-      typeof p.meta_description === "string" && p.meta_description !== "null"
-        ? p.meta_description
-        : null,
-    lighthousePerformance: toJson(p.lighthouse_performance),
-    lighthouseCls: toJson(p.lighthouse_cls),
-    lighthouseFcp: toJson(p.lighthouse_fcp),
-    lighthouseLcp: toJson(p.lighthouse_lcp),
-    lighthouseSi: toJson(p.lighthouse_si),
-    lighthouseTbt: toJson(p.lighthouse_tbt),
-    lighthouseTti: toJson(p.lighthouse_tti),
-    lfaGoogleFrequency: toJson(p.lfa_google_frequency),
-    lfaGoogleLastVisit: parseDateSafe(p.lfa_google_last_visit),
-    lfaBingFrequency: toJson(p.lfa_bing_frequency),
-    lfaBingLastVisit: parseDateSafe(p.lfa_bing_last_visit),
-    lfaOpenaiFrequency: toJson(p.lfa_openai_frequency),
-    lfaOpenaiLastVisit: parseDateSafe(p.lfa_openai_last_visit),
-    lfaPerplexityFrequency: toJson(p.lfa_perplexity_frequency),
-    lfaPerplexityLastVisit: parseDateSafe(p.lfa_perplexity_last_visit),
-    incomingInternalLinks: p.number_of_incoming_internal_links ?? 0,
-    outgoingInternalLinks: p.number_of_outgoing_internal_links ?? 0,
-    outgoingExternalLinks: p.number_of_outgoing_external_links ?? 0,
-    segments: p.segments && p.segments.length > 0 ? toJson(p.segments) : undefined,
-    timeDocumentDownload:
-      typeof p.time_document_download === "number"
-        ? p.time_document_download
-        : null,
-    dataCapturedAt: parseDateSafe(capturedAt),
-  };
+function cleanText(value: unknown): string | null {
+  return typeof value === "string" && value !== "null" ? value : null;
+}
+
+/**
+ * Upserts one API batch. Duplicate URLs within a batch are collapsed because
+ * ON CONFLICT cannot touch the same row twice in one statement.
+ */
+async function upsertPageBatch(
+  websiteId: string,
+  syncLogId: string,
+  pages: ConductorPageData[],
+  capturedAt: string
+): Promise<void> {
+  const unique = [...new Map(pages.map((p) => [p.url, p])).values()];
+  const captured = parseDateSafe(capturedAt);
+  const now = new Date();
+  for (let i = 0; i < unique.length; i += UPSERT_CHUNK_SIZE) {
+    await upsertPageChunk(websiteId, syncLogId, unique.slice(i, i + UPSERT_CHUNK_SIZE), captured, now);
+  }
+}
+
+async function upsertPageChunk(
+  websiteId: string,
+  syncLogId: string,
+  pages: ConductorPageData[],
+  captured: Date | null,
+  now: Date
+): Promise<void> {
+  const values = pages.map(
+    (p) => Prisma.sql`(
+      ${randomUUID()}::text, ${websiteId}::text, ${p.url}::text,
+      ${p.health ?? null}::int, ${p.status_code ?? null}::int, ${p.type ?? null}::text,
+      ${p.relevance ?? null}::float8,
+      ${p.is_indexable ?? false}::boolean, ${p.is_in_sitemap ?? false}::boolean,
+      ${p.is_disallowed_in_robots_txt ?? false}::boolean,
+      ${p.is_linked ?? true}::boolean, ${p.is_https ?? true}::boolean,
+      ${typeof p.url_depth === "number" ? p.url_depth : null}::int,
+      ${cleanText(p.title)}::text, ${cleanText(p.h1)}::text, ${cleanText(p.meta_description)}::text,
+      ${toJson(p.lighthouse_performance)}::jsonb, ${toJson(p.lighthouse_cls)}::jsonb,
+      ${toJson(p.lighthouse_fcp)}::jsonb, ${toJson(p.lighthouse_lcp)}::jsonb,
+      ${toJson(p.lighthouse_si)}::jsonb, ${toJson(p.lighthouse_tbt)}::jsonb, ${toJson(p.lighthouse_tti)}::jsonb,
+      ${toJson(p.lfa_google_frequency)}::jsonb, ${parseDateSafe(p.lfa_google_last_visit)}::timestamp,
+      ${toJson(p.lfa_bing_frequency)}::jsonb, ${parseDateSafe(p.lfa_bing_last_visit)}::timestamp,
+      ${toJson(p.lfa_openai_frequency)}::jsonb, ${parseDateSafe(p.lfa_openai_last_visit)}::timestamp,
+      ${toJson(p.lfa_perplexity_frequency)}::jsonb, ${parseDateSafe(p.lfa_perplexity_last_visit)}::timestamp,
+      ${p.number_of_incoming_internal_links ?? 0}::int, ${p.number_of_outgoing_internal_links ?? 0}::int,
+      ${p.number_of_outgoing_external_links ?? 0}::int,
+      ${p.segments && p.segments.length > 0 ? toJson(p.segments) : null}::jsonb,
+      ${typeof p.time_document_download === "number" ? Math.round(p.time_document_download) : null}::int,
+      ${syncLogId}::text, ${captured}::timestamp, ${now}::timestamp
+    )`
+  );
+
+  await prisma.$executeRaw`
+    INSERT INTO "ConductorPage" (
+      "id", "websiteId", "url",
+      "health", "statusCode", "type", "relevance",
+      "isIndexable", "isInSitemap", "isDisallowedInRobotsTxt", "isLinked", "isHttps", "urlDepth",
+      "title", "h1", "metaDescription",
+      "lighthousePerformance", "lighthouseCls", "lighthouseFcp", "lighthouseLcp",
+      "lighthouseSi", "lighthouseTbt", "lighthouseTti",
+      "lfaGoogleFrequency", "lfaGoogleLastVisit", "lfaBingFrequency", "lfaBingLastVisit",
+      "lfaOpenaiFrequency", "lfaOpenaiLastVisit", "lfaPerplexityFrequency", "lfaPerplexityLastVisit",
+      "incomingInternalLinks", "outgoingInternalLinks", "outgoingExternalLinks",
+      "segments", "timeDocumentDownload", "syncLogId", "dataCapturedAt", "updatedAt"
+    )
+    VALUES ${Prisma.join(values)}
+    ON CONFLICT ("websiteId", "url") DO UPDATE SET
+      "health" = EXCLUDED."health",
+      "statusCode" = EXCLUDED."statusCode",
+      "type" = EXCLUDED."type",
+      "relevance" = EXCLUDED."relevance",
+      "isIndexable" = EXCLUDED."isIndexable",
+      "isInSitemap" = EXCLUDED."isInSitemap",
+      "isDisallowedInRobotsTxt" = EXCLUDED."isDisallowedInRobotsTxt",
+      "isLinked" = EXCLUDED."isLinked",
+      "isHttps" = EXCLUDED."isHttps",
+      "urlDepth" = EXCLUDED."urlDepth",
+      "title" = EXCLUDED."title",
+      "h1" = EXCLUDED."h1",
+      "metaDescription" = EXCLUDED."metaDescription",
+      "lighthousePerformance" = EXCLUDED."lighthousePerformance",
+      "lighthouseCls" = EXCLUDED."lighthouseCls",
+      "lighthouseFcp" = EXCLUDED."lighthouseFcp",
+      "lighthouseLcp" = EXCLUDED."lighthouseLcp",
+      "lighthouseSi" = EXCLUDED."lighthouseSi",
+      "lighthouseTbt" = EXCLUDED."lighthouseTbt",
+      "lighthouseTti" = EXCLUDED."lighthouseTti",
+      "lfaGoogleFrequency" = EXCLUDED."lfaGoogleFrequency",
+      "lfaGoogleLastVisit" = EXCLUDED."lfaGoogleLastVisit",
+      "lfaBingFrequency" = EXCLUDED."lfaBingFrequency",
+      "lfaBingLastVisit" = EXCLUDED."lfaBingLastVisit",
+      "lfaOpenaiFrequency" = EXCLUDED."lfaOpenaiFrequency",
+      "lfaOpenaiLastVisit" = EXCLUDED."lfaOpenaiLastVisit",
+      "lfaPerplexityFrequency" = EXCLUDED."lfaPerplexityFrequency",
+      "lfaPerplexityLastVisit" = EXCLUDED."lfaPerplexityLastVisit",
+      "incomingInternalLinks" = EXCLUDED."incomingInternalLinks",
+      "outgoingInternalLinks" = EXCLUDED."outgoingInternalLinks",
+      "outgoingExternalLinks" = EXCLUDED."outgoingExternalLinks",
+      "segments" = EXCLUDED."segments",
+      "timeDocumentDownload" = EXCLUDED."timeDocumentDownload",
+      "syncLogId" = EXCLUDED."syncLogId",
+      "dataCapturedAt" = EXCLUDED."dataCapturedAt",
+      "updatedAt" = EXCLUDED."updatedAt"
+  `;
 }
 
 function buildIssueRecord(websiteId: string, issue: ConductorIssueData, capturedAt: string) {
@@ -242,4 +178,255 @@ function buildIssueRecord(websiteId: string, issue: ConductorIssueData, captured
     pointsToGain: issue.points_to_gain ?? 0,
     dataCapturedAt: parseDateSafe(capturedAt),
   };
+}
+
+async function upsertWebsite(data: ConductorWebsiteData) {
+  return prisma.conductorWebsite.upsert({
+    where: { conductorId: data.id },
+    update: { domain: data.domain, name: data.name, pageCapacity: data.page_capacity },
+    create: {
+      conductorId: data.id,
+      domain: data.domain,
+      name: data.name,
+      pageCapacity: data.page_capacity,
+    },
+  });
+}
+
+/** Atomically takes the per-website lock; false if another run holds it. */
+async function acquireLock(websiteId: string): Promise<boolean> {
+  const now = new Date();
+  const { count } = await prisma.conductorWebsite.updateMany({
+    where: {
+      id: websiteId,
+      OR: [{ syncLockedUntil: null }, { syncLockedUntil: { lt: now } }],
+    },
+    data: { syncLockedUntil: new Date(now.getTime() + LOCK_TTL_MS) },
+  });
+  return count === 1;
+}
+
+async function releaseLock(websiteId: string): Promise<void> {
+  await prisma.conductorWebsite.update({
+    where: { id: websiteId },
+    data: { syncLockedUntil: null },
+  });
+}
+
+/** Resumes the latest unfinished run if its cursor is still fresh, otherwise starts a new one. */
+async function startOrResumeRun(
+  websiteId: string,
+  syncType: "manual" | "cron"
+): Promise<ConductorSyncLog> {
+  const unfinished = await prisma.conductorSyncLog.findMany({
+    where: { websiteId, status: { in: ["running", "paused"] } },
+    orderBy: { createdAt: "desc" },
+  });
+  const resumable = unfinished.find(
+    (log) => log.cursor && Date.now() - log.createdAt.getTime() < MAX_RESUME_AGE_MS
+  );
+  const superseded = unfinished.filter((log) => log.id !== resumable?.id).map((log) => log.id);
+  if (superseded.length > 0) {
+    await prisma.conductorSyncLog.updateMany({
+      where: { id: { in: superseded } },
+      data: { status: "aborted" },
+    });
+  }
+
+  if (resumable) {
+    return prisma.conductorSyncLog.update({
+      where: { id: resumable.id },
+      data: { status: "running", heartbeatAt: new Date() },
+    });
+  }
+  return prisma.conductorSyncLog.create({
+    data: { websiteId, type: syncType, status: "running", heartbeatAt: new Date() },
+  });
+}
+
+/**
+ * Syncs one website until it is complete or `deadline` (epoch ms) is reached; every call
+ * processes at least one batch. Returns "paused" when the budget ran out — call again to continue.
+ */
+export async function syncConductorWebsite(
+  websiteData: ConductorWebsiteData,
+  syncType: "manual" | "cron",
+  deadline: number
+): Promise<SyncResult> {
+  const startTime = Date.now();
+  const website = await upsertWebsite(websiteData);
+  const base = {
+    websiteId: website.id,
+    conductorId: websiteData.id,
+    domain: websiteData.domain,
+  };
+
+  if (!(await acquireLock(website.id))) {
+    return { ...base, status: "locked", pagesProcessed: 0, issuesProcessed: 0, durationMs: 0 };
+  }
+
+  let run: ConductorSyncLog | null = null;
+  try {
+    run = await startOrResumeRun(website.id, syncType);
+    let cursor = run.cursor ?? undefined;
+    let pagesProcessed = run.pagesProcessed;
+    let finished = false;
+
+    console.log(
+      `[Conductor Sync] ${websiteData.domain}: ${cursor ? `resuming run ${run.id} at ${pagesProcessed} pages` : `starting run ${run.id}`}`
+    );
+
+    do {
+      const batch = await getPages(websiteData.id, PAGE_BATCH_SIZE, cursor);
+      await upsertPageBatch(website.id, run.id, batch.pages, batch.capturedAt);
+      pagesProcessed += batch.pages.length;
+      cursor = batch.nextCursor ?? undefined;
+      finished = !batch.nextCursor || batch.pages.length === 0;
+
+      const now = new Date();
+      await prisma.$transaction([
+        prisma.conductorSyncLog.update({
+          where: { id: run.id },
+          data: { cursor: cursor ?? null, pagesProcessed, heartbeatAt: now },
+        }),
+        prisma.conductorWebsite.update({
+          where: { id: website.id },
+          data: { syncLockedUntil: new Date(now.getTime() + LOCK_TTL_MS) },
+        }),
+      ]);
+    } while (!finished && Date.now() < deadline);
+
+    const invocationMs = Date.now() - startTime;
+    const durationMs = (run.durationMs ?? 0) + invocationMs;
+
+    if (!finished) {
+      await prisma.conductorSyncLog.update({
+        where: { id: run.id },
+        data: { status: "paused", durationMs },
+      });
+      console.log(`[Conductor Sync] ${websiteData.domain}: paused after ${pagesProcessed} pages`);
+      return { ...base, status: "paused", pagesProcessed, issuesProcessed: 0, durationMs };
+    }
+
+    const { count: removed } = await prisma.conductorPage.deleteMany({
+      where: {
+        websiteId: website.id,
+        OR: [{ syncLogId: null }, { syncLogId: { not: run.id } }],
+      },
+    });
+
+    const { issues, capturedAt } = await getIssues(websiteData.id);
+    await prisma.$transaction([
+      prisma.conductorIssue.deleteMany({ where: { websiteId: website.id } }),
+      prisma.conductorIssue.createMany({
+        data: issues.map((i) => buildIssueRecord(website.id, i, capturedAt)),
+      }),
+    ]);
+
+    const totalMs = (run.durationMs ?? 0) + (Date.now() - startTime);
+    await prisma.$transaction([
+      prisma.conductorSyncLog.update({
+        where: { id: run.id },
+        data: {
+          status: "completed",
+          cursor: null,
+          pagesProcessed,
+          issuesProcessed: issues.length,
+          durationMs: totalMs,
+        },
+      }),
+      prisma.conductorWebsite.update({
+        where: { id: website.id },
+        data: { lastSyncAt: new Date() },
+      }),
+    ]);
+
+    console.log(
+      `[Conductor Sync] ${websiteData.domain}: completed with ${pagesProcessed} pages (${removed} removed), ${issues.length} issues`
+    );
+    return {
+      ...base,
+      status: "completed",
+      pagesProcessed,
+      issuesProcessed: issues.length,
+      durationMs: totalMs,
+    };
+  } catch (error) {
+    if (run) {
+      await prisma.conductorSyncLog.update({
+        where: { id: run.id },
+        data: {
+          status: "failed",
+          cursor: null,
+          error: error instanceof Error ? error.message : String(error),
+          durationMs: (run.durationMs ?? 0) + (Date.now() - startTime),
+        },
+      });
+    }
+    throw error;
+  } finally {
+    await releaseLock(website.id);
+  }
+}
+
+/**
+ * Cron entry point: works through the websites of the Conductor account that have
+ * an unfinished run or whose last sync is older than SYNC_INTERVAL_MS — oldest first —
+ * until the time budget is used up. Remaining websites follow on the next invocation.
+ */
+export async function syncDueConductorWebsites(budgetMs: number): Promise<SyncResult[]> {
+  const deadline = Date.now() + budgetMs;
+  const websites = await getWebsites();
+  if (websites.length === 0) {
+    throw new Error("No websites found in Conductor Monitoring account");
+  }
+
+  const known = await prisma.conductorWebsite.findMany({
+    where: { conductorId: { in: websites.map((w) => w.id) } },
+    select: {
+      conductorId: true,
+      lastSyncAt: true,
+      syncLogs: {
+        where: { status: { in: ["running", "paused"] }, cursor: { not: null } },
+        select: { id: true },
+        take: 1,
+      },
+    },
+  });
+  const state = new Map(known.map((w) => [w.conductorId, w]));
+  const dueBefore = Date.now() - SYNC_INTERVAL_MS;
+
+  const due = websites
+    .map((ws) => {
+      const s = state.get(ws.id);
+      return {
+        ws,
+        unfinished: (s?.syncLogs.length ?? 0) > 0,
+        lastSyncAt: s?.lastSyncAt?.getTime() ?? 0,
+      };
+    })
+    .filter((w) => w.unfinished || w.lastSyncAt < dueBefore)
+    .sort((a, b) => Number(b.unfinished) - Number(a.unfinished) || a.lastSyncAt - b.lastSyncAt);
+
+  const results: SyncResult[] = [];
+  for (const { ws } of due) {
+    if (Date.now() > deadline - FINALIZE_RESERVE_MS) break;
+    try {
+      const result = await syncConductorWebsite(ws, "cron", deadline - FINALIZE_RESERVE_MS);
+      results.push(result);
+      if (result.status === "paused") break;
+    } catch (error) {
+      console.error(`[Conductor Sync] Failed for ${ws.domain} (${ws.id}):`, error);
+    }
+  }
+  return results;
+}
+
+/** Find the Conductor website whose domain matches the given domain string. */
+export async function findConductorWebsiteByDomain(
+  domain: string
+): Promise<ConductorWebsiteData | undefined> {
+  const websites = await getWebsites();
+  const normalized = domain.toLowerCase().replace(/^www\./, "");
+  return websites.find((w) => w.domain.toLowerCase().includes(normalized));
 }

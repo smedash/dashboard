@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useMessages } from "@/i18n/I18nProvider";
+import { seoHelperMessages } from "@/i18n/messages/seo-helper";
 
 // Definiere die Helper mit ihren Eigenschaften
 interface HelperCard {
   id: string;
-  title: string;
-  description: string;
   icon: React.ReactNode;
   href: string;
   color: string;
@@ -16,8 +16,6 @@ interface HelperCard {
 const helpers: HelperCard[] = [
   {
     id: "url-checker",
-    title: "URL Ranking Factor Checker",
-    description: "Prüfe URLs gegen die aus dem Google API Leak bekannten Ranking-Faktoren (NSR, NavBoost, QualityBoost, WebRef, SpamBrain).",
     icon: (
       <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
@@ -28,8 +26,6 @@ const helpers: HelperCard[] = [
   },
   {
     id: "benchmarker",
-    title: "Benchmarker",
-    description: "Vergleiche deinen Content mit den Top-Konkurrenten in der Schweiz und finde Content-Gaps und Verbesserungspotenziale.",
     icon: (
       <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
@@ -40,8 +36,6 @@ const helpers: HelperCard[] = [
   },
   {
     id: "title-generator",
-    title: "Title Generator",
-    description: "Generiere SEO-optimierte Titel und Meta-Descriptions basierend auf deinen Keywords und Inhalten.",
     icon: (
       <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
@@ -52,8 +46,6 @@ const helpers: HelperCard[] = [
   },
   {
     id: "serp-preview",
-    title: "SERP Preview",
-    description: "Vorschau wie deine Seite in den Google-Suchergebnissen erscheinen wird.",
     icon: (
       <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -64,8 +56,6 @@ const helpers: HelperCard[] = [
   },
   {
     id: "schema-generator",
-    title: "Schema Generator",
-    description: "Erstelle strukturierte Daten (JSON-LD) für Rich Snippets wie FAQ, HowTo, Produkte und mehr.",
     icon: (
       <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
@@ -76,8 +66,6 @@ const helpers: HelperCard[] = [
   },
   {
     id: "content-analyzer",
-    title: "Content Analyzer",
-    description: "Analysiere deinen Content auf SEO-Faktoren wie Keyword-Dichte, Lesbarkeit und Struktur.",
     icon: (
       <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
@@ -88,8 +76,6 @@ const helpers: HelperCard[] = [
   },
   {
     id: "keyword-clustering",
-    title: "Keyword Clustering",
-    description: "Gruppiere verwandte Keywords automatisch in thematische Cluster für eine bessere Content-Strategie.",
     icon: (
       <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
@@ -100,8 +86,6 @@ const helpers: HelperCard[] = [
   },
   {
     id: "faq-generator",
-    title: "FAQ Generator",
-    description: "Generiere häufig gestellte Fragen (FAQs) basierend auf deinem Keyword für Content und Rich Snippets.",
     icon: (
       <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -112,8 +96,6 @@ const helpers: HelperCard[] = [
   },
   {
     id: "ai-summarizer",
-    title: "AI Summarizer",
-    description: "Lasse KI den Inhalt einer beliebigen Webseite zusammenfassen und die wichtigsten Informationen extrahieren.",
     icon: (
       <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
@@ -125,6 +107,8 @@ const helpers: HelperCard[] = [
 ];
 
 export default function SEOHelperPage() {
+  const t = useMessages(seoHelperMessages);
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -146,10 +130,10 @@ export default function SEOHelperPage() {
         </div>
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-            SEO Helper
+            {t.title}
           </h1>
           <p className="text-slate-500 dark:text-slate-400">
-            Praktische Tools für deinen SEO-Alltag
+            {t.subtitle}
           </p>
         </div>
       </div>
@@ -157,8 +141,7 @@ export default function SEOHelperPage() {
       {/* Description */}
       <div className="bg-gradient-to-r from-teal-50 to-emerald-50 dark:from-teal-900/20 dark:to-emerald-900/20 rounded-2xl p-6 border border-teal-200 dark:border-teal-800">
         <p className="text-slate-700 dark:text-slate-300">
-          Hier findest du eine Sammlung von kleinen, aber mächtigen Tools, die dir bei täglichen SEO-Aufgaben helfen. 
-          Von der Titel-Optimierung bis zur Schema-Markup-Generierung – wähle einfach den passenden Helper aus.
+          {t.intro}
         </p>
       </div>
 
@@ -171,13 +154,15 @@ export default function SEOHelperPage() {
 
       {/* Info Note */}
       <div className="text-center text-slate-500 dark:text-slate-400 text-sm">
-        <p>Hast du Ideen für weitere Helper? Erstelle ein Feature-Request im Bugs & Features Bereich.</p>
+        <p>{t.ideasNote}</p>
       </div>
     </div>
   );
 }
 
 function HelperCardComponent({ helper }: { helper: HelperCard }) {
+  const t = useMessages(seoHelperMessages);
+  const texts = t.helpers[helper.id];
   const cardClassName = `group relative bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 transition-all duration-300 ${
     helper.comingSoon 
       ? "opacity-75 cursor-not-allowed" 
@@ -190,7 +175,7 @@ function HelperCardComponent({ helper }: { helper: HelperCard }) {
       {helper.comingSoon && (
         <div className="absolute top-4 right-4">
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400">
-            Coming Soon
+            {t.comingSoon}
           </span>
         </div>
       )}
@@ -202,18 +187,18 @@ function HelperCardComponent({ helper }: { helper: HelperCard }) {
       
       {/* Title */}
       <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">
-        {helper.title}
+        {texts.title}
       </h3>
       
       {/* Description */}
       <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">
-        {helper.description}
+        {texts.description}
       </p>
       
       {/* Arrow indicator (only for active links) */}
       {!helper.comingSoon && (
         <div className="mt-4 flex items-center text-teal-600 dark:text-teal-400 text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-          <span>Öffnen</span>
+          <span>{t.open}</span>
           <svg className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>

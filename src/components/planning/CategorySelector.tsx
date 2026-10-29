@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useMessages } from "@/i18n/I18nProvider";
+import { planningComponentsMessages } from "@/i18n/messages/planning-components";
 
 interface SeedKeyword {
   id: string;
@@ -23,8 +25,8 @@ interface CategorySelectorProps {
 
 export default function CategorySelector({
   onSelectKeyword,
-  actionLabel = "Starten",
 }: CategorySelectorProps) {
+  const t = useMessages(planningComponentsMessages).categorySelector;
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [seedKeywords, setSeedKeywords] = useState<SeedKeyword[]>([]);
@@ -96,7 +98,7 @@ export default function CategorySelector({
             />
           </svg>
           <span className="text-sm font-semibold text-white">
-            Seed-Keywords nach Kategorie
+            {t.title}
           </span>
           {selectedCategory && (
             <span className="text-xs text-slate-400">
@@ -159,7 +161,7 @@ export default function CategorySelector({
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                 />
               </svg>
-              Lade Keywords...
+              {t.loadingKeywords}
             </div>
           )}
 
@@ -207,13 +209,13 @@ export default function CategorySelector({
 
           {!loading && selectedCategory && seedKeywords.length === 0 && (
             <p className="text-sm text-slate-500 py-2">
-              Keine Seed-Keywords in dieser Kategorie gefunden.
+              {t.noSeedKeywords}
             </p>
           )}
 
           {!selectedCategory && (
             <p className="text-sm text-slate-500 py-2">
-              Waehle eine Kategorie, um die zugehoerigen Seed-Keywords zu sehen.
+              {t.selectCategory}
             </p>
           )}
         </div>

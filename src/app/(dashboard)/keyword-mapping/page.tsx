@@ -9,6 +9,8 @@ import {
   buildGscMetricsByPathname,
   lookupGscMetrics,
 } from "@/lib/keyword-mapping-gsc";
+import { useLocale, useMessages } from "@/i18n/I18nProvider";
+import { keywordMappingMessages } from "@/i18n/messages/keyword-mapping";
 
 interface Article {
   id: string;
@@ -63,6 +65,11 @@ const SEARCH_DEBOUNCE_MS = 350;
 /** Einzelne Zeichen matchen fast alles und sind extrem teuer — erst ab dieser Länge filtern. */
 const MIN_SEARCH_CHARS = 2;
 
+function useDisplayLocale(): string {
+  const { locale, intlLocale } = useLocale();
+  return locale === "de" ? "de-CH" : intlLocale;
+}
+
 function isCacheFresh(): boolean {
   return Date.now() - _lastFetchTime < CACHE_TTL;
 }
@@ -73,6 +80,8 @@ function Pagination({ page, totalItems, pageSize, onChange }: {
   pageSize: number;
   onChange: (page: number) => void;
 }) {
+  const t = useMessages(keywordMappingMessages);
+  const { intlLocale } = useLocale();
   const totalPages = Math.ceil(totalItems / pageSize);
   if (totalPages <= 1) return null;
 
@@ -82,7 +91,7 @@ function Pagination({ page, totalItems, pageSize, onChange }: {
   return (
     <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30">
       <span className="text-sm text-slate-500 dark:text-slate-400">
-        {start.toLocaleString()}–{end.toLocaleString()} von {totalItems.toLocaleString()}
+        {t.pagination.range(start.toLocaleString(intlLocale), end.toLocaleString(intlLocale), totalItems.toLocaleString(intlLocale))}
       </span>
       <div className="flex items-center gap-1">
         <button
@@ -97,7 +106,7 @@ function Pagination({ page, totalItems, pageSize, onChange }: {
           disabled={page === 0}
           className="px-2.5 py-1 text-xs rounded border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
-          Zurück
+          {t.pagination.back}
         </button>
         <span className="px-3 py-1 text-xs font-medium text-slate-700 dark:text-slate-300">
           {page + 1} / {totalPages}
@@ -107,7 +116,7 @@ function Pagination({ page, totalItems, pageSize, onChange }: {
           disabled={page >= totalPages - 1}
           className="px-2.5 py-1 text-xs rounded border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
-          Weiter
+          {t.pagination.next}
         </button>
         <button
           onClick={() => onChange(totalPages - 1)}
@@ -210,9 +219,9 @@ function getSeverityColor(count: number): string {
   return OVERLAP_SEVERITY_COLORS[count] || OVERLAP_SEVERITY_COLORS[2];
 }
 
-function formatDate(iso: string): string {
+function formatDate(iso: string, locale: string): string {
   const d = new Date(iso);
-  return d.toLocaleDateString("de-CH", {
+  return d.toLocaleDateString(locale, {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -267,21 +276,17 @@ const URL_PREFIX_OVERLAP_COLUMN_STYLES = [
   { dot: "bg-cyan-500", border: "border-cyan-100 dark:border-cyan-900/30", icon: "text-cyan-400" },
 ] as const;
 
-const URL_PREFIX_CARD_URL_COL_OTHER = "Anderer Pfad";
-const URL_PREFIX_CARD_URL_COL_NONE = "Ohne URL-Pfad";
+const URL_PREFIX_CARD_URL_COL_OTHER = "__other__";
+const URL_PREFIX_CARD_URL_COL_NONE = "__none__";
 /** Sichtbare Artikel in der Karte: zuerst 10, dann in 20er-Schritten */
 const URL_PREFIX_OVERLAP_INITIAL_VISIBLE = 10;
 const URL_PREFIX_OVERLAP_MORE_STEP = 20;
 
 const GSC_PAGE_ROW_LIMIT = 25_000;
 
-const GSC_PERIOD_OPTIONS = [
-  { value: "7d", short: "7 T.", selectLabel: "7 Tage" },
-  { value: "28d", short: "28 T.", selectLabel: "28 Tage" },
-  { value: "3m", short: "3 M.", selectLabel: "3 Monate" },
-  { value: "6m", short: "6 M.", selectLabel: "6 Monate" },
-  { value: "8m", short: "8 M.", selectLabel: "8 Monate" },
-] as const;
+const GSC_PERIOD_OPTIONS = ["7d", "28d", "3m", "6m", "8m"] as const;
+
+const LOCATION_NONE_KEY = "__none__";
 
 /** Schwellen für GSC-Klicks pro URL (Property www.ubs.com, geladener Seitenreport). */
 const GSC_CLICKS_THRESHOLD_OPTIONS = [1, 10, 50, 100, 500, 1000] as const;
@@ -290,8 +295,11 @@ type GscClicksFilterMode = "off" | "gte" | "lt";
 
 type GscKeywordMappingState = "loading" | "ready" | "needsConnection" | "error";
 
-function gscPeriodShortLabel(period: string): string {
-  return GSC_PERIOD_OPTIONS.find((p) => p.value === period)?.short ?? period;
+function gscPeriodShortLabel(
+  period: string,
+  labels: Record<string, { short: string; selectLabel: string }>
+): string {
+  return labels[period]?.short ?? period;
 }
 
 function gscClicksForArticleUrl(
@@ -322,11 +330,13 @@ function KeywordMappingGscLine({
   state: GscKeywordMappingState;
   periodShort: string;
 }) {
+  const t = useMessages(keywordMappingMessages);
+  const displayLocale = useDisplayLocale();
   if (!url?.trim()) return null;
   if (state === "loading") {
     return (
       <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 block">
-        GSC lädt…
+        {t.gscLine.loading}
       </span>
     );
   }
@@ -338,29 +348,35 @@ function KeywordMappingGscLine({
     return (
       <span
         className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 block"
-        title="Keine Zeile in den bis zu 25 000 stärksten Seiten dieses Zeitraums (Search Console, Property www.ubs.com)."
+        title={t.gscLine.noMatchTitle}
       >
-        GSC: kein Treffer
+        {t.gscLine.noMatch}
       </span>
     );
   }
   return (
     <span className="text-[10px] text-slate-600 dark:text-slate-400 mt-0.5 block tabular-nums leading-snug">
       <span className="text-slate-500 dark:text-slate-500">GSC {periodShort}:</span>{" "}
-      {m.clicks.toLocaleString("de-CH")} Klicks · {m.impressions.toLocaleString("de-CH")} Imp. ·{" "}
-      {(m.ctr * 100).toFixed(1)}% CTR · Ø {m.position.toFixed(1)}
+      {t.gscLine.metrics(
+        m.clicks.toLocaleString(displayLocale),
+        m.impressions.toLocaleString(displayLocale),
+        (m.ctr * 100).toFixed(1),
+        m.position.toFixed(1)
+      )}
     </span>
   );
 }
 
 function KeywordMappingLabsCell({ state }: { state: LabsKwArticleState | undefined }) {
+  const t = useMessages(keywordMappingMessages);
+  const displayLocale = useDisplayLocale();
   if (state === undefined) {
     return <span className="text-[10px] text-slate-400 dark:text-slate-500">—</span>;
   }
   if (state.status === "loading") {
     return (
       <span className="text-[10px] text-slate-400 dark:text-slate-500 animate-pulse">
-        DataForSEO lädt…
+        {t.labsCell.loading}
       </span>
     );
   }
@@ -371,7 +387,7 @@ function KeywordMappingLabsCell({ state }: { state: LabsKwArticleState | undefin
         title={state.message}
       >
         {state.needsCredentials
-          ? "DataForSEO nicht konfiguriert (.env)."
+          ? t.labsCell.notConfigured
           : state.message}
       </span>
     );
@@ -387,9 +403,9 @@ function KeywordMappingLabsCell({ state }: { state: LabsKwArticleState | undefin
     return (
       <span
         className="text-[10px] text-slate-400 dark:text-slate-500 block leading-snug"
-        title="Keine organischen Rankings für diese URL im gewählten Labs-Markt (oder Seite rankt nicht in den Top-Ergebnissen)."
+        title={t.labsCell.noTopKeywordsTitle}
       >
-        Keine Top-Keywords
+        {t.labsCell.noTopKeywords}
       </span>
     );
   }
@@ -404,9 +420,9 @@ function KeywordMappingLabsCell({ state }: { state: LabsKwArticleState | undefin
             <span className="font-medium text-slate-800 dark:text-slate-200">{k.keyword}</span>
             <span className="text-slate-500 dark:text-slate-500">
               {" "}
-              · Pos. {k.rankGroup}
+              {t.labsCell.position(k.rankGroup)}
               {k.searchVolume != null
-                ? ` · ${k.searchVolume.toLocaleString("de-CH")} Vol.`
+                ? t.labsCell.volume(k.searchVolume.toLocaleString(displayLocale))
                 : ""}
             </span>
           </li>
@@ -433,6 +449,16 @@ function UrlPrefixOverlapCard({
   gscState: GscKeywordMappingState;
   gscPeriodShort: string;
 }) {
+  const t = useMessages(keywordMappingMessages);
+  const colLabel = useCallback(
+    (key: string) =>
+      key === URL_PREFIX_CARD_URL_COL_OTHER
+        ? t.urlPrefixCard.otherPath
+        : key === URL_PREFIX_CARD_URL_COL_NONE
+          ? t.urlPrefixCard.noUrlPath
+          : key,
+    [t]
+  );
   const [expanded, setExpanded] = useState(false);
   const [visibleCount, setVisibleCount] = useState(URL_PREFIX_OVERLAP_INITIAL_VISIBLE);
 
@@ -488,7 +514,7 @@ function UrlPrefixOverlapCard({
           node: (
             <span className="inline-flex items-center gap-1">
               <code className="text-[10px] px-1 py-0.5 rounded bg-teal-100/80 dark:bg-teal-900/40 font-mono text-teal-900 dark:text-teal-200">
-                {colKey}
+                {colLabel(colKey)}
               </code>
               <span className="text-slate-500 dark:text-slate-400">({n})</span>
             </span>
@@ -497,7 +523,7 @@ function UrlPrefixOverlapCard({
       }
     }
     return parts;
-  }, [colKeys, overlap.articles, bucket]);
+  }, [colKeys, overlap.articles, bucket, colLabel]);
 
   useEffect(() => {
     setVisibleCount(URL_PREFIX_OVERLAP_INITIAL_VISIBLE);
@@ -525,7 +551,7 @@ function UrlPrefixOverlapCard({
               </svg>
             </a>
             <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-teal-200 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300 whitespace-nowrap">
-              {total} URLs
+              {t.urlCount(total)}
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-600 dark:text-slate-400">
@@ -543,7 +569,7 @@ function UrlPrefixOverlapCard({
           aria-expanded={expanded}
           className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-teal-200 dark:border-teal-700 bg-white/90 dark:bg-slate-800/80 text-teal-800 dark:text-teal-200 hover:bg-teal-50 dark:hover:bg-teal-900/30 transition-colors"
         >
-          {expanded ? "Einklappen" : "Aufklappen"}
+          {expanded ? t.urlPrefixCard.collapse : t.urlPrefixCard.expand}
           <svg
             className={`w-4 h-4 transition-transform ${expanded ? "rotate-180" : ""}`}
             fill="none"
@@ -558,12 +584,12 @@ function UrlPrefixOverlapCard({
       {expanded && (
         <div className="px-3 sm:px-4 pb-4 pt-0 border-t border-teal-100/80 dark:border-teal-900/40 space-y-4">
           <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed pt-3">
-            <span className="font-semibold text-teal-900 dark:text-teal-200">Warum ein Overlap: </span>
-            Das Fokuskeyword{" "}
+            <span className="font-semibold text-teal-900 dark:text-teal-200">{t.urlPrefixCard.whyOverlap}</span>
+            {t.urlPrefixCard.focusKeywordPrefix}
             <span className="font-semibold text-slate-900 dark:text-white whitespace-nowrap">
-              „{overlap.keyword}“
-            </span>{" "}
-            ist bei Artikeln unter{" "}
+              {t.urlPrefixCard.quoted(overlap.keyword)}
+            </span>
+            {t.urlPrefixCard.assignedUnder}
             {crossingPathKeys.map((p, i) => {
               const chip = (
                 <code
@@ -578,7 +604,7 @@ function UrlPrefixOverlapCard({
                 return (
                   <span key={`join-${p}`}>
                     {" "}
-                    und {chip}
+                    {t.urlPrefixCard.and} {chip}
                   </span>
                 );
               }
@@ -587,19 +613,19 @@ function UrlPrefixOverlapCard({
                   , {chip}
                 </span>
               );
-            })}{" "}
-            gleichzeitig vergeben — dieselbe Keyword-Zielung auf mehreren URL-Bereichen kann Suchergebnisse aufteilen (Kannibalisierung).
+            })}
+            {t.urlPrefixCard.assignedSuffix}
             {extraBits.length > 0 && (
               <span className="text-slate-600 dark:text-slate-400">
                 {" "}
-                Zusätzlich sind Artikel in „{extraBits.join("“, „")}“ beteiligt.
+                {t.urlPrefixCard.alsoInvolved(extraBits.map(colLabel))}
               </span>
             )}
           </p>
 
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Zuerst {URL_PREFIX_OVERLAP_INITIAL_VISIBLE} Artikel sichtbar, danach je {URL_PREFIX_OVERLAP_MORE_STEP} nachladen.
-            Aktuell: <span className="font-medium text-slate-700 dark:text-slate-300">{Math.min(visibleCount, total)} von {total}</span>.
+            {t.urlPrefixCard.visibleInfo(URL_PREFIX_OVERLAP_INITIAL_VISIBLE, URL_PREFIX_OVERLAP_MORE_STEP)}{" "}
+            {t.urlPrefixCard.current} <span className="font-medium text-slate-700 dark:text-slate-300">{t.urlPrefixCard.ofTotal(Math.min(visibleCount, total), total)}</span>.
           </p>
 
           <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(220px,1fr))]">
@@ -610,7 +636,7 @@ function UrlPrefixOverlapCard({
                 <div key={colKey}>
                   <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                     <span className={`w-2 h-2 rounded-full shrink-0 ${style.dot}`} />
-                    <span className="normal-case font-mono text-[11px] tracking-normal">{colKey}</span>
+                    <span className="normal-case font-mono text-[11px] tracking-normal">{colLabel(colKey)}</span>
                   </div>
                   <div className="space-y-2">
                     {inCol.map((article) => {
@@ -652,7 +678,7 @@ function UrlPrefixOverlapCard({
                                 </a>
                                 {seg && (
                                   <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-0.5 block">
-                                    Präfix: {seg}
+                                    {t.urlPrefixCard.prefix} {seg}
                                   </span>
                                 )}
                                 <KeywordMappingGscLine
@@ -664,7 +690,7 @@ function UrlPrefixOverlapCard({
                               </>
                             ) : (
                               <span className="text-xs text-slate-500 dark:text-slate-500 italic mt-0.5 block">
-                                Keine URL im Redaktionsplan
+                                {t.noUrlInPlan}
                               </span>
                             )}
                           </div>
@@ -684,8 +710,8 @@ function UrlPrefixOverlapCard({
                 onClick={showMoreStep}
                 className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg bg-teal-600 text-white hover:bg-teal-700 dark:bg-teal-600 dark:hover:bg-teal-500 transition-colors"
               >
-                {`${nextBatch} weitere anzeigen`}
-                <span className="ml-2 text-teal-100 text-xs">({remaining} ausstehend)</span>
+                {t.urlPrefixCard.showMore(nextBatch)}
+                <span className="ml-2 text-teal-100 text-xs">{t.urlPrefixCard.pending(remaining)}</span>
               </button>
             </div>
           )}
@@ -698,10 +724,14 @@ function UrlPrefixOverlapCard({
 type TabId = "mapping" | "overlaps" | "location-overlaps" | "url-prefix-overlaps" | "keywords" | "tagcloud";
 
 export default function KeywordMappingPage() {
+  const t = useMessages(keywordMappingMessages);
+  const { intlLocale } = useLocale();
+  const displayLocale = useDisplayLocale();
   const [articles, setArticles] = useState<Article[]>(_cachedArticles ?? []);
   const [loading, setLoading] = useState(!_cachedAnalysisData);
   const [analyzing, setAnalyzing] = useState(false);
   const [progress, setProgress] = useState("");
+  const [progressIsError, setProgressIsError] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState<{ analyzed: number; total: number } | null>(null);
   const [analysisData, setAnalysisData] = useState<AnalysisData | null>(_cachedAnalysisData);
   const [activeTab, setActiveTab] = useState<TabId>("mapping");
@@ -729,7 +759,7 @@ export default function KeywordMappingPage() {
   const [gscClicksFilterMode, setGscClicksFilterMode] = useState<GscClicksFilterMode>("off");
   const [gscClicksThreshold, setGscClicksThreshold] = useState<number>(50);
   const [labsKwByArticleId, setLabsKwByArticleId] = useState<Record<string, LabsKwArticleState>>({});
-  const [labsMarketHint, setLabsMarketHint] = useState<string | null>(null);
+  const [labsMarketHint, setLabsMarketHint] = useState<{ location: string | null; language: string | null } | null>(null);
 
   const fetchArticles = useCallback(async () => {
     if (_cachedArticles && isCacheFresh()) return;
@@ -811,7 +841,7 @@ export default function KeywordMappingPage() {
   }, [gscPeriod]);
 
   const gscByPath = useMemo(() => buildGscMetricsByPathname(gscRows), [gscRows]);
-  const gscPeriodShort = useMemo(() => gscPeriodShortLabel(gscPeriod), [gscPeriod]);
+  const gscPeriodShort = useMemo(() => gscPeriodShortLabel(gscPeriod, t.gscPeriods), [gscPeriod, t]);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearchTerm(searchTerm), SEARCH_DEBOUNCE_MS);
@@ -835,7 +865,8 @@ export default function KeywordMappingPage() {
 
   const runAnalysis = async () => {
     setAnalyzing(true);
-    setProgress("Starte Keyword-Analyse...");
+    setProgress(t.progress.starting);
+    setProgressIsError(false);
     setAnalysisProgress(null);
     try {
       const res = await fetch("/api/editorial-plan/keyword-mapping", {
@@ -846,10 +877,10 @@ export default function KeywordMappingPage() {
 
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error || "Analyse fehlgeschlagen");
+        throw new Error(err.error || t.progress.analysisFailed);
       }
 
-      if (!res.body) throw new Error("Kein Stream verfügbar");
+      if (!res.body) throw new Error(t.progress.noStream);
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -869,7 +900,7 @@ export default function KeywordMappingPage() {
             const event = JSON.parse(line);
             if (event.type === "progress") {
               const pct = event.total > 0 ? Math.round((event.analyzed / event.total) * 100) : 0;
-              setProgress(`Analysiere... ${event.analyzed.toLocaleString("de-CH")} / ${event.total.toLocaleString("de-CH")} Artikel (${pct}%)`);
+              setProgress(t.progress.analyzing(event.analyzed.toLocaleString(displayLocale), event.total.toLocaleString(displayLocale), pct));
               setAnalysisProgress({ analyzed: event.analyzed, total: event.total });
             } else if (event.type === "complete") {
               setAnalysisData(event.data);
@@ -878,7 +909,8 @@ export default function KeywordMappingPage() {
               setProgress("");
               setAnalysisProgress(null);
             } else if (event.type === "error") {
-              setProgress(`Fehler: ${event.message}`);
+              setProgress(t.progress.error(event.message));
+              setProgressIsError(true);
             }
           } catch {
             // skip malformed lines
@@ -887,7 +919,8 @@ export default function KeywordMappingPage() {
       }
     } catch (error) {
       console.error("Error running analysis:", error);
-      setProgress(`Fehler: ${error instanceof Error ? error.message : "Unbekannter Fehler"}`);
+      setProgress(t.progress.error(error instanceof Error ? error.message : t.progress.unknownError));
+      setProgressIsError(true);
     } finally {
       setAnalyzing(false);
       setAnalysisProgress(null);
@@ -1209,9 +1242,10 @@ export default function KeywordMappingPage() {
           (data.labsLocation && data.labsLocation.trim()) ||
           (data.labsLanguage && data.labsLanguage.trim())
         ) {
-          const loc = data.labsLocation?.trim() || "alle Orte";
-          const lang = data.labsLanguage?.trim() || "alle Sprachen";
-          setLabsMarketHint(`DataForSEO Labs: ${loc}, ${lang}`);
+          setLabsMarketHint({
+            location: data.labsLocation?.trim() || null,
+            language: data.labsLanguage?.trim() || null,
+          });
         }
 
         const byId = data.byId ?? {};
@@ -1232,7 +1266,7 @@ export default function KeywordMappingPage() {
           return n;
         });
       } catch (e) {
-        const msg = e instanceof Error ? e.message : "Netzwerkfehler";
+        const msg = e instanceof Error ? e.message : t.networkError;
         setLabsKwByArticleId((prev) => {
           const n = { ...prev };
           for (const row of itemsSnapshot) {
@@ -1242,7 +1276,7 @@ export default function KeywordMappingPage() {
         });
       }
     })();
-  }, [paginatedArticles, activeTab, analysisData, labsKwByArticleId]);
+  }, [paginatedArticles, activeTab, analysisData, labsKwByArticleId, t]);
 
   const [exportLoading, setExportLoading] = useState(false);
   const [exportProgress, setExportProgress] = useState<{ done: number; total: number } | null>(null);
@@ -1325,7 +1359,7 @@ export default function KeywordMappingPage() {
         }
         setLabsKwByArticleId((prev) => ({ ...prev, ...Object.fromEntries(batch.map((b) => [b.id, merged[b.id]])) }));
       } catch (e) {
-        const msg = e instanceof Error ? e.message : "Netzwerkfehler";
+        const msg = e instanceof Error ? e.message : t.networkError;
         for (const row of batch) merged[row.id] = { status: "error", message: msg };
         setLabsKwByArticleId((prev) => ({ ...prev, ...Object.fromEntries(batch.map((b) => [b.id, merged[b.id]])) }));
       }
@@ -1341,7 +1375,7 @@ export default function KeywordMappingPage() {
     }
 
     return merged;
-  }, [labsKwByArticleId]);
+  }, [labsKwByArticleId, t]);
 
   const buildXlsx = useCallback((labsData: Record<string, LabsKwArticleState>) => {
     const resultById = new Map<string, KeywordResult>();
@@ -1355,44 +1389,44 @@ export default function KeywordMappingPage() {
       const labsState = labsData[article.id];
       const labsKeywords =
         labsState?.status === "ok"
-          ? labsState.keywords.map((k) => `${k.keyword} (Pos. ${k.rankGroup}${k.searchVolume != null ? `, ${k.searchVolume} Vol.` : ""})`).join("; ")
+          ? labsState.keywords.map((k) => t.xlsx.labsKeyword(k.keyword, k.rankGroup, k.searchVolume)).join("; ")
           : labsState?.status === "error"
-            ? `Fehler: ${labsState.message}`
+            ? t.xlsx.error(labsState.message)
             : "";
 
       const overlaps = filteredOverlaps
         .filter((o) => o.articles.some((a) => a.id === article.id))
-        .map((o) => `${o.keyword} (${o.articles.length} URLs)`)
+        .map((o) => `${o.keyword} (${t.urlCount(o.articles.length)})`)
         .join("; ");
 
       return {
-        Titel: article.title,
+        [t.xlsx.title]: article.title,
         URL: article.url ?? "",
-        Sprache: article.language ?? "",
-        Kategorie: article.category ?? "",
+        [t.xlsx.language]: article.language ?? "",
+        [t.xlsx.category]: article.category ?? "",
         Location: article.location ?? "",
         H1: article.h1 ?? "",
         "Meta Description": article.metaDescription ?? "",
-        Fokuskeywords: result?.focusKeywords.join(", ") ?? "",
-        Begründung: result?.reasoning ?? "",
+        [t.xlsx.focusKeywords]: result?.focusKeywords.join(", ") ?? "",
+        [t.xlsx.reasoning]: result?.reasoning ?? "",
         "Top Ranked Keywords (DataForSEO)": labsKeywords,
-        "GSC Klicks": gsc?.clicks ?? "",
-        "GSC Impressionen": gsc?.impressions ?? "",
+        [t.xlsx.gscClicks]: gsc?.clicks ?? "",
+        [t.xlsx.gscImpressions]: gsc?.impressions ?? "",
         "GSC CTR (%)": gsc ? Math.round(gsc.ctr * 10000) / 100 : "",
-        "GSC Ø Position": gsc ? Math.round(gsc.position * 10) / 10 : "",
-        Überlappungen: overlaps,
+        [t.xlsx.gscPosition]: gsc ? Math.round(gsc.position * 10) / 10 : "",
+        [t.xlsx.overlaps]: overlaps,
       };
     });
 
     const stamp = new Date().toISOString().slice(0, 10);
     downloadExcel(`keyword-mapping_${stamp}.xlsx`, [
       {
-        name: "Keyword-Mapping",
+        name: t.xlsx.sheetName,
         rows,
         columnWidths: [40, 60, 6, 16, 14, 40, 60, 30, 50, 50, 12, 14, 10, 12, 40],
       },
     ]);
-  }, [filteredArticles, analysisData, gscByPath, filteredOverlaps]);
+  }, [filteredArticles, analysisData, gscByPath, filteredOverlaps, t]);
 
   const runExport = useCallback(async (mode: "quick" | "cached" | "live") => {
     setShowExportDialog(false);
@@ -1444,30 +1478,31 @@ export default function KeywordMappingPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-            Keyword Mapping
+            {t.title}
           </h1>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Analysiere Fokuskeywords und erkenne Kannibalisierungspotenzial im Redaktionsplan
+            {t.subtitle}
           </p>
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            Organische Kennzahlen (Klicks, Impressionen, CTR, Ø-Position) aus der Search Console, Property{" "}
+            {t.gscInfo}
             <code className="text-[11px] px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-700 font-mono">
               {KEYWORD_MAPPING_GSC_SITE_URL}
             </code>
             {gscState === "ready" && (
               <span className="text-slate-400 dark:text-slate-500">
                 {" "}
-                · {gscRows.length.toLocaleString("de-CH")} Seitenzeilen geladen
+                {t.gscRowsLoaded(gscRows.length.toLocaleString(displayLocale))}
               </span>
             )}
           </p>
           {labsMarketHint && (
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{labsMarketHint}</p>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              {t.labsMarketHint(labsMarketHint.location || t.allPlaces, labsMarketHint.language || t.allLanguagesLower)}
+            </p>
           )}
           {activeTab === "mapping" && analysisData && (
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              Im Reiter „Keyword-Mapping“: pro Tabellen-Seite bis zu {PAGE_SIZE} DataForSEO-Labs-Aufrufe
-              (ranked_keywords, je URL), kostenpflichtig. Markt/Sprache optional:{" "}
+              {t.labsCostNote(PAGE_SIZE)}
               <code className="text-[10px] px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-700 font-mono">
                 DATAFORSEO_LABS_LOCATION_NAME
               </code>{" "}
@@ -1480,7 +1515,7 @@ export default function KeywordMappingPage() {
           )}
           {analysisData?.createdAt && (
             <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
-              Letzter Durchlauf: {formatDate(analysisData.createdAt)}
+              {t.lastRun} {formatDate(analysisData.createdAt, displayLocale)}
             </p>
           )}
         </div>
@@ -1490,12 +1525,12 @@ export default function KeywordMappingPage() {
               onClick={() => setShowExportDialog(true)}
               disabled={filteredArticles.length === 0}
               className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-lg font-medium text-sm hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              title={`${filteredArticles.length} Artikel als XLSX exportieren`}
+              title={t.exportTitle(filteredArticles.length)}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              XLSX Export ({filteredArticles.length.toLocaleString()})
+              {t.exportButton(filteredArticles.length.toLocaleString(intlLocale))}
             </button>
           )}
           {exportLoading && (
@@ -1506,14 +1541,14 @@ export default function KeywordMappingPage() {
               </svg>
               <span>
                 {exportProgress
-                  ? `Labs laden: ${exportProgress.done.toLocaleString("de-CH")} / ${exportProgress.total.toLocaleString("de-CH")}`
-                  : "Export wird vorbereitet…"}
+                  ? t.labsLoadingProgress(exportProgress.done.toLocaleString(displayLocale), exportProgress.total.toLocaleString(displayLocale))
+                  : t.exportPreparing}
               </span>
               <button
                 onClick={cancelExport}
                 className="ml-1 px-2 py-0.5 text-xs rounded bg-emerald-800 hover:bg-emerald-900 transition-colors"
               >
-                Abbrechen
+                {t.cancel}
               </button>
             </div>
           )}
@@ -1528,14 +1563,14 @@ export default function KeywordMappingPage() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
-                Analyse läuft...
+                {t.analysisRunning}
               </>
             ) : (
               <>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
-                {analysisData ? "Neue Analyse starten" : `Keyword-Analyse starten (${eligibleArticles.length.toLocaleString()} Artikel)`}
+                {analysisData ? t.startNewAnalysis : t.startKeywordAnalysisCount(eligibleArticles.length.toLocaleString(intlLocale))}
               </>
             )}
           </button>
@@ -1544,32 +1579,32 @@ export default function KeywordMappingPage() {
 
       {gscState === "needsConnection" && (
         <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-4 py-3 text-sm text-amber-900 dark:text-amber-200">
-          Für GSC-Trafficdaten zu den URLs bitte{" "}
+          {t.needsConnection.prefix}
           <a href="/api/auth/link-google" className="font-medium underline hover:no-underline">
-            Google verbinden
+            {t.needsConnection.link}
           </a>
-          . Es wird die Property{" "}
+          {t.needsConnection.middle}
           <code className="text-xs font-mono px-1 rounded bg-amber-100 dark:bg-amber-900/50">
             {KEYWORD_MAPPING_GSC_SITE_URL}
-          </code>{" "}
-          abgefragt (unabhängig vom Property-Selektor oben).
+          </code>
+          {t.needsConnection.suffix}
         </div>
       )}
       {gscState === "error" && (
         <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-800 dark:text-red-200">
-          GSC-Seitendaten konnten nicht geladen werden. Bitte später erneut versuchen.
+          {t.gscError}
         </div>
       )}
 
       {/* Progress */}
       {(progress || analysisProgress) && (
         <div className={`p-4 rounded-lg text-sm ${
-          progress.startsWith("Fehler")
+          progressIsError
             ? "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800"
             : "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
         }`}>
           <div className="flex items-center gap-3">
-            {analyzing && !progress.startsWith("Fehler") && (
+            {analyzing && !progressIsError && (
               <svg className="animate-spin h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
@@ -1580,7 +1615,7 @@ export default function KeywordMappingPage() {
           {analysisProgress && analysisProgress.total > 0 && (
             <div className="mt-3">
               <div className="flex items-center justify-between text-xs mb-1">
-                <span>{analysisProgress.analyzed.toLocaleString("de-CH")} von {analysisProgress.total.toLocaleString("de-CH")} Artikeln</span>
+                <span>{t.progress.ofArticles(analysisProgress.analyzed.toLocaleString(displayLocale), analysisProgress.total.toLocaleString(displayLocale))}</span>
                 <span className="font-medium">{Math.round((analysisProgress.analyzed / analysisProgress.total) * 100)}%</span>
               </div>
               <div className="w-full bg-blue-200 dark:bg-blue-900/40 rounded-full h-2.5 overflow-hidden">
@@ -1598,18 +1633,18 @@ export default function KeywordMappingPage() {
       {analysisData && (
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
           <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
-            <div className="text-2xl font-bold text-slate-900 dark:text-white">{filteredResults.length.toLocaleString()}</div>
-            <div className="text-sm text-slate-500 dark:text-slate-400">Artikel analysiert</div>
+            <div className="text-2xl font-bold text-slate-900 dark:text-white">{filteredResults.length.toLocaleString(intlLocale)}</div>
+            <div className="text-sm text-slate-500 dark:text-slate-400">{t.stats.analyzed}</div>
           </div>
           <button
             onClick={() => setActiveTab("keywords")}
             className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 text-left hover:border-blue-400 dark:hover:border-blue-500 hover:ring-1 hover:ring-blue-400 dark:hover:ring-blue-500 transition-all group"
           >
             <div className="text-2xl font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-              {keywordStats.unique.length.toLocaleString()}
+              {keywordStats.unique.length.toLocaleString(intlLocale)}
             </div>
             <div className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-1">
-              Einzigartige Keywords
+              {t.stats.uniqueKeywords}
               <svg className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
@@ -1617,15 +1652,15 @@ export default function KeywordMappingPage() {
           </button>
           <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
             <div className={`text-2xl font-bold ${totalOverlaps > 0 ? "text-amber-600 dark:text-amber-400" : "text-green-600 dark:text-green-400"}`}>
-              {totalOverlaps.toLocaleString()}
+              {totalOverlaps.toLocaleString(intlLocale)}
             </div>
-            <div className="text-sm text-slate-500 dark:text-slate-400">Keyword-Überlappungen</div>
+            <div className="text-sm text-slate-500 dark:text-slate-400">{t.stats.overlaps}</div>
           </div>
           <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
             <div className={`text-2xl font-bold ${criticalOverlaps > 0 ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"}`}>
-              {criticalOverlaps.toLocaleString()}
+              {criticalOverlaps.toLocaleString(intlLocale)}
             </div>
-            <div className="text-sm text-slate-500 dark:text-slate-400">Kritische Überlappungen (3+)</div>
+            <div className="text-sm text-slate-500 dark:text-slate-400">{t.stats.critical}</div>
           </div>
         </div>
       )}
@@ -1642,7 +1677,7 @@ export default function KeywordMappingPage() {
                   : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
               }`}
             >
-              Keyword-Mapping ({filteredArticles.length.toLocaleString()})
+              {t.tabs.mapping(filteredArticles.length.toLocaleString(intlLocale))}
             </button>
             <button
               onClick={() => setActiveTab("overlaps")}
@@ -1652,10 +1687,10 @@ export default function KeywordMappingPage() {
                   : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
               }`}
             >
-              Überlappungen
+              {t.tabs.overlaps}
               {totalOverlaps > 0 && (
                 <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
-                  {totalOverlaps.toLocaleString()}
+                  {totalOverlaps.toLocaleString(intlLocale)}
                 </span>
               )}
             </button>
@@ -1667,10 +1702,10 @@ export default function KeywordMappingPage() {
                   : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
               }`}
             >
-              Location Overlap
+              {t.tabs.locationOverlap}
               {locationOverlaps.length > 0 && (
                 <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-medium bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300">
-                  {locationOverlaps.length.toLocaleString()}
+                  {locationOverlaps.length.toLocaleString(intlLocale)}
                 </span>
               )}
             </button>
@@ -1682,10 +1717,10 @@ export default function KeywordMappingPage() {
                   : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
               }`}
             >
-              URL-Pfad-Overlap
+              {t.tabs.urlPrefixOverlap}
               {selectedUrlPrefixes.length >= 2 && urlPrefixCrossOverlaps.length > 0 && (
                 <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-medium bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300">
-                  {urlPrefixCrossOverlaps.length.toLocaleString()}
+                  {urlPrefixCrossOverlaps.length.toLocaleString(intlLocale)}
                 </span>
               )}
             </button>
@@ -1697,7 +1732,7 @@ export default function KeywordMappingPage() {
                   : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
               }`}
             >
-              Alle Keywords ({keywordStats.unique.length.toLocaleString()})
+              {t.tabs.allKeywords(keywordStats.unique.length.toLocaleString(intlLocale))}
             </button>
             <button
               onClick={() => setActiveTab("tagcloud")}
@@ -1707,7 +1742,7 @@ export default function KeywordMappingPage() {
                   : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
               }`}
             >
-              Tag Cloud
+              {t.tabs.tagCloud}
             </button>
           </nav>
         </div>
@@ -1725,8 +1760,8 @@ export default function KeywordMappingPage() {
                 type="text"
                 placeholder={
                   activeTab === "keywords"
-                    ? "Keyword suchen (mind. 2 Zeichen)…"
-                    : "Titel, URL oder Keyword (mind. 2 Zeichen)…"
+                    ? t.filters.searchKeyword
+                    : t.filters.searchArticles
                 }
                 value={activeTab === "keywords" ? keywordSearch : searchTerm}
                 onChange={(e) => activeTab === "keywords" ? setKeywordSearch(e.target.value) : setSearchTerm(e.target.value)}
@@ -1739,7 +1774,7 @@ export default function KeywordMappingPage() {
             onChange={(e) => setCategoryFilter(e.target.value)}
             className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
           >
-            <option value="all">Alle Kategorien</option>
+            <option value="all">{t.filters.allCategories}</option>
             {categories.map((c) => (
               <option key={c} value={c}>{c}</option>
             ))}
@@ -1749,7 +1784,7 @@ export default function KeywordMappingPage() {
             onChange={(e) => setLocationFilter(e.target.value)}
             className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
           >
-            <option value="all">Alle Locations</option>
+            <option value="all">{t.filters.allLocations}</option>
             {EDITORIAL_LOCATIONS.map((loc) => (
               <option key={loc} value={loc}>{loc}</option>
             ))}
@@ -1758,10 +1793,10 @@ export default function KeywordMappingPage() {
             value={languageFilter}
             onChange={(e) => setLanguageFilter(e.target.value)}
             className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-            title="Sprache aus URL-Pfad (Redaktionsplan)"
+            title={t.filters.languageTitle}
           >
-            <option value="all">Alle Sprachen</option>
-            <option value="__none__">Ohne Sprachzuordnung</option>
+            <option value="all">{t.filters.allLanguages}</option>
+            <option value="__none__">{t.filters.noLanguage}</option>
             {languagesFromArticles.map((lang) => (
               <option key={lang} value={lang}>
                 {lang.toUpperCase()}
@@ -1774,19 +1809,19 @@ export default function KeywordMappingPage() {
               onChange={(e) => setOverlapFilter(e.target.value as "all" | "with-overlaps")}
               className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
             >
-              <option value="all">Alle Artikel</option>
-              <option value="with-overlaps">Nur mit Überlappungen</option>
+              <option value="all">{t.filters.allArticles}</option>
+              <option value="with-overlaps">{t.filters.onlyWithOverlaps}</option>
             </select>
           )}
           <select
             value={gscPeriod}
             onChange={(e) => setGscPeriod(e.target.value)}
-            title="Zeitraum für organische Kennzahlen (Search Console, www.ubs.com)"
+            title={t.filters.periodTitle}
             className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 max-w-[200px]"
           >
-            {GSC_PERIOD_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                GSC: {o.selectLabel}
+            {GSC_PERIOD_OPTIONS.map((value) => (
+              <option key={value} value={value}>
+                {t.filters.gscPeriodOption(t.gscPeriods[value]?.selectLabel ?? value)}
               </option>
             ))}
           </select>
@@ -1796,14 +1831,14 @@ export default function KeywordMappingPage() {
               onChange={(e) => setGscClicksFilterMode(e.target.value as GscClicksFilterMode)}
               title={
                 gscState !== "ready"
-                  ? "GSC-Klicks-Filter: wirkt, sobald GSC-Daten geladen sind (sonst keine Einschränkung)."
-                  : "Filtern nach GSC-Klicks der Artikel-URL im gewählten Zeitraum (Abgleich mit dem geladenen Seitenreport)."
+                  ? t.filters.clicksFilterTitlePending
+                  : t.filters.clicksFilterTitleReady
               }
               className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 min-w-[11rem] max-w-[14rem]"
             >
-              <option value="off">Alle Klickstärken</option>
-              <option value="gte">Mind. Klicks (≥)</option>
-              <option value="lt">Weniger als (&lt;)</option>
+              <option value="off">{t.filters.clicksOff}</option>
+              <option value="gte">{t.filters.clicksGte}</option>
+              <option value="lt">{t.filters.clicksLt}</option>
             </select>
             {gscClicksFilterMode !== "off" && (
               <select
@@ -1811,16 +1846,16 @@ export default function KeywordMappingPage() {
                 onChange={(e) => setGscClicksThreshold(Number(e.target.value))}
                 title={
                   gscClicksFilterMode === "gte"
-                    ? `Nur URLs mit mindestens ${gscClicksThreshold.toLocaleString("de-CH")} GSC-Klicks.`
-                    : `Nur URLs mit strikt weniger als ${gscClicksThreshold.toLocaleString("de-CH")} GSC-Klicks (0 bis ${(gscClicksThreshold - 1).toLocaleString("de-CH")}).`
+                    ? t.filters.thresholdGteTitle(gscClicksThreshold.toLocaleString(displayLocale))
+                    : t.filters.thresholdLtTitle(gscClicksThreshold.toLocaleString(displayLocale), (gscClicksThreshold - 1).toLocaleString(displayLocale))
                 }
                 className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 tabular-nums max-w-[9rem]"
               >
                 {GSC_CLICKS_THRESHOLD_OPTIONS.map((n) => (
                   <option key={n} value={n}>
                     {gscClicksFilterMode === "gte"
-                      ? `≥ ${n.toLocaleString("de-CH")}`
-                      : `< ${n.toLocaleString("de-CH")}`}
+                      ? `≥ ${n.toLocaleString(displayLocale)}`
+                      : `< ${n.toLocaleString(displayLocale)}`}
                   </option>
                 ))}
               </select>
@@ -1837,25 +1872,25 @@ export default function KeywordMappingPage() {
               <thead className="bg-slate-50 dark:bg-slate-900/50">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    Artikel
+                    {t.columns.article}
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    SEO-Daten
+                    {t.columns.seoData}
                   </th>
                   <th
                     className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider max-w-[14rem]"
-                    title="Top 5 organische Rank-Keywords pro URL (DataForSEO Labs, wöchentliche Daten)"
+                    title={t.columns.topRankTitle}
                   >
-                    Top-Rank Keywords (Labs)
+                    {t.columns.topRank}
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    Fokuskeywords
+                    {t.columns.focusKeywords}
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    Begründung
+                    {t.columns.reasoning}
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    Überlappungen
+                    {t.columns.overlaps}
                   </th>
                 </tr>
               </thead>
@@ -1920,7 +1955,7 @@ export default function KeywordMappingPage() {
                             </div>
                           )}
                           {!article.h1 && !article.metaDescription && (
-                            <span className="text-xs text-slate-400 italic">Keine SEO-Daten</span>
+                            <span className="text-xs text-slate-400 italic">{t.mapping.noSeoData}</span>
                           )}
                         </div>
                       </td>
@@ -1939,7 +1974,7 @@ export default function KeywordMappingPage() {
                                   key={kw}
                                   href={`/keyword-mapping/overlap?keyword=${encodeURIComponent(kw)}`}
                                   className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 ring-1 ring-amber-300 dark:ring-amber-700 hover:bg-amber-200 dark:hover:bg-amber-900/50 hover:ring-amber-400 dark:hover:ring-amber-600 transition-all"
-                                  title={`Alle URLs mit "${kw}" anzeigen`}
+                                  title={t.mapping.showAllUrlsWith(kw)}
                                 >
                                   <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                     <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
@@ -1960,7 +1995,7 @@ export default function KeywordMappingPage() {
                             })}
                           </div>
                         ) : (
-                          <span className="text-xs text-slate-400 italic">Nicht analysiert</span>
+                          <span className="text-xs text-slate-400 italic">{t.mapping.notAnalyzed}</span>
                         )}
                       </td>
                       <td className="px-4 py-3">
@@ -1985,7 +2020,7 @@ export default function KeywordMappingPage() {
                                   &quot;{overlap.keyword}&quot;
                                 </span>
                                 <span className="text-slate-500 dark:text-slate-400">
-                                  ({overlap.articles.length} URLs)
+                                  ({t.urlCount(overlap.articles.length)})
                                 </span>
                                 <svg className="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -1998,7 +2033,7 @@ export default function KeywordMappingPage() {
                             <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                             </svg>
-                            Einzigartig
+                            {t.mapping.unique}
                           </span>
                         ) : null}
                       </td>
@@ -2010,7 +2045,7 @@ export default function KeywordMappingPage() {
           </div>
           {filteredArticles.length === 0 && (
             <div className="text-center py-12 text-slate-500 dark:text-slate-400">
-              Keine Artikel gefunden, die den Filtern entsprechen.
+              {t.mapping.noArticlesFound}
             </div>
           )}
           <Pagination page={mappingPage} totalItems={filteredArticles.length} pageSize={PAGE_SIZE} onChange={setMappingPage} />
@@ -2025,9 +2060,9 @@ export default function KeywordMappingPage() {
               <svg className="w-12 h-12 mx-auto text-green-500 dark:text-green-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <h3 className="text-lg font-medium text-green-800 dark:text-green-300">Keine Überlappungen gefunden</h3>
+              <h3 className="text-lg font-medium text-green-800 dark:text-green-300">{t.overlaps.noneTitle}</h3>
               <p className="text-sm text-green-600 dark:text-green-400 mt-1">
-                Alle Artikel haben einzigartige Fokuskeywords. Kein Kannibalisierungspotenzial erkannt.
+                {t.overlaps.noneText}
               </p>
             </div>
           ) : (
@@ -2051,7 +2086,7 @@ export default function KeywordMappingPage() {
                         ? "bg-red-200 text-red-700 dark:bg-red-900/40 dark:text-red-300"
                         : "bg-amber-200 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
                     }`}>
-                      {overlap.articles.length} URLs
+                      {t.urlCount(overlap.articles.length)}
                     </span>
                   </div>
                   {overlap.articles.length >= 3 && (
@@ -2059,7 +2094,7 @@ export default function KeywordMappingPage() {
                       <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                       </svg>
-                      Hohes Kannibalisierungsrisiko
+                      {t.overlaps.highRisk}
                     </span>
                   )}
                 </div>
@@ -2087,7 +2122,7 @@ export default function KeywordMappingPage() {
                             </a>
                           ) : (
                             <span className="text-xs text-slate-500 dark:text-slate-500 italic">
-                              Keine URL im Redaktionsplan
+                              {t.noUrlInPlan}
                             </span>
                           )}
                           <KeywordMappingGscLine
@@ -2114,9 +2149,10 @@ export default function KeywordMappingPage() {
         <div className="space-y-4">
           <div className="bg-violet-50 dark:bg-violet-900/30 border border-violet-200 dark:border-violet-700 rounded-xl p-4">
             <p className="text-sm text-violet-700 dark:text-violet-200">
-              Hier erscheinen Keywords, die in Artikeln mit <strong>mindestens zwei verschiedenen Locations</strong> vorkommen
-              (alle Locations aus dem Filter: {EDITORIAL_LOCATIONS.join(", ")}).
-              Für die vollständige Übersicht bitte im Filter <strong>Alle Locations</strong> wählen — bei nur einer Location sind kreuzende Überlappungen nicht sichtbar.
+              {t.locationOverlaps.infoPrefix}<strong>{t.locationOverlaps.infoStrong1}</strong>
+              {t.locationOverlaps.infoMiddle(EDITORIAL_LOCATIONS.join(", "))}
+              <strong>{t.locationOverlaps.infoStrong2}</strong>
+              {t.locationOverlaps.infoSuffix}
             </p>
           </div>
           {locationOverlaps.length === 0 ? (
@@ -2124,9 +2160,9 @@ export default function KeywordMappingPage() {
               <svg className="w-12 h-12 mx-auto text-green-500 dark:text-green-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <h3 className="text-lg font-medium text-green-800 dark:text-green-300">Keine Location-Überlappungen</h3>
+              <h3 className="text-lg font-medium text-green-800 dark:text-green-300">{t.locationOverlaps.noneTitle}</h3>
               <p className="text-sm text-green-600 dark:text-green-400 mt-1">
-                Kein Keyword tritt unter den aktuellen Filtern gleichzeitig in Artikeln mit unterschiedlicher Location auf.
+                {t.locationOverlaps.noneText}
               </p>
             </div>
           ) : (
@@ -2139,7 +2175,7 @@ export default function KeywordMappingPage() {
                 )
               );
               const hasUnassigned = overlap.articles.some((a) => !a.location?.trim());
-              const columnKeys = hasUnassigned ? [...locKeys, "Ohne Location"] : locKeys;
+              const columnKeys = hasUnassigned ? [...locKeys, LOCATION_NONE_KEY] : locKeys;
               return (
                 <div
                   key={overlap.keyword}
@@ -2150,11 +2186,11 @@ export default function KeywordMappingPage() {
                       &quot;{overlap.keyword}&quot;
                     </span>
                     <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-violet-200 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300">
-                      {overlap.articles.length} URLs
+                      {t.urlCount(overlap.articles.length)}
                     </span>
                     <span className="text-xs text-slate-500 dark:text-slate-400">
-                      Locations: {locKeys.join(" · ")}
-                      {hasUnassigned && " · (ohne Location)"}
+                      {t.locationOverlaps.locations(locKeys.join(" · "))}
+                      {hasUnassigned && t.locationOverlaps.withoutLocationSuffix}
                     </span>
                   </div>
                   <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(220px,1fr))]">
@@ -2164,12 +2200,12 @@ export default function KeywordMappingPage() {
                         <div key={loc}>
                           <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                             <span className={`w-2 h-2 rounded-full shrink-0 ${style.dot}`} />
-                            {loc}
+                            {loc === LOCATION_NONE_KEY ? t.locationOverlaps.withoutLocation : loc}
                           </div>
                           <div className="space-y-2">
                             {overlap.articles
                               .filter((a) =>
-                                loc === "Ohne Location"
+                                loc === LOCATION_NONE_KEY
                                   ? !a.location?.trim()
                                   : (a.location?.trim() ?? "") === loc
                               )
@@ -2196,7 +2232,7 @@ export default function KeywordMappingPage() {
                                         </a>
                                       ) : (
                                         <span className="text-xs text-slate-500 dark:text-slate-500 italic mt-0.5 block">
-                                          Keine URL im Redaktionsplan
+                                          {t.noUrlInPlan}
                                         </span>
                                       )}
                                       <KeywordMappingGscLine
@@ -2226,21 +2262,25 @@ export default function KeywordMappingPage() {
         <div className="space-y-4">
           <div className="bg-teal-50 dark:bg-teal-900/30 border border-teal-200 dark:border-teal-700 rounded-xl p-4 space-y-3">
             <p className="text-sm text-teal-800 dark:text-teal-200">
-              Vergleiche <strong>zwei oder mehr URL-Bereiche</strong> anhand der ersten beiden Pfadsegmente nach der Domain
-              (z. B.{" "}
-              <code className="text-xs bg-teal-100 dark:bg-teal-900/50 px-1 rounded">us/en</code> vs.{" "}
-              <code className="text-xs bg-teal-100 dark:bg-teal-900/50 px-1 rounded">global/en</code>).
-              Angezeigt werden nur Fokuskeyword-Überlappungen, bei denen betroffene Artikel unter{" "}
-              <strong>mindestens zwei</strong> der eingetragenen Pfade liegen.               Jede Karte nennt das{" "}
-              <strong>gemeinsame Fokuskeyword</strong> (Auslöser) und die Verteilung pro Pfad; per <strong>Aufklappen</strong> folgen Erklärung und Artikelliste (zuerst {URL_PREFIX_OVERLAP_INITIAL_VISIBLE} URLs, dann je {URL_PREFIX_OVERLAP_MORE_STEP}).
-              Kategorie- und Location-Filter wirken weiterhin auf die Datenbasis.
+              {t.urlPrefixOverlaps.intro.s1}<strong>{t.urlPrefixOverlaps.intro.b1}</strong>
+              {t.urlPrefixOverlaps.intro.s2}
+              <code className="text-xs bg-teal-100 dark:bg-teal-900/50 px-1 rounded">us/en</code>
+              {t.urlPrefixOverlaps.intro.vs}
+              <code className="text-xs bg-teal-100 dark:bg-teal-900/50 px-1 rounded">global/en</code>
+              {t.urlPrefixOverlaps.intro.s3}
+              <strong>{t.urlPrefixOverlaps.intro.b2}</strong>
+              {t.urlPrefixOverlaps.intro.s4}
+              <strong>{t.urlPrefixOverlaps.intro.b3}</strong>
+              {t.urlPrefixOverlaps.intro.s5}
+              <strong>{t.urlPrefixOverlaps.intro.b4}</strong>
+              {t.urlPrefixOverlaps.intro.s6(URL_PREFIX_OVERLAP_INITIAL_VISIBLE, URL_PREFIX_OVERLAP_MORE_STEP)}
             </p>
             <div>
               <label
                 htmlFor="url-prefix-compare-input"
                 className="block text-xs font-semibold text-teal-900 dark:text-teal-100 mb-1.5"
               >
-                Pfade zum Vergleich (eine Zeile pro Präfix oder volle URL)
+                {t.urlPrefixOverlaps.pathsLabel}
               </label>
               <textarea
                 id="url-prefix-compare-input"
@@ -2252,15 +2292,15 @@ export default function KeywordMappingPage() {
                 placeholder={"us/en\nglobal/en\nuk/en"}
               />
               <p className="mt-1.5 text-xs text-teal-700 dark:text-teal-300">
-                Erkannt:{" "}
+                {t.urlPrefixOverlaps.detected}{" "}
                 {selectedUrlPrefixes.length === 0 ? (
-                  <span>keine gültigen Präfixe</span>
+                  <span>{t.urlPrefixOverlaps.noValidPrefixes}</span>
                 ) : (
                   <span className="font-mono">{selectedUrlPrefixes.join(" · ")}</span>
                 )}
                 {selectedUrlPrefixes.length === 1 && (
                   <span className="block mt-1 text-amber-700 dark:text-amber-300">
-                    Mindestens zwei verschiedene Präfixe eintragen, um kreuzende Überlappungen zu sehen.
+                    {t.urlPrefixOverlaps.needTwoPrefixes}
                   </span>
                 )}
               </p>
@@ -2269,18 +2309,20 @@ export default function KeywordMappingPage() {
 
           {selectedUrlPrefixes.length < 2 ? (
             <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl p-8 text-center text-sm text-slate-600 dark:text-slate-400">
-              Bitte mindestens zwei gültige Pfade angeben (je zwei Segmente nach der Domain, z. B.{" "}
-              <span className="font-mono">us/en</span> und <span className="font-mono">global/en</span>).
+              {t.urlPrefixOverlaps.needTwoPaths.prefix}
+              <span className="font-mono">us/en</span>
+              {t.urlPrefixOverlaps.needTwoPaths.and}
+              <span className="font-mono">global/en</span>
+              {t.urlPrefixOverlaps.needTwoPaths.suffix}
             </div>
           ) : urlPrefixCrossOverlaps.length === 0 ? (
             <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-8 text-center">
               <svg className="w-12 h-12 mx-auto text-green-500 dark:text-green-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <h3 className="text-lg font-medium text-green-800 dark:text-green-300">Keine Überlappungen über die gewählten Pfade</h3>
+              <h3 className="text-lg font-medium text-green-800 dark:text-green-300">{t.urlPrefixOverlaps.noneTitle}</h3>
               <p className="text-sm text-green-600 dark:text-green-400 mt-1 max-w-lg mx-auto">
-                Unter den aktuellen Filtern gibt es kein Keyword, das gleichzeitig in Artikeln mit mindestens zwei verschiedenen
-                der angegebenen URL-Pfadpräfixe vorkommt.
+                {t.urlPrefixOverlaps.noneText}
               </p>
             </div>
           ) : (
@@ -2321,16 +2363,16 @@ export default function KeywordMappingPage() {
                     #
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    Keyword
+                    {t.columns.keyword}
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    Anzahl URLs
+                    {t.columns.urlCount}
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    Status
+                    {t.columns.status}
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    Zugeordnete Artikel
+                    {t.columns.assignedArticles}
                   </th>
                 </tr>
               </thead>
@@ -2380,7 +2422,7 @@ export default function KeywordMappingPage() {
                             <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                             </svg>
-                            Einzigartig
+                            {t.mapping.unique}
                           </span>
                         ) : (
                           <span className={`inline-flex items-center gap-1 text-xs font-medium ${
@@ -2391,7 +2433,7 @@ export default function KeywordMappingPage() {
                             <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                             </svg>
-                            Überlappung
+                            {t.keywords.overlap}
                           </span>
                         )}
                       </td>
@@ -2426,7 +2468,7 @@ export default function KeywordMappingPage() {
           </div>
           {filteredKeywords.length === 0 && (
             <div className="text-center py-12 text-slate-500 dark:text-slate-400">
-              Keine Keywords gefunden.
+              {t.keywords.noneFound}
             </div>
           )}
           <Pagination page={keywordsPage} totalItems={filteredKeywords.length} pageSize={PAGE_SIZE} onChange={setKeywordsPage} />
@@ -2468,23 +2510,23 @@ export default function KeywordMappingPage() {
             </div>
             {tagCloudData.length === 0 && (
               <div className="text-center text-slate-400 dark:text-slate-500 py-8">
-                Keine Keywords vorhanden.
+                {t.tagCloud.noKeywords}
               </div>
             )}
             <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700 flex items-center justify-center gap-6 text-xs text-slate-400 dark:text-slate-500">
               <div className="flex items-center gap-2">
                 <span className="w-3 h-3 rounded bg-slate-300 dark:bg-slate-600" />
-                Einzigartig (1 URL)
+                {t.tagCloud.legendUnique}
               </div>
               <div className="flex items-center gap-2">
                 <span className="w-3 h-3 rounded bg-amber-400 dark:bg-amber-600" />
-                Überlappung (2+ URLs)
+                {t.tagCloud.legendOverlap}
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-[0.65rem]">Aa</span>
                 <span className="mx-1">&rarr;</span>
                 <span className="text-[1rem] font-medium">Aa</span>
-                Schriftgrösse = Häufigkeit
+                {t.tagCloud.legendFontSize}
               </div>
             </div>
           </div>
@@ -2498,7 +2540,7 @@ export default function KeywordMappingPage() {
                     &quot;{selectedCloudKeyword}&quot;
                   </span>
                   <span className="text-sm text-slate-500 dark:text-slate-400">
-                    {selectedCloudArticles.length} {selectedCloudArticles.length === 1 ? "Artikel" : "Artikel"}
+                    {t.tagCloud.articleCount(selectedCloudArticles.length)}
                   </span>
                 </div>
                 <button
@@ -2552,24 +2594,23 @@ export default function KeywordMappingPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
           </svg>
           <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">
-            Keyword-Analyse starten
+            {t.empty.title}
           </h3>
           <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto mb-6">
-            Klicke auf &quot;Keyword-Analyse starten&quot;, um alle {eligibleArticles.length.toLocaleString()} Artikel
-            des Redaktionsplans auf ihre Fokuskeywords zu prüfen. Die Analyse basiert auf Title, H1 und Meta-Description.
+            {t.empty.text(eligibleArticles.length.toLocaleString(intlLocale))}
           </p>
           <div className="flex items-center justify-center gap-8 text-sm text-slate-400 dark:text-slate-500">
             <div className="flex items-center gap-2">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              {articles.length.toLocaleString()} Artikel total
+              {t.empty.totalArticles(articles.length.toLocaleString(intlLocale))}
             </div>
             <div className="flex items-center gap-2">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              {eligibleArticles.length.toLocaleString()} mit SEO-Daten
+              {t.empty.withSeoData(eligibleArticles.length.toLocaleString(intlLocale))}
             </div>
           </div>
         </div>
@@ -2578,9 +2619,9 @@ export default function KeywordMappingPage() {
       {showExportDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setShowExportDialog(false)}>
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 p-6 max-w-lg w-full mx-4" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">XLSX-Export</h3>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">{t.exportDialog.title}</h3>
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-              {filteredArticles.length.toLocaleString()} Artikel werden exportiert. Wähle, wie mit den Top Ranked Keywords (DataForSEO) umgegangen werden soll.
+              {t.exportDialog.intro(filteredArticles.length.toLocaleString(intlLocale))}
             </p>
 
             <div className="space-y-3">
@@ -2591,16 +2632,14 @@ export default function KeywordMappingPage() {
               >
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-slate-900 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-300 transition-colors">
-                    Schnell-Export (ohne Labs-Nachladen)
+                    {t.exportDialog.quickTitle}
                   </span>
                   <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 font-medium">
-                    Sofort
+                    {t.exportDialog.quickBadge}
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  Nur bereits im Browser geladene Labs-Daten
-                  ({labsLoadedCount.toLocaleString()} von {filteredArticles.length.toLocaleString()}).
-                  Kein API-Aufruf, kein Warten.
+                  {t.exportDialog.quickText(labsLoadedCount.toLocaleString(intlLocale), filteredArticles.length.toLocaleString(intlLocale))}
                 </p>
               </button>
 
@@ -2611,19 +2650,16 @@ export default function KeywordMappingPage() {
               >
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-slate-900 dark:text-white group-hover:text-violet-700 dark:group-hover:text-violet-300 transition-colors">
-                    Gespeicherte Labs-Daten nutzen
+                    {t.exportDialog.cachedTitle}
                   </span>
                   <span className="text-xs px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300 font-medium">
-                    Kostenlos
+                    {t.exportDialog.cachedBadge}
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                   {cacheInfo && cacheInfo.cachedUrlCount > 0
-                    ? <>
-                        Liest Keywords aus der Datenbank ({cacheInfo.cachedUrlCount.toLocaleString()} URLs gespeichert,
-                        letzter Stand: {formatDate(cacheInfo.latestFetchedAt!)}). Keine API-Kosten.
-                      </>
-                    : "Noch keine Labs-Daten in der Datenbank gespeichert. Beim ersten Komplett-Export werden die Daten automatisch gesichert."
+                    ? t.exportDialog.cachedText(cacheInfo.cachedUrlCount.toLocaleString(intlLocale), formatDate(cacheInfo.latestFetchedAt!, displayLocale))
+                    : t.exportDialog.cachedEmpty
                   }
                 </p>
               </button>
@@ -2635,18 +2671,18 @@ export default function KeywordMappingPage() {
               >
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-slate-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors">
-                    Frische Live-Daten holen
+                    {t.exportDialog.liveTitle}
                   </span>
                   {labsMissingCount > 0 && (
                     <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 font-medium">
-                      ~{Math.ceil(labsMissingCount / EXPORT_BATCH_SIZE)} API-Batches
+                      {t.exportDialog.liveBadge(Math.ceil(labsMissingCount / EXPORT_BATCH_SIZE))}
                     </span>
                   )}
                 </div>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                   {labsMissingCount === 0
-                    ? "Alle Labs-Daten sind bereits geladen — Export ist sofort bereit."
-                    : `Holt aktuelle Rankings für ${labsMissingCount.toLocaleString()} fehlende URLs von DataForSEO (${Math.ceil(labsMissingCount / EXPORT_BATCH_SIZE)} Batches à ${EXPORT_BATCH_SIZE}, ${EXPORT_PARALLEL_BATCHES}× parallel). Ergebnisse werden für künftige Exporte gespeichert. Kostenpflichtig.`
+                    ? t.exportDialog.liveReady
+                    : t.exportDialog.liveText(labsMissingCount.toLocaleString(intlLocale), Math.ceil(labsMissingCount / EXPORT_BATCH_SIZE), EXPORT_BATCH_SIZE, EXPORT_PARALLEL_BATCHES)
                   }
                 </p>
               </button>
@@ -2657,7 +2693,7 @@ export default function KeywordMappingPage() {
                 onClick={() => setShowExportDialog(false)}
                 className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
               >
-                Abbrechen
+                {t.cancel}
               </button>
             </div>
           </div>

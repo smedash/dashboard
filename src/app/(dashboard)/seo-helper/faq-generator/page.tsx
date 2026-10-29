@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useMessages } from "@/i18n/I18nProvider";
+import { seoHelperFaqGeneratorMessages } from "@/i18n/messages/seo-helper-faq-generator";
 
 interface FAQ {
   question: string;
@@ -26,6 +28,7 @@ interface CheckSummary {
 }
 
 export default function FAQGeneratorPage() {
+  const t = useMessages(seoHelperFaqGeneratorMessages);
   const [keyword, setKeyword] = useState("");
   const [faqs, setFaqs] = useState<FAQ[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -63,13 +66,13 @@ export default function FAQGeneratorPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Fehler bei der Generierung");
+        throw new Error(data.error || t.errors.generationFailed);
       }
 
       setFaqs(data.faqs);
       setSource(data.source);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unbekannter Fehler");
+      setError(err instanceof Error ? err.message : t.errors.unknown);
     } finally {
       setIsLoading(false);
     }
@@ -106,13 +109,13 @@ export default function FAQGeneratorPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Fehler bei der Prüfung");
+        throw new Error(data.error || t.errors.checkFailed);
       }
 
       setCheckResults(data.results);
       setCheckSummary(data.summary);
     } catch (err) {
-      setCheckError(err instanceof Error ? err.message : "Unbekannter Fehler");
+      setCheckError(err instanceof Error ? err.message : t.errors.unknown);
     } finally {
       setIsChecking(false);
     }
@@ -131,33 +134,9 @@ export default function FAQGeneratorPage() {
     }
   };
 
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case "found":
-        return "Beantwortet";
-      case "partial":
-        return "Teilweise";
-      case "missing":
-        return "Fehlt";
-      default:
-        return status;
-    }
-  };
+  const getStatusLabel = (status: string) => t.status[status] ?? status;
 
-  const getMatchTypeLabel = (matchType: string) => {
-    switch (matchType) {
-      case "exact":
-        return "Exakt";
-      case "similar":
-        return "Ähnlich";
-      case "semantic":
-        return "Inhaltlich";
-      case "none":
-        return "";
-      default:
-        return matchType;
-    }
-  };
+  const getMatchTypeLabel = (matchType: string) => t.matchTypes[matchType] ?? matchType;
 
   const getIntentColor = (intent: string) => {
     switch (intent) {
@@ -172,18 +151,7 @@ export default function FAQGeneratorPage() {
     }
   };
 
-  const getIntentLabel = (intent: string) => {
-    switch (intent) {
-      case "informational":
-        return "Informational";
-      case "transactional":
-        return "Transactional";
-      case "navigational":
-        return "Navigational";
-      default:
-        return intent;
-    }
-  };
+  const getIntentLabel = (intent: string) => t.intents[intent] ?? intent;
 
   return (
     <div className="space-y-6">
@@ -203,8 +171,8 @@ export default function FAQGeneratorPage() {
           </svg>
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">FAQ Generator</h1>
-          <p className="text-slate-500 dark:text-slate-400">Generiere häufig gestellte Fragen für dein Keyword</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h1>
+          <p className="text-slate-500 dark:text-slate-400">{t.subtitle}</p>
         </div>
       </div>
 
@@ -212,7 +180,7 @@ export default function FAQGeneratorPage() {
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 space-y-4">
         <div>
           <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-            Keyword oder Thema
+            {t.keywordLabel}
           </label>
           <div className="flex gap-3">
             <input
@@ -220,7 +188,7 @@ export default function FAQGeneratorPage() {
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
-              placeholder="z.B. Hypothek Schweiz, E-Auto, Kreditkarte vergleichen..."
+              placeholder={t.keywordPlaceholder}
               className="flex-1 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
             <button
@@ -234,14 +202,14 @@ export default function FAQGeneratorPage() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
-                  Generiere...
+                  {t.generating}
                 </>
               ) : (
                 <>
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
-                  Generieren
+                  {t.generate}
                 </>
               )}
             </button>
@@ -262,16 +230,16 @@ export default function FAQGeneratorPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-                {faqs.length} FAQs generiert
+                {t.generatedCount(faqs.length)}
               </h2>
               {source === "ai" && (
                 <span className="px-2 py-1 text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300 rounded-full">
-                  KI-generiert
+                  {t.aiGenerated}
                 </span>
               )}
               {source === "pattern" && (
                 <span className="px-2 py-1 text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300 rounded-full">
-                  Template-basiert
+                  {t.templateBased}
                 </span>
               )}
             </div>
@@ -284,14 +252,14 @@ export default function FAQGeneratorPage() {
                   <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  Kopiert!
+                  {t.copied}
                 </>
               ) : (
                 <>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                   </svg>
-                  Alle kopieren
+                  {t.copyAll}
                 </>
               )}
             </button>
@@ -317,14 +285,14 @@ export default function FAQGeneratorPage() {
                         {getIntentLabel(faq.searchIntent)}
                       </span>
                       <span className="px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400">
-                        {faq.questionType.charAt(0).toUpperCase() + faq.questionType.slice(1)}-Frage
+                        {t.questionType(faq.questionType.charAt(0).toUpperCase() + faq.questionType.slice(1))}
                       </span>
                     </div>
                   </div>
                   <button
                     onClick={() => copyQuestion(index)}
                     className="flex-shrink-0 p-2 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 opacity-0 group-hover:opacity-100 transition-all"
-                    title="Frage kopieren"
+                    title={t.copyQuestion}
                   >
                     {copiedIndex === index ? (
                       <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -350,9 +318,9 @@ export default function FAQGeneratorPage() {
                 </svg>
               </div>
               <div>
-                <h3 className="font-semibold text-slate-900 dark:text-white">URL auf vorhandene Antworten prüfen</h3>
+                <h3 className="font-semibold text-slate-900 dark:text-white">{t.check.title}</h3>
                 <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Prüfe, ob diese Fragen auf einer Seite bereits beantwortet werden
+                  {t.check.description}
                 </p>
               </div>
             </div>
@@ -363,7 +331,7 @@ export default function FAQGeneratorPage() {
                 value={checkUrl}
                 onChange={(e) => setCheckUrl(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleCheckUrl()}
-                placeholder="https://www.beispiel.ch/seite"
+                placeholder={t.check.urlPlaceholder}
                 className="flex-1 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
               <button
@@ -377,14 +345,14 @@ export default function FAQGeneratorPage() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
-                    Prüfe...
+                    {t.check.checking}
                   </>
                 ) : (
                   <>
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                     </svg>
-                    Prüfen
+                    {t.check.check}
                   </>
                 )}
               </button>
@@ -402,12 +370,12 @@ export default function FAQGeneratorPage() {
             <div className="space-y-4">
               {/* Summary */}
               <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
-                <h3 className="font-semibold text-slate-900 dark:text-white mb-4">Ergebnis der Prüfung</h3>
+                <h3 className="font-semibold text-slate-900 dark:text-white mb-4">{t.result.title}</h3>
                 
                 {/* Coverage Bar */}
                 <div className="mb-4">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-slate-600 dark:text-slate-400">Content-Abdeckung</span>
+                    <span className="text-sm text-slate-600 dark:text-slate-400">{t.result.coverage}</span>
                     <span className={`font-semibold ${
                       checkSummary.coverage >= 70 ? "text-green-600" :
                       checkSummary.coverage >= 40 ? "text-amber-600" : "text-red-600"
@@ -430,15 +398,15 @@ export default function FAQGeneratorPage() {
                 <div className="grid grid-cols-3 gap-4">
                   <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-xl">
                     <div className="text-2xl font-bold text-green-600 dark:text-green-400">{checkSummary.found}</div>
-                    <div className="text-xs text-green-700 dark:text-green-300">Beantwortet</div>
+                    <div className="text-xs text-green-700 dark:text-green-300">{t.status.found}</div>
                   </div>
                   <div className="text-center p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl">
                     <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">{checkSummary.partial}</div>
-                    <div className="text-xs text-amber-700 dark:text-amber-300">Teilweise</div>
+                    <div className="text-xs text-amber-700 dark:text-amber-300">{t.status.partial}</div>
                   </div>
                   <div className="text-center p-3 bg-red-50 dark:bg-red-900/20 rounded-xl">
                     <div className="text-2xl font-bold text-red-600 dark:text-red-400">{checkSummary.missing}</div>
-                    <div className="text-xs text-red-700 dark:text-red-300">Fehlt</div>
+                    <div className="text-xs text-red-700 dark:text-red-300">{t.status.missing}</div>
                   </div>
                 </div>
               </div>
@@ -492,7 +460,7 @@ export default function FAQGeneratorPage() {
                             </span>
                           )}
                           <span className="text-xs text-slate-500">
-                            {result.confidence}% Konfidenz
+                            {t.result.confidence(result.confidence)}
                           </span>
                         </div>
                         {result.evidence && (
@@ -525,10 +493,10 @@ export default function FAQGeneratorPage() {
                       : "text-red-900 dark:text-red-100"
                   }`}>
                     {checkSummary.coverage >= 70 
-                      ? "Gute Abdeckung!" 
+                      ? t.result.goodCoverage 
                       : checkSummary.coverage >= 40 
-                      ? "Verbesserungspotenzial" 
-                      : "Content-Lücken gefunden"}
+                      ? t.result.improvementPotential 
+                      : t.result.gapsFound}
                   </h3>
                   
                   {/* Copy Button - nur anzeigen wenn es fehlende/teilweise Fragen gibt */}
@@ -539,7 +507,7 @@ export default function FAQGeneratorPage() {
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                           </svg>
-                          ToDos erfolgreich kopiert
+                          {t.result.todosCopied}
                         </span>
                       )}
                       <button
@@ -548,19 +516,19 @@ export default function FAQGeneratorPage() {
                           const missingQuestions = checkResults.filter(r => r.status === "missing");
                           const partialQuestions = checkResults.filter(r => r.status === "partial");
                           
-                          const taskText = `FAQ Content-Optimierung: ${keyword}
+                          const taskText = `${t.task.title(keyword)}
 URL: ${checkUrl}
 
-${missingQuestions.length > 0 ? `Fehlende Antworten (${missingQuestions.length}):
+${missingQuestions.length > 0 ? `${t.task.missingAnswers(missingQuestions.length)}
 ${missingQuestions.map((q, i) => `${i + 1}. ${q.question}`).join("\n")}` : ""}
 
-${partialQuestions.length > 0 ? `Unvollständige Antworten (${partialQuestions.length}):
+${partialQuestions.length > 0 ? `${t.task.incompleteAnswers(partialQuestions.length)}
 ${partialQuestions.map((q, i) => `${i + 1}. ${q.question}
-   → ${q.evidence || "Antwort erweitern"}`).join("\n")}` : ""}
+   → ${q.evidence || t.task.extendAnswer}`).join("\n")}` : ""}
 
-Empfehlung: ${checkSummary.coverage >= 40 
-                            ? "Ergänze den Content um die fehlenden Themen für bessere Rankings."
-                            : "Erwäge, den Content deutlich zu erweitern oder eine FAQ-Sektion hinzuzufügen."}`;
+${t.task.recommendation} ${checkSummary.coverage >= 40 
+                            ? t.task.recommendationImprove
+                            : t.task.recommendationExtend}`;
                           
                           await navigator.clipboard.writeText(taskText.trim());
                           setTaskCopySuccess(true);
@@ -575,7 +543,7 @@ Empfehlung: ${checkSummary.coverage >= 40
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
                         </svg>
-                        Als Task kopieren
+                        {t.result.copyAsTask}
                       </button>
                     </div>
                   )}
@@ -589,10 +557,10 @@ Empfehlung: ${checkSummary.coverage >= 40
                     : "text-red-800 dark:text-red-200"
                 }`}>
                   {checkSummary.coverage >= 70 
-                    ? "Die meisten relevanten Fragen werden auf der Seite bereits beantwortet. Prüfe die fehlenden Fragen für weiteres Optimierungspotenzial."
+                    ? t.result.goodCoverageText
                     : checkSummary.coverage >= 40 
-                    ? "Einige wichtige Fragen werden noch nicht beantwortet. Ergänze den Content um die fehlenden Themen für bessere Rankings."
-                    : "Viele wichtige Fragen werden auf der Seite nicht beantwortet. Erwäge, den Content deutlich zu erweitern oder eine FAQ-Sektion hinzuzufügen."}
+                    ? t.result.improvementText
+                    : t.result.gapsText}
                 </p>
 
                 {/* Konkrete Liste der fehlenden/teilweisen Fragen */}
@@ -605,7 +573,7 @@ Empfehlung: ${checkSummary.coverage >= 40
                             ? "text-amber-800 dark:text-amber-200"
                             : "text-red-800 dark:text-red-200"
                         }`}>
-                          Fehlende Antworten:
+                          {t.result.missingAnswers}
                         </h4>
                         <ul className="space-y-1">
                           {checkResults.filter(r => r.status === "missing").map((result, index) => (
@@ -631,7 +599,7 @@ Empfehlung: ${checkSummary.coverage >= 40
                             ? "text-amber-800 dark:text-amber-200"
                             : "text-red-800 dark:text-red-200"
                         }`}>
-                          Unvollständige Antworten:
+                          {t.result.incompleteAnswers}
                         </h4>
                         <ul className="space-y-1">
                           {checkResults.filter(r => r.status === "partial").map((result, index) => (
@@ -647,7 +615,7 @@ Empfehlung: ${checkSummary.coverage >= 40
                                 {result.question}
                               </div>
                               {result.evidence && (
-                                <p className="text-xs ml-6 mt-0.5 opacity-80">→ Vorhanden: &quot;{result.evidence}&quot;</p>
+                                <p className="text-xs ml-6 mt-0.5 opacity-80">{t.result.existing(result.evidence)}</p>
                               )}
                             </li>
                           ))}
@@ -663,30 +631,30 @@ Empfehlung: ${checkSummary.coverage >= 40
           {/* Intent Legend */}
           {!checkSummary && (
             <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
-              <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">Suchintentionen erklärt</h3>
+              <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">{t.intentLegend.title}</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div className="flex items-start gap-2">
                   <span className="px-2 py-0.5 rounded text-xs font-medium bg-blue-600 text-white dark:bg-blue-500">
-                    Informational
+                    {t.intents.informational}
                   </span>
                   <span className="text-xs text-slate-600 dark:text-slate-400">
-                    Nutzer sucht Informationen
+                    {t.intentLegend.informational}
                   </span>
                 </div>
                 <div className="flex items-start gap-2">
                   <span className="px-2 py-0.5 rounded text-xs font-medium bg-green-600 text-white dark:bg-green-500">
-                    Transactional
+                    {t.intents.transactional}
                   </span>
                   <span className="text-xs text-slate-600 dark:text-slate-400">
-                    Nutzer will kaufen/handeln
+                    {t.intentLegend.transactional}
                   </span>
                 </div>
                 <div className="flex items-start gap-2">
                   <span className="px-2 py-0.5 rounded text-xs font-medium bg-purple-600 text-white dark:bg-purple-500">
-                    Navigational
+                    {t.intents.navigational}
                   </span>
                   <span className="text-xs text-slate-600 dark:text-slate-400">
-                    Nutzer sucht bestimmte Seite
+                    {t.intentLegend.navigational}
                   </span>
                 </div>
               </div>
@@ -696,12 +664,11 @@ Empfehlung: ${checkSummary.coverage >= 40
           {/* Tips */}
           {!checkSummary && (
             <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-4 border border-indigo-200 dark:border-indigo-800">
-              <h3 className="font-medium text-indigo-900 dark:text-indigo-100 mb-2">Tipps zur Verwendung</h3>
+              <h3 className="font-medium text-indigo-900 dark:text-indigo-100 mb-2">{t.tips.title}</h3>
               <ul className="text-sm text-indigo-800 dark:text-indigo-200 space-y-1">
-                <li>• Nutze die FAQs für FAQ-Sektionen auf deinen Landingpages</li>
-                <li>• Erstelle FAQ-Schema-Markup mit dem Schema Generator für Rich Snippets</li>
-                <li>• Beantworte die Fragen ausführlich für bessere Featured Snippet-Chancen</li>
-                <li>• Informational-Fragen eignen sich besonders für Blogbeiträge</li>
+                {t.tips.items.map((tip) => (
+                  <li key={tip}>• {tip}</li>
+                ))}
               </ul>
             </div>
           )}
@@ -717,11 +684,10 @@ Empfehlung: ${checkSummary.coverage >= 40
             </svg>
           </div>
           <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-            FAQs generieren
+            {t.empty.title}
           </h3>
           <p className="text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-            Gib ein Keyword oder Thema ein, um 10 häufig gestellte Fragen zu generieren. 
-            Die Fragen werden nach Suchintention kategorisiert.
+            {t.empty.text}
           </p>
         </div>
       )}

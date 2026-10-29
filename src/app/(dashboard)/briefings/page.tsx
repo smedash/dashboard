@@ -6,6 +6,9 @@ import { canEdit, hasFullAdminRights, isAgentur } from "@/lib/rbac";
 import { getAuthenticatedBlobUrl } from "@/lib/blob-url";
 import { StatCard } from "@/components/ui/StatCard";
 import { jsPDF } from "jspdf";
+import { useLocale, useMessages } from "@/i18n/I18nProvider";
+import { commonMessages } from "@/i18n/messages/common";
+import { briefingsMessages } from "@/i18n/messages/briefings";
 
 // Kategorien - gleich wie bei KVP
 const KEYWORD_CATEGORIES = [
@@ -81,17 +84,17 @@ interface BriefingFileType {
 type BriefingType = "new_content" | "edit_content" | "lexicon";
 
 // Status-Konfiguration für Timeline
-const BRIEFING_STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string; dotColor: string }> = {
-  ordered: { label: "Bestellt", color: "text-blue-600 dark:text-blue-400", bgColor: "bg-blue-100 dark:bg-blue-900/30", dotColor: "bg-blue-500" },
-  in_progress: { label: "In Bearbeitung", color: "text-yellow-600 dark:text-yellow-400", bgColor: "bg-yellow-100 dark:bg-yellow-900/30", dotColor: "bg-yellow-500" },
-  in_review: { label: "In Prüfung", color: "text-purple-600 dark:text-purple-400", bgColor: "bg-purple-100 dark:bg-purple-900/30", dotColor: "bg-purple-500" },
-  completed: { label: "Fertig", color: "text-green-600 dark:text-green-400", bgColor: "bg-green-100 dark:bg-green-900/30", dotColor: "bg-green-500" },
+const BRIEFING_STATUS_CONFIG: Record<string, { color: string; bgColor: string; dotColor: string }> = {
+  ordered: { color: "text-blue-600 dark:text-blue-400", bgColor: "bg-blue-100 dark:bg-blue-900/30", dotColor: "bg-blue-500" },
+  in_progress: { color: "text-yellow-600 dark:text-yellow-400", bgColor: "bg-yellow-100 dark:bg-yellow-900/30", dotColor: "bg-yellow-500" },
+  in_review: { color: "text-purple-600 dark:text-purple-400", bgColor: "bg-purple-100 dark:bg-purple-900/30", dotColor: "bg-purple-500" },
+  completed: { color: "text-green-600 dark:text-green-400", bgColor: "bg-green-100 dark:bg-green-900/30", dotColor: "bg-green-500" },
 };
 
-const BRIEFING_TYPE_CONFIG: Record<string, { label: string; icon: string; color: string }> = {
-  new_content: { label: "Neu", icon: "+", color: "text-emerald-600 dark:text-emerald-400" },
-  edit_content: { label: "Edit", icon: "~", color: "text-orange-600 dark:text-orange-400" },
-  lexicon: { label: "Lex", icon: "B", color: "text-purple-600 dark:text-purple-400" },
+const BRIEFING_TYPE_CONFIG: Record<string, { icon: string; color: string }> = {
+  new_content: { icon: "+", color: "text-emerald-600 dark:text-emerald-400" },
+  edit_content: { icon: "~", color: "text-orange-600 dark:text-orange-400" },
+  lexicon: { icon: "B", color: "text-purple-600 dark:text-purple-400" },
 };
 
 const TIMELINE_CATEGORY_COLORS: Record<string, { bg: string; border: string; text: string; bar: string }> = {
@@ -123,6 +126,8 @@ function BriefingTimelineView({
   filterStatus: string;
   filterCategory: string;
 }) {
+  const t = useMessages(briefingsMessages);
+  const { intlLocale } = useLocale();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -145,7 +150,7 @@ function BriefingTimelineView({
     weeks.push({
       start: new Date(weekCursor),
       end: weekEnd,
-      label: `KW ${getWeekNumber(weekCursor)}`,
+      label: t.timeline.week(getWeekNumber(weekCursor)),
       isCurrentWeek,
     });
 
@@ -194,10 +199,10 @@ function BriefingTimelineView({
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
         </svg>
         <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">
-          Keine Briefings vorhanden
+          {t.timeline.emptyTitle}
         </h3>
         <p className="text-slate-500 dark:text-slate-400">
-          Erstelle ein neues Briefing, um es in der Timeline zu sehen.
+          {t.timeline.emptyHint}
         </p>
       </div>
     );
@@ -210,7 +215,7 @@ function BriefingTimelineView({
         <div className="flex">
           {/* Linke Spalte Header */}
           <div className="w-64 flex-shrink-0 p-3 border-r border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
-            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Briefing</span>
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{t.timeline.briefing}</span>
           </div>
           {/* Wochen Header */}
           <div className="flex-1 flex relative overflow-hidden">
@@ -225,7 +230,7 @@ function BriefingTimelineView({
                   {week.label}
                 </span>
                 <div className="text-xs text-slate-400 dark:text-slate-500">
-                  {week.start.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}
+                  {week.start.toLocaleDateString(intlLocale, { day: "2-digit", month: "2-digit" })}
                 </div>
               </div>
             ))}
@@ -246,7 +251,7 @@ function BriefingTimelineView({
               <div className="flex border-b border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-900/30">
                 <div className="w-64 flex-shrink-0 px-3 py-2 border-r border-slate-200 dark:border-slate-700 flex items-center gap-2">
                   <span className={`w-2.5 h-2.5 rounded-full ${statusConfig.dotColor}`}></span>
-                  <span className={`text-sm font-semibold ${statusConfig.color}`}>{statusConfig.label}</span>
+                  <span className={`text-sm font-semibold ${statusConfig.color}`}>{t.status[statusKey]}</span>
                   <span className="text-xs text-slate-400 dark:text-slate-500 bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded-full">
                     {items.length}
                   </span>
@@ -274,7 +279,8 @@ function BriefingTimelineView({
                 const deadline = briefing.deadline ? new Date(briefing.deadline) : null;
                 const isOverdue = deadline && deadline < today && briefing.status !== "completed";
                 const catColors = TIMELINE_CATEGORY_COLORS[briefing.category || ""] || DEFAULT_CATEGORY_COLORS;
-                const typeConfig = BRIEFING_TYPE_CONFIG[briefing.briefingType] || { label: "?", icon: "?", color: "text-slate-500" };
+                const typeConfig = BRIEFING_TYPE_CONFIG[briefing.briefingType] || { icon: "?", color: "text-slate-500" };
+                const typeLabel = t.typeShort[briefing.briefingType] ?? "?";
 
                 // Balken: von createdAt bis deadline
                 const barStart = getPositionPercent(created);
@@ -299,7 +305,7 @@ function BriefingTimelineView({
                     >
                       <div className="flex items-center gap-1.5 mb-1">
                         <span className="text-xs text-slate-400 dark:text-slate-500">#{briefing.briefingNumber}</span>
-                        <span className={`text-xs font-medium ${typeConfig.color}`}>{typeConfig.label}</span>
+                        <span className={`text-xs font-medium ${typeConfig.color}`}>{typeLabel}</span>
                         {briefing.category && (
                           <span className={`text-xs px-1 py-0.5 rounded ${catColors.bg} ${catColors.text}`}>
                             {briefing.category}
@@ -329,7 +335,7 @@ function BriefingTimelineView({
                           <svg className="w-3 h-3 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
                           </svg>
-                          <span className="text-xs text-red-500 font-medium">Überfällig</span>
+                          <span className="text-xs text-red-500 font-medium">{t.timeline.overdue}</span>
                         </div>
                       )}
                     </div>
@@ -362,7 +368,7 @@ function BriefingTimelineView({
                           height: "calc(100% - 20px)",
                         }}
                         onClick={() => onBriefingClick(briefing)}
-                        title={`${briefing.title}\nErstellt: ${created.toLocaleDateString("de-DE")}${deadline ? `\nDeadline: ${deadline.toLocaleDateString("de-DE")}` : ""}\nStatus: ${statusConfig.label}`}
+                        title={`${briefing.title}\n${t.timeline.created(created.toLocaleDateString(intlLocale))}${deadline ? `\n${t.timeline.deadline(deadline.toLocaleDateString(intlLocale))}` : ""}\n${t.timeline.status(t.status[statusKey])}`}
                       >
                         {/* Hintergrund-Balken */}
                         <div className={`absolute inset-0 ${catColors.bar} opacity-30`} />
@@ -382,7 +388,7 @@ function BriefingTimelineView({
                                 ? "bg-red-600 text-white"
                                 : "bg-white/20 text-white"
                             }`}>
-                              {deadline.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}
+                              {deadline.toLocaleDateString(intlLocale, { day: "2-digit", month: "2-digit" })}
                             </span>
                           )}
                         </div>
@@ -393,7 +399,7 @@ function BriefingTimelineView({
                         className="absolute bottom-1 z-[3]"
                         style={{ left: `${barStart}%` }}
                       >
-                        <div className="w-1.5 h-1.5 rounded-full bg-slate-400 dark:bg-slate-500" title={`Erstellt: ${created.toLocaleDateString("de-DE")}`} />
+                        <div className="w-1.5 h-1.5 rounded-full bg-slate-400 dark:bg-slate-500" title={t.timeline.created(created.toLocaleDateString(intlLocale))} />
                       </div>
 
                       {/* Deadline-Marker */}
@@ -402,7 +408,7 @@ function BriefingTimelineView({
                           className="absolute bottom-1 z-[3]"
                           style={{ left: `${getPositionPercent(deadline)}%` }}
                         >
-                          <div className={`w-1.5 h-1.5 rounded-full ${isOverdue ? "bg-red-500" : "bg-green-500"}`} title={`Deadline: ${deadline.toLocaleDateString("de-DE")}`} />
+                          <div className={`w-1.5 h-1.5 rounded-full ${isOverdue ? "bg-red-500" : "bg-green-500"}`} title={t.timeline.deadline(deadline.toLocaleDateString(intlLocale))} />
                         </div>
                       )}
                     </div>
@@ -417,18 +423,18 @@ function BriefingTimelineView({
       {/* Legende */}
       <div className="p-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs">
-          <span className="font-medium text-slate-600 dark:text-slate-400">Status:</span>
+          <span className="font-medium text-slate-600 dark:text-slate-400">{t.timeline.legendStatus}</span>
           {statusKeys.map((key) => {
             const cfg = BRIEFING_STATUS_CONFIG[key];
             return (
               <div key={key} className="flex items-center gap-1.5">
                 <span className={`w-2.5 h-2.5 rounded-full ${cfg.dotColor}`} />
-                <span className="text-slate-600 dark:text-slate-400">{cfg.label}</span>
+                <span className="text-slate-600 dark:text-slate-400">{t.status[key]}</span>
               </div>
             );
           })}
           <span className="w-px h-4 bg-slate-300 dark:bg-slate-600 mx-1" />
-          <span className="font-medium text-slate-600 dark:text-slate-400">Kategorien:</span>
+          <span className="font-medium text-slate-600 dark:text-slate-400">{t.timeline.legendCategories}</span>
           {Object.entries(TIMELINE_CATEGORY_COLORS).map(([cat, colors]) => (
             <div key={cat} className="flex items-center gap-1.5">
               <div className={`w-3 h-2 rounded-sm ${colors.bar}`} />
@@ -438,7 +444,7 @@ function BriefingTimelineView({
           <span className="w-px h-4 bg-slate-300 dark:bg-slate-600 mx-1" />
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-0.5 bg-red-500" />
-            <span className="text-slate-600 dark:text-slate-400">Heute</span>
+            <span className="text-slate-600 dark:text-slate-400">{t.timeline.today}</span>
           </div>
         </div>
       </div>
@@ -447,6 +453,9 @@ function BriefingTimelineView({
 }
 
 export default function BriefingsPage() {
+  const t = useMessages(briefingsMessages);
+  const common = useMessages(commonMessages);
+  const { intlLocale } = useLocale();
   const { data: session } = useSession();
   const canEditData = canEdit(session?.user?.role);
   const isAdmin = hasFullAdminRights(session?.user?.role);
@@ -510,7 +519,7 @@ export default function BriefingsPage() {
     
     // Bei "Content überarbeiten" ist die URL Pflicht
     if (newBriefingType === "edit_content" && !newUrl.trim()) {
-      alert("Bei Content-Überarbeitung ist die URL ein Pflichtfeld");
+      alert(t.alerts.urlRequired);
       return;
     }
 
@@ -570,11 +579,11 @@ export default function BriefingsPage() {
         resetForm();
         setShowNewForm(false);
       } else {
-        alert(data.error || "Fehler beim Erstellen des Briefings");
+        alert(data.error || t.alerts.createError);
       }
     } catch (error) {
       console.error("Error creating briefing:", error);
-      alert("Fehler beim Erstellen des Briefings");
+      alert(t.alerts.createError);
     } finally {
       setIsSubmitting(false);
     }
@@ -623,7 +632,7 @@ export default function BriefingsPage() {
   };
 
   const deleteBriefing = async (briefingId: string) => {
-    if (!confirm("Briefing wirklich löschen?")) return;
+    if (!confirm(t.alerts.confirmDelete)) return;
 
     try {
       const response = await fetch(`/api/briefings/${briefingId}`, {
@@ -662,7 +671,7 @@ export default function BriefingsPage() {
       }
     } catch (error) {
       console.error("Error generating AI suggestion:", error);
-      alert("Fehler bei der KI-Generierung");
+      alert(t.alerts.aiError);
     } finally {
       setAiLoadingField(null);
     }
@@ -687,7 +696,7 @@ export default function BriefingsPage() {
       }
     } catch (error) {
       console.error("Error generating diagram:", error);
-      alert("Fehler bei der Diagramm-Generierung");
+      alert(t.alerts.diagramError);
     } finally {
       setDiagramLoading(false);
     }
@@ -716,7 +725,7 @@ export default function BriefingsPage() {
       }
     } catch (error) {
       console.error("Error uploading diagram:", error);
-      alert("Fehler beim Hochladen des Diagramms");
+      alert(t.alerts.diagramUploadError);
     } finally {
       setDiagramLoading(false);
     }
@@ -725,7 +734,7 @@ export default function BriefingsPage() {
   // Diagramm löschen (nur für Agentur-User)
   const deleteDiagram = async (briefingId: string) => {
     if (!isAgenturUser) return;
-    if (!confirm("Diagramm wirklich löschen?")) return;
+    if (!confirm(t.alerts.confirmDeleteDiagram)) return;
     
     try {
       setDiagramLoading(true);
@@ -742,7 +751,7 @@ export default function BriefingsPage() {
       }
     } catch (error) {
       console.error("Error deleting diagram:", error);
-      alert("Fehler beim Löschen des Diagramms");
+      alert(t.alerts.diagramDeleteError);
     } finally {
       setDiagramLoading(false);
     }
@@ -760,9 +769,9 @@ export default function BriefingsPage() {
     const cleanMarkdownForPdf = (text: string): string => {
       return text
         // Emojis durch Text ersetzen (jsPDF kann keine Emojis)
-        .replace(/🔴/g, "[HOCH]")
-        .replace(/🟡/g, "[MITTEL]")
-        .replace(/🟢/g, "[NIEDRIG]")
+        .replace(/🔴/g, t.pdf.priority.high)
+        .replace(/🟡/g, t.pdf.priority.medium)
+        .replace(/🟢/g, t.pdf.priority.low)
         .replace(/✓/g, "[OK]")
         .replace(/✗/g, "[X]")
         .replace(/⚠️/g, "[!]")
@@ -925,7 +934,7 @@ export default function BriefingsPage() {
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(18);
     doc.setFont("helvetica", "bold");
-    doc.text("Content Briefing", margin, 14);
+    doc.text(t.pdf.title, margin, 14);
     
     doc.setFontSize(12);
     doc.setFont("helvetica", "normal");
@@ -935,10 +944,10 @@ export default function BriefingsPage() {
     doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
     const besteller = briefing.requester.name || briefing.requester.email;
-    const ersteller = briefing.assignee ? (briefing.assignee.name || briefing.assignee.email) : "Noch nicht zugewiesen";
-    const deadlineText = briefing.deadline ? ` | Deadline: ${formatDate(briefing.deadline)}` : "";
-    doc.text(`Erstellt: ${formatDate(briefing.createdAt)} | Status: ${getStatusLabel(briefing.status)}${deadlineText}`, margin, 34);
-    doc.text(`Besteller: ${besteller} | Ersteller: ${ersteller}`, margin, 42);
+    const ersteller = briefing.assignee ? (briefing.assignee.name || briefing.assignee.email) : t.pdf.notAssigned;
+    const deadlineText = briefing.deadline ? formatDate(briefing.deadline) : null;
+    doc.text(t.pdf.meta(formatDate(briefing.createdAt), getStatusLabel(briefing.status), deadlineText), margin, 34);
+    doc.text(t.pdf.people(besteller, ersteller), margin, 42);
     
     // Briefing-Typ Badge rechts im Header
     doc.setFontSize(8);
@@ -953,35 +962,35 @@ export default function BriefingsPage() {
     doc.setTextColor(0, 0, 0);
 
     // === BESTELLDATEN ===
-    addSectionHeader("Bestelldaten", [37, 99, 235]); // Blau
+    addSectionHeader(t.pdf.sections.orderData, [37, 99, 235]); // Blau
     
-    addSingleFieldCard("Kategorie", briefing.category);
-    addSingleFieldCard("Ausgangslage", getContentActionLabel(briefing.contentAction));
-    addSingleFieldCard("Zielgruppe", briefing.targetAudience);
-    addSingleFieldCard("Funnel-Stufe", getFunnelStageLabel(briefing.funnelStage));
-    addSingleFieldCard("Search Intent", getSearchIntentLabel(briefing.searchIntent));
-    addSingleFieldCard("Ziele / KPIs", briefing.goals);
-    addSingleFieldCard("Fokus-Keyword", briefing.focusKeyword);
-    addSingleFieldCard("URL", briefing.url);
-    addSingleFieldCard("Keyword-Cluster", briefing.keywordCluster);
-    addSingleFieldCard("Topic-Cluster", briefing.topicCluster);
-    addSingleFieldCard("Benchmark URLs", briefing.benchmarkUrls);
-    addSingleFieldCard("CS Artikel", briefing.csArticle);
+    addSingleFieldCard(t.fields.category, briefing.category);
+    addSingleFieldCard(t.fields.initialSituation, getContentActionLabel(briefing.contentAction));
+    addSingleFieldCard(t.fields.targetAudience, briefing.targetAudience);
+    addSingleFieldCard(t.fields.funnelStage, getFunnelStageLabel(briefing.funnelStage));
+    addSingleFieldCard(t.fields.searchIntent, getSearchIntentLabel(briefing.searchIntent));
+    addSingleFieldCard(t.fields.goals, briefing.goals);
+    addSingleFieldCard(t.fields.focusKeyword, briefing.focusKeyword);
+    addSingleFieldCard(t.fields.url, briefing.url);
+    addSingleFieldCard(t.fields.keywordCluster, briefing.keywordCluster);
+    addSingleFieldCard(t.fields.topicCluster, briefing.topicCluster);
+    addSingleFieldCard(t.fields.benchmarkUrls, briefing.benchmarkUrls);
+    addSingleFieldCard(t.fields.csArticle, briefing.csArticle);
 
     // === CONTENT-AUFBAU ===
-    addSectionHeader("Content-Aufbau", [16, 185, 129]); // Grün
+    addSectionHeader(t.pdf.sections.contentStructure, [16, 185, 129]); // Grün
     
-    addSingleFieldCard("Title Tag", briefing.titleTag);
-    addSingleFieldCard("Meta Description", briefing.metaDescription);
-    addSingleFieldCard("Navigationstitel", briefing.navTitle);
-    addSingleFieldCard("H1", briefing.h1);
-    addSingleFieldCard("Hauptparagraf", briefing.mainParagraph);
-    addSingleFieldCard("Primary CTA", briefing.primaryCta);
-    addSingleFieldCard("Secondary CTA", briefing.secondaryCta);
-    addSingleFieldCard("Inbound CTA", briefing.inboundCta);
-    addSingleFieldCard("Keywordset / Longtail", briefing.keywordsetLongtail);
-    addSingleFieldCard("Topiccluster", briefing.topicclusterContent);
-    addSingleFieldCard("Fliesstext / Struktur", briefing.bodyContent);
+    addSingleFieldCard(t.fields.titleTag, briefing.titleTag);
+    addSingleFieldCard(t.fields.metaDescription, briefing.metaDescription);
+    addSingleFieldCard(t.fields.navTitle, briefing.navTitle);
+    addSingleFieldCard(t.fields.h1, briefing.h1);
+    addSingleFieldCard(t.fields.mainParagraph, briefing.mainParagraph);
+    addSingleFieldCard(t.fields.primaryCta, briefing.primaryCta);
+    addSingleFieldCard(t.fields.secondaryCta, briefing.secondaryCta);
+    addSingleFieldCard(t.fields.inboundCta, briefing.inboundCta);
+    addSingleFieldCard(t.pdf.keywordsetLongtail, briefing.keywordsetLongtail);
+    addSingleFieldCard(t.fields.topicclusterContent, briefing.topicclusterContent);
+    addSingleFieldCard(t.pdf.bodyContent, briefing.bodyContent);
     
     // Grafische Darstellung als Bild einfügen (falls vorhanden)
     if (briefing.diagramUrl) {
@@ -991,7 +1000,7 @@ export default function BriefingsPage() {
       doc.setFontSize(8);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(100, 116, 139);
-      doc.text("GRAFISCHE DARSTELLUNG", cardMargin + cardPadding, y);
+      doc.text(t.fields.diagram.toUpperCase(), cardMargin + cardPadding, y);
       y += 5;
       
       // Bild laden und einfügen
@@ -1038,7 +1047,7 @@ export default function BriefingsPage() {
         doc.setFontSize(7);
         doc.setFont("helvetica", "normal");
         doc.setTextColor(59, 130, 246);
-        doc.textWithLink("Schaubild in voller Auflösung ansehen", cardMargin + cardPadding, y, { url: getAuthenticatedBlobUrl(briefing.diagramUrl) });
+        doc.textWithLink(t.pdf.viewDiagram, cardMargin + cardPadding, y, { url: getAuthenticatedBlobUrl(briefing.diagramUrl) });
         y += cardPadding + 4;
       } catch (imgError) {
         console.error("Fehler beim Laden des Diagramms für PDF:", imgError);
@@ -1048,42 +1057,31 @@ export default function BriefingsPage() {
     }
     
     // === WEITERE INHALTE ===
-    addSectionHeader("Weitere Inhalte", [245, 158, 11]); // Amber/Orange
+    addSectionHeader(t.pdf.sections.furtherContent, [245, 158, 11]); // Amber/Orange
     
-    addSingleFieldCard("Interne Verlinkungen", briefing.internalLinks);
+    addSingleFieldCard(t.fields.internalLinks, briefing.internalLinks);
     
     if (briefing.briefingType === "edit_content") {
-      addSingleFieldCard("Missing Topics", briefing.missingTopics);
+      addSingleFieldCard(t.fields.missingTopics, briefing.missingTopics);
     }
     
-    addSingleFieldCard("FAQs", briefing.faqs);
-    addSingleFieldCard("Bemerkungen", briefing.notes);
+    addSingleFieldCard(t.fields.faqs, briefing.faqs);
+    addSingleFieldCard(t.fields.notes, briefing.notes);
 
     // === MEHRSPRACHIGKEIT ===
     if (briefing.titleEn || briefing.titleFr || briefing.titleIt) {
-      addSectionHeader("Weitere Sprachen", [139, 92, 246]); // Violett
+      addSectionHeader(t.pdf.sections.otherLanguages, [139, 92, 246]); // Violett
       
-      addSingleFieldCard("EN Titel", briefing.titleEn);
-      addSingleFieldCard("FR Titel", briefing.titleFr);
-      addSingleFieldCard("IT Titel", briefing.titleIt);
+      addSingleFieldCard(t.fields.titleEn, briefing.titleEn);
+      addSingleFieldCard(t.fields.titleFr, briefing.titleFr);
+      addSingleFieldCard(t.fields.titleIt, briefing.titleIt);
     }
 
     // Download
     doc.save(`Briefing-${briefing.briefingNumber}-${briefing.title.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`);
   };
 
-  const getContentActionLabel = (action: string) => {
-    switch (action) {
-      case "edit":
-        return "Überarbeiten";
-      case "merge":
-        return "Mergen";
-      case "new":
-        return "Neu erstellen";
-      default:
-        return action;
-    }
-  };
+  const getContentActionLabel = (action: string) => t.contentAction[action] ?? action;
 
   const getFunnelStageLabel = (stage: string | null) => {
     if (!stage) return "-";
@@ -1117,33 +1115,9 @@ export default function BriefingsPage() {
     }
   };
 
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case "ordered":
-        return "Bestellt";
-      case "in_progress":
-        return "In Bearbeitung";
-      case "in_review":
-        return "In Prüfung";
-      case "completed":
-        return "Fertig";
-      default:
-        return status;
-    }
-  };
+  const getStatusLabel = (status: string) => t.status[status] ?? status;
 
-  const getBriefingTypeLabel = (type: string) => {
-    switch (type) {
-      case "new_content":
-        return "Neuer Content";
-      case "edit_content":
-        return "Content überarbeiten";
-      case "lexicon":
-        return "Lexikon Content";
-      default:
-        return type;
-    }
-  };
+  const getBriefingTypeLabel = (type: string) => t.type[type] ?? type;
 
   const getBriefingTypeColor = (type: string) => {
     switch (type) {
@@ -1191,7 +1165,7 @@ export default function BriefingsPage() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("de-DE", {
+    return new Date(dateString).toLocaleDateString(intlLocale, {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -1201,7 +1175,7 @@ export default function BriefingsPage() {
   if (isLoading) {
     return (
       <div className="space-y-8">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Briefings</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h1>
         <div className="h-64 bg-slate-200 dark:bg-slate-800 rounded-xl animate-pulse"></div>
       </div>
     );
@@ -1212,13 +1186,13 @@ export default function BriefingsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Briefings</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h1>
           <p className="text-slate-600 dark:text-slate-400 mt-1">
             {viewMode === "timeline"
-              ? "Zeitliche Übersicht aller Briefings"
+              ? t.subtitle.timeline
               : isAdmin
-              ? "Alle Briefing-Bestellungen verwalten"
-              : "SEO Content Briefings bestellen"}
+              ? t.subtitle.admin
+              : t.subtitle.default}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -1235,7 +1209,7 @@ export default function BriefingsPage() {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
               </svg>
-              Liste
+              {t.view.list}
             </button>
             <button
               onClick={() => setViewMode("timeline")}
@@ -1248,7 +1222,7 @@ export default function BriefingsPage() {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              Timeline
+              {t.view.timeline}
             </button>
           </div>
           <a
@@ -1259,7 +1233,7 @@ export default function BriefingsPage() {
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            Vorlage
+            {t.template}
           </a>
           {canEditData && (
             <button
@@ -1269,7 +1243,7 @@ export default function BriefingsPage() {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              Neues Briefing
+              {t.newBriefing}
             </button>
           )}
         </div>
@@ -1278,7 +1252,7 @@ export default function BriefingsPage() {
       {/* Stat Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
-          title="Gesamt Briefings"
+          title={t.stats.total}
           value={briefingStats.total}
           icon={
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1287,7 +1261,7 @@ export default function BriefingsPage() {
           }
         />
         <StatCard
-          title="Bestellt"
+          title={t.status.ordered}
           value={briefingStats.ordered}
           icon={
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1296,7 +1270,7 @@ export default function BriefingsPage() {
           }
         />
         <StatCard
-          title="In Bearbeitung"
+          title={t.status.in_progress}
           value={briefingStats.inProgress}
           icon={
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1305,7 +1279,7 @@ export default function BriefingsPage() {
           }
         />
         <StatCard
-          title="Fertig"
+          title={t.status.completed}
           value={briefingStats.completed}
           icon={
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1319,13 +1293,13 @@ export default function BriefingsPage() {
       {showNewForm && canEditData && (
         <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-            Neues Briefing bestellen
+            {t.form.heading}
           </h2>
           <div className="space-y-6">
             {/* Briefing-Typ Auswahl */}
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
-                Briefing-Typ auswählen *
+                {t.form.selectType}
               </label>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <button
@@ -1341,10 +1315,10 @@ export default function BriefingsPage() {
                     <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                     </svg>
-                    <span className="font-medium text-slate-900 dark:text-white">Neuer Content</span>
+                    <span className="font-medium text-slate-900 dark:text-white">{t.type.new_content}</span>
                   </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Komplett neue Seite oder Artikel erstellen
+                    {t.form.typeDescription.new_content}
                   </p>
                 </button>
                 <button
@@ -1360,10 +1334,10 @@ export default function BriefingsPage() {
                     <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
-                    <span className="font-medium text-slate-900 dark:text-white">Content überarbeiten</span>
+                    <span className="font-medium text-slate-900 dark:text-white">{t.type.edit_content}</span>
                   </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Bestehende Seite optimieren oder erweitern
+                    {t.form.typeDescription.edit_content}
                   </p>
                 </button>
                 <button
@@ -1379,10 +1353,10 @@ export default function BriefingsPage() {
                     <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                     </svg>
-                    <span className="font-medium text-slate-900 dark:text-white">Lexikon Content</span>
+                    <span className="font-medium text-slate-900 dark:text-white">{t.type.lexicon}</span>
                   </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Glossar-Eintrag oder Begriffserklärung
+                    {t.form.typeDescription.lexicon}
                   </p>
                 </button>
               </div>
@@ -1391,14 +1365,14 @@ export default function BriefingsPage() {
             {/* Kategorie-Auswahl */}
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                Kategorie
+                {t.fields.category}
               </label>
               <select
                 value={newCategory}
                 onChange={(e) => setNewCategory(e.target.value)}
                 className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
               >
-                <option value="">Keine Kategorie</option>
+                <option value="">{t.form.noCategory}</option>
                 {KEYWORD_CATEGORIES.map((cat) => (
                   <option key={cat} value={cat}>
                     {cat}
@@ -1406,7 +1380,7 @@ export default function BriefingsPage() {
                 ))}
               </select>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Zur besseren Zuordnung und Auswertung
+                {t.form.categoryHint}
               </p>
             </div>
 
@@ -1414,13 +1388,13 @@ export default function BriefingsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  {newBriefingType === "lexicon" ? "Begriff / Titel *" : "Briefing-Titel *"}
+                  {newBriefingType === "lexicon" ? t.form.titleLexicon : t.form.titleDefault}
                 </label>
                 <input
                   type="text"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder={newBriefingType === "lexicon" ? "z.B. Hypothek, Amortisation, ETF" : "z.B. Hypotheken Ratgeber Seite"}
+                  placeholder={newBriefingType === "lexicon" ? t.form.titlePlaceholderLexicon : t.form.titlePlaceholderDefault}
                   className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
                 />
               </div>
@@ -1429,15 +1403,15 @@ export default function BriefingsPage() {
               {newBriefingType === "edit_content" && (
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Art der Überarbeitung
+                    {t.form.editType}
                   </label>
                   <select
                     value={newContentAction}
                     onChange={(e) => setNewContentAction(e.target.value)}
                     className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
                   >
-                    <option value="edit">Content überarbeiten</option>
-                    <option value="merge">Content mergen</option>
+                    <option value="edit">{t.form.editContent}</option>
+                    <option value="merge">{t.form.mergeContent}</option>
                   </select>
                 </div>
               )}
@@ -1446,18 +1420,18 @@ export default function BriefingsPage() {
               {newBriefingType !== "lexicon" && (
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Funnel-Stufe
+                    {t.fields.funnelStage}
                   </label>
                   <select
                     value={newFunnelStage}
                     onChange={(e) => setNewFunnelStage(e.target.value)}
                     className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
                   >
-                    <option value="">Auswählen...</option>
-                    <option value="attention">Attention (Aufmerksamkeit)</option>
-                    <option value="interest">Interest (Interesse)</option>
-                    <option value="desire">Desire (Verlangen)</option>
-                    <option value="action">Action (Handlung)</option>
+                    <option value="">{t.form.selectPlaceholder}</option>
+                    <option value="attention">{t.form.funnel.attention}</option>
+                    <option value="interest">{t.form.funnel.interest}</option>
+                    <option value="desire">{t.form.funnel.desire}</option>
+                    <option value="action">{t.form.funnel.action}</option>
                   </select>
                 </div>
               )}
@@ -1468,12 +1442,12 @@ export default function BriefingsPage() {
               <>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Kurze Definition
+                    {t.form.shortDefinition}
                   </label>
                   <textarea
                     value={newLexiconDefinition}
                     onChange={(e) => setNewLexiconDefinition(e.target.value)}
-                    placeholder="Was ist der Begriff in 1-2 Sätzen? (Falls bekannt)"
+                    placeholder={t.form.definitionPlaceholder}
                     rows={2}
                     className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
                   />
@@ -1481,24 +1455,24 @@ export default function BriefingsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                      Synonyme / Alternative Begriffe
+                      {t.form.synonymsLabel}
                     </label>
                     <textarea
                       value={newLexiconSynonyms}
                       onChange={(e) => setNewLexiconSynonyms(e.target.value)}
-                      placeholder="z.B. Hauskauf-Darlehen, Immobilienkredit"
+                      placeholder={t.form.synonymsPlaceholder}
                       rows={2}
                       className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                      Verwandte Begriffe
+                      {t.fields.relatedTerms}
                     </label>
                     <textarea
                       value={newLexiconRelated}
                       onChange={(e) => setNewLexiconRelated(e.target.value)}
-                      placeholder="z.B. Amortisation, Zins, Tragbarkeit"
+                      placeholder={t.form.relatedPlaceholder}
                       rows={2}
                       className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
                     />
@@ -1511,12 +1485,12 @@ export default function BriefingsPage() {
             {newBriefingType !== "lexicon" && (
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Zielgruppe
+                  {t.fields.targetAudience}
                 </label>
                 <textarea
                   value={newTargetAudience}
                   onChange={(e) => setNewTargetAudience(e.target.value)}
-                  placeholder="Beschreiben Sie die Zielgruppe..."
+                  placeholder={t.form.targetAudiencePlaceholder}
                   rows={2}
                   className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
                 />
@@ -1527,12 +1501,12 @@ export default function BriefingsPage() {
             {newBriefingType !== "lexicon" && (
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Ziele / KPIs (User Story)
+                  {t.form.goalsLabel}
                 </label>
                 <textarea
                   value={newGoals}
                   onChange={(e) => setNewGoals(e.target.value)}
-                  placeholder="Als [Nutzer] möchte ich [Ziel], damit [Nutzen]..."
+                  placeholder={t.form.goalsPlaceholder}
                   rows={2}
                   className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
                 />
@@ -1543,26 +1517,26 @@ export default function BriefingsPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Fokus-Keyword
+                  {t.fields.focusKeyword}
                 </label>
                 <input
                   type="text"
                   value={newFocusKeyword}
                   onChange={(e) => setNewFocusKeyword(e.target.value)}
-                  placeholder={newBriefingType === "lexicon" ? "Begriff als Keyword" : "Haupt-Keyword"}
+                  placeholder={newBriefingType === "lexicon" ? t.form.focusKeywordPlaceholderLexicon : t.form.focusKeywordPlaceholderDefault}
                   className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Search Intent
+                  {t.fields.searchIntent}
                 </label>
                 <select
                   value={newSearchIntent}
                   onChange={(e) => setNewSearchIntent(e.target.value)}
                   className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
                 >
-                  <option value="">Auswählen...</option>
+                  <option value="">{t.form.selectPlaceholder}</option>
                   <option value="informational">Informational</option>
                   <option value="navigational">Navigational</option>
                   <option value="transactional">Transactional</option>
@@ -1571,7 +1545,7 @@ export default function BriefingsPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  {newBriefingType === "edit_content" ? "Bestehende URL *" : "URL"}
+                  {newBriefingType === "edit_content" ? t.form.existingUrl : t.fields.url}
                 </label>
                 <input
                   type="text"
@@ -1588,24 +1562,24 @@ export default function BriefingsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Keyword-Cluster
+                    {t.fields.keywordCluster}
                   </label>
                   <textarea
                     value={newKeywordCluster}
                     onChange={(e) => setNewKeywordCluster(e.target.value)}
-                    placeholder="Verwandte Keywords (eines pro Zeile)"
+                    placeholder={t.form.keywordClusterPlaceholder}
                     rows={3}
                     className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Topic-Cluster
+                    {t.fields.topicCluster}
                   </label>
                   <textarea
                     value={newTopicCluster}
                     onChange={(e) => setNewTopicCluster(e.target.value)}
-                    placeholder="Verwandte Themen"
+                    placeholder={t.form.topicClusterPlaceholder}
                     rows={3}
                     className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
                   />
@@ -1618,24 +1592,24 @@ export default function BriefingsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Benchmark URLs (Wettbewerber)
+                    {t.form.benchmarkUrlsLabel}
                   </label>
                   <textarea
                     value={newBenchmarkUrls}
                     onChange={(e) => setNewBenchmarkUrls(e.target.value)}
-                    placeholder="URLs von Wettbewerber-Seiten (eine pro Zeile)"
+                    placeholder={t.form.benchmarkUrlsPlaceholder}
                     rows={2}
                     className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    CS Artikel (wenn vorhanden)
+                    {t.form.csArticleLabel}
                   </label>
                   <textarea
                     value={newCsArticle}
                     onChange={(e) => setNewCsArticle(e.target.value)}
-                    placeholder="Link oder Referenz zum CS Artikel"
+                    placeholder={t.form.csArticlePlaceholder}
                     rows={2}
                     className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
                   />
@@ -1646,7 +1620,7 @@ export default function BriefingsPage() {
             {/* Dateien hochladen */}
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                Dateien anhängen (PDFs, Recherchen, Bilder)
+                {t.form.attachFiles}
               </label>
               <div
                 onDrop={(e) => {
@@ -1664,10 +1638,10 @@ export default function BriefingsPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                     </svg>
                     <span className="text-sm text-slate-600 dark:text-slate-400">
-                      Dateien hierher ziehen oder <span className="text-blue-600 dark:text-blue-400 underline">auswählen</span>
+                      {t.files.dropHint}<span className="text-blue-600 dark:text-blue-400 underline">{t.files.choose}</span>
                     </span>
                     <span className="text-xs text-slate-500 dark:text-slate-500">
-                      Max. 10 MB · PDF, DOCX, XLSX, PPTX, PNG, JPG, GIF, WebP
+                      {t.files.limits}
                     </span>
                   </div>
                   <input
@@ -1716,7 +1690,7 @@ export default function BriefingsPage() {
                 disabled={isSubmitting || !newTitle.trim() || (newBriefingType === "edit_content" && !newUrl.trim())}
                 className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
               >
-                {isSubmitting ? "Bestelle..." : "Briefing bestellen"}
+                {isSubmitting ? t.form.submitting : t.form.submit}
               </button>
               <button
                 onClick={() => {
@@ -1725,7 +1699,7 @@ export default function BriefingsPage() {
                 }}
                 className="px-4 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-white rounded-lg transition-colors"
               >
-                Abbrechen
+                {common.actions.cancel}
               </button>
             </div>
           </div>
@@ -1736,36 +1710,36 @@ export default function BriefingsPage() {
       <div className="flex flex-wrap gap-4">
         <div>
           <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
-            Status
+            {t.filter.status}
           </label>
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
             className="px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white text-sm"
           >
-            <option value="all">Alle</option>
-            <option value="ordered">Bestellt</option>
-            <option value="in_progress">In Bearbeitung</option>
-            <option value="in_review">In Prüfung</option>
-            <option value="completed">Fertig</option>
+            <option value="all">{t.filter.all}</option>
+            <option value="ordered">{t.status.ordered}</option>
+            <option value="in_progress">{t.status.in_progress}</option>
+            <option value="in_review">{t.status.in_review}</option>
+            <option value="completed">{t.status.completed}</option>
           </select>
         </div>
         <div>
           <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
-            Kategorie
+            {t.filter.category}
           </label>
           <select
             value={filterCategory}
             onChange={(e) => setFilterCategory(e.target.value)}
             className="px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white text-sm"
           >
-            <option value="all">Alle Kategorien</option>
+            <option value="all">{t.filter.allCategories}</option>
             {KEYWORD_CATEGORIES.map((cat) => (
               <option key={cat} value={cat}>
                 {cat}
               </option>
             ))}
-            <option value="__no_category__">Keine Kategorie</option>
+            <option value="__no_category__">{t.form.noCategory}</option>
           </select>
         </div>
         {(filterStatus !== "all" || filterCategory !== "all") && (
@@ -1777,7 +1751,7 @@ export default function BriefingsPage() {
               }}
               className="px-3 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-white rounded-lg text-sm transition-colors"
             >
-              Filter zurücksetzen
+              {t.filter.reset}
             </button>
           </div>
         )}
@@ -1802,8 +1776,8 @@ export default function BriefingsPage() {
             <div className="bg-white dark:bg-slate-800 rounded-xl p-8 border border-slate-200 dark:border-slate-700 text-center">
               <p className="text-slate-500 dark:text-slate-400">
                 {briefings.length === 0
-                  ? "Noch keine Briefings vorhanden"
-                  : "Keine Briefings mit diesem Filter"}
+                  ? t.list.empty
+                  : t.list.noMatches}
               </p>
             </div>
           ) : (
@@ -1865,7 +1839,7 @@ export default function BriefingsPage() {
                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
-                            Deadline: {formatDate(briefing.deadline)}
+                            {t.list.deadline(formatDate(briefing.deadline))}
                           </span>
                         </>
                       )}
@@ -1882,7 +1856,7 @@ export default function BriefingsPage() {
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
-                        PDF herunterladen
+                        {t.list.downloadPdf}
                       </button>
                     )}
                   </div>
@@ -1921,8 +1895,10 @@ export default function BriefingsPage() {
                     {selectedBriefing.title}
                   </h2>
                   <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                    Bestellt von {selectedBriefing.requester.name || selectedBriefing.requester.email} am{" "}
-                    {formatDate(selectedBriefing.createdAt)}
+                    {t.detail.orderedBy(
+                      selectedBriefing.requester.name || selectedBriefing.requester.email,
+                      formatDate(selectedBriefing.createdAt)
+                    )}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -1931,7 +1907,7 @@ export default function BriefingsPage() {
                     <button
                       onClick={() => downloadBriefingPdf(selectedBriefing)}
                       className="p-2 text-green-500 hover:bg-green-500/10 rounded-lg transition-colors"
-                      title="PDF herunterladen"
+                      title={t.list.downloadPdf}
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -1942,7 +1918,7 @@ export default function BriefingsPage() {
                     <button
                       onClick={() => deleteBriefing(selectedBriefing.id)}
                       className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
-                      title="Briefing löschen"
+                      title={t.detail.deleteBriefing}
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path
@@ -1962,7 +1938,7 @@ export default function BriefingsPage() {
                 <div className="mt-4 flex flex-wrap gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                      Status ändern
+                      {t.detail.changeStatus}
                     </label>
                     <select
                       value={selectedBriefing.status}
@@ -1971,15 +1947,15 @@ export default function BriefingsPage() {
                         selectedBriefing.status
                       )} bg-transparent`}
                     >
-                      <option value="ordered">Bestellt</option>
-                      <option value="in_progress">In Bearbeitung</option>
-                      <option value="in_review">In Prüfung</option>
-                      <option value="completed">Fertig</option>
+                      <option value="ordered">{t.status.ordered}</option>
+                      <option value="in_progress">{t.status.in_progress}</option>
+                      <option value="in_review">{t.status.in_review}</option>
+                      <option value="completed">{t.status.completed}</option>
                     </select>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                      Deadline
+                      {t.fields.deadline}
                     </label>
                     <input
                       type="date"
@@ -2004,58 +1980,58 @@ export default function BriefingsPage() {
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  Bestelldaten
+                  {t.detail.orderData}
                 </h3>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="text-slate-500 dark:text-slate-400">Kategorie:</span>
-                    <span className="ml-2 text-slate-900 dark:text-white">{selectedBriefing.category || "Keine"}</span>
+                    <span className="text-slate-500 dark:text-slate-400">{t.fields.category}:</span>
+                    <span className="ml-2 text-slate-900 dark:text-white">{selectedBriefing.category || t.detail.none}</span>
                   </div>
                   <div>
-                    <span className="text-slate-500 dark:text-slate-400">Ausgangslage:</span>
+                    <span className="text-slate-500 dark:text-slate-400">{t.fields.initialSituation}:</span>
                     <span className="ml-2 text-slate-900 dark:text-white">{getContentActionLabel(selectedBriefing.contentAction)}</span>
                   </div>
                   <div>
-                    <span className="text-slate-500 dark:text-slate-400">Funnel-Stufe:</span>
+                    <span className="text-slate-500 dark:text-slate-400">{t.fields.funnelStage}:</span>
                     <span className="ml-2 text-slate-900 dark:text-white">{getFunnelStageLabel(selectedBriefing.funnelStage)}</span>
                   </div>
                   <div>
-                    <span className="text-slate-500 dark:text-slate-400">Search Intent:</span>
+                    <span className="text-slate-500 dark:text-slate-400">{t.fields.searchIntent}:</span>
                     <span className="ml-2 text-slate-900 dark:text-white">{getSearchIntentLabel(selectedBriefing.searchIntent)}</span>
                   </div>
                   <div>
-                    <span className="text-slate-500 dark:text-slate-400">Fokus-Keyword:</span>
+                    <span className="text-slate-500 dark:text-slate-400">{t.fields.focusKeyword}:</span>
                     <span className="ml-2 text-slate-900 dark:text-white">{selectedBriefing.focusKeyword || "-"}</span>
                   </div>
                   {!isAdmin && selectedBriefing.deadline && (
                     <div className="col-span-2">
-                      <span className="text-slate-500 dark:text-slate-400">Deadline:</span>
+                      <span className="text-slate-500 dark:text-slate-400">{t.fields.deadline}:</span>
                       <span className={`ml-2 ${
                         new Date(selectedBriefing.deadline) < new Date() && selectedBriefing.status !== "completed" && selectedBriefing.status !== "in_review"
                           ? "text-red-500 font-medium"
                           : "text-slate-900 dark:text-white"
                       }`}>
                         {formatDate(selectedBriefing.deadline)}
-                        {new Date(selectedBriefing.deadline) < new Date() && selectedBriefing.status !== "completed" && selectedBriefing.status !== "in_review" && " (überfällig)"}
+                        {new Date(selectedBriefing.deadline) < new Date() && selectedBriefing.status !== "completed" && selectedBriefing.status !== "in_review" && t.detail.overdueSuffix}
                       </span>
                     </div>
                   )}
                 </div>
                 {selectedBriefing.targetAudience && (
                   <div className="mt-3">
-                    <span className="text-slate-500 dark:text-slate-400 text-sm">Zielgruppe:</span>
+                    <span className="text-slate-500 dark:text-slate-400 text-sm">{t.fields.targetAudience}:</span>
                     <p className="text-slate-900 dark:text-white text-sm mt-1">{selectedBriefing.targetAudience}</p>
                   </div>
                 )}
                 {selectedBriefing.goals && (
                   <div className="mt-3">
-                    <span className="text-slate-500 dark:text-slate-400 text-sm">Ziele / KPIs:</span>
+                    <span className="text-slate-500 dark:text-slate-400 text-sm">{t.fields.goals}:</span>
                     <p className="text-slate-900 dark:text-white text-sm mt-1 whitespace-pre-wrap">{selectedBriefing.goals}</p>
                   </div>
                 )}
                 {selectedBriefing.url && (
                   <div className="mt-3">
-                    <span className="text-slate-500 dark:text-slate-400 text-sm">URL:</span>
+                    <span className="text-slate-500 dark:text-slate-400 text-sm">{t.fields.url}:</span>
                     <a href={selectedBriefing.url} target="_blank" rel="noopener noreferrer" className="block text-blue-500 hover:underline text-sm mt-1 break-all">
                       {selectedBriefing.url}
                     </a>
@@ -2063,25 +2039,25 @@ export default function BriefingsPage() {
                 )}
                 {selectedBriefing.keywordCluster && (
                   <div className="mt-3">
-                    <span className="text-slate-500 dark:text-slate-400 text-sm">Keyword-Cluster:</span>
+                    <span className="text-slate-500 dark:text-slate-400 text-sm">{t.fields.keywordCluster}:</span>
                     <p className="text-slate-900 dark:text-white text-sm mt-1 whitespace-pre-wrap">{selectedBriefing.keywordCluster}</p>
                   </div>
                 )}
                 {selectedBriefing.topicCluster && (
                   <div className="mt-3">
-                    <span className="text-slate-500 dark:text-slate-400 text-sm">Topic-Cluster:</span>
+                    <span className="text-slate-500 dark:text-slate-400 text-sm">{t.fields.topicCluster}:</span>
                     <p className="text-slate-900 dark:text-white text-sm mt-1 whitespace-pre-wrap">{selectedBriefing.topicCluster}</p>
                   </div>
                 )}
                 {selectedBriefing.benchmarkUrls && (
                   <div className="mt-3">
-                    <span className="text-slate-500 dark:text-slate-400 text-sm">Benchmark URLs:</span>
+                    <span className="text-slate-500 dark:text-slate-400 text-sm">{t.fields.benchmarkUrls}:</span>
                     <p className="text-slate-900 dark:text-white text-sm mt-1 whitespace-pre-wrap">{selectedBriefing.benchmarkUrls}</p>
                   </div>
                 )}
                 {selectedBriefing.csArticle && (
                   <div className="mt-3">
-                    <span className="text-slate-500 dark:text-slate-400 text-sm">CS Artikel:</span>
+                    <span className="text-slate-500 dark:text-slate-400 text-sm">{t.fields.csArticle}:</span>
                     <p className="text-slate-900 dark:text-white text-sm mt-1 whitespace-pre-wrap">{selectedBriefing.csArticle}</p>
                   </div>
                 )}
@@ -2093,23 +2069,23 @@ export default function BriefingsPage() {
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                       </svg>
-                      Lexikon-Informationen
+                      {t.detail.lexiconInfo}
                     </h4>
                     {selectedBriefing.lexiconDefinition && (
                       <div className="mb-3">
-                        <span className="text-slate-500 dark:text-slate-400 text-sm">Definition:</span>
+                        <span className="text-slate-500 dark:text-slate-400 text-sm">{t.fields.definition}:</span>
                         <p className="text-slate-900 dark:text-white text-sm mt-1 whitespace-pre-wrap">{selectedBriefing.lexiconDefinition}</p>
                       </div>
                     )}
                     {selectedBriefing.lexiconSynonyms && (
                       <div className="mb-3">
-                        <span className="text-slate-500 dark:text-slate-400 text-sm">Synonyme:</span>
+                        <span className="text-slate-500 dark:text-slate-400 text-sm">{t.fields.synonyms}:</span>
                         <p className="text-slate-900 dark:text-white text-sm mt-1 whitespace-pre-wrap">{selectedBriefing.lexiconSynonyms}</p>
                       </div>
                     )}
                     {selectedBriefing.lexiconRelated && (
                       <div>
-                        <span className="text-slate-500 dark:text-slate-400 text-sm">Verwandte Begriffe:</span>
+                        <span className="text-slate-500 dark:text-slate-400 text-sm">{t.fields.relatedTerms}:</span>
                         <p className="text-slate-900 dark:text-white text-sm mt-1 whitespace-pre-wrap">{selectedBriefing.lexiconRelated}</p>
                       </div>
                     )}
@@ -2124,27 +2100,27 @@ export default function BriefingsPage() {
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
-                    Content-Aufbau (Agentur)
-                    {isSaving && <span className="text-xs text-slate-400 ml-2">Speichert...</span>}
+                    {t.detail.contentStructureAgency}
+                    {isSaving && <span className="text-xs text-slate-400 ml-2">{t.detail.saving}</span>}
                   </h3>
                   <div className="space-y-4">
                     {/* Title Tag */}
                     <div>
                       <div className="flex items-center justify-between mb-1">
-                        <label className="text-xs font-medium text-slate-600 dark:text-slate-400">Title Tag</label>
+                        <label className="text-xs font-medium text-slate-600 dark:text-slate-400">{t.fields.titleTag}</label>
                         {isAgenturUser && (
                           <button
                             onClick={() => generateAiSuggestion(selectedBriefing.id, "titleTag")}
                             disabled={aiLoadingField === "titleTag"}
                             className="flex items-center gap-1 px-2 py-1 text-xs bg-purple-500/10 hover:bg-purple-500/20 text-purple-500 rounded transition-colors disabled:opacity-50"
-                            title="KI-Vorschlag generieren"
+                            title={t.detail.aiSuggestTitle}
                           >
                             {aiLoadingField === "titleTag" ? (
                               <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                             ) : (
                               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>
                             )}
-                            KI
+                            {t.detail.ai}
                           </button>
                         )}
                       </div>
@@ -2159,20 +2135,20 @@ export default function BriefingsPage() {
                     {/* Meta Description */}
                     <div>
                       <div className="flex items-center justify-between mb-1">
-                        <label className="text-xs font-medium text-slate-600 dark:text-slate-400">Meta Description</label>
+                        <label className="text-xs font-medium text-slate-600 dark:text-slate-400">{t.fields.metaDescription}</label>
                         {isAgenturUser && (
                           <button
                             onClick={() => generateAiSuggestion(selectedBriefing.id, "metaDescription")}
                             disabled={aiLoadingField === "metaDescription"}
                             className="flex items-center gap-1 px-2 py-1 text-xs bg-purple-500/10 hover:bg-purple-500/20 text-purple-500 rounded transition-colors disabled:opacity-50"
-                            title="KI-Vorschlag generieren"
+                            title={t.detail.aiSuggestTitle}
                           >
                             {aiLoadingField === "metaDescription" ? (
                               <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                             ) : (
                               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>
                             )}
-                            KI
+                            {t.detail.ai}
                           </button>
                         )}
                       </div>
@@ -2188,20 +2164,20 @@ export default function BriefingsPage() {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <label className="text-xs font-medium text-slate-600 dark:text-slate-400">Navigationstitel</label>
+                          <label className="text-xs font-medium text-slate-600 dark:text-slate-400">{t.fields.navTitle}</label>
                           {isAgenturUser && (
                             <button
                               onClick={() => generateAiSuggestion(selectedBriefing.id, "navTitle")}
                               disabled={aiLoadingField === "navTitle"}
                               className="flex items-center gap-1 px-2 py-1 text-xs bg-purple-500/10 hover:bg-purple-500/20 text-purple-500 rounded transition-colors disabled:opacity-50"
-                              title="KI-Vorschlag generieren"
+                              title={t.detail.aiSuggestTitle}
                             >
                               {aiLoadingField === "navTitle" ? (
                                 <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                               ) : (
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>
                               )}
-                              KI
+                              {t.detail.ai}
                             </button>
                           )}
                         </div>
@@ -2214,20 +2190,20 @@ export default function BriefingsPage() {
                       </div>
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <label className="text-xs font-medium text-slate-600 dark:text-slate-400">H1</label>
+                          <label className="text-xs font-medium text-slate-600 dark:text-slate-400">{t.fields.h1}</label>
                           {isAgenturUser && (
                             <button
                               onClick={() => generateAiSuggestion(selectedBriefing.id, "h1")}
                               disabled={aiLoadingField === "h1"}
                               className="flex items-center gap-1 px-2 py-1 text-xs bg-purple-500/10 hover:bg-purple-500/20 text-purple-500 rounded transition-colors disabled:opacity-50"
-                              title="KI-Vorschlag generieren"
+                              title={t.detail.aiSuggestTitle}
                             >
                               {aiLoadingField === "h1" ? (
                                 <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                               ) : (
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>
                               )}
-                              KI
+                              {t.detail.ai}
                             </button>
                           )}
                         </div>
@@ -2243,20 +2219,20 @@ export default function BriefingsPage() {
                     {/* Hauptparagraf */}
                     <div>
                       <div className="flex items-center justify-between mb-1">
-                        <label className="text-xs font-medium text-slate-600 dark:text-slate-400">Hauptparagraf</label>
+                        <label className="text-xs font-medium text-slate-600 dark:text-slate-400">{t.fields.mainParagraph}</label>
                         {isAgenturUser && (
                           <button
                             onClick={() => generateAiSuggestion(selectedBriefing.id, "mainParagraph")}
                             disabled={aiLoadingField === "mainParagraph"}
                             className="flex items-center gap-1 px-2 py-1 text-xs bg-purple-500/10 hover:bg-purple-500/20 text-purple-500 rounded transition-colors disabled:opacity-50"
-                            title="KI-Vorschlag generieren"
+                            title={t.detail.aiSuggestTitle}
                           >
                             {aiLoadingField === "mainParagraph" ? (
                               <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                             ) : (
                               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>
                             )}
-                            KI
+                            {t.detail.ai}
                           </button>
                         )}
                       </div>
@@ -2272,20 +2248,20 @@ export default function BriefingsPage() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <label className="text-xs font-medium text-slate-600 dark:text-slate-400">Primary CTA</label>
+                          <label className="text-xs font-medium text-slate-600 dark:text-slate-400">{t.fields.primaryCta}</label>
                           {isAgenturUser && (
                             <button
                               onClick={() => generateAiSuggestion(selectedBriefing.id, "primaryCta")}
                               disabled={aiLoadingField === "primaryCta"}
                               className="flex items-center gap-1 px-2 py-1 text-xs bg-purple-500/10 hover:bg-purple-500/20 text-purple-500 rounded transition-colors disabled:opacity-50"
-                              title="KI-Vorschlag generieren"
+                              title={t.detail.aiSuggestTitle}
                             >
                               {aiLoadingField === "primaryCta" ? (
                                 <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                               ) : (
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>
                               )}
-                              KI
+                              {t.detail.ai}
                             </button>
                           )}
                         </div>
@@ -2298,20 +2274,20 @@ export default function BriefingsPage() {
                       </div>
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <label className="text-xs font-medium text-slate-600 dark:text-slate-400">Secondary CTA</label>
+                          <label className="text-xs font-medium text-slate-600 dark:text-slate-400">{t.fields.secondaryCta}</label>
                           {isAgenturUser && (
                             <button
                               onClick={() => generateAiSuggestion(selectedBriefing.id, "secondaryCta")}
                               disabled={aiLoadingField === "secondaryCta"}
                               className="flex items-center gap-1 px-2 py-1 text-xs bg-purple-500/10 hover:bg-purple-500/20 text-purple-500 rounded transition-colors disabled:opacity-50"
-                              title="KI-Vorschlag generieren"
+                              title={t.detail.aiSuggestTitle}
                             >
                               {aiLoadingField === "secondaryCta" ? (
                                 <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                               ) : (
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>
                               )}
-                              KI
+                              {t.detail.ai}
                             </button>
                           )}
                         </div>
@@ -2324,20 +2300,20 @@ export default function BriefingsPage() {
                       </div>
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <label className="text-xs font-medium text-slate-600 dark:text-slate-400">Inbound CTA</label>
+                          <label className="text-xs font-medium text-slate-600 dark:text-slate-400">{t.fields.inboundCta}</label>
                           {isAgenturUser && (
                             <button
                               onClick={() => generateAiSuggestion(selectedBriefing.id, "inboundCta")}
                               disabled={aiLoadingField === "inboundCta"}
                               className="flex items-center gap-1 px-2 py-1 text-xs bg-purple-500/10 hover:bg-purple-500/20 text-purple-500 rounded transition-colors disabled:opacity-50"
-                              title="KI-Vorschlag generieren"
+                              title={t.detail.aiSuggestTitle}
                             >
                               {aiLoadingField === "inboundCta" ? (
                                 <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                               ) : (
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>
                               )}
-                              KI
+                              {t.detail.ai}
                             </button>
                           )}
                         </div>
@@ -2354,20 +2330,20 @@ export default function BriefingsPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <label className="text-xs font-medium text-slate-600 dark:text-slate-400">Keywordset/Longtail</label>
+                          <label className="text-xs font-medium text-slate-600 dark:text-slate-400">{t.fields.keywordsetLongtail}</label>
                           {isAgenturUser && (
                             <button
                               onClick={() => generateAiSuggestion(selectedBriefing.id, "keywordsetLongtail")}
                               disabled={aiLoadingField === "keywordsetLongtail"}
                               className="flex items-center gap-1 px-2 py-1 text-xs bg-purple-500/10 hover:bg-purple-500/20 text-purple-500 rounded transition-colors disabled:opacity-50"
-                              title="KI-Vorschlag generieren"
+                              title={t.detail.aiSuggestTitle}
                             >
                               {aiLoadingField === "keywordsetLongtail" ? (
                                 <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                               ) : (
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>
                               )}
-                              KI
+                              {t.detail.ai}
                             </button>
                           )}
                         </div>
@@ -2375,26 +2351,26 @@ export default function BriefingsPage() {
                           value={selectedBriefing.keywordsetLongtail || ""}
                           onChange={(e) => updateBriefing(selectedBriefing.id, { keywordsetLongtail: e.target.value })}
                           rows={4}
-                          placeholder="hypothek berechnen schweiz&#10;hypothek aufnehmen voraussetzungen&#10;hypothek zinsen vergleich&#10;..."
+                          placeholder={t.detail.keywordsetPlaceholder}
                           className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white text-sm"
                         />
                       </div>
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <label className="text-xs font-medium text-slate-600 dark:text-slate-400">Topiccluster</label>
+                          <label className="text-xs font-medium text-slate-600 dark:text-slate-400">{t.fields.topicclusterContent}</label>
                           {isAgenturUser && (
                             <button
                               onClick={() => generateAiSuggestion(selectedBriefing.id, "topicclusterContent")}
                               disabled={aiLoadingField === "topicclusterContent"}
                               className="flex items-center gap-1 px-2 py-1 text-xs bg-purple-500/10 hover:bg-purple-500/20 text-purple-500 rounded transition-colors disabled:opacity-50"
-                              title="KI-Vorschlag generieren"
+                              title={t.detail.aiSuggestTitle}
                             >
                               {aiLoadingField === "topicclusterContent" ? (
                                 <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                               ) : (
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>
                               )}
-                              KI
+                              {t.detail.ai}
                             </button>
                           )}
                         </div>
@@ -2402,7 +2378,7 @@ export default function BriefingsPage() {
                           value={selectedBriefing.topicclusterContent || ""}
                           onChange={(e) => updateBriefing(selectedBriefing.id, { topicclusterContent: e.target.value })}
                           rows={4}
-                          placeholder="Hypothekarzinsen&#10;Amortisation&#10;Tragbarkeit&#10;Eigenkapital&#10;..."
+                          placeholder={t.detail.topicclusterPlaceholder}
                           className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white text-sm"
                         />
                       </div>
@@ -2411,20 +2387,20 @@ export default function BriefingsPage() {
                     {/* Fliesstext/Struktur */}
                     <div>
                       <div className="flex items-center justify-between mb-1">
-                        <label className="text-xs font-medium text-slate-600 dark:text-slate-400">Fliesstext/Struktur (H2 – H4)</label>
+                        <label className="text-xs font-medium text-slate-600 dark:text-slate-400">{t.fields.bodyContentHeadings}</label>
                         {isAgenturUser && (
                           <button
                             onClick={() => generateAiSuggestion(selectedBriefing.id, "bodyContent")}
                             disabled={aiLoadingField === "bodyContent"}
                             className="flex items-center gap-1 px-2 py-1 text-xs bg-purple-500/10 hover:bg-purple-500/20 text-purple-500 rounded transition-colors disabled:opacity-50"
-                            title="KI-Vorschlag generieren"
+                            title={t.detail.aiSuggestTitle}
                           >
                             {aiLoadingField === "bodyContent" ? (
                               <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                             ) : (
                               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>
                             )}
-                            KI
+                            {t.detail.ai}
                           </button>
                         )}
                       </div>
@@ -2443,7 +2419,7 @@ export default function BriefingsPage() {
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                           </svg>
-                          Grafische Darstellung
+                          {t.fields.diagram}
                         </label>
                         {isAgenturUser && (
                           <div className="flex items-center gap-2">
@@ -2452,7 +2428,7 @@ export default function BriefingsPage() {
                                 onClick={() => deleteDiagram(selectedBriefing.id)}
                                 disabled={diagramLoading}
                                 className="flex items-center gap-1 px-2 py-1 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded transition-colors disabled:opacity-50"
-                                title="Diagramm löschen"
+                                title={t.diagram.delete}
                               >
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -2463,23 +2439,23 @@ export default function BriefingsPage() {
                               onClick={() => generateDiagram(selectedBriefing.id)}
                               disabled={diagramLoading || !selectedBriefing.bodyContent}
                               className="flex items-center gap-1 px-2 py-1 text-xs bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 rounded transition-colors disabled:opacity-50"
-                              title={selectedBriefing.bodyContent ? "Schaubild mit KI generieren" : "Zuerst Fliesstext/Struktur ausfüllen"}
+                              title={selectedBriefing.bodyContent ? t.diagram.generateTitle : t.diagram.fillBodyFirst}
                             >
                               {diagramLoading ? (
                                 <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                               ) : (
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>
                               )}
-                              {selectedBriefing.diagramUrl ? "Neu generieren" : "KI generieren"}
+                              {selectedBriefing.diagramUrl ? t.diagram.regenerate : t.diagram.generate}
                             </button>
                             <label
                               className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 rounded transition-colors cursor-pointer disabled:opacity-50"
-                              title="Eigenes Schaubild hochladen"
+                              title={t.diagram.uploadTitle}
                             >
                               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                               </svg>
-                              Hochladen
+                              {t.diagram.upload}
                               <input
                                 type="file"
                                 accept="image/*"
@@ -2502,12 +2478,12 @@ export default function BriefingsPage() {
                           <a href={getAuthenticatedBlobUrl(selectedBriefing.diagramUrl)} target="_blank" rel="noopener noreferrer" className="block">
                             <img 
                               src={getAuthenticatedBlobUrl(selectedBriefing.diagramUrl)} 
-                              alt="Grafische Darstellung" 
+                              alt={t.fields.diagram}
                               className="w-full rounded-lg border border-slate-200 dark:border-slate-700 hover:opacity-90 transition-opacity cursor-pointer"
                             />
                           </a>
                           <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
-                            Klicken zum Öffnen in neuem Tab
+                            {t.diagram.clickToOpen}
                           </p>
                         </div>
                       ) : (
@@ -2515,9 +2491,9 @@ export default function BriefingsPage() {
                           <svg className="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                           </svg>
-                          <p className="text-sm">Noch kein Schaubild generiert</p>
+                          <p className="text-sm">{t.diagram.empty}</p>
                           {!selectedBriefing.bodyContent && (
-                            <p className="text-xs mt-1">Zuerst Fliesstext/Struktur ausfüllen</p>
+                            <p className="text-xs mt-1">{t.diagram.fillBodyFirst}</p>
                           )}
                         </div>
                       )}
@@ -2526,20 +2502,20 @@ export default function BriefingsPage() {
                     {/* Interne Verlinkungen */}
                     <div>
                       <div className="flex items-center justify-between mb-1">
-                        <label className="text-xs font-medium text-slate-600 dark:text-slate-400">Interne Verlinkungen</label>
+                        <label className="text-xs font-medium text-slate-600 dark:text-slate-400">{t.fields.internalLinks}</label>
                         {isAgenturUser && (
                           <button
                             onClick={() => generateAiSuggestion(selectedBriefing.id, "internalLinks")}
                             disabled={aiLoadingField === "internalLinks"}
                             className="flex items-center gap-1 px-2 py-1 text-xs bg-purple-500/10 hover:bg-purple-500/20 text-purple-500 rounded transition-colors disabled:opacity-50"
-                            title="KI-Vorschlag generieren"
+                            title={t.detail.aiSuggestTitle}
                           >
                             {aiLoadingField === "internalLinks" ? (
                               <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                             ) : (
                               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>
                             )}
-                            KI
+                            {t.detail.ai}
                           </button>
                         )}
                       </div>
@@ -2555,20 +2531,20 @@ export default function BriefingsPage() {
                     {selectedBriefing.briefingType === "edit_content" && (
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <label className="text-xs font-medium text-slate-600 dark:text-slate-400">Missing Topics</label>
+                          <label className="text-xs font-medium text-slate-600 dark:text-slate-400">{t.fields.missingTopics}</label>
                           {isAgenturUser && (
                             <button
                               onClick={() => generateAiSuggestion(selectedBriefing.id, "missingTopics")}
                               disabled={aiLoadingField === "missingTopics"}
                               className="flex items-center gap-1 px-2 py-1 text-xs bg-purple-500/10 hover:bg-purple-500/20 text-purple-500 rounded transition-colors disabled:opacity-50"
-                              title="KI-Vorschlag generieren"
+                              title={t.detail.aiSuggestTitle}
                             >
                               {aiLoadingField === "missingTopics" ? (
                                 <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                               ) : (
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>
                               )}
-                              KI
+                              {t.detail.ai}
                             </button>
                           )}
                         </div>
@@ -2584,20 +2560,20 @@ export default function BriefingsPage() {
                     {/* FAQs */}
                     <div>
                       <div className="flex items-center justify-between mb-1">
-                        <label className="text-xs font-medium text-slate-600 dark:text-slate-400">FAQs</label>
+                        <label className="text-xs font-medium text-slate-600 dark:text-slate-400">{t.fields.faqs}</label>
                         {isAgenturUser && (
                           <button
                             onClick={() => generateAiSuggestion(selectedBriefing.id, "faqs")}
                             disabled={aiLoadingField === "faqs"}
                             className="flex items-center gap-1 px-2 py-1 text-xs bg-purple-500/10 hover:bg-purple-500/20 text-purple-500 rounded transition-colors disabled:opacity-50"
-                            title="KI-Vorschlag generieren"
+                            title={t.detail.aiSuggestTitle}
                           >
                             {aiLoadingField === "faqs" ? (
                               <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                             ) : (
                               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>
                             )}
-                            KI
+                            {t.detail.ai}
                           </button>
                         )}
                       </div>
@@ -2605,14 +2581,14 @@ export default function BriefingsPage() {
                         value={selectedBriefing.faqs || ""}
                         onChange={(e) => updateBriefing(selectedBriefing.id, { faqs: e.target.value })}
                         rows={4}
-                        placeholder="Q: Frage 1?&#10;A: Antwort 1&#10;&#10;Q: Frage 2?&#10;A: Antwort 2"
+                        placeholder={t.detail.faqPlaceholder}
                         className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white text-sm"
                       />
                     </div>
 
                     {/* Bemerkungen (ohne KI) */}
                     <div>
-                      <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Bemerkungen</label>
+                      <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">{t.fields.notes}</label>
                       <textarea
                         value={selectedBriefing.notes || ""}
                         onChange={(e) => updateBriefing(selectedBriefing.id, { notes: e.target.value })}
@@ -2627,7 +2603,7 @@ export default function BriefingsPage() {
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
                         </svg>
-                        Angehängte Dateien
+                        {t.fields.attachedFiles}
                       </h4>
                       {selectedBriefing.files && selectedBriefing.files.length > 0 ? (
                         <div className="space-y-1 mb-3">
@@ -2648,7 +2624,7 @@ export default function BriefingsPage() {
                               {canEditData && (
                                 <button
                                   onClick={async () => {
-                                    if (!confirm("Datei wirklich löschen?")) return;
+                                    if (!confirm(t.files.confirmDelete)) return;
                                     try {
                                       await fetch(`/api/briefings/${selectedBriefing.id}/files?fileId=${file.id}`, { method: "DELETE" });
                                       const updatedFiles = selectedBriefing.files.filter((f) => f.id !== file.id);
@@ -2671,7 +2647,7 @@ export default function BriefingsPage() {
                           ))}
                         </div>
                       ) : (
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">Keine Dateien angehängt</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">{t.files.none}</p>
                       )}
                       {canEditData && (
                         <div
@@ -2703,9 +2679,9 @@ export default function BriefingsPage() {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                               </svg>
                               <span className="text-xs text-slate-600 dark:text-slate-400">
-                                Dateien hierher ziehen oder <span className="text-blue-600 dark:text-blue-400 underline">auswählen</span>
+                                {t.files.dropHint}<span className="text-blue-600 dark:text-blue-400 underline">{t.files.choose}</span>
                               </span>
-                              <span className="text-xs text-slate-500">Max. 10 MB · PDF, DOCX, XLSX, PPTX, PNG, JPG, GIF, WebP</span>
+                              <span className="text-xs text-slate-500">{t.files.limits}</span>
                             </div>
                             <input
                               type="file"
@@ -2739,10 +2715,10 @@ export default function BriefingsPage() {
 
                     {/* Mehrsprachigkeit */}
                     <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-                      <h4 className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-3">Weitere Sprachen</h4>
+                      <h4 className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-3">{t.detail.otherLanguages}</h4>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
-                          <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">EN Titel</label>
+                          <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">{t.fields.titleEn}</label>
                           <input
                             type="text"
                             value={selectedBriefing.titleEn || ""}
@@ -2751,7 +2727,7 @@ export default function BriefingsPage() {
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">FR Titel</label>
+                          <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">{t.fields.titleFr}</label>
                           <input
                             type="text"
                             value={selectedBriefing.titleFr || ""}
@@ -2760,7 +2736,7 @@ export default function BriefingsPage() {
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">IT Titel</label>
+                          <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">{t.fields.titleIt}</label>
                           <input
                             type="text"
                             value={selectedBriefing.titleIt || ""}
@@ -2778,36 +2754,36 @@ export default function BriefingsPage() {
               {!isAdmin && selectedBriefing.status !== "ordered" && (
                 <div className="border-t border-slate-200 dark:border-slate-700 pt-6">
                   <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">
-                    Content-Aufbau
+                    {t.detail.contentStructure}
                   </h3>
                   <div className="space-y-3 text-sm">
                     {selectedBriefing.titleTag && (
                       <div>
-                        <span className="text-slate-500 dark:text-slate-400">Title Tag:</span>
+                        <span className="text-slate-500 dark:text-slate-400">{t.fields.titleTag}:</span>
                         <p className="text-slate-900 dark:text-white">{selectedBriefing.titleTag}</p>
                       </div>
                     )}
                     {selectedBriefing.metaDescription && (
                       <div>
-                        <span className="text-slate-500 dark:text-slate-400">Meta Description:</span>
+                        <span className="text-slate-500 dark:text-slate-400">{t.fields.metaDescription}:</span>
                         <p className="text-slate-900 dark:text-white">{selectedBriefing.metaDescription}</p>
                       </div>
                     )}
                     {selectedBriefing.h1 && (
                       <div>
-                        <span className="text-slate-500 dark:text-slate-400">H1:</span>
+                        <span className="text-slate-500 dark:text-slate-400">{t.fields.h1}:</span>
                         <p className="text-slate-900 dark:text-white">{selectedBriefing.h1}</p>
                       </div>
                     )}
                     {selectedBriefing.mainParagraph && (
                       <div>
-                        <span className="text-slate-500 dark:text-slate-400">Hauptparagraf:</span>
+                        <span className="text-slate-500 dark:text-slate-400">{t.fields.mainParagraph}:</span>
                         <p className="text-slate-900 dark:text-white whitespace-pre-wrap">{selectedBriefing.mainParagraph}</p>
                       </div>
                     )}
                     {selectedBriefing.bodyContent && (
                       <div>
-                        <span className="text-slate-500 dark:text-slate-400">Fliesstext/Struktur:</span>
+                        <span className="text-slate-500 dark:text-slate-400">{t.fields.bodyContent}:</span>
                         <p className="text-slate-900 dark:text-white whitespace-pre-wrap">{selectedBriefing.bodyContent}</p>
                       </div>
                     )}
@@ -2817,27 +2793,27 @@ export default function BriefingsPage() {
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                           </svg>
-                          Grafische Darstellung:
+                          {t.fields.diagram}:
                         </span>
                         <a href={getAuthenticatedBlobUrl(selectedBriefing.diagramUrl)} target="_blank" rel="noopener noreferrer" className="block">
                           <img 
                             src={getAuthenticatedBlobUrl(selectedBriefing.diagramUrl)} 
-                            alt="Grafische Darstellung" 
+                            alt={t.fields.diagram}
                             className="w-full rounded-lg border border-slate-200 dark:border-slate-700 hover:opacity-90 transition-opacity cursor-pointer"
                           />
                         </a>
-                        <p className="text-xs text-slate-400 mt-1 text-center">Klicken zum Öffnen in neuem Tab</p>
+                        <p className="text-xs text-slate-400 mt-1 text-center">{t.diagram.clickToOpen}</p>
                       </div>
                     )}
                     {selectedBriefing.faqs && (
                       <div>
-                        <span className="text-slate-500 dark:text-slate-400">FAQs:</span>
+                        <span className="text-slate-500 dark:text-slate-400">{t.fields.faqs}:</span>
                         <p className="text-slate-900 dark:text-white whitespace-pre-wrap">{selectedBriefing.faqs}</p>
                       </div>
                     )}
                     {selectedBriefing.notes && (
                       <div>
-                        <span className="text-slate-500 dark:text-slate-400">Bemerkungen:</span>
+                        <span className="text-slate-500 dark:text-slate-400">{t.fields.notes}:</span>
                         <p className="text-slate-900 dark:text-white whitespace-pre-wrap">{selectedBriefing.notes}</p>
                       </div>
                     )}
@@ -2847,7 +2823,7 @@ export default function BriefingsPage() {
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
                           </svg>
-                          Angehängte Dateien:
+                          {t.fields.attachedFiles}:
                         </span>
                         <div className="space-y-1">
                           {selectedBriefing.files.map((file) => (
@@ -2894,10 +2870,10 @@ export default function BriefingsPage() {
                     : selectedBriefing.briefingType === "edit_content" ? "bg-orange-500/20 text-orange-400 border-orange-500/30"
                     : "bg-purple-500/20 text-purple-400 border-purple-500/30"
                   }`}>
-                    {selectedBriefing.briefingType === "new_content" ? "Neuer Content" : selectedBriefing.briefingType === "edit_content" ? "Content überarbeiten" : "Lexikon Content"}
+                    {getBriefingTypeLabel(selectedBriefing.briefingType)}
                   </span>
                   <span className={`px-2 py-0.5 text-xs rounded-full ${BRIEFING_STATUS_CONFIG[selectedBriefing.status]?.bgColor} ${BRIEFING_STATUS_CONFIG[selectedBriefing.status]?.color}`}>
-                    {BRIEFING_STATUS_CONFIG[selectedBriefing.status]?.label}
+                    {t.status[selectedBriefing.status]}
                   </span>
                 </div>
                 <h2 className="text-xl font-semibold text-slate-900 dark:text-white">{selectedBriefing.title}</h2>
@@ -2905,6 +2881,7 @@ export default function BriefingsPage() {
               <button
                 onClick={() => setSelectedBriefing(null)}
                 className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors flex-shrink-0"
+                aria-label={common.actions.close}
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -2917,27 +2894,27 @@ export default function BriefingsPage() {
               {/* Metadaten */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">Bestellt von</span>
+                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t.modal.orderedBy}</span>
                   <p className="text-sm text-slate-900 dark:text-white mt-0.5">{selectedBriefing.requester.name || selectedBriefing.requester.email}</p>
                 </div>
                 <div>
-                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">Zugewiesen an</span>
+                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t.modal.assignedTo}</span>
                   <p className="text-sm text-slate-900 dark:text-white mt-0.5">
-                    {selectedBriefing.assignee ? (selectedBriefing.assignee.name || selectedBriefing.assignee.email) : "Noch nicht zugewiesen"}
+                    {selectedBriefing.assignee ? (selectedBriefing.assignee.name || selectedBriefing.assignee.email) : t.modal.notAssigned}
                   </p>
                 </div>
                 <div>
-                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">Erstellt am</span>
+                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t.modal.createdAt}</span>
                   <p className="text-sm text-slate-900 dark:text-white mt-0.5">{formatDate(selectedBriefing.createdAt)}</p>
                 </div>
                 <div>
-                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">Deadline</span>
+                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t.fields.deadline}</span>
                   <p className={`text-sm mt-0.5 ${
                     selectedBriefing.deadline && new Date(selectedBriefing.deadline) < new Date() && selectedBriefing.status !== "completed"
                       ? "text-red-500 font-medium"
                       : "text-slate-900 dark:text-white"
                   }`}>
-                    {selectedBriefing.deadline ? formatDate(selectedBriefing.deadline) : "Keine Deadline"}
+                    {selectedBriefing.deadline ? formatDate(selectedBriefing.deadline) : t.modal.noDeadline}
                   </p>
                 </div>
               </div>
@@ -2946,13 +2923,13 @@ export default function BriefingsPage() {
               <div className="grid grid-cols-2 gap-4">
                 {selectedBriefing.category && (
                   <div>
-                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">Kategorie</span>
+                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t.fields.category}</span>
                     <p className="text-sm text-slate-900 dark:text-white mt-0.5">{selectedBriefing.category}</p>
                   </div>
                 )}
                 {selectedBriefing.focusKeyword && (
                   <div>
-                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">Fokus-Keyword</span>
+                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t.fields.focusKeyword}</span>
                     <p className="text-sm text-slate-900 dark:text-white mt-0.5">{selectedBriefing.focusKeyword}</p>
                   </div>
                 )}
@@ -2961,7 +2938,7 @@ export default function BriefingsPage() {
               {/* URL */}
               {selectedBriefing.url && (
                 <div>
-                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">URL</span>
+                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t.fields.url}</span>
                   <a href={selectedBriefing.url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 dark:text-blue-400 hover:underline block mt-0.5 truncate">
                     {selectedBriefing.url}
                   </a>
@@ -2971,19 +2948,19 @@ export default function BriefingsPage() {
               {/* Zielgruppe & Ziele */}
               {selectedBriefing.targetAudience && (
                 <div>
-                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">Zielgruppe</span>
+                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t.fields.targetAudience}</span>
                   <p className="text-sm text-slate-900 dark:text-white mt-0.5 whitespace-pre-wrap">{selectedBriefing.targetAudience}</p>
                 </div>
               )}
               {selectedBriefing.goals && (
                 <div>
-                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">Ziele / KPIs</span>
+                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t.fields.goals}</span>
                   <p className="text-sm text-slate-900 dark:text-white mt-0.5 whitespace-pre-wrap">{selectedBriefing.goals}</p>
                 </div>
               )}
               {selectedBriefing.notes && (
                 <div>
-                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">Notizen</span>
+                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t.modal.notes}</span>
                   <p className="text-sm text-slate-900 dark:text-white mt-0.5 whitespace-pre-wrap">{selectedBriefing.notes}</p>
                 </div>
               )}
@@ -2997,7 +2974,7 @@ export default function BriefingsPage() {
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                   </svg>
-                  Vollständige Detailansicht öffnen
+                  {t.modal.openFullView}
                 </button>
               </div>
             </div>

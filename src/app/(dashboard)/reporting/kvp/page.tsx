@@ -4,6 +4,8 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { StatCard } from "@/components/ui/StatCard";
 import { BarChart, PieChart } from "@/components/charts";
+import { useLocale, useMessages } from "@/i18n/I18nProvider";
+import { reportingKvpMessages } from "@/i18n/messages/reporting-kvp";
 
 const KEYWORD_CATEGORIES = [
   "Mortgages",
@@ -18,7 +20,6 @@ type PresetKey = "current_month" | "last_month" | "last_quarter" | "last_half" |
 
 interface Preset {
   key: PresetKey;
-  label: string;
   getRange: () => { from: string; to: string };
 }
 
@@ -30,7 +31,6 @@ const getPresets = (): Preset[] => {
   return [
     {
       key: "current_month",
-      label: "Aktueller Monat",
       getRange: () => {
         const from = new Date(year, month, 1);
         const to = new Date(year, month + 1, 0);
@@ -39,7 +39,6 @@ const getPresets = (): Preset[] => {
     },
     {
       key: "last_month",
-      label: "Letzter Monat",
       getRange: () => {
         const from = new Date(year, month - 1, 1);
         const to = new Date(year, month, 0);
@@ -48,7 +47,6 @@ const getPresets = (): Preset[] => {
     },
     {
       key: "last_quarter",
-      label: "Letztes Quartal (3 Monate)",
       getRange: () => {
         const from = new Date(year, month - 2, 1);
         const to = new Date(year, month + 1, 0);
@@ -57,7 +55,6 @@ const getPresets = (): Preset[] => {
     },
     {
       key: "last_half",
-      label: "Letztes Halbjahr (6 Monate)",
       getRange: () => {
         const from = new Date(year, month - 5, 1);
         const to = new Date(year, month + 1, 0);
@@ -66,7 +63,6 @@ const getPresets = (): Preset[] => {
     },
     {
       key: "ytd",
-      label: "Laufendes Jahr (YTD)",
       getRange: () => {
         const from = new Date(year, 0, 1);
         const to = new Date(year, month + 1, 0);
@@ -75,7 +71,6 @@ const getPresets = (): Preset[] => {
     },
     {
       key: "last_year",
-      label: "Letztes Jahr (12 Monate)",
       getRange: () => {
         const from = new Date(year - 1, month + 1, 1);
         const to = new Date(year, month + 1, 0);
@@ -84,14 +79,12 @@ const getPresets = (): Preset[] => {
     },
     {
       key: "all",
-      label: "Gesamter Zeitraum",
       getRange: () => {
         return { from: "2020-01-01", to: toDateStr(new Date(year, month + 1, 0)) };
       },
     },
     {
       key: "custom",
-      label: "Benutzerdefiniert",
       getRange: () => {
         const from = new Date(year, month, 1);
         const to = new Date(year, month + 1, 0);
@@ -192,9 +185,9 @@ interface KVPReportData {
 }
 
 // Formatiere Datum
-const formatDate = (dateString: string): string => {
+const formatDateWithLocale = (dateString: string, intlLocale: string): string => {
   const date = new Date(dateString);
-  return date.toLocaleDateString("de-DE", {
+  return date.toLocaleDateString(intlLocale, {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -202,7 +195,7 @@ const formatDate = (dateString: string): string => {
 };
 
 // Formatiere Zeitraum als lesbare Beschreibung
-const formatPeriodLabel = (start: string, end: string): string => {
+const formatPeriodLabel = (start: string, end: string, intlLocale: string): string => {
   const startDate = new Date(start);
   const endDate = new Date(end);
 
@@ -211,19 +204,22 @@ const formatPeriodLabel = (start: string, end: string): string => {
     startDate.getFullYear() === endDate.getFullYear() &&
     startDate.getMonth() === endDate.getMonth()
   ) {
-    return startDate.toLocaleDateString("de-DE", {
+    return startDate.toLocaleDateString(intlLocale, {
       year: "numeric",
       month: "long",
     });
   }
 
   // Gleicher Monat und Jahr? (Start 1. und End letzter Tag)
-  const startMonth = startDate.toLocaleDateString("de-DE", { month: "short", year: "numeric" });
-  const endMonth = endDate.toLocaleDateString("de-DE", { month: "short", year: "numeric" });
+  const startMonth = startDate.toLocaleDateString(intlLocale, { month: "short", year: "numeric" });
+  const endMonth = endDate.toLocaleDateString(intlLocale, { month: "short", year: "numeric" });
   return `${startMonth} - ${endMonth}`;
 };
 
 export default function KVPReportPage() {
+  const t = useMessages(reportingKvpMessages);
+  const { intlLocale } = useLocale();
+  const formatDate = (dateString: string) => formatDateWithLocale(dateString, intlLocale);
   const [mounted, setMounted] = useState(false);
   const [data, setData] = useState<KVPReportData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -305,10 +301,10 @@ export default function KVPReportPage() {
       .map((m) => ({
         category: m.category.length > 20 ? m.category.substring(0, 20) + "..." : m.category,
         fullCategory: m.category,
-        "Verknüpfungen": m.linkCount,
-        "Reifegrad-Punkte": m.uniqueItems,
+        [t.charts.linksSeries]: m.linkCount,
+        [t.charts.itemsSeries]: m.uniqueItems,
       }));
-  }, [data]);
+  }, [data, t]);
 
   // Bar-Chart Daten: Monatliche Entwicklung
   const monthlyBarData = useMemo(() => {
@@ -320,28 +316,28 @@ export default function KVPReportPage() {
         const [y, mo] = m.month.split("-").map(Number);
         const d = new Date(y, mo - 1, 1);
         return {
-          month: d.toLocaleDateString("de-DE", { month: "short", year: "2-digit" }),
-          "Neue KVPs": m.count,
+          month: d.toLocaleDateString(intlLocale, { month: "short", year: "2-digit" }),
+          [t.charts.newKvpsSeries]: m.count,
         };
       });
-  }, [data]);
+  }, [data, t, intlLocale]);
 
   // Gruppierte KVPs nach Kategorie
   const kvpsByCategory = useMemo(() => {
     if (!data) return {};
     return data.kvpUrls.reduce((acc, url) => {
-      const cat = url.category || "Keine Kategorie";
+      const cat = url.category || t.noCategory;
       if (!acc[cat]) acc[cat] = [];
       acc[cat].push(url);
       return acc;
     }, {} as Record<string, KVPUrlData[]>);
-  }, [data]);
+  }, [data, t]);
 
   // Zeitraum-Label
   const periodLabel = useMemo(() => {
     if (!data) return "";
-    return formatPeriodLabel(data.period.start, data.period.end);
-  }, [data]);
+    return formatPeriodLabel(data.period.start, data.period.end, intlLocale);
+  }, [data, intlLocale]);
 
   if (!mounted) {
     return (
@@ -363,11 +359,11 @@ export default function KVPReportPage() {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            Zurück zu Reporting
+            {t.backToReporting}
           </Link>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">KVP Report</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Übersicht der SEO-Massnahmen im Kontinuierlichen Verbesserungsprozess
+            {t.subtitle}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -376,7 +372,7 @@ export default function KVPReportPage() {
             onChange={(e) => setCategoryFilter(e.target.value)}
             className="px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="">Alle Kategorien</option>
+            <option value="">{t.allCategories}</option>
             {KEYWORD_CATEGORIES.map((cat) => (
               <option key={cat} value={cat}>
                 {cat}
@@ -401,7 +397,7 @@ export default function KVPReportPage() {
                     : "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
                 }`}
               >
-                {preset.label}
+                {t.presets[preset.key]}
               </button>
             ))}
           </div>
@@ -411,7 +407,7 @@ export default function KVPReportPage() {
             <div className="flex flex-wrap items-end gap-3 pt-2 border-t border-slate-200 dark:border-slate-700">
               <div>
                 <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
-                  Von
+                  {t.from}
                 </label>
                 <input
                   type="date"
@@ -422,7 +418,7 @@ export default function KVPReportPage() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
-                  Bis
+                  {t.to}
                 </label>
                 <input
                   type="date"
@@ -446,7 +442,7 @@ export default function KVPReportPage() {
       ) : !data ? (
         <div className="bg-white dark:bg-slate-800 rounded-xl p-8 border border-slate-200 dark:border-slate-700 text-center">
           <p className="text-slate-500 dark:text-slate-400">
-            Fehler beim Laden der Daten.
+            {t.loadError}
           </p>
         </div>
       ) : (
@@ -457,13 +453,13 @@ export default function KVPReportPage() {
               <div>
                 <h2 className="text-xl font-bold">{periodLabel}</h2>
                 <p className="text-blue-200 text-sm mt-1">
-                  Zeitraum: {formatDate(data.period.start)} - {formatDate(data.period.end)}
+                  {t.period(`${formatDate(data.period.start)} - ${formatDate(data.period.end)}`)}
                 </p>
               </div>
               <div className="text-right">
                 <div className="text-3xl font-bold">{data.stats.totalKvps}</div>
                 <div className="text-blue-200 text-sm">
-                  {data.stats.totalKvps === 1 ? "KVP" : "KVPs"}
+                  {t.kvpCount(data.stats.totalKvps)}
                 </div>
               </div>
             </div>
@@ -471,25 +467,25 @@ export default function KVPReportPage() {
 
           {/* Übersicht Stats */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            <StatCard title="KVPs" value={data.stats.totalKvps} />
+            <StatCard title={t.stats.kvps} value={data.stats.totalKvps} />
             <StatCard
-              title="Fokus-Keywords"
+              title={t.stats.focusKeywords}
               value={data.stats.totalFocusKeywords}
-              subtitle="Einzigartige"
+              subtitle={t.stats.unique}
             />
             <StatCard
-              title="Sub-Keywords"
+              title={t.stats.subKeywords}
               value={data.stats.totalSubkeywords}
-              subtitle="Hinzugefügt"
+              subtitle={t.stats.added}
             />
             <StatCard
-              title="Reifegrad-Verknüpfungen"
+              title={t.stats.maturityLinks}
               value={data.stats.totalMaturityLinks}
             />
             <StatCard
-              title="Reifegrad-Punkte"
+              title={t.stats.maturityItems}
               value={data.stats.uniqueMaturityItems}
-              subtitle="Adressiert"
+              subtitle={t.stats.addressed}
             />
           </div>
 
@@ -499,17 +495,16 @@ export default function KVPReportPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
               <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-                Keine KVPs im gewählten Zeitraum
+                {t.empty.title}
               </h3>
               <p className="text-slate-500 dark:text-slate-400 mb-4">
-                Im Zeitraum {formatDate(data.period.start)} - {formatDate(data.period.end)} wurden keine neuen KVPs erstellt.
-                Wähle einen anderen Zeitraum aus oder erstelle einen neuen KVP.
+                {t.empty.description(`${formatDate(data.period.start)} - ${formatDate(data.period.end)}`)}
               </p>
               <Link
                 href="/ubs-kvp"
                 className="inline-block px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
               >
-                Zum KVP
+                {t.empty.cta}
               </Link>
             </div>
           ) : (
@@ -519,13 +514,13 @@ export default function KVPReportPage() {
                 {/* Kategorieverteilung */}
                 <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
                   <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-                    KVPs nach Kategorie
+                    {t.charts.byCategory}
                   </h3>
                   {categoryPieData.length > 0 ? (
                     <PieChart data={categoryPieData} height={280} />
                   ) : (
                     <div className="h-[280px] flex items-center justify-center text-slate-500">
-                      Keine Daten
+                      {t.noData}
                     </div>
                   )}
                 </div>
@@ -533,19 +528,19 @@ export default function KVPReportPage() {
                 {/* Reifegrad-Kategorien */}
                 <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
                   <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-                    Adressierte Reifegrad-Kategorien
+                    {t.charts.maturityCategories}
                   </h3>
                   {maturityBarData.length > 0 ? (
                     <BarChart
                       data={maturityBarData}
                       xKey="category"
-                      yKey="Verknüpfungen"
+                      yKey={t.charts.linksSeries}
                       height={280}
                       color="#6366f1"
                     />
                   ) : (
                     <div className="h-[280px] flex items-center justify-center text-sm text-slate-500 dark:text-slate-400">
-                      Keine Reifegrad-Verknüpfungen im gewählten Zeitraum
+                      {t.charts.noMaturityLinks}
                     </div>
                   )}
                 </div>
@@ -555,12 +550,12 @@ export default function KVPReportPage() {
               {monthlyBarData.length > 1 && (
                 <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
                   <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-                    KVP-Entwicklung über die Monate
+                    {t.charts.monthly}
                   </h3>
                   <BarChart
                     data={monthlyBarData}
                     xKey="month"
-                    yKey="Neue KVPs"
+                    yKey={t.charts.newKvpsSeries}
                     height={250}
                     color="#3b82f6"
                   />
@@ -571,10 +566,10 @@ export default function KVPReportPage() {
               {data.maturityCategoryStats.length > 0 && (
                 <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
                   <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-                    Adressierte SEO-Reifegradpunkte
+                    {t.maturity.title}
                   </h3>
                   <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-                    Welche Reifegrad-Bereiche wurden durch die KVP-Massnahmen im Zeitraum {periodLabel} adressiert
+                    {t.maturity.description(periodLabel)}
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {data.maturityCategoryStats
@@ -590,10 +585,10 @@ export default function KVPReportPage() {
                             </h4>
                             <div className="flex items-center gap-2">
                               <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300">
-                                {stat.uniqueItems} {stat.uniqueItems === 1 ? "Punkt" : "Punkte"}
+                                {t.maturity.items(stat.uniqueItems)}
                               </span>
                               <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
-                                {stat.linkCount} {stat.linkCount === 1 ? "Verknüpfung" : "Verknüpfungen"}
+                                {t.maturity.links(stat.linkCount)}
                               </span>
                             </div>
                           </div>
@@ -620,16 +615,16 @@ export default function KVPReportPage() {
               <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
                 <div className="p-6 border-b border-slate-200 dark:border-slate-700">
                   <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-                    KVP-Massnahmen im Detail ({data.stats.totalKvps})
+                    {t.details.title(data.stats.totalKvps)}
                   </h3>
                   <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                    Alle im Zeitraum {periodLabel} erstellten KVPs mit Fokus-Keywords, Sub-Keywords und Reifegrad-Verknüpfungen
+                    {t.details.description(periodLabel)}
                   </p>
                 </div>
 
                 {/* Nach Kategorie gruppiert */}
                 {Object.entries(kvpsByCategory)
-                  .sort(([a], [b]) => a.localeCompare(b, "de"))
+                  .sort(([a], [b]) => a.localeCompare(b, intlLocale))
                   .map(([category, urls]) => (
                     <div key={category}>
                       {/* Kategorie-Header */}
@@ -639,7 +634,7 @@ export default function KVPReportPage() {
                             {category}
                           </h4>
                           <span className="text-xs text-slate-500 dark:text-slate-400">
-                            {urls.length} {urls.length === 1 ? "KVP" : "KVPs"}
+                            {urls.length} {t.kvpCount(urls.length)}
                           </span>
                         </div>
                       </div>
@@ -685,7 +680,7 @@ export default function KVPReportPage() {
                             {url.subkeywords.length > 0 && (
                               <div className="mb-3">
                                 <span className="text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">
-                                  Sub-Keywords:
+                                  {t.details.subKeywords}
                                 </span>
                                 <div className="flex flex-wrap gap-1.5 mt-1">
                                   {url.subkeywords.map((sub) => (
@@ -704,7 +699,7 @@ export default function KVPReportPage() {
                             {url.maturityLinks.length > 0 && (
                               <div>
                                 <span className="text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">
-                                  Reifegrad-Verknüpfungen:
+                                  {t.details.maturityLinks}
                                 </span>
                                 <div className="flex flex-wrap gap-1.5 mt-1">
                                   {url.maturityLinks.map((link) => (
@@ -734,7 +729,7 @@ export default function KVPReportPage() {
                             {/* Wenn weder Sub-Keywords noch Maturity Links */}
                             {url.subkeywords.length === 0 && url.maturityLinks.length === 0 && (
                               <p className="text-xs text-slate-400 dark:text-slate-500 italic">
-                                Keine Sub-Keywords oder Reifegrad-Verknüpfungen
+                                {t.details.none}
                               </p>
                             )}
                           </div>
@@ -747,43 +742,43 @@ export default function KVPReportPage() {
               {/* Zusammenfassung am Ende */}
               <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
                 <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-                  Zusammenfassung: {periodLabel}
+                  {t.summary.title(periodLabel)}
                 </h3>
                 <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
                   <div className="text-sm text-slate-700 dark:text-slate-300 space-y-2 leading-relaxed">
                     <p>
-                      Im Berichtszeitraum{" "}
+                      {t.summary.periodIntro}
                       <strong className="text-slate-900 dark:text-white">
                         {formatDate(data.period.start)} - {formatDate(data.period.end)}
-                      </strong>{" "}
-                      wurden insgesamt{" "}
+                      </strong>
+                      {t.summary.totalIntro}
                       <strong className="text-blue-600 dark:text-blue-400">
-                        {data.stats.totalKvps} {data.stats.totalKvps === 1 ? "KVP" : "KVPs"}
-                      </strong>{" "}
-                      erstellt
+                        {data.stats.totalKvps} {t.kvpCount(data.stats.totalKvps)}
+                      </strong>
+                      {t.summary.created}
                       {data.stats.totalSubkeywords > 0 && (
                         <>
-                          , mit{" "}
+                          {t.summary.withKeywords}
                           <strong className="text-slate-900 dark:text-white">
-                            {data.stats.totalFocusKeywords} Fokus-Keywords
-                          </strong>{" "}
-                          und{" "}
+                            {t.summary.focusKeywords(data.stats.totalFocusKeywords)}
+                          </strong>
+                          {t.summary.and}
                           <strong className="text-slate-900 dark:text-white">
-                            {data.stats.totalSubkeywords} Sub-Keywords
+                            {t.summary.subKeywords(data.stats.totalSubkeywords)}
                           </strong>
                         </>
                       )}
-                      .
+                      {t.summary.end}
                     </p>
                     {data.categoryStats.length > 0 && (
                       <p>
-                        Die Massnahmen verteilten sich auf folgende Kategorien:{" "}
+                        {t.summary.categoriesIntro}
                         {data.categoryStats
                           .sort((a, b) => b.count - a.count)
                           .map((c, i) => (
                             <span key={c.category}>
-                              {i > 0 && i < data.categoryStats.length - 1 && ", "}
-                              {i > 0 && i === data.categoryStats.length - 1 && " und "}
+                              {i > 0 && i < data.categoryStats.length - 1 && t.summary.listSeparator}
+                              {i > 0 && i === data.categoryStats.length - 1 && t.summary.listLastSeparator}
                               <strong className="text-slate-900 dark:text-white">
                                 {c.category}
                               </strong>{" "}
@@ -795,23 +790,21 @@ export default function KVPReportPage() {
                     )}
                     {data.maturityCategoryStats.length > 0 && (
                       <p>
-                        Durch die KVP-Massnahmen wurden{" "}
+                        {t.summary.maturityIntro}
                         <strong className="text-indigo-600 dark:text-indigo-400">
-                          {data.stats.uniqueMaturityItems} Reifegrad-Punkte
-                        </strong>{" "}
-                        in {data.maturityCategoryStats.length}{" "}
-                        {data.maturityCategoryStats.length === 1 ? "Kategorie" : "Kategorien"}{" "}
-                        adressiert ({data.maturityCategoryStats.map((m) => m.category).join(", ")}).
+                          {t.summary.maturityItems(data.stats.uniqueMaturityItems)}
+                        </strong>
+                        {t.summary.maturityCategories(data.maturityCategoryStats.length)}
+                        ({data.maturityCategoryStats.map((m) => m.category).join(", ")}).
                       </p>
                     )}
                     {data.maturityCategoryStats.length === 0 && data.stats.totalKvps > 0 && (
                       <p className="text-amber-600 dark:text-amber-400">
-                        Hinweis: Es wurden noch keine Reifegrad-Verknüpfungen für die KVPs in diesem
-                        Zeitraum erstellt. Diese können im{" "}
+                        {t.summary.hintBefore}
                         <Link href="/ubs-kvp" className="underline hover:no-underline">
-                          KVP-Bereich
-                        </Link>{" "}
-                        hinzugefügt werden.
+                          {t.summary.hintLink}
+                        </Link>
+                        {t.summary.hintAfter}
                       </p>
                     )}
                   </div>

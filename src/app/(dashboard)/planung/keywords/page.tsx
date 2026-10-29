@@ -7,6 +7,8 @@ import { downloadExcel } from "@/lib/excel-export";
 import CategorySelector from "@/components/planning/CategorySelector";
 import CategoryTotalsChart from "@/components/planning/CategoryTotalsChart";
 import KeywordOverview from "@/components/planning/KeywordOverview";
+import { useLocale, useMessages } from "@/i18n/I18nProvider";
+import { planningKeywordsMessages } from "@/i18n/messages/planning-keywords";
 
 interface KeywordSuggestionItem {
   keyword: string;
@@ -66,16 +68,17 @@ function DifficultyBar({ value }: { value: number }) {
 }
 
 function GapBadge({ inGsc, gscData }: { inGsc: boolean; gscData?: GscKeyword }) {
+  const t = useMessages(planningKeywordsMessages);
   if (inGsc && gscData) {
     return (
       <span
         className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
-        title={`Pos. ${gscData.position.toFixed(1)} | ${gscData.clicks} Clicks | ${gscData.impressions} Imp.`}
+        title={t.gscTooltip(gscData.position.toFixed(1), gscData.clicks, gscData.impressions)}
       >
         <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
           <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
         </svg>
-        In GSC
+        {t.inGsc}
       </span>
     );
   }
@@ -84,13 +87,15 @@ function GapBadge({ inGsc, gscData }: { inGsc: boolean; gscData?: GscKeyword }) 
       <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
       </svg>
-      Gap
+      {t.gap}
     </span>
   );
 }
 
 export default function KeywordsPage() {
   const router = useRouter();
+  const t = useMessages(planningKeywordsMessages);
+  const { intlLocale } = useLocale();
   const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [keyword, setKeyword] = useState("");
   const [countryCode, setCountryCode] = useState("ch");
@@ -185,7 +190,7 @@ export default function KeywordsPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Ein Fehler ist aufgetreten");
+        setError(data.error || t.errorOccurred);
         return;
       }
 
@@ -193,7 +198,7 @@ export default function KeywordsPage() {
       setKeyword("");
       fetchHistory();
     } catch {
-      setError("Netzwerkfehler - bitte erneut versuchen");
+      setError(t.networkError);
     } finally {
       setLoading(false);
     }
@@ -269,15 +274,15 @@ export default function KeywordsPage() {
       .map((item) => ({
         name: item.keyword.slice(0, 31).replace(/[/\\?*[\]]/g, ""),
         rows: item.suggestions.map((s) => ({
-          "Seed-Keyword": item.keyword,
-          Kategorie: item.category ?? "",
-          Keyword: s.keyword,
-          Suchvolumen: s.searchVolume ?? "",
-          Difficulty: s.difficulty ?? "",
-          CPC: s.cpc ?? "",
-          Competition: s.competition != null ? (s.competition * 100).toFixed(0) + "%" : "",
-          "Search Intent": s.searchIntents?.join(", ") ?? "",
-          "GSC Status": gscLoaded ? (isKeywordInGsc(s.keyword) ? "In GSC" : "Gap") : "",
+          [t.excel.seedKeyword]: item.keyword,
+          [t.excel.category]: item.category ?? "",
+          [t.excel.keyword]: s.keyword,
+          [t.excel.searchVolume]: s.searchVolume ?? "",
+          [t.excel.difficulty]: s.difficulty ?? "",
+          [t.excel.cpc]: s.cpc ?? "",
+          [t.excel.competition]: s.competition != null ? (s.competition * 100).toFixed(0) + "%" : "",
+          [t.excel.searchIntent]: s.searchIntents?.join(", ") ?? "",
+          [t.excel.gscStatus]: gscLoaded ? (isKeywordInGsc(s.keyword) ? t.inGsc : t.gap) : "",
         })),
       }));
 
@@ -287,15 +292,15 @@ export default function KeywordsPage() {
 
   function exportSingleToExcel(item: KeywordSuggestionResult) {
     const rows = item.suggestions.map((s) => ({
-      "Seed-Keyword": item.keyword,
-      Kategorie: item.category ?? "",
-      Keyword: s.keyword,
-      Suchvolumen: s.searchVolume ?? "",
-      Difficulty: s.difficulty ?? "",
-      CPC: s.cpc ?? "",
-      Competition: s.competition != null ? (s.competition * 100).toFixed(0) + "%" : "",
-      "Search Intent": s.searchIntents?.join(", ") ?? "",
-      "GSC Status": gscLoaded ? (isKeywordInGsc(s.keyword) ? "In GSC" : "Gap") : "",
+      [t.excel.seedKeyword]: item.keyword,
+      [t.excel.category]: item.category ?? "",
+      [t.excel.keyword]: s.keyword,
+      [t.excel.searchVolume]: s.searchVolume ?? "",
+      [t.excel.difficulty]: s.difficulty ?? "",
+      [t.excel.cpc]: s.cpc ?? "",
+      [t.excel.competition]: s.competition != null ? (s.competition * 100).toFixed(0) + "%" : "",
+      [t.excel.searchIntent]: s.searchIntents?.join(", ") ?? "",
+      [t.excel.gscStatus]: gscLoaded ? (isKeywordInGsc(s.keyword) ? t.inGsc : t.gap) : "",
     }));
 
     downloadExcel(`keywords-${item.keyword.replace(/\s+/g, "-")}.xlsx`, [
@@ -339,7 +344,7 @@ export default function KeywordsPage() {
   const tabs: { id: TabId; label: string; icon: React.ReactNode }[] = [
     {
       id: "overview",
-      label: "Keyword-Übersicht",
+      label: t.tabs.overview,
       icon: (
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
@@ -348,7 +353,7 @@ export default function KeywordsPage() {
     },
     {
       id: "research",
-      label: "Keyword Research",
+      label: t.tabs.research,
       icon: (
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -362,12 +367,12 @@ export default function KeywordsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-            Keyword based
+            {t.title}
           </h1>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             {activeTab === "overview"
-              ? "Alle Seed-Keywords aus dem Produktportfolio — filterbar nach Kategorie, Typ und Freitext."
-              : "Finde Keyword-Vorschläge zu einem Seed-Keyword via SEOspark — inkl. Suchvolumen, Difficulty und Search Intent."}
+              ? t.subtitleOverview
+              : t.subtitleResearch}
           </p>
         </div>
         {activeTab === "research" && history.length > 0 && (
@@ -378,14 +383,14 @@ export default function KeywordsPage() {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
-            Excel Export
+            {t.excelExport}
           </button>
         )}
       </div>
 
       {/* Tab-Navigation */}
       <div className="border-b border-slate-200 dark:border-slate-700">
-        <nav className="flex gap-1" aria-label="Tabs">
+        <nav className="flex gap-1" aria-label={t.tabsAriaLabel}>
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -411,51 +416,51 @@ export default function KeywordsPage() {
           {/* Kategorie-Selektor */}
           <CategorySelector
             onSelectKeyword={handleSeedKeywordSelect}
-            actionLabel="Keywords finden"
+            actionLabel={t.findKeywords}
           />
 
           {/* Eingabeformular */}
           <form onSubmit={handleSubmit} className="flex gap-3 items-end">
             <div className="flex-1">
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Seed-Keyword</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">{t.seedKeyword}</label>
               <input
                 type="text"
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
-                placeholder="z.B. 'hypothek', 'vorsorge'..."
+                placeholder={t.keywordPlaceholder}
                 className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 disabled={loading}
               />
             </div>
             <div className="w-36">
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Land</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">{t.country}</label>
               <select
                 value={countryCode}
                 onChange={(e) => setCountryCode(e.target.value)}
                 className="w-full px-3 py-2.5 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 rounded-lg text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 disabled={loading}
               >
-                <option value="ch">Schweiz</option>
-                <option value="de">Deutschland</option>
-                <option value="at">Österreich</option>
-                <option value="us">USA</option>
-                <option value="gb">UK</option>
-                <option value="fr">Frankreich</option>
-                <option value="it">Italien</option>
+                <option value="ch">{t.countries.ch}</option>
+                <option value="de">{t.countries.de}</option>
+                <option value="at">{t.countries.at}</option>
+                <option value="us">{t.countries.us}</option>
+                <option value="gb">{t.countries.gb}</option>
+                <option value="fr">{t.countries.fr}</option>
+                <option value="it">{t.countries.it}</option>
               </select>
             </div>
             <div className="w-36">
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Sprache</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">{t.language}</label>
               <select
                 value={languageCode}
                 onChange={(e) => setLanguageCode(e.target.value)}
                 className="w-full px-3 py-2.5 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 rounded-lg text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 disabled={loading}
               >
-                <option value="de">Deutsch</option>
-                <option value="en">Englisch</option>
-                <option value="fr">Französisch</option>
-                <option value="it">Italienisch</option>
+                <option value="de">{t.languages.de}</option>
+                <option value="en">{t.languages.en}</option>
+                <option value="fr">{t.languages.fr}</option>
+                <option value="it">{t.languages.it}</option>
               </select>
             </div>
             <button
@@ -469,14 +474,14 @@ export default function KeywordsPage() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
-                  Suche...
+                  {t.searching}
                 </>
               ) : (
                 <>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
-                  Keywords finden
+                  {t.findKeywords}
                 </>
               )}
             </button>
@@ -486,11 +491,11 @@ export default function KeywordsPage() {
           {categoryChartData.length > 0 && (
             <CategoryTotalsChart
               data={categoryChartData}
-              countLabel="Recherchen"
-              totalLabel="Keywords"
+              countLabel={t.countLabel}
+              totalLabel={t.totalLabel}
               extraMetrics={gscLoaded ? [
-                { key: "inGsc", label: "In GSC", color: "#10b981" },
-                { key: "gap", label: "Gap", color: "#f97316" },
+                { key: "inGsc", label: t.inGsc, color: "#10b981" },
+                { key: "gap", label: t.gap, color: "#f97316" },
               ] : undefined}
             />
           )}
@@ -502,7 +507,7 @@ export default function KeywordsPage() {
                 <svg className="w-5 h-5 text-slate-500 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
-                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">GSC Gap-Analyse:</span>
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{t.gapAnalysis}</span>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -513,7 +518,7 @@ export default function KeywordsPage() {
                       : "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600"
                   }`}
                 >
-                  Alle ({currentResult.suggestions.length})
+                  {t.allCount(currentResult.suggestions.length)}
                 </button>
                 <button
                   onClick={() => setFilterMode("gaps")}
@@ -544,7 +549,7 @@ export default function KeywordsPage() {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
               </svg>
-              <span className="text-sm text-slate-600 dark:text-slate-400">GSC-Daten werden geladen für Gap-Analyse...</span>
+              <span className="text-sm text-slate-600 dark:text-slate-400">{t.gscLoadingForGaps}</span>
             </div>
           )}
 
@@ -562,12 +567,12 @@ export default function KeywordsPage() {
                   <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
                     <div>
                       <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-                        Keywords zu &ldquo;{currentResult.keyword}&rdquo;
+                        {t.keywordsFor} &ldquo;{currentResult.keyword}&rdquo;
                       </h2>
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                        {currentResult.cached ? "Aus Cache geladen" : "Frisch abgerufen"} &middot;{" "}
-                        {currentResult.totalCount.toLocaleString("de-CH")} Keywords insgesamt &middot;{" "}
-                        {new Date(currentResult.createdAt).toLocaleDateString("de-CH", {
+                        {currentResult.cached ? t.fromCache : t.freshlyFetched} &middot;{" "}
+                        {t.keywordsTotal(currentResult.totalCount.toLocaleString(intlLocale))} &middot;{" "}
+                        {new Date(currentResult.createdAt).toLocaleDateString(intlLocale, {
                           day: "2-digit",
                           month: "2-digit",
                           year: "numeric",
@@ -577,7 +582,7 @@ export default function KeywordsPage() {
                       </p>
                     </div>
                     <span className="inline-flex items-center rounded-full bg-blue-50 dark:bg-blue-900/30 px-3 py-1 text-xs font-medium text-blue-700 dark:text-blue-300">
-                      {sortedSuggestions.length} angezeigt
+                      {t.shown(sortedSuggestions.length)}
                     </span>
                   </div>
                   <div className="overflow-x-auto">
@@ -585,38 +590,38 @@ export default function KeywordsPage() {
                       <thead>
                         <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
                           <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
-                            Keyword
+                            {t.columns.keyword}
                           </th>
                           <th
                             className="px-4 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase cursor-pointer hover:text-slate-700 dark:hover:text-slate-200"
                             onClick={() => handleSort("searchVolume")}
                           >
-                            Suchvolumen <SortIcon field="searchVolume" />
+                            {t.columns.searchVolume} <SortIcon field="searchVolume" />
                           </th>
                           <th
                             className="px-4 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase cursor-pointer hover:text-slate-700 dark:hover:text-slate-200"
                             onClick={() => handleSort("difficulty")}
                           >
-                            Difficulty <SortIcon field="difficulty" />
+                            {t.columns.difficulty} <SortIcon field="difficulty" />
                           </th>
                           <th
                             className="px-4 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase cursor-pointer hover:text-slate-700 dark:hover:text-slate-200"
                             onClick={() => handleSort("cpc")}
                           >
-                            CPC <SortIcon field="cpc" />
+                            {t.columns.cpc} <SortIcon field="cpc" />
                           </th>
                           <th
                             className="px-4 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase cursor-pointer hover:text-slate-700 dark:hover:text-slate-200"
                             onClick={() => handleSort("competition")}
                           >
-                            Competition <SortIcon field="competition" />
+                            {t.columns.competition} <SortIcon field="competition" />
                           </th>
                           <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
-                            Intent
+                            {t.columns.intent}
                           </th>
                           {gscLoaded && (
                             <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
-                              GSC Status
+                              {t.columns.gscStatus}
                             </th>
                           )}
                         </tr>
@@ -628,7 +633,7 @@ export default function KeywordsPage() {
                               {item.keyword}
                             </td>
                             <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-300">
-                              {item.searchVolume != null ? item.searchVolume.toLocaleString("de-CH") : "–"}
+                              {item.searchVolume != null ? item.searchVolume.toLocaleString(intlLocale) : "–"}
                             </td>
                             <td className="px-4 py-3 text-right">
                               {item.difficulty != null ? <DifficultyBar value={item.difficulty} /> : <span className="text-slate-400">–</span>}
@@ -666,10 +671,10 @@ export default function KeywordsPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
                   </svg>
                   <h3 className="mt-4 text-lg font-medium text-slate-900 dark:text-white">
-                    Seed-Keyword eingeben
+                    {t.emptyTitle}
                   </h3>
                   <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                    Gib ein Keyword ein, um verwandte Keyword-Vorschläge mit Metriken zu erhalten.
+                    {t.emptyHint}
                   </p>
                 </div>
               )}
@@ -680,7 +685,7 @@ export default function KeywordsPage() {
               <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden">
                 <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700">
                   <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
-                    Bisherige Abfragen
+                    {t.history}
                   </h3>
                   {(() => {
                     const cats = [...new Set(history.map((h) => h.category).filter(Boolean))] as string[];
@@ -691,7 +696,7 @@ export default function KeywordsPage() {
                           onClick={() => setFilterCategory("")}
                           className={`px-2 py-0.5 text-[10px] rounded transition-colors ${!filterCategory ? "bg-slate-600 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400"}`}
                         >
-                          Alle
+                          {t.all}
                         </button>
                         {cats.map((c) => (
                           <button
@@ -709,7 +714,7 @@ export default function KeywordsPage() {
                 {history.length === 0 ? (
                   <div className="p-4 text-center">
                     <p className="text-xs text-slate-400 dark:text-slate-500">
-                      Noch keine Abfragen gespeichert
+                      {t.noHistory}
                     </p>
                   </div>
                 ) : (
@@ -730,8 +735,8 @@ export default function KeywordsPage() {
                           </p>
                           <div className="flex items-center gap-1.5">
                             <p className="text-xs text-slate-400 dark:text-slate-500">
-                              {item.totalCount.toLocaleString("de-CH")} Keywords &middot;{" "}
-                              {new Date(item.createdAt).toLocaleDateString("de-CH")}
+                              {t.keywordsCount(item.totalCount.toLocaleString(intlLocale))} &middot;{" "}
+                              {new Date(item.createdAt).toLocaleDateString(intlLocale)}
                             </p>
                             {item.category && (
                               <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
@@ -747,7 +752,7 @@ export default function KeywordsPage() {
                               router.push(`/planung/questions?keyword=${encodeURIComponent(item.keyword)}`);
                             }}
                             className="p-1 rounded text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-                            title="Fragen generieren"
+                            title={t.generateQuestions}
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -759,7 +764,7 @@ export default function KeywordsPage() {
                               exportSingleToExcel(item);
                             }}
                             className="p-1 rounded text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
-                            title="Als Excel exportieren"
+                            title={t.exportAsExcel}
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -771,7 +776,7 @@ export default function KeywordsPage() {
                               handleDelete(item.id);
                             }}
                             className="p-1 rounded text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                            title="Löschen"
+                            title={t.delete}
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

@@ -7,6 +7,8 @@ import { BarChart, LineChart, PieChart } from "@/components/charts";
 import { PeriodSelector } from "@/components/ui/PeriodSelector";
 import { useProperty } from "@/contexts/PropertyContext";
 import { sanitizeHtml } from "@/lib/sanitize";
+import { useLocale, useMessages } from "@/i18n/I18nProvider";
+import { reportingTrafficMessages } from "@/i18n/messages/reporting-traffic";
 
 const CATEGORY_FILTERS = [
   { label: "Mortgages", path: "/ch/de/services/mortgages-and-financing/" },
@@ -85,6 +87,8 @@ interface TrafficReportData {
 
 export default function TrafficReportPage() {
   const { selectedProperty } = useProperty();
+  const t = useMessages(reportingTrafficMessages);
+  const { intlLocale } = useLocale();
   const [mounted, setMounted] = useState(false);
   const [period, setPeriod] = useState("28d");
   const [urlFilter, setUrlFilter] = useState("");
@@ -143,14 +147,14 @@ export default function TrafficReportPage() {
             setIsLoading(false);
             return;
           }
-          throw new Error(errorData.error || "Fehler beim Laden der Daten");
+          throw new Error(errorData.error || "");
         }
 
         const result = await res.json();
         setData(result);
       } catch (err) {
         console.error("Error fetching traffic report:", err);
-        setError(err instanceof Error ? err.message : "Unbekannter Fehler");
+        setError(err instanceof Error ? err.message : "");
       } finally {
         setIsLoading(false);
       }
@@ -163,22 +167,22 @@ export default function TrafficReportPage() {
   const trendChartData = useMemo(() => {
     if (!data) return [];
     return data.dailyTrend.map((point) => ({
-      date: new Date(point.date).toLocaleDateString("de-DE", {
+      date: new Date(point.date).toLocaleDateString(intlLocale, {
         day: "2-digit",
         month: "2-digit",
       }),
-      Klicks: point.clicks,
-      Impressionen: point.impressions,
+      clicks: point.clicks,
+      impressions: point.impressions,
     }));
-  }, [data]);
+  }, [data, intlLocale]);
 
   const deviceChartData = useMemo(() => {
     if (!data) return [];
     return data.devices.map((d) => ({
-      name: d.device === "DESKTOP" ? "Desktop" : d.device === "MOBILE" ? "Mobile" : d.device === "TABLET" ? "Tablet" : d.device,
+      name: t.devices[d.device] ?? d.device,
       value: d.clicks,
     }));
-  }, [data]);
+  }, [data, t]);
 
   const directoryChartData = useMemo(() => {
     if (!data) return [];
@@ -214,7 +218,7 @@ export default function TrafficReportPage() {
   }, [data, activeTab, searchText]);
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("de-DE", {
+    return new Date(dateString).toLocaleDateString(intlLocale, {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -249,14 +253,14 @@ export default function TrafficReportPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "Fehler beim Generieren des Reports");
+        throw new Error(errorData.error || t.errors.generating);
       }
 
       const result = await response.json();
       setAiReport(result.report);
     } catch (err) {
       console.error("Error generating AI report:", err);
-      setAiReportError(err instanceof Error ? err.message : "Unbekannter Fehler");
+      setAiReportError(err instanceof Error ? err.message : t.errors.unknown);
     } finally {
       setIsGeneratingAiReport(false);
     }
@@ -281,19 +285,19 @@ export default function TrafficReportPage() {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            Zurück zu Reporting
+            {t.backToReporting}
           </Link>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Traffic Report</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h1>
         </div>
         <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 text-center">
           <p className="text-red-500 dark:text-red-400 mb-4">
-            Bitte verbinde zuerst dein Google-Konto, um Traffic-Daten abzurufen.
+            {t.needsConnection}
           </p>
           <a
             href="/settings"
             className="inline-block px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
           >
-            Zu den Einstellungen
+            {t.toSettings}
           </a>
         </div>
       </div>
@@ -311,13 +315,13 @@ export default function TrafficReportPage() {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            Zurück zu Reporting
+            {t.backToReporting}
           </Link>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Traffic Report</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h1>
         </div>
         <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 text-center">
           <p className="text-slate-500 dark:text-slate-400">
-            Bitte wähle eine Property aus, um den Traffic Report anzuzeigen.
+            {t.selectProperty}
           </p>
         </div>
       </div>
@@ -336,15 +340,15 @@ export default function TrafficReportPage() {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            Zurück zu Reporting
+            {t.backToReporting}
           </Link>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Traffic Report</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Organischer Traffic aus der Google Search Console
+            {t.subtitle}
             {data && (
               <span>
                 {" "}
-                — {formatDate(data.period.startDate)} bis {formatDate(data.period.endDate)}
+                — {t.dateRange(formatDate(data.period.startDate), formatDate(data.period.endDate))}
               </span>
             )}
           </p>
@@ -356,7 +360,7 @@ export default function TrafficReportPage() {
       <div className="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700 space-y-3">
         {/* Kategorie-Schnellfilter */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-          <span className="text-sm font-medium text-slate-700 dark:text-slate-300 shrink-0">Kategorie:</span>
+          <span className="text-sm font-medium text-slate-700 dark:text-slate-300 shrink-0">{t.filter.category}</span>
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => {
@@ -369,7 +373,7 @@ export default function TrafficReportPage() {
                   : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600"
               }`}
             >
-              Alle
+              {t.filter.all}
             </button>
             {CATEGORY_FILTERS.map((cat) => (
               <button
@@ -399,7 +403,7 @@ export default function TrafficReportPage() {
             <svg className="w-4 h-4 text-slate-500 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
             </svg>
-            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">URL-Filter:</span>
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{t.filter.urlFilter}</span>
           </div>
           <div className="flex-1 flex items-center gap-2 w-full">
             <div className="relative flex-1">
@@ -410,7 +414,7 @@ export default function TrafficReportPage() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter") applyUrlFilter();
                 }}
-                placeholder="z.B. /de/hypotheken oder /en/invest — filtert alle GSC-Daten auf URLs die diesen Pfad enthalten"
+                placeholder={t.filter.urlPlaceholder}
                 className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-slate-400 dark:placeholder:text-slate-500"
               />
             </div>
@@ -419,14 +423,14 @@ export default function TrafficReportPage() {
               disabled={isLoading}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white text-sm font-medium rounded-lg transition-colors shrink-0"
             >
-              Anwenden
+              {t.filter.apply}
             </button>
             {urlFilter && (
               <button
                 onClick={clearUrlFilter}
                 className="px-3 py-2 bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-lg transition-colors shrink-0"
               >
-                Zurücksetzen
+                {t.filter.reset}
               </button>
             )}
           </div>
@@ -439,7 +443,7 @@ export default function TrafficReportPage() {
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
               </svg>
-              Aktiver Filter: URLs mit &quot;{urlFilter}&quot;
+              {t.filter.active(urlFilter)}
               {CATEGORY_FILTERS.find((c) => c.path === urlFilter) && (
                 <span className="ml-1">({CATEGORY_FILTERS.find((c) => c.path === urlFilter)!.label})</span>
               )}
@@ -448,9 +452,9 @@ export default function TrafficReportPage() {
         )}
       </div>
 
-      {error && (
+      {error !== null && (
         <div className="bg-red-500/20 border border-red-500/50 rounded-xl p-4">
-          <p className="text-red-500 dark:text-red-400">{error}</p>
+          <p className="text-red-500 dark:text-red-400">{error || t.errors.loading}</p>
         </div>
       )}
 
@@ -458,7 +462,7 @@ export default function TrafficReportPage() {
         <div className="flex flex-col items-center justify-center py-20">
           <div className="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full mb-4"></div>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Hole Live-Daten aus der Google Search Console...
+            {t.loading}
           </p>
         </div>
       ) : data ? (
@@ -466,33 +470,33 @@ export default function TrafficReportPage() {
           {/* KPIs mit Vergleich */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <StatCard
-              title="Klicks"
+              title={t.metrics.clicks}
               value={data.current.clicks}
               change={data.changes.clicks}
-              subtitle={`vs. ${data.previous.clicks.toLocaleString("de-DE")}`}
+              subtitle={t.metrics.vs(data.previous.clicks.toLocaleString(intlLocale))}
               trend={data.changes.clicks >= 0 ? "up" : "down"}
             />
             <StatCard
-              title="Impressionen"
+              title={t.metrics.impressions}
               value={data.current.impressions}
               change={data.changes.impressions}
-              subtitle={`vs. ${data.previous.impressions.toLocaleString("de-DE")}`}
+              subtitle={t.metrics.vs(data.previous.impressions.toLocaleString(intlLocale))}
               trend={data.changes.impressions >= 0 ? "up" : "down"}
             />
             <StatCard
-              title="CTR"
+              title={t.metrics.ctr}
               value={data.current.ctr}
               format="percentage"
               change={data.changes.ctr}
-              subtitle={`vs. ${(data.previous.ctr * 100).toFixed(2)}%`}
+              subtitle={t.metrics.vs(`${(data.previous.ctr * 100).toFixed(2)}%`)}
               trend={data.changes.ctr >= 0 ? "up" : "down"}
             />
             <StatCard
-              title="Ø Position"
+              title={t.metrics.avgPosition}
               value={data.current.position}
               format="position"
               change={data.changes.position}
-              subtitle={`vs. ${data.previous.position.toFixed(1)}`}
+              subtitle={t.metrics.vs(data.previous.position.toFixed(1))}
               trend={data.changes.position <= 0 ? "up" : "down"}
             />
           </div>
@@ -500,21 +504,21 @@ export default function TrafficReportPage() {
           {/* Traffic Trend Chart */}
           <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
             <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-              Traffic-Verlauf
+              {t.trafficTrend}
             </h3>
             {trendChartData.length > 0 ? (
               <LineChart
                 data={trendChartData}
                 xKey="date"
                 lines={[
-                  { key: "Klicks", name: "Klicks", color: "#3b82f6" },
-                  { key: "Impressionen", name: "Impressionen", color: "#10b981" },
+                  { key: "clicks", name: t.metrics.clicks, color: "#3b82f6" },
+                  { key: "impressions", name: t.metrics.impressions, color: "#10b981" },
                 ]}
                 height={350}
               />
             ) : (
               <div className="h-[350px] flex items-center justify-center text-slate-500">
-                Keine Daten verfügbar
+                {t.noData}
               </div>
             )}
           </div>
@@ -524,7 +528,7 @@ export default function TrafficReportPage() {
             {/* Geräte-Verteilung */}
             <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
               <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-                Geräte-Verteilung
+                {t.deviceDistribution}
               </h3>
               {deviceChartData.length > 0 ? (
                 <div>
@@ -533,12 +537,12 @@ export default function TrafficReportPage() {
                     {data.devices.map((d) => (
                       <div key={d.device} className="flex items-center justify-between text-sm">
                         <span className="text-slate-700 dark:text-slate-300">
-                          {d.device === "DESKTOP" ? "Desktop" : d.device === "MOBILE" ? "Mobile" : d.device === "TABLET" ? "Tablet" : d.device}
+                          {t.devices[d.device] ?? d.device}
                         </span>
                         <div className="flex items-center gap-4 text-slate-500 dark:text-slate-400">
-                          <span>{d.clicks.toLocaleString("de-DE")} Klicks</span>
-                          <span>{(d.ctr * 100).toFixed(1)}% CTR</span>
-                          <span>Pos. {d.position.toFixed(1)}</span>
+                          <span>{t.deviceClicks(d.clicks.toLocaleString(intlLocale))}</span>
+                          <span>{t.deviceCtr((d.ctr * 100).toFixed(1))}</span>
+                          <span>{t.devicePosition(d.position.toFixed(1))}</span>
                         </div>
                       </div>
                     ))}
@@ -546,7 +550,7 @@ export default function TrafficReportPage() {
                 </div>
               ) : (
                 <div className="h-[250px] flex items-center justify-center text-slate-500">
-                  Keine Daten verfügbar
+                  {t.noData}
                 </div>
               )}
             </div>
@@ -554,7 +558,7 @@ export default function TrafficReportPage() {
             {/* Top Verzeichnisse */}
             <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
               <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-                Top Verzeichnisse nach Klicks
+                {t.topDirectories}
               </h3>
               {directoryChartData.length > 0 ? (
                 <BarChart
@@ -566,7 +570,7 @@ export default function TrafficReportPage() {
                 />
               ) : (
                 <div className="h-[300px] flex items-center justify-center text-slate-500">
-                  Keine Daten verfügbar
+                  {t.noData}
                 </div>
               )}
             </div>
@@ -577,10 +581,10 @@ export default function TrafficReportPage() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-2">
               <div>
                 <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">
-                  KI-generierter Traffic Report
+                  {t.ai.title}
                 </h2>
                 <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Generiere eine KI-Analyse des organischen Traffics mit Handlungsempfehlungen
+                  {t.ai.description}
                 </p>
               </div>
               <button
@@ -591,7 +595,7 @@ export default function TrafficReportPage() {
                 {isGeneratingAiReport ? (
                   <>
                     <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                    <span>Generiere Report...</span>
+                    <span>{t.ai.generating}</span>
                   </>
                 ) : (
                   <>
@@ -603,7 +607,7 @@ export default function TrafficReportPage() {
                         d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
                       />
                     </svg>
-                    <span>KI-Report generieren</span>
+                    <span>{t.ai.generate}</span>
                   </>
                 )}
               </button>
@@ -672,7 +676,7 @@ export default function TrafficReportPage() {
                         : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                     }`}
                   >
-                    Top Keywords ({data.topKeywords.length})
+                    {t.tabs.keywords(data.topKeywords.length)}
                   </button>
                   <button
                     onClick={() => { setActiveTab("pages"); setSearchText(""); }}
@@ -682,7 +686,7 @@ export default function TrafficReportPage() {
                         : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                     }`}
                   >
-                    Top Seiten ({data.topPages.length})
+                    {t.tabs.pages(data.topPages.length)}
                   </button>
                   <button
                     onClick={() => { setActiveTab("directories"); setSearchText(""); }}
@@ -692,7 +696,7 @@ export default function TrafficReportPage() {
                         : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                     }`}
                   >
-                    Verzeichnisse ({data.directories.length})
+                    {t.tabs.directories(data.directories.length)}
                   </button>
                 </div>
 
@@ -702,7 +706,7 @@ export default function TrafficReportPage() {
                     type="text"
                     value={searchText}
                     onChange={(e) => setSearchText(e.target.value)}
-                    placeholder="Suchen..."
+                    placeholder={t.searchPlaceholder}
                     className="w-full sm:w-64 px-4 py-2 pl-10 bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <svg className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -717,23 +721,23 @@ export default function TrafficReportPage() {
                 <thead className="sticky top-0 bg-slate-50 dark:bg-slate-700/50">
                   <tr>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                      {activeTab === "keywords" ? "Keyword" : activeTab === "pages" ? "Seite" : "Verzeichnis"}
+                      {activeTab === "keywords" ? t.columns.keyword : activeTab === "pages" ? t.columns.page : t.columns.directory}
                     </th>
                     <th className="text-right px-4 py-3 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                      Klicks
+                      {t.columns.clicks}
                     </th>
                     <th className="text-right px-4 py-3 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                      Impressionen
+                      {t.columns.impressions}
                     </th>
                     <th className="text-right px-4 py-3 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                      CTR
+                      {t.columns.ctr}
                     </th>
                     <th className="text-right px-4 py-3 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                      Ø Position
+                      {t.columns.avgPosition}
                     </th>
                     {activeTab === "directories" && (
                       <th className="text-right px-4 py-3 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                        Seiten
+                        {t.columns.pages}
                       </th>
                     )}
                   </tr>
@@ -746,10 +750,10 @@ export default function TrafficReportPage() {
                           <span className="text-sm font-medium text-slate-900 dark:text-white">{kw.keyword}</span>
                         </td>
                         <td className="px-4 py-3 text-right text-sm font-medium text-blue-600 dark:text-blue-400">
-                          {kw.clicks.toLocaleString("de-DE")}
+                          {kw.clicks.toLocaleString(intlLocale)}
                         </td>
                         <td className="px-4 py-3 text-right text-sm text-slate-600 dark:text-slate-400">
-                          {kw.impressions.toLocaleString("de-DE")}
+                          {kw.impressions.toLocaleString(intlLocale)}
                         </td>
                         <td className="px-4 py-3 text-right text-sm text-slate-600 dark:text-slate-400">
                           {(kw.ctr * 100).toFixed(1)}%
@@ -775,10 +779,10 @@ export default function TrafficReportPage() {
                           </a>
                         </td>
                         <td className="px-4 py-3 text-right text-sm font-medium text-blue-600 dark:text-blue-400">
-                          {page.clicks.toLocaleString("de-DE")}
+                          {page.clicks.toLocaleString(intlLocale)}
                         </td>
                         <td className="px-4 py-3 text-right text-sm text-slate-600 dark:text-slate-400">
-                          {page.impressions.toLocaleString("de-DE")}
+                          {page.impressions.toLocaleString(intlLocale)}
                         </td>
                         <td className="px-4 py-3 text-right text-sm text-slate-600 dark:text-slate-400">
                           {(page.ctr * 100).toFixed(1)}%
@@ -796,10 +800,10 @@ export default function TrafficReportPage() {
                           <span className="text-sm font-medium text-slate-900 dark:text-white">{dir.path}</span>
                         </td>
                         <td className="px-4 py-3 text-right text-sm font-medium text-blue-600 dark:text-blue-400">
-                          {dir.clicks.toLocaleString("de-DE")}
+                          {dir.clicks.toLocaleString(intlLocale)}
                         </td>
                         <td className="px-4 py-3 text-right text-sm text-slate-600 dark:text-slate-400">
-                          {dir.impressions.toLocaleString("de-DE")}
+                          {dir.impressions.toLocaleString(intlLocale)}
                         </td>
                         <td className="px-4 py-3 text-right text-sm text-slate-600 dark:text-slate-400">
                           {(dir.ctr * 100).toFixed(1)}%
@@ -816,7 +820,7 @@ export default function TrafficReportPage() {
                   {filteredTableData.length === 0 && (
                     <tr>
                       <td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500">
-                        {searchText ? "Keine Ergebnisse für die Suche" : "Keine Daten verfügbar"}
+                        {searchText ? t.noSearchResults : t.noData}
                       </td>
                     </tr>
                   )}

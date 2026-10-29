@@ -9,6 +9,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
+import { useLocale } from "@/i18n/I18nProvider";
 
 interface PieChartProps {
   data: Array<{ name: string; value: number; color?: string; fill?: string }>;
@@ -20,6 +21,7 @@ const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
 const COMPACT_BREAKPOINT = 380;
 
 export function PieChart({ data, height = 300, showLegend = true }: PieChartProps) {
+  const { intlLocale } = useLocale();
   const containerRef = useRef<HTMLDivElement>(null);
   const [compact, setCompact] = useState(false);
 
@@ -84,7 +86,7 @@ export function PieChart({ data, height = 300, showLegend = true }: PieChartProp
                   >
                     <p style={{ margin: 0, fontWeight: 500 }}>{data.name}</p>
                     <p style={{ margin: "4px 0 0 0", color: "#ffffff" }}>
-                      {data.value.toLocaleString("de-CH")} ({data.percent}%)
+                      {data.value.toLocaleString(intlLocale)} ({data.percent}%)
                     </p>
                   </div>
                 );
@@ -100,7 +102,7 @@ export function PieChart({ data, height = 300, showLegend = true }: PieChartProp
                 const val = payload?.value || 0;
                 return (
                   <span style={{ color: "currentColor", fontSize: compact ? 12 : 14 }}>
-                    {value}: {val.toLocaleString("de-CH")} ({percent}%)
+                    {value}: {val.toLocaleString(intlLocale)} ({percent}%)
                   </span>
                 );
               }}

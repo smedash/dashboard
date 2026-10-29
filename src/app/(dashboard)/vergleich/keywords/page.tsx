@@ -3,6 +3,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { DataTable } from "@/components/ui/DataTable";
 import { StatCard } from "@/components/ui/StatCard";
+import { useLocale, useMessages } from "@/i18n/I18nProvider";
+import { comparisonKeywordsMessages } from "@/i18n/messages/comparison-keywords";
 
 interface Snapshot {
   id: string;
@@ -47,6 +49,8 @@ interface KeywordComparison {
 }
 
 export default function KeywordsVergleichPage() {
+  const t = useMessages(comparisonKeywordsMessages);
+  const { intlLocale } = useLocale();
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [selectedSnapshotIds, setSelectedSnapshotIds] = useState<string[]>([]);
   const [snapshot1Data, setSnapshot1Data] = useState<SnapshotData[]>([]);
@@ -193,7 +197,7 @@ export default function KeywordsVergleichPage() {
   const selectedSnapshots = snapshots.filter((s) => selectedSnapshotIds.includes(s.id));
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("de-DE", {
+    return new Date(dateString).toLocaleDateString(intlLocale, {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -226,15 +230,15 @@ export default function KeywordsVergleichPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
         </div>
-        <h2 className="text-xl font-bold text-white mb-2">Keine Snapshots vorhanden</h2>
+        <h2 className="text-xl font-bold text-white mb-2">{t.noSnapshotsTitle}</h2>
         <p className="text-slate-400 mb-4">
-          Erstelle zuerst mindestens zwei Snapshots, um einen Keyword-Vergleich durchzuführen.
+          {t.noSnapshotsHint}
         </p>
         <a
           href="/snapshots"
           className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg transition-colors"
         >
-          Zu den Snapshots
+          {t.toSnapshots}
         </a>
       </div>
     );
@@ -244,17 +248,17 @@ export default function KeywordsVergleichPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <h1 className="text-2xl font-bold text-white">Keywords-Vergleich</h1>
+        <h1 className="text-2xl font-bold text-white">{t.title}</h1>
       </div>
 
       {/* Snapshot Selection */}
       <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-        <h2 className="text-lg font-semibold text-white mb-4">Snapshots auswählen</h2>
+        <h2 className="text-lg font-semibold text-white mb-4">{t.selectSnapshots}</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {[0, 1].map((index) => (
             <div key={index}>
               <label className="block text-sm font-medium text-slate-300 mb-2">
-                Snapshot {index + 1} {index === 0 && "(Basis)"}
+                {t.snapshotLabel(index + 1)} {index === 0 && t.base}
               </label>
               <select
                 value={selectedSnapshotIds[index] || ""}
@@ -265,7 +269,7 @@ export default function KeywordsVergleichPage() {
                 }}
                 className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">-- Bitte wählen --</option>
+                <option value="">{t.pleaseSelect}</option>
                 {snapshots.map((snapshot) => (
                   <option key={snapshot.id} value={snapshot.id}>
                     {snapshot.name} ({formatDate(snapshot.startDate)} - {formatDate(snapshot.endDate)})
@@ -282,38 +286,38 @@ export default function KeywordsVergleichPage() {
         <>
           {/* Statistics */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <StatCard title="Gemeinsame Keywords" value={stats.common} />
-            <StatCard title="Nur in Snapshot 1" value={stats.missing2} />
-            <StatCard title="Nur in Snapshot 2" value={stats.missing1} />
-            <StatCard title="Gesamt Keywords" value={stats.total} />
+            <StatCard title={t.stats.common} value={stats.common} />
+            <StatCard title={t.stats.onlySnapshot1} value={stats.missing2} />
+            <StatCard title={t.stats.onlySnapshot2} value={stats.missing1} />
+            <StatCard title={t.stats.total} value={stats.total} />
           </div>
 
           {/* Filters and Sort */}
           <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-2">
-              <span className="text-sm text-slate-300">Filter:</span>
+              <span className="text-sm text-slate-300">{t.filter}</span>
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value as typeof filterStatus)}
                 className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="all">Alle</option>
-                <option value="common">Gemeinsam</option>
-                <option value="missing_snapshot2">Nur Snapshot 1</option>
-                <option value="missing_snapshot1">Nur Snapshot 2</option>
+                <option value="all">{t.filterOptions.all}</option>
+                <option value="common">{t.filterOptions.common}</option>
+                <option value="missing_snapshot2">{t.filterOptions.missing_snapshot2}</option>
+                <option value="missing_snapshot1">{t.filterOptions.missing_snapshot1}</option>
               </select>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-slate-300">Sortieren nach:</span>
+              <span className="text-sm text-slate-300">{t.sortBy}</span>
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
                 className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="clicks">Klicks-Differenz</option>
-                <option value="impressions">Impressionen-Differenz</option>
-                <option value="position">Position-Differenz</option>
-                <option value="keyword">Keyword (A-Z)</option>
+                <option value="clicks">{t.sortOptions.clicks}</option>
+                <option value="impressions">{t.sortOptions.impressions}</option>
+                <option value="position">{t.sortOptions.position}</option>
+                <option value="keyword">{t.sortOptions.keyword}</option>
               </select>
             </div>
           </div>
@@ -321,7 +325,7 @@ export default function KeywordsVergleichPage() {
           {/* Keywords Table */}
           <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
             <div className="p-4 border-b border-slate-700">
-              <h3 className="text-lg font-semibold text-white">Keywords-Vergleich</h3>
+              <h3 className="text-lg font-semibold text-white">{t.title}</h3>
             </div>
             {isLoadingData ? (
               <div className="p-8 flex items-center justify-center">
@@ -347,7 +351,7 @@ export default function KeywordsVergleichPage() {
                 columns={[
                   {
                     key: "keyword",
-                    header: "Keyword",
+                    header: t.columns.keyword,
                     sortable: true,
                     render: (value) => (
                       <span className="font-medium text-white">{String(value)}</span>
@@ -355,14 +359,10 @@ export default function KeywordsVergleichPage() {
                   },
                   {
                     key: "status",
-                    header: "Status",
+                    header: t.columns.status,
                     sortable: true,
                     render: (value) => {
-                      const statusLabels = {
-                        common: "Gemeinsam",
-                        missing_snapshot1: "Nur Snapshot 2",
-                        missing_snapshot2: "Nur Snapshot 1",
-                      };
+                      const statusLabels = t.statusLabels;
                       const statusColors = {
                         common: "bg-blue-500/20 text-blue-400",
                         missing_snapshot1: "bg-yellow-500/20 text-yellow-400",
@@ -377,65 +377,65 @@ export default function KeywordsVergleichPage() {
                   },
                   {
                     key: "snapshot1Clicks",
-                    header: `${selectedSnapshots[0]?.name} - Klicks`,
+                    header: t.columns.clicks(selectedSnapshots[0]?.name),
                     sortable: true,
                     render: (value) => (
-                      <span className="text-white">{Number(value).toLocaleString("de-DE")}</span>
+                      <span className="text-white">{Number(value).toLocaleString(intlLocale)}</span>
                     ),
                   },
                   {
                     key: "snapshot2Clicks",
-                    header: `${selectedSnapshots[1]?.name} - Klicks`,
+                    header: t.columns.clicks(selectedSnapshots[1]?.name),
                     sortable: true,
                     render: (value) => (
-                      <span className="text-slate-300">{Number(value).toLocaleString("de-DE")}</span>
+                      <span className="text-slate-300">{Number(value).toLocaleString(intlLocale)}</span>
                     ),
                   },
                   {
                     key: "clicksDiff",
-                    header: "Klicks-Differenz",
+                    header: t.columns.clicksDiff,
                     sortable: true,
                     render: (value) => {
                       const diff = Number(value);
                       return (
                         <span className={`font-medium ${diff > 0 ? "text-green-400" : diff < 0 ? "text-red-400" : "text-slate-400"}`}>
-                          {diff > 0 ? "+" : ""}{diff.toLocaleString("de-DE")}
+                          {diff > 0 ? "+" : ""}{diff.toLocaleString(intlLocale)}
                         </span>
                       );
                     },
                   },
                   {
                     key: "snapshot1Impressions",
-                    header: `${selectedSnapshots[0]?.name} - Impr.`,
+                    header: t.columns.impressions(selectedSnapshots[0]?.name),
                     sortable: true,
                     render: (value) => (
-                      <span className="text-white">{Number(value).toLocaleString("de-DE")}</span>
+                      <span className="text-white">{Number(value).toLocaleString(intlLocale)}</span>
                     ),
                   },
                   {
                     key: "snapshot2Impressions",
-                    header: `${selectedSnapshots[1]?.name} - Impr.`,
+                    header: t.columns.impressions(selectedSnapshots[1]?.name),
                     sortable: true,
                     render: (value) => (
-                      <span className="text-slate-300">{Number(value).toLocaleString("de-DE")}</span>
+                      <span className="text-slate-300">{Number(value).toLocaleString(intlLocale)}</span>
                     ),
                   },
                   {
                     key: "impressionsDiff",
-                    header: "Impr.-Differenz",
+                    header: t.columns.impressionsDiff,
                     sortable: true,
                     render: (value) => {
                       const diff = Number(value);
                       return (
                         <span className={`font-medium ${diff > 0 ? "text-green-400" : diff < 0 ? "text-red-400" : "text-slate-400"}`}>
-                          {diff > 0 ? "+" : ""}{diff.toLocaleString("de-DE")}
+                          {diff > 0 ? "+" : ""}{diff.toLocaleString(intlLocale)}
                         </span>
                       );
                     },
                   },
                   {
                     key: "snapshot1Position",
-                    header: `${selectedSnapshots[0]?.name} - Pos.`,
+                    header: t.columns.position(selectedSnapshots[0]?.name),
                     sortable: true,
                     render: (value) => (
                       <span className="text-white">{Number(value).toFixed(1)}</span>
@@ -443,7 +443,7 @@ export default function KeywordsVergleichPage() {
                   },
                   {
                     key: "snapshot2Position",
-                    header: `${selectedSnapshots[1]?.name} - Pos.`,
+                    header: t.columns.position(selectedSnapshots[1]?.name),
                     sortable: true,
                     render: (value) => (
                       <span className="text-slate-300">{Number(value).toFixed(1)}</span>
@@ -451,7 +451,7 @@ export default function KeywordsVergleichPage() {
                   },
                   {
                     key: "positionDiff",
-                    header: "Pos.-Differenz",
+                    header: t.columns.positionDiff,
                     sortable: true,
                     render: (value) => {
                       const diff = Number(value);
@@ -472,7 +472,7 @@ export default function KeywordsVergleichPage() {
       {selectedSnapshotIds.length < 2 && (
         <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 text-center">
           <p className="text-slate-400">
-            Bitte wähle zwei Snapshots aus, um einen Keyword-Vergleich durchzuführen.
+            {t.selectTwoHint}
           </p>
         </div>
       )}

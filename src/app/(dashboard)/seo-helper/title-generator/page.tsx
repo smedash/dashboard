@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useMessages } from "@/i18n/I18nProvider";
+import { seoHelperTitleGeneratorMessages } from "@/i18n/messages/seo-helper-title-generator";
 
 interface GeneratedTitle {
   title: string;
@@ -16,6 +18,7 @@ interface GeneratedDescription {
 }
 
 export default function TitleGeneratorPage() {
+  const t = useMessages(seoHelperTitleGeneratorMessages);
   const [keyword, setKeyword] = useState("");
   const [topic, setTopic] = useState("");
   const [tone, setTone] = useState<"professional" | "casual" | "urgent" | "informative">("professional");
@@ -31,7 +34,7 @@ export default function TitleGeneratorPage() {
     
     // Simuliere AI-Generierung mit vordefinierten Patterns
     setTimeout(() => {
-      const patterns = getTitlePatterns(keyword.trim(), topic.trim(), tone);
+      const patterns = getTitlePatterns(t, keyword.trim(), topic.trim(), tone);
       const generatedTitles = patterns.map(title => ({
         title,
         length: title.length,
@@ -39,7 +42,7 @@ export default function TitleGeneratorPage() {
       }));
       setTitles(generatedTitles);
       
-      const descPatterns = getDescriptionPatterns(keyword.trim(), topic.trim(), tone);
+      const descPatterns = getDescriptionPatterns(t, keyword.trim(), topic.trim(), tone);
       const generatedDescs = descPatterns.map(desc => ({
         description: desc,
         length: desc.length,
@@ -73,8 +76,8 @@ export default function TitleGeneratorPage() {
           </svg>
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Title Generator</h1>
-          <p className="text-slate-500 dark:text-slate-400">SEO-optimierte Titel und Meta-Descriptions</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h1>
+          <p className="text-slate-500 dark:text-slate-400">{t.subtitle}</p>
         </div>
       </div>
 
@@ -83,25 +86,25 @@ export default function TitleGeneratorPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-              Haupt-Keyword *
+              {t.keywordLabel}
             </label>
             <input
               type="text"
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
-              placeholder="z.B. Hypothek Schweiz"
+              placeholder={t.keywordPlaceholder}
               className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-              Thema/Kontext (optional)
+              {t.topicLabel}
             </label>
             <input
               type="text"
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
-              placeholder="z.B. Ratgeber für Erstkäufer"
+              placeholder={t.topicPlaceholder}
               className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -109,25 +112,20 @@ export default function TitleGeneratorPage() {
 
         <div>
           <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-            Tonalität
+            {t.toneLabel}
           </label>
           <div className="flex flex-wrap gap-2">
-            {[
-              { value: "professional", label: "Professionell" },
-              { value: "casual", label: "Locker" },
-              { value: "urgent", label: "Dringend" },
-              { value: "informative", label: "Informativ" },
-            ].map((option) => (
+            {(["professional", "casual", "urgent", "informative"] as const).map((value) => (
               <button
-                key={option.value}
-                onClick={() => setTone(option.value as typeof tone)}
+                key={value}
+                onClick={() => setTone(value)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                  tone === option.value
+                  tone === value
                     ? "bg-blue-600 text-white"
                     : "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
                 }`}
               >
-                {option.label}
+                {t.tones[value]}
               </button>
             ))}
           </div>
@@ -144,10 +142,10 @@ export default function TitleGeneratorPage() {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
               </svg>
-              Generiere...
+              {t.generating}
             </span>
           ) : (
-            "Generieren"
+            t.generate
           )}
         </button>
       </div>
@@ -165,7 +163,7 @@ export default function TitleGeneratorPage() {
                   : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
               }`}
             >
-              Title Tags ({titles.length})
+              {t.titleTagsTab(titles.length)}
             </button>
             <button
               onClick={() => setActiveTab("descriptions")}
@@ -175,7 +173,7 @@ export default function TitleGeneratorPage() {
                   : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
               }`}
             >
-              Meta Descriptions ({descriptions.length})
+              {t.metaDescriptionsTab(descriptions.length)}
             </button>
           </div>
 
@@ -210,25 +208,25 @@ export default function TitleGeneratorPage() {
 
       {/* Tips */}
       <div className="bg-blue-50 dark:bg-blue-900/20 rounded-2xl p-6 border border-blue-200 dark:border-blue-800">
-        <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-3">SEO Best Practices</h3>
+        <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-3">{t.bestPracticesTitle}</h3>
         <ul className="space-y-2 text-sm text-blue-800 dark:text-blue-200">
           <li className="flex items-start gap-2">
             <svg className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
-            <span><strong>Title Tags:</strong> Optimal 50-60 Zeichen, Keyword am Anfang platzieren</span>
+            <span><strong>{t.bestPractices.titleLabel}</strong> {t.bestPractices.titleText}</span>
           </li>
           <li className="flex items-start gap-2">
             <svg className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
-            <span><strong>Meta Descriptions:</strong> Optimal 150-160 Zeichen, Call-to-Action einbauen</span>
+            <span><strong>{t.bestPractices.descriptionLabel}</strong> {t.bestPractices.descriptionText}</span>
           </li>
           <li className="flex items-start gap-2">
             <svg className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
-            <span><strong>Einzigartigkeit:</strong> Jede Seite sollte einen individuellen Title und Description haben</span>
+            <span><strong>{t.bestPractices.uniqueLabel}</strong> {t.bestPractices.uniqueText}</span>
           </li>
         </ul>
       </div>
@@ -249,6 +247,7 @@ function ResultCard({
   optimalRange: string;
   onCopy: () => void;
 }) {
+  const t = useMessages(seoHelperTitleGeneratorMessages);
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
@@ -267,10 +266,10 @@ function ResultCard({
               ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
               : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
           }`}>
-            {length} Zeichen
+            {t.characters(length)}
           </span>
           <span className="text-xs text-slate-500">
-            Optimal: {optimalRange}
+            {t.optimal(optimalRange)}
           </span>
         </div>
         <button
@@ -282,14 +281,14 @@ function ResultCard({
               <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
-              Kopiert!
+              {t.copied}
             </>
           ) : (
             <>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
               </svg>
-              Kopieren
+              {t.copy}
             </>
           )}
         </button>
@@ -299,47 +298,19 @@ function ResultCard({
 }
 
 // Helper functions for generating titles and descriptions
-function getTitlePatterns(keyword: string, topic: string, tone: string): string[] {
+type TitleGeneratorTexts = (typeof seoHelperTitleGeneratorMessages)["de"];
+type Tone = keyof TitleGeneratorTexts["titlePatterns"];
+
+function getTitlePatterns(t: TitleGeneratorTexts, keyword: string, topic: string, tone: Tone): string[] {
   const capitalizedKeyword = keyword.charAt(0).toUpperCase() + keyword.slice(1);
   const year = new Date().getFullYear();
-  
-  const patterns: Record<string, string[]> = {
-    professional: [
-      `${capitalizedKeyword}: Der umfassende Ratgeber ${year}`,
-      `${capitalizedKeyword} - Alles was Sie wissen müssen`,
-      `${capitalizedKeyword} im Überblick | Experten-Guide`,
-      `${capitalizedKeyword}: Tipps, Kosten & Anbieter im Vergleich`,
-      `Alles über ${capitalizedKeyword} - Kompakter Leitfaden`,
-    ],
-    casual: [
-      `${capitalizedKeyword} einfach erklärt - So geht's!`,
-      `${capitalizedKeyword}: Das musst du wissen`,
-      `Der ultimative Guide zu ${capitalizedKeyword}`,
-      `${capitalizedKeyword} - Dein Wegweiser zum Erfolg`,
-      `So funktioniert ${capitalizedKeyword} wirklich`,
-    ],
-    urgent: [
-      `${capitalizedKeyword}: Jetzt handeln & profitieren!`,
-      `Verpassen Sie nicht: ${capitalizedKeyword} ${year}`,
-      `${capitalizedKeyword} - Die wichtigsten Infos sofort`,
-      `Achtung: Das sollten Sie über ${capitalizedKeyword} wissen`,
-      `${capitalizedKeyword}: Schnell & einfach erklärt`,
-    ],
-    informative: [
-      `Was ist ${capitalizedKeyword}? Definition & Erklärung`,
-      `${capitalizedKeyword}: Bedeutung, Arten & Beispiele`,
-      `${capitalizedKeyword} verstehen - Ein Leitfaden`,
-      `Grundlagen zu ${capitalizedKeyword} | Übersicht ${year}`,
-      `${capitalizedKeyword}: FAQ & häufige Fragen beantwortet`,
-    ],
-  };
 
-  let results = patterns[tone] || patterns.professional;
+  let results = (t.titlePatterns[tone] || t.titlePatterns.professional)(capitalizedKeyword, year);
   
   // Add topic-specific variations if topic is provided
   if (topic) {
     results = results.map((title, index) => {
-      if (index === 0) return `${capitalizedKeyword} für ${topic} | Guide ${year}`;
+      if (index === 0) return t.titleWithTopic(capitalizedKeyword, topic, year);
       return title;
     });
   }
@@ -347,40 +318,14 @@ function getTitlePatterns(keyword: string, topic: string, tone: string): string[
   return results;
 }
 
-function getDescriptionPatterns(keyword: string, topic: string, tone: string): string[] {
+function getDescriptionPatterns(t: TitleGeneratorTexts, keyword: string, topic: string, tone: Tone): string[] {
+  const capitalizedKeyword = keyword.charAt(0).toUpperCase() + keyword.slice(1);
   const year = new Date().getFullYear();
-  
-  const patterns: Record<string, string[]> = {
-    professional: [
-      `Erfahren Sie alles Wichtige über ${keyword}. Unser umfassender Ratgeber bietet Ihnen Expertenwissen, aktuelle Informationen und praktische Tipps für ${year}.`,
-      `${keyword.charAt(0).toUpperCase() + keyword.slice(1)} verständlich erklärt: Kosten, Anbieter und wichtige Faktoren im Überblick. Jetzt informieren und die richtige Entscheidung treffen.`,
-      `Der komplette Guide zu ${keyword}: Von den Grundlagen bis zu Expertentipps. Aktuelle Informationen und Vergleiche für Ihre Entscheidung.`,
-      `Alles über ${keyword} auf einen Blick. Profitieren Sie von unserem Fachwissen und treffen Sie fundierte Entscheidungen. Jetzt mehr erfahren!`,
-    ],
-    casual: [
-      `Du willst mehr über ${keyword} wissen? Hier findest du alle Infos - einfach erklärt und auf den Punkt gebracht. Schau rein!`,
-      `${keyword.charAt(0).toUpperCase() + keyword.slice(1)} muss nicht kompliziert sein! Wir zeigen dir, worauf es ankommt und geben dir praktische Tipps für den Alltag.`,
-      `Endlich ${keyword} verstehen! Unser Guide erklärt dir alles Wichtige - ohne Fachchinesisch, dafür mit hilfreichen Beispielen.`,
-      `Dein Wegweiser durch das Thema ${keyword}. Einfach, verständlich und mit allen Infos, die du brauchst. Los geht's!`,
-    ],
-    urgent: [
-      `Jetzt über ${keyword} informieren! Erfahren Sie die wichtigsten Fakten und Tipps - kompakt zusammengefasst für schnelle Entscheidungen.`,
-      `Verpassen Sie nicht die wichtigsten Infos zu ${keyword}! Aktuelle Daten, Vergleiche und Expertentipps - alles an einem Ort.`,
-      `${keyword.charAt(0).toUpperCase() + keyword.slice(1)} ${year}: Das müssen Sie jetzt wissen! Schneller Überblick mit allen relevanten Informationen.`,
-      `Zeit ist Geld - holen Sie sich jetzt alle wichtigen Infos zu ${keyword}. Kompakt, aktuell und praxisnah aufbereitet.`,
-    ],
-    informative: [
-      `Was ist ${keyword}? Definition, Bedeutung und praktische Anwendung verständlich erklärt. Ihr Wissens-Guide mit Beispielen und FAQ.`,
-      `${keyword.charAt(0).toUpperCase() + keyword.slice(1)} im Detail: Lernen Sie die Grundlagen, Varianten und Einsatzmöglichkeiten kennen. Fundiertes Wissen für Einsteiger und Fortgeschrittene.`,
-      `Umfassende Informationen zu ${keyword}: Begriffserklärung, Funktionsweise und wichtige Aspekte. Bildung Sie sich Ihre eigene Meinung.`,
-      `${keyword.charAt(0).toUpperCase() + keyword.slice(1)} A-Z: Von der Definition bis zur praktischen Umsetzung. Ihr Nachschlagewerk für alle Fragen rund um das Thema.`,
-    ],
-  };
 
-  let results = patterns[tone] || patterns.professional;
+  const results = (t.descriptionPatterns[tone] || t.descriptionPatterns.professional)(keyword, capitalizedKeyword, year);
   
   if (topic) {
-    results[0] = `${keyword.charAt(0).toUpperCase() + keyword.slice(1)} für ${topic}: Unser Ratgeber erklärt alles Wichtige - von Grundlagen bis Expertentipps. Jetzt informieren!`;
+    results[0] = t.descriptionWithTopic(capitalizedKeyword, topic);
   }
 
   return results;

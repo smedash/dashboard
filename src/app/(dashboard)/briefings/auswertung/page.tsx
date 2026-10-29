@@ -5,6 +5,9 @@ import { useSession } from "next-auth/react";
 import { hasFullAdminRights } from "@/lib/rbac";
 import { StatCard } from "@/components/ui/StatCard";
 import { BarChart, PieChart } from "@/components/charts";
+import { useMessages } from "@/i18n/I18nProvider";
+import { commonMessages } from "@/i18n/messages/common";
+import { briefingsAnalysisMessages } from "@/i18n/messages/briefings-analysis";
 
 interface BriefingStats {
   timeBasedStats: {
@@ -47,6 +50,8 @@ interface BriefingStats {
 
 export default function BriefingAuswertungPage() {
   const { data: session } = useSession();
+  const t = useMessages(briefingsAnalysisMessages);
+  const tc = useMessages(commonMessages);
   const [stats, setStats] = useState<BriefingStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -65,14 +70,14 @@ export default function BriefingAuswertungPage() {
       
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Fehler beim Laden");
+        throw new Error(data.error || t.loadError);
       }
       
       const data = await response.json();
       setStats(data);
     } catch (err) {
       console.error("Error fetching stats:", err);
-      setError(err instanceof Error ? err.message : "Fehler beim Laden der Statistiken");
+      setError(err instanceof Error ? err.message : t.loadStatsError);
     } finally {
       setIsLoading(false);
     }
@@ -81,9 +86,9 @@ export default function BriefingAuswertungPage() {
   if (!isAdmin) {
     return (
       <div className="space-y-8">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Briefing Auswertung</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h1>
         <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-6 text-center">
-          <p className="text-red-500">Diese Seite ist nur für Administratoren zugänglich.</p>
+          <p className="text-red-500">{t.adminOnly}</p>
         </div>
       </div>
     );
@@ -92,7 +97,7 @@ export default function BriefingAuswertungPage() {
   if (isLoading) {
     return (
       <div className="space-y-8">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Briefing Auswertung</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h1>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="h-32 bg-slate-200 dark:bg-slate-800 rounded-xl animate-pulse"></div>
@@ -105,14 +110,14 @@ export default function BriefingAuswertungPage() {
   if (error) {
     return (
       <div className="space-y-8">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Briefing Auswertung</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h1>
         <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-6 text-center">
           <p className="text-red-500">{error}</p>
           <button
             onClick={fetchStats}
             className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
           >
-            Erneut versuchen
+            {tc.actions.retry}
           </button>
         </div>
       </div>
@@ -130,9 +135,9 @@ export default function BriefingAuswertungPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Briefing Auswertung</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h1>
           <p className="text-slate-600 dark:text-slate-400 mt-1">
-            Statistiken und Auswertungen zu Content-Briefings
+            {t.subtitle}
           </p>
         </div>
         <button
@@ -142,18 +147,18 @@ export default function BriefingAuswertungPage() {
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
-          Aktualisieren
+          {t.refresh}
         </button>
       </div>
 
       {/* Zeitraum-basierte Statistiken */}
       <div>
         <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-          Briefings nach Zeitraum
+          {t.byPeriod}
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard
-            title="Letzte 30 Tage"
+            title={t.last30Days}
             value={stats.timeBasedStats.last30Days}
             icon={
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -162,7 +167,7 @@ export default function BriefingAuswertungPage() {
             }
           />
           <StatCard
-            title="Letzte 60 Tage"
+            title={t.last60Days}
             value={stats.timeBasedStats.last60Days}
             icon={
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -171,7 +176,7 @@ export default function BriefingAuswertungPage() {
             }
           />
           <StatCard
-            title="Letzte 90 Tage"
+            title={t.last90Days}
             value={stats.timeBasedStats.last90Days}
             icon={
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -180,7 +185,7 @@ export default function BriefingAuswertungPage() {
             }
           />
           <StatCard
-            title="Letzte 180 Tage"
+            title={t.last180Days}
             value={stats.timeBasedStats.last180Days}
             icon={
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -194,11 +199,11 @@ export default function BriefingAuswertungPage() {
       {/* KPI Übersicht */}
       <div>
         <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-          Kennzahlen
+          {t.kpis}
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard
-            title="Gesamt Briefings"
+            title={t.totalBriefings}
             value={stats.statusOverview.total}
             icon={
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -207,9 +212,9 @@ export default function BriefingAuswertungPage() {
             }
           />
           <StatCard
-            title="Ø Bearbeitungszeit"
-            value={`${stats.processingTime.avgDays} Tage`}
-            subtitle={`Basierend auf ${stats.processingTime.completedCount} abgeschlossenen`}
+            title={t.avgProcessingTime}
+            value={t.days(stats.processingTime.avgDays)}
+            subtitle={t.basedOnCompleted(stats.processingTime.completedCount)}
             icon={
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -217,9 +222,9 @@ export default function BriefingAuswertungPage() {
             }
           />
           <StatCard
-            title="Abschlussrate"
+            title={t.completionRate}
             value={`${completionRate}%`}
-            subtitle={`${stats.statusOverview.completed} von ${stats.statusOverview.total}`}
+            subtitle={t.xOfY(stats.statusOverview.completed, stats.statusOverview.total)}
             icon={
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -227,7 +232,7 @@ export default function BriefingAuswertungPage() {
             }
           />
           <StatCard
-            title="Überfällig"
+            title={t.overdue}
             value={stats.overdueBriefings}
             icon={
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -243,34 +248,34 @@ export default function BriefingAuswertungPage() {
         {/* Status Übersicht */}
         <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
           <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-            Status Übersicht
+            {t.statusOverview}
           </h3>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                <span className="text-slate-700 dark:text-slate-300">Bestellt</span>
+                <span className="text-slate-700 dark:text-slate-300">{t.status.ordered}</span>
               </div>
               <span className="font-semibold text-slate-900 dark:text-white">{stats.statusOverview.ordered}</span>
             </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                <span className="text-slate-700 dark:text-slate-300">In Bearbeitung</span>
+                <span className="text-slate-700 dark:text-slate-300">{t.status.inProgress}</span>
               </div>
               <span className="font-semibold text-slate-900 dark:text-white">{stats.statusOverview.inProgress}</span>
             </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-3 h-3 rounded-full bg-purple-500"></div>
-                <span className="text-slate-700 dark:text-slate-300">In Prüfung</span>
+                <span className="text-slate-700 dark:text-slate-300">{t.status.inReview}</span>
               </div>
               <span className="font-semibold text-slate-900 dark:text-white">{stats.statusOverview.inReview}</span>
             </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                <span className="text-slate-700 dark:text-slate-300">Fertig</span>
+                <span className="text-slate-700 dark:text-slate-300">{t.status.completed}</span>
               </div>
               <span className="font-semibold text-slate-900 dark:text-white">{stats.statusOverview.completed}</span>
             </div>
@@ -306,32 +311,32 @@ export default function BriefingAuswertungPage() {
         {/* Typ Verteilung */}
         <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
           <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-            Briefing-Typen
+            {t.briefingTypes}
           </h3>
           <div className="space-y-4">
             <div className="flex items-center justify-between p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/30">
               <div>
-                <span className="font-medium text-emerald-600 dark:text-emerald-400">Neuer Content</span>
+                <span className="font-medium text-emerald-600 dark:text-emerald-400">{t.types.new_content}</span>
                 <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  {stats.byType.new_content.completed} fertig / {stats.byType.new_content.inReview} in Prüfung / {stats.byType.new_content.inProgress} in Bearbeitung / {stats.byType.new_content.ordered} bestellt
+                  {t.typeBreakdown(stats.byType.new_content.completed, stats.byType.new_content.inReview, stats.byType.new_content.inProgress, stats.byType.new_content.ordered)}
                 </div>
               </div>
               <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{stats.byType.new_content.total}</span>
             </div>
             <div className="flex items-center justify-between p-3 bg-orange-500/10 rounded-lg border border-orange-500/30">
               <div>
-                <span className="font-medium text-orange-600 dark:text-orange-400">Content überarbeiten</span>
+                <span className="font-medium text-orange-600 dark:text-orange-400">{t.types.edit_content}</span>
                 <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  {stats.byType.edit_content.completed} fertig / {stats.byType.edit_content.inReview} in Prüfung / {stats.byType.edit_content.inProgress} in Bearbeitung / {stats.byType.edit_content.ordered} bestellt
+                  {t.typeBreakdown(stats.byType.edit_content.completed, stats.byType.edit_content.inReview, stats.byType.edit_content.inProgress, stats.byType.edit_content.ordered)}
                 </div>
               </div>
               <span className="text-2xl font-bold text-orange-600 dark:text-orange-400">{stats.byType.edit_content.total}</span>
             </div>
             <div className="flex items-center justify-between p-3 bg-violet-500/10 rounded-lg border border-violet-500/30">
               <div>
-                <span className="font-medium text-violet-600 dark:text-violet-400">Lexikon</span>
+                <span className="font-medium text-violet-600 dark:text-violet-400">{t.types.lexicon}</span>
                 <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  {stats.byType.lexicon.completed} fertig / {stats.byType.lexicon.inReview} in Prüfung / {stats.byType.lexicon.inProgress} in Bearbeitung / {stats.byType.lexicon.ordered} bestellt
+                  {t.typeBreakdown(stats.byType.lexicon.completed, stats.byType.lexicon.inReview, stats.byType.lexicon.inProgress, stats.byType.lexicon.ordered)}
                 </div>
               </div>
               <span className="text-2xl font-bold text-violet-600 dark:text-violet-400">{stats.byType.lexicon.total}</span>
@@ -342,7 +347,7 @@ export default function BriefingAuswertungPage() {
         {/* Kategorie-Verteilung (Pie-Chart) */}
         <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
           <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-            Nach Kategorie
+            {t.byCategory}
           </h3>
           <div className="h-64">
             <PieChart
@@ -361,7 +366,7 @@ export default function BriefingAuswertungPage() {
       {/* Monatliche Entwicklung */}
       <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
         <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-          Monatliche Entwicklung (letzte 6 Monate)
+          {t.monthlyTrend}
         </h3>
         <div className="h-64">
           <BarChart
@@ -379,19 +384,19 @@ export default function BriefingAuswertungPage() {
       {/* Briefings pro User */}
       <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
         <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-          Briefings pro Besteller
+          {t.perOrderer}
         </h3>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-slate-200 dark:border-slate-700">
-                <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Besteller</th>
-                <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Gesamt</th>
-                <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Bestellt</th>
-                <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">In Bearbeitung</th>
-                <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">In Prüfung</th>
-                <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Fertig</th>
-                <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Letzte 30 Tage</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">{t.columns.orderer}</th>
+                <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">{t.columns.total}</th>
+                <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">{t.status.ordered}</th>
+                <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">{t.status.inProgress}</th>
+                <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">{t.status.inReview}</th>
+                <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">{t.status.completed}</th>
+                <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">{t.columns.last30Days}</th>
               </tr>
             </thead>
             <tbody>
@@ -399,7 +404,7 @@ export default function BriefingAuswertungPage() {
                 <tr key={user.userId} className="border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700/30">
                   <td className="py-3 px-4">
                     <div>
-                      <div className="font-medium text-slate-900 dark:text-white">{user.name || "Kein Name"}</div>
+                      <div className="font-medium text-slate-900 dark:text-white">{user.name || t.noName}</div>
                       <div className="text-xs text-slate-500 dark:text-slate-400">{user.email}</div>
                     </div>
                   </td>
@@ -430,7 +435,7 @@ export default function BriefingAuswertungPage() {
               {stats.userStats.length === 0 && (
                 <tr>
                   <td colSpan={7} className="py-8 text-center text-slate-500 dark:text-slate-400">
-                    Noch keine Briefings vorhanden
+                    {t.noBriefings}
                   </td>
                 </tr>
               )}

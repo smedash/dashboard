@@ -1,27 +1,32 @@
+import type { Locale } from '@/i18n/config';
+import { urlCheckerContentQualityMessages } from '@/i18n/messages/url-checker/content-quality';
 import { CheckResult, ParsedPage } from '../types';
 
-export function runContentQualityChecks(page: ParsedPage): CheckResult[] {
+type Messages = (typeof urlCheckerContentQualityMessages)[Locale];
+
+export function runContentQualityChecks(page: ParsedPage, locale: Locale): CheckResult[] {
+  const t = urlCheckerContentQualityMessages[locale];
   const checks: CheckResult[] = [];
 
-  checks.push(checkTitle(page));
-  checks.push(checkMetaDescription(page));
-  checks.push(checkH1(page));
-  checks.push(checkHeadingHierarchy(page));
-  checks.push(checkWordCount(page));
-  checks.push(checkKeywordStuffing(page));
-  checks.push(checkImageAlts(page));
-  checks.push(checkLinkRatio(page));
+  checks.push(checkTitle(page, t));
+  checks.push(checkMetaDescription(page, t));
+  checks.push(checkH1(page, t));
+  checks.push(checkHeadingHierarchy(page, t));
+  checks.push(checkWordCount(page, t));
+  checks.push(checkKeywordStuffing(page, t));
+  checks.push(checkImageAlts(page, t));
+  checks.push(checkLinkRatio(page, t));
 
   return checks;
 }
 
-function checkTitle(page: ParsedPage): CheckResult {
+function checkTitle(page: ParsedPage, t: Messages): CheckResult {
   if (!page.title) {
     return {
-      factor: 'Title-Tag',
+      factor: t.title.factor,
       status: 'fail',
       value: null,
-      recommendation: 'Kein Title-Tag gefunden. Der Title ist einer der wichtigsten On-Page-Faktoren.',
+      recommendation: t.title.missing,
       leakAttribute: 'originalTitleHardTokenCount',
     };
   }
@@ -30,40 +35,40 @@ function checkTitle(page: ParsedPage): CheckResult {
 
   if (length < 30) {
     return {
-      factor: 'Title-Tag',
+      factor: t.title.factor,
       status: 'warn',
-      value: `${length} Zeichen`,
-      recommendation: `Title ist zu kurz (${length} Zeichen). Optimal sind 50\u201360 Zeichen f\u00fcr maximale SERP-Sichtbarkeit.`,
+      value: t.charsValue(length),
+      recommendation: t.title.tooShort(length),
       leakAttribute: 'originalTitleHardTokenCount',
     };
   }
 
   if (length > 60) {
     return {
-      factor: 'Title-Tag',
+      factor: t.title.factor,
       status: 'warn',
-      value: `${length} Zeichen`,
-      recommendation: `Title ist zu lang (${length} Zeichen) und wird in den SERPs abgeschnitten. Optimal: 50\u201360 Zeichen.`,
+      value: t.charsValue(length),
+      recommendation: t.title.tooLong(length),
       leakAttribute: 'originalTitleHardTokenCount',
     };
   }
 
   return {
-    factor: 'Title-Tag',
+    factor: t.title.factor,
     status: 'pass',
-    value: `${length} Zeichen`,
-    recommendation: 'Title-L\u00e4nge ist optimal.',
+    value: t.charsValue(length),
+    recommendation: t.title.ok,
     leakAttribute: 'originalTitleHardTokenCount',
   };
 }
 
-function checkMetaDescription(page: ParsedPage): CheckResult {
+function checkMetaDescription(page: ParsedPage, t: Messages): CheckResult {
   if (!page.metaDescription) {
     return {
-      factor: 'Meta-Description',
+      factor: t.metaDescription.factor,
       status: 'fail',
       value: null,
-      recommendation: 'Keine Meta-Description vorhanden. Google nutzt sie h\u00e4ufig als Snippet \u2013 eine gute Description erh\u00f6ht die CTR.',
+      recommendation: t.metaDescription.missing,
       leakAttribute: 'snippet.metaDescription',
     };
   }
@@ -72,72 +77,72 @@ function checkMetaDescription(page: ParsedPage): CheckResult {
 
   if (length < 70) {
     return {
-      factor: 'Meta-Description',
+      factor: t.metaDescription.factor,
       status: 'warn',
-      value: `${length} Zeichen`,
-      recommendation: `Meta-Description ist kurz (${length} Zeichen). Nutze 120\u2013155 Zeichen f\u00fcr optimale SERP-Darstellung.`,
+      value: t.charsValue(length),
+      recommendation: t.metaDescription.tooShort(length),
       leakAttribute: 'snippet.metaDescription',
     };
   }
 
   if (length > 160) {
     return {
-      factor: 'Meta-Description',
+      factor: t.metaDescription.factor,
       status: 'warn',
-      value: `${length} Zeichen`,
-      recommendation: `Meta-Description ist zu lang (${length} Zeichen) und wird abgeschnitten. Optimal: 120\u2013155 Zeichen.`,
+      value: t.charsValue(length),
+      recommendation: t.metaDescription.tooLong(length),
       leakAttribute: 'snippet.metaDescription',
     };
   }
 
   return {
-    factor: 'Meta-Description',
+    factor: t.metaDescription.factor,
     status: 'pass',
-    value: `${length} Zeichen`,
-    recommendation: 'Meta-Description hat eine gute L\u00e4nge.',
+    value: t.charsValue(length),
+    recommendation: t.metaDescription.ok,
     leakAttribute: 'snippet.metaDescription',
   };
 }
 
-function checkH1(page: ParsedPage): CheckResult {
+function checkH1(page: ParsedPage, t: Messages): CheckResult {
   const h1s = page.headings.filter(h => h.level === 1);
 
   if (h1s.length === 0) {
     return {
-      factor: 'H1-\u00dcberschrift',
+      factor: t.h1.factor,
       status: 'fail',
-      value: 'Keine H1',
-      recommendation: 'Keine H1-\u00dcberschrift gefunden. Jede Seite braucht genau eine H1 als Haupt\u00fcberschrift.',
+      value: t.h1.noneValue,
+      recommendation: t.h1.missing,
       leakAttribute: 'headings.h1Count',
     };
   }
 
   if (h1s.length > 1) {
     return {
-      factor: 'H1-\u00dcberschrift',
+      factor: t.h1.factor,
       status: 'warn',
-      value: `${h1s.length} H1-Tags`,
-      recommendation: `${h1s.length} H1-Tags gefunden. Verwende nur eine H1 pro Seite f\u00fcr klare Hierarchie.`,
+      value: t.h1.multipleValue(h1s.length),
+      recommendation: t.h1.multiple(h1s.length),
       leakAttribute: 'headings.h1Count',
     };
   }
 
   return {
-    factor: 'H1-\u00dcberschrift',
+    factor: t.h1.factor,
     status: 'pass',
     value: h1s[0].text.slice(0, 80),
-    recommendation: 'Genau eine H1-\u00dcberschrift vorhanden.',
+    recommendation: t.h1.ok,
     leakAttribute: 'headings.h1Count',
   };
 }
 
-function checkHeadingHierarchy(page: ParsedPage): CheckResult {
+function checkHeadingHierarchy(page: ParsedPage, t: Messages): CheckResult {
   if (page.headings.length === 0) {
     return {
-      factor: 'Heading-Hierarchie',
+      factor: t.headings.factor,
       status: 'fail',
-      value: '0 Headings',
-      recommendation: 'Keine Headings gefunden. Nutze H1\u2013H6 f\u00fcr eine klare Content-Struktur.',
+      value: t.headings.noneValue,
+      recommendation: t.headings.missing,
       leakAttribute: 'headings.structure',
     };
   }
@@ -157,74 +162,74 @@ function checkHeadingHierarchy(page: ParsedPage): CheckResult {
 
   if (hasSkips) {
     return {
-      factor: 'Heading-Hierarchie',
+      factor: t.headings.factor,
       status: 'warn',
-      value: `${totalHeadings} Headings (Ebenen \u00fcbersprungen)`,
-      recommendation: 'Heading-Ebenen werden \u00fcbersprungen (z.B. H1 \u2192 H3). Halte die Hierarchie l\u00fcckenlos.',
+      value: t.headings.skipsValue(totalHeadings),
+      recommendation: t.headings.skips,
       leakAttribute: 'headings.structure',
     };
   }
 
   if (h2Count < 2 && page.wordCount > 300) {
     return {
-      factor: 'Heading-Hierarchie',
+      factor: t.headings.factor,
       status: 'warn',
-      value: `${totalHeadings} Headings (nur ${h2Count} H2)`,
-      recommendation: 'Wenige Zwischen\u00fcberschriften. Mehr H2/H3 verbessern Lesbarkeit und Snippet-Chancen.',
+      value: t.headings.fewH2Value(totalHeadings, h2Count),
+      recommendation: t.headings.fewH2,
       leakAttribute: 'headings.structure',
     };
   }
 
   return {
-    factor: 'Heading-Hierarchie',
+    factor: t.headings.factor,
     status: 'pass',
-    value: `${totalHeadings} Headings`,
-    recommendation: 'Heading-Struktur ist sauber und hierarchisch.',
+    value: t.headings.countValue(totalHeadings),
+    recommendation: t.headings.ok,
     leakAttribute: 'headings.structure',
   };
 }
 
-function checkWordCount(page: ParsedPage): CheckResult {
+function checkWordCount(page: ParsedPage, t: Messages): CheckResult {
   const wc = page.wordCount;
 
   if (wc < 300) {
     return {
-      factor: 'Wortanzahl',
+      factor: t.wordCount.factor,
       status: 'fail',
       value: wc,
-      recommendation: `Nur ${wc} W\u00f6rter. Thin Content wird von QualityBoost/Panda abgestraft. Top-10-Ergebnisse haben durchschnittlich ~1.447 W\u00f6rter.`,
+      recommendation: t.wordCount.thin(wc),
       leakAttribute: 'qualityBoost.contentLength',
     };
   }
 
   if (wc < 800) {
     return {
-      factor: 'Wortanzahl',
+      factor: t.wordCount.factor,
       status: 'warn',
       value: wc,
-      recommendation: `${wc} W\u00f6rter \u2013 f\u00fcr informative Inhalte oft zu wenig. Pr\u00fcfe, ob das Thema mehr Tiefe verdient.`,
+      recommendation: t.wordCount.low(wc),
       leakAttribute: 'qualityBoost.contentLength',
     };
   }
 
   return {
-    factor: 'Wortanzahl',
+    factor: t.wordCount.factor,
     status: 'pass',
     value: wc,
-    recommendation: 'Ausreichend Content f\u00fcr thematische Tiefe.',
+    recommendation: t.wordCount.ok,
     leakAttribute: 'qualityBoost.contentLength',
   };
 }
 
-function checkKeywordStuffing(page: ParsedPage): CheckResult {
+function checkKeywordStuffing(page: ParsedPage, t: Messages): CheckResult {
   const text = page.textContent.toLowerCase();
   const words = text.split(/\s+/).filter(w => w.length > 3);
   if (words.length === 0) {
     return {
-      factor: 'Keyword-Stuffing',
+      factor: t.keywordStuffing.factor,
       status: 'pass',
       value: null,
-      recommendation: 'Keine Analyse m\u00f6glich (zu wenig Text).',
+      recommendation: t.keywordStuffing.noText,
       leakAttribute: 'keywordStuffingScore',
     };
   }
@@ -253,40 +258,40 @@ function checkKeywordStuffing(page: ParsedPage): CheckResult {
 
   if (maxDensity > 0.04) {
     return {
-      factor: 'Keyword-Stuffing',
+      factor: t.keywordStuffing.factor,
       status: 'fail',
       value: `"${stuffedWord}" = ${densityPercent}%`,
-      recommendation: `Das Wort "${stuffedWord}" erscheint mit ${densityPercent}% Dichte \u2013 Google's keywordStuffingScore w\u00fcrde hier anschlagen. Reduziere auf < 3%.`,
+      recommendation: t.keywordStuffing.stuffed(stuffedWord, densityPercent),
       leakAttribute: 'keywordStuffingScore',
     };
   }
 
   if (maxDensity > 0.03) {
     return {
-      factor: 'Keyword-Stuffing',
+      factor: t.keywordStuffing.factor,
       status: 'warn',
       value: `"${stuffedWord}" = ${densityPercent}%`,
-      recommendation: `"${stuffedWord}" hat ${densityPercent}% Dichte. Am Grenzwert \u2013 verwende mehr Synonyme und semantische Varianten.`,
+      recommendation: t.keywordStuffing.borderline(stuffedWord, densityPercent),
       leakAttribute: 'keywordStuffingScore',
     };
   }
 
   return {
-    factor: 'Keyword-Stuffing',
+    factor: t.keywordStuffing.factor,
     status: 'pass',
-    value: `Max. Dichte: ${densityPercent}%`,
-    recommendation: 'Keine auff\u00e4llige Keyword-\u00dcberoptimierung erkannt.',
+    value: t.keywordStuffing.maxDensityValue(densityPercent),
+    recommendation: t.keywordStuffing.ok,
     leakAttribute: 'keywordStuffingScore',
   };
 }
 
-function checkImageAlts(page: ParsedPage): CheckResult {
+function checkImageAlts(page: ParsedPage, t: Messages): CheckResult {
   if (page.images.length === 0) {
     return {
-      factor: 'Bild-Alt-Texte',
+      factor: t.imageAlts.factor,
       status: 'warn',
-      value: '0 Bilder',
-      recommendation: 'Keine Bilder gefunden. Bilder mit Alt-Text verbessern Relevanz und Zug\u00e4nglichkeit.',
+      value: t.imageAlts.noImagesValue,
+      recommendation: t.imageAlts.noImages,
       leakAttribute: 'imageData.altText',
     };
   }
@@ -296,63 +301,63 @@ function checkImageAlts(page: ParsedPage): CheckResult {
 
   if (ratio > 0.5) {
     return {
-      factor: 'Bild-Alt-Texte',
+      factor: t.imageAlts.factor,
       status: 'fail',
-      value: `${withoutAlt.length}/${page.images.length} ohne Alt`,
-      recommendation: `${withoutAlt.length} von ${page.images.length} Bildern haben keinen Alt-Text. Google nutzt Alt-Texte zur Bild-Indexierung und Relevanz-Bewertung.`,
+      value: t.imageAlts.withoutAltValue(withoutAlt.length, page.images.length),
+      recommendation: t.imageAlts.manyMissing(withoutAlt.length, page.images.length),
       leakAttribute: 'imageData.altText',
     };
   }
 
   if (ratio > 0.2) {
     return {
-      factor: 'Bild-Alt-Texte',
+      factor: t.imageAlts.factor,
       status: 'warn',
-      value: `${withoutAlt.length}/${page.images.length} ohne Alt`,
-      recommendation: `${withoutAlt.length} Bilder ohne Alt-Text. Erg\u00e4nze beschreibende Alt-Attribute f\u00fcr bessere Indexierung.`,
+      value: t.imageAlts.withoutAltValue(withoutAlt.length, page.images.length),
+      recommendation: t.imageAlts.someMissing(withoutAlt.length),
       leakAttribute: 'imageData.altText',
     };
   }
 
   return {
-    factor: 'Bild-Alt-Texte',
+    factor: t.imageAlts.factor,
     status: 'pass',
-    value: `${page.images.length - withoutAlt.length}/${page.images.length} mit Alt`,
-    recommendation: 'Die meisten Bilder haben Alt-Texte.',
+    value: t.imageAlts.withAltValue(page.images.length - withoutAlt.length, page.images.length),
+    recommendation: t.imageAlts.ok,
     leakAttribute: 'imageData.altText',
   };
 }
 
-function checkLinkRatio(page: ParsedPage): CheckResult {
+function checkLinkRatio(page: ParsedPage, t: Messages): CheckResult {
   const internalCount = page.internalLinks.length;
   const externalCount = page.externalLinks.length;
   const total = internalCount + externalCount;
 
   if (total === 0) {
     return {
-      factor: 'Link-Struktur',
+      factor: t.links.factor,
       status: 'fail',
-      value: '0 Links',
-      recommendation: 'Keine Links gefunden. Interne Verlinkung ist essenziell f\u00fcr Crawlability und PageRank-Verteilung.',
+      value: t.links.noneValue,
+      recommendation: t.links.none,
       leakAttribute: 'anchors.linkCount',
     };
   }
 
   if (internalCount < 3) {
     return {
-      factor: 'Link-Struktur',
+      factor: t.links.factor,
       status: 'warn',
-      value: `${internalCount} intern, ${externalCount} extern`,
-      recommendation: `Nur ${internalCount} interne Links. Mehr interne Verlinkung st\u00e4rkt die thematische Autorit\u00e4t und erleichtert das Crawling.`,
+      value: t.links.countValue(internalCount, externalCount),
+      recommendation: t.links.fewInternal(internalCount),
       leakAttribute: 'anchors.linkCount',
     };
   }
 
   return {
-    factor: 'Link-Struktur',
+    factor: t.links.factor,
     status: 'pass',
-    value: `${internalCount} intern, ${externalCount} extern`,
-    recommendation: 'Gute Mischung aus internen und externen Links.',
+    value: t.links.countValue(internalCount, externalCount),
+    recommendation: t.links.ok,
     leakAttribute: 'anchors.linkCount',
   };
 }

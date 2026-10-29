@@ -5,9 +5,13 @@ import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { hasFullAdminRights } from "@/lib/rbac";
+import { useMessages } from "@/i18n/I18nProvider";
+import { commonMessages } from "@/i18n/messages/common";
+
+type NavLabelKey = Exclude<keyof (typeof commonMessages)["de"]["nav"], "sections">;
 
 interface NavigationItem {
-  name: string;
+  labelKey: NavLabelKey;
   href: string;
   icon: React.ReactElement;
   children?: NavigationItem[];
@@ -16,7 +20,7 @@ interface NavigationItem {
 // Hauptnavigation (nur Dashboard)
 const mainNavigation: NavigationItem[] = [
   {
-    name: "Dashboard",
+    labelKey: "dashboard",
     href: "/",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -29,7 +33,7 @@ const mainNavigation: NavigationItem[] = [
 // Daten-Navigation (Auswertung, Ranktracker, Linkprofil)
 const dataNavigation: NavigationItem[] = [
   {
-    name: "Auswertung",
+    labelKey: "analysis",
     href: "/auswertung",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -38,7 +42,7 @@ const dataNavigation: NavigationItem[] = [
     ),
     children: [
       {
-        name: "Übersicht",
+        labelKey: "overview",
         href: "/auswertung",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -47,7 +51,7 @@ const dataNavigation: NavigationItem[] = [
         ),
       },
       {
-        name: "Suchanfragen",
+        labelKey: "queries",
         href: "/queries",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -56,7 +60,7 @@ const dataNavigation: NavigationItem[] = [
         ),
       },
       {
-        name: "Seiten",
+        labelKey: "pages",
         href: "/pages",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -65,7 +69,7 @@ const dataNavigation: NavigationItem[] = [
         ),
       },
       {
-        name: "Länder",
+        labelKey: "countries",
         href: "/countries",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -74,7 +78,7 @@ const dataNavigation: NavigationItem[] = [
         ),
       },
       {
-        name: "Geräte",
+        labelKey: "devices",
         href: "/devices",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -85,7 +89,7 @@ const dataNavigation: NavigationItem[] = [
     ],
   },
   {
-    name: "Ranktracker",
+    labelKey: "ranktracker",
     href: "/ranktracker",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -94,11 +98,20 @@ const dataNavigation: NavigationItem[] = [
     ),
   },
   {
-    name: "Linkprofil",
+    labelKey: "linkProfile",
     href: "/linkprofil",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+      </svg>
+    ),
+  },
+  {
+    labelKey: "technicalSeo",
+    href: "/technical-seo",
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
       </svg>
     ),
   },
@@ -107,7 +120,7 @@ const dataNavigation: NavigationItem[] = [
 // Reporting-Navigation
 const reportingNavigation: NavigationItem[] = [
   {
-    name: "Reporting",
+    labelKey: "reporting",
     href: "/reporting",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -116,7 +129,7 @@ const reportingNavigation: NavigationItem[] = [
     ),
     children: [
       {
-        name: "Übersicht",
+        labelKey: "overview",
         href: "/reporting",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -125,7 +138,7 @@ const reportingNavigation: NavigationItem[] = [
         ),
       },
       {
-        name: "Ranking Report",
+        labelKey: "rankingReport",
         href: "/reporting/ranking",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -134,7 +147,7 @@ const reportingNavigation: NavigationItem[] = [
         ),
       },
       {
-        name: "Traffic Report",
+        labelKey: "trafficReport",
         href: "/reporting/traffic",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -143,7 +156,7 @@ const reportingNavigation: NavigationItem[] = [
         ),
       },
       {
-        name: "KVP Report",
+        labelKey: "kvpReport",
         href: "/reporting/kvp",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -152,7 +165,7 @@ const reportingNavigation: NavigationItem[] = [
         ),
       },
       {
-        name: "Task Report",
+        labelKey: "taskReport",
         href: "/reporting/tasks",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -167,7 +180,7 @@ const reportingNavigation: NavigationItem[] = [
 // Planung-Navigation
 const planungNavigation: NavigationItem[] = [
   {
-    name: "Planung",
+    labelKey: "planning",
     href: "/planung/overview",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -176,7 +189,7 @@ const planungNavigation: NavigationItem[] = [
     ),
     children: [
       {
-        name: "Übersicht",
+        labelKey: "overview",
         href: "/planung/overview",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -185,7 +198,7 @@ const planungNavigation: NavigationItem[] = [
         ),
       },
       {
-        name: "GSC based",
+        labelKey: "gscBased",
         href: "/planung/marketing",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -194,7 +207,7 @@ const planungNavigation: NavigationItem[] = [
         ),
       },
       {
-        name: "Topic based",
+        labelKey: "topicBased",
         href: "/planung/topics",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -203,7 +216,7 @@ const planungNavigation: NavigationItem[] = [
         ),
       },
       {
-        name: "Question based",
+        labelKey: "questionBased",
         href: "/planung/questions",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -212,7 +225,7 @@ const planungNavigation: NavigationItem[] = [
         ),
       },
       {
-        name: "Keyword based",
+        labelKey: "keywordBased",
         href: "/planung/keywords",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -221,7 +234,7 @@ const planungNavigation: NavigationItem[] = [
         ),
       },
       {
-        name: "Marketing AI",
+        labelKey: "marketingAi",
         href: "/planung/marketing-ai",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -236,7 +249,7 @@ const planungNavigation: NavigationItem[] = [
 // Prozesse-Navigation (SEO KVP, SEO Reifegrad, Briefings)
 const processNavigation: NavigationItem[] = [
   {
-    name: "SEO KVP",
+    labelKey: "seoKvp",
     href: "/ubs-kvp",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -245,7 +258,7 @@ const processNavigation: NavigationItem[] = [
     ),
   },
   {
-    name: "SEO Reifegrad",
+    labelKey: "seoMaturity",
     href: "/seo-reifegrad",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -254,7 +267,7 @@ const processNavigation: NavigationItem[] = [
     ),
   },
   {
-    name: "Briefings",
+    labelKey: "briefings",
     href: "/briefings",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -263,7 +276,7 @@ const processNavigation: NavigationItem[] = [
     ),
     children: [
       {
-        name: "Übersicht",
+        labelKey: "overview",
         href: "/briefings",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -272,7 +285,7 @@ const processNavigation: NavigationItem[] = [
         ),
       },
       {
-        name: "Auswertung",
+        labelKey: "analysis",
         href: "/briefings/auswertung",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -283,7 +296,7 @@ const processNavigation: NavigationItem[] = [
     ],
   },
   {
-    name: "URL Cleanup",
+    labelKey: "urlCleanup",
     href: "/url-cleanup",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -292,7 +305,7 @@ const processNavigation: NavigationItem[] = [
     ),
     children: [
       {
-        name: "Übersicht",
+        labelKey: "overview",
         href: "/url-cleanup",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -301,7 +314,7 @@ const processNavigation: NavigationItem[] = [
         ),
       },
       {
-        name: "Inventar",
+        labelKey: "inventory",
         href: "/url-cleanup/inventar",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -310,7 +323,7 @@ const processNavigation: NavigationItem[] = [
         ),
       },
       {
-        name: "3D-Wolke",
+        labelKey: "cloud3d",
         href: "/url-cleanup/wolke",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -319,7 +332,7 @@ const processNavigation: NavigationItem[] = [
         ),
       },
       {
-        name: "Dimensionen",
+        labelKey: "dimensions",
         href: "/url-cleanup/dimensionen",
         icon: (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -355,21 +368,22 @@ function NavigationItems({
   items: NavigationItem[]; 
   pathname: string;
   expandedItems: Set<string>;
-  onToggleExpand: (name: string) => void;
+  onToggleExpand: (href: string) => void;
 }) {
+  const t = useMessages(commonMessages).nav;
   return (
     <ul role="list" className="space-y-1">
       {items.map((item) => {
         const isActive = pathname === item.href || (item.children && item.children.some(child => pathname === child.href || pathname.startsWith(item.href + "/")));
         const hasChildren = item.children && item.children.length > 0;
-        const isExpanded = expandedItems.has(item.name);
+        const isExpanded = expandedItems.has(item.href);
         
         return (
-          <li key={item.name}>
+          <li key={item.href}>
             {hasChildren ? (
               // Für Items mit Kindern: Button zum Aus-/Einklappen
               <button
-                onClick={() => onToggleExpand(item.name)}
+                onClick={() => onToggleExpand(item.href)}
                 className={`w-full group flex gap-x-3 rounded-lg p-3 text-sm font-medium transition-all duration-200 ${
                   isActive
                     ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
@@ -377,7 +391,7 @@ function NavigationItems({
                 }`}
               >
                 {item.icon}
-                {item.name}
+                {t[item.labelKey]}
                 <ChevronIcon isOpen={isExpanded} />
               </button>
             ) : (
@@ -391,7 +405,7 @@ function NavigationItems({
                 }`}
               >
                 {item.icon}
-                {item.name}
+                {t[item.labelKey]}
               </Link>
             )}
             {/* Ausklappbare Sublinks */}
@@ -405,7 +419,7 @@ function NavigationItems({
                   {item.children!.map((child) => {
                     const isChildActive = pathname === child.href;
                     return (
-                      <li key={child.name}>
+                      <li key={child.href}>
                         <Link
                           href={child.href}
                           className={`group flex gap-x-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 ${
@@ -415,7 +429,7 @@ function NavigationItems({
                           }`}
                         >
                           {child.icon}
-                          {child.name}
+                          {t[child.labelKey]}
                         </Link>
                       </li>
                     );
@@ -441,6 +455,7 @@ export function Sidebar() {
   const isKeywordMappingActive = pathname === "/keyword-mapping";
   const isSuperAgentActive = pathname === "/superagent";
   const isSEOHelperActive = pathname.startsWith("/seo-helper");
+  const t = useMessages(commonMessages);
   
   // State für ausgeklappte Menüpunkte
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
@@ -454,7 +469,7 @@ export function Sidebar() {
       if (item.children) {
         const isChildActive = item.children.some(child => pathname === child.href || (child.href !== item.href && pathname.startsWith(child.href + "/")));
         if (isChildActive || pathname === item.href) {
-          newExpanded.add(item.name);
+          newExpanded.add(item.href);
         }
       }
     });
@@ -469,13 +484,13 @@ export function Sidebar() {
   }, [pathname]);
   
   // Toggle-Funktion für Menüpunkte
-  const handleToggleExpand = (name: string) => {
+  const handleToggleExpand = (href: string) => {
     setExpandedItems(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(name)) {
-        newSet.delete(name);
+      if (newSet.has(href)) {
+        newSet.delete(href);
       } else {
-        newSet.add(name);
+        newSet.add(href);
       }
       return newSet;
     });
@@ -488,7 +503,7 @@ export function Sidebar() {
           <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-white">SME Dashboard</h1>
+          <h1 className="text-xl font-bold text-slate-900 dark:text-white">{t.appName}</h1>
         </div>
         <nav className="flex flex-1 flex-col">
           {/* Hauptnavigation */}
@@ -502,7 +517,7 @@ export function Sidebar() {
           {/* Daten - Menübox */}
           <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
             <h3 className="px-3 mb-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              Daten
+              {t.nav.sections.data}
             </h3>
             <NavigationItems 
               items={dataNavigation} 
@@ -515,7 +530,7 @@ export function Sidebar() {
           {/* Prozesse - Menübox */}
           <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
             <h3 className="px-3 mb-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              Prozesse
+              {t.nav.sections.processes}
             </h3>
             <NavigationItems 
               items={processNavigation} 
@@ -528,7 +543,7 @@ export function Sidebar() {
           {/* Aufgaben - Menübox */}
           <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
             <h3 className="px-3 mb-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              Aufgaben
+              {t.nav.sections.tasks}
             </h3>
             <Link
               href="/tasks"
@@ -541,7 +556,7 @@ export function Sidebar() {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
               </svg>
-              Kanban Board
+              {t.nav.kanban}
             </Link>
             <Link
               href="/redaktionsplan"
@@ -554,7 +569,7 @@ export function Sidebar() {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              Redaktionsplan
+              {t.nav.editorialPlan}
             </Link>
             {hasFullAdminRights(session?.user?.role) && (
               <Link
@@ -568,7 +583,7 @@ export function Sidebar() {
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
-                Content
+                {t.nav.content}
               </Link>
             )}
             <Link
@@ -582,7 +597,7 @@ export function Sidebar() {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              Content Check
+              {t.nav.contentCheck}
             </Link>
             <Link
               href="/customer-journey"
@@ -595,7 +610,7 @@ export function Sidebar() {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
               </svg>
-              Customer Journey
+              {t.nav.customerJourney}
             </Link>
             <Link
               href="/keyword-mapping"
@@ -608,14 +623,14 @@ export function Sidebar() {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
               </svg>
-              Keyword Mapping
+              {t.nav.keywordMapping}
             </Link>
           </div>
 
           {/* Reporting - Menübox */}
           <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
             <h3 className="px-3 mb-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              Reporting
+              {t.nav.sections.reporting}
             </h3>
             <NavigationItems 
               items={reportingNavigation} 
@@ -628,7 +643,7 @@ export function Sidebar() {
           {/* Planung - Menübox */}
           <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
             <h3 className="px-3 mb-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              Marketing Planung
+              {t.nav.sections.planning}
             </h3>
             <NavigationItems 
               items={planungNavigation} 
@@ -651,7 +666,7 @@ export function Sidebar() {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
               </svg>
-              SuperAgent
+              {t.nav.superAgent}
             </Link>
             <Link
               href="/seo-helper"
@@ -664,7 +679,7 @@ export function Sidebar() {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437l1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008z" />
               </svg>
-              SEO Helper
+              {t.nav.seoHelper}
             </Link>
           </div>
           

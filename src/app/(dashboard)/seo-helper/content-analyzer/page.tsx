@@ -2,6 +2,10 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
+import { useLocale, useMessages } from "@/i18n/I18nProvider";
+import { seoHelperContentAnalyzerMessages } from "@/i18n/messages/seo-helper-content-analyzer";
+
+type ReadabilityLevel = "veryEasy" | "easy" | "medium" | "difficult" | "veryDifficult";
 
 interface AnalysisResult {
   wordCount: number;
@@ -14,7 +18,7 @@ interface AnalysisResult {
   keywordCount: number;
   headings: { level: string; text: string }[];
   readabilityScore: number;
-  readabilityLabel: string;
+  readabilityLevel: ReadabilityLevel;
 }
 
 interface UrlFetchResult {
@@ -26,6 +30,8 @@ interface UrlFetchResult {
 }
 
 export default function ContentAnalyzerPage() {
+  const t = useMessages(seoHelperContentAnalyzerMessages);
+  const { intlLocale } = useLocale();
   const [content, setContent] = useState("");
   const [keyword, setKeyword] = useState("");
   const [showAnalysis, setShowAnalysis] = useState(false);
@@ -55,14 +61,14 @@ export default function ContentAnalyzerPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Fehler beim Laden");
+        throw new Error(data.error || t.errors.load);
       }
 
       setContent(data.content);
       setUrlMetadata(data);
       setShowAnalysis(true);
     } catch (err) {
-      setUrlError(err instanceof Error ? err.message : "Unbekannter Fehler");
+      setUrlError(err instanceof Error ? err.message : t.errors.unknown);
     } finally {
       setIsLoadingUrl(false);
     }
@@ -115,12 +121,12 @@ export default function ContentAnalyzerPage() {
       180 - avgWordsPerSentence - (58.5 * avgSyllablesPerWord)
     );
     
-    let readabilityLabel = "";
-    if (readabilityScore >= 60) readabilityLabel = "Sehr leicht";
-    else if (readabilityScore >= 50) readabilityLabel = "Leicht";
-    else if (readabilityScore >= 40) readabilityLabel = "Mittel";
-    else if (readabilityScore >= 30) readabilityLabel = "Schwierig";
-    else readabilityLabel = "Sehr schwierig";
+    let readabilityLevel: ReadabilityLevel;
+    if (readabilityScore >= 60) readabilityLevel = "veryEasy";
+    else if (readabilityScore >= 50) readabilityLevel = "easy";
+    else if (readabilityScore >= 40) readabilityLevel = "medium";
+    else if (readabilityScore >= 30) readabilityLevel = "difficult";
+    else readabilityLevel = "veryDifficult";
 
     return {
       wordCount,
@@ -133,7 +139,7 @@ export default function ContentAnalyzerPage() {
       keywordCount,
       headings,
       readabilityScore: Math.max(0, Math.min(100, readabilityScore)),
-      readabilityLabel,
+      readabilityLevel,
     };
   }, [content, keyword]);
 
@@ -159,8 +165,8 @@ export default function ContentAnalyzerPage() {
           </svg>
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Content Analyzer</h1>
-          <p className="text-slate-500 dark:text-slate-400">Analysiere deinen Content auf SEO-Faktoren</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h1>
+          <p className="text-slate-500 dark:text-slate-400">{t.subtitle}</p>
         </div>
       </div>
 
@@ -182,7 +188,7 @@ export default function ContentAnalyzerPage() {
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  Text eingeben
+                  {t.modeText}
                 </span>
               </button>
               <button
@@ -197,7 +203,7 @@ export default function ContentAnalyzerPage() {
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                   </svg>
-                  Von URL laden
+                  {t.modeUrl}
                 </span>
               </button>
             </div>
@@ -207,7 +213,7 @@ export default function ContentAnalyzerPage() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                    Website URL
+                    {t.websiteUrl}
                   </label>
                   <div className="flex gap-2">
                     <input
@@ -217,7 +223,7 @@ export default function ContentAnalyzerPage() {
                         setUrl(e.target.value);
                         setUrlError("");
                       }}
-                      placeholder="https://www.beispiel.ch/seite"
+                      placeholder={t.urlPlaceholder}
                       className="flex-1 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                       onKeyDown={(e) => e.key === "Enter" && keyword.trim() && handleUrlFetch()}
                     />
@@ -232,14 +238,14 @@ export default function ContentAnalyzerPage() {
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                           </svg>
-                          Laden...
+                          {t.loading}
                         </>
                       ) : (
                         <>
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                           </svg>
-                          Laden
+                          {t.load}
                         </>
                       )}
                     </button>
@@ -263,7 +269,7 @@ export default function ContentAnalyzerPage() {
                       </svg>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-emerald-900 dark:text-emerald-100">
-                          Content erfolgreich geladen
+                          {t.loadedSuccess}
                         </p>
                         <p className="text-xs text-emerald-700 dark:text-emerald-300 truncate">
                           {urlMetadata.url}
@@ -272,20 +278,20 @@ export default function ContentAnalyzerPage() {
                     </div>
                     {urlMetadata.title && (
                       <div>
-                        <span className="text-xs text-emerald-600 dark:text-emerald-400">Title:</span>
+                        <span className="text-xs text-emerald-600 dark:text-emerald-400">{t.titleLabel}</span>
                         <p className="text-sm text-emerald-900 dark:text-emerald-100">{urlMetadata.title}</p>
                       </div>
                     )}
                     {urlMetadata.metaDescription && (
                       <div>
-                        <span className="text-xs text-emerald-600 dark:text-emerald-400">Meta-Description:</span>
+                        <span className="text-xs text-emerald-600 dark:text-emerald-400">{t.metaDescriptionLabel}</span>
                         <p className="text-sm text-emerald-900 dark:text-emerald-100">{urlMetadata.metaDescription}</p>
                       </div>
                     )}
                     {urlMetadata.headings.length > 0 && (
                       <div>
                         <span className="text-xs text-emerald-600 dark:text-emerald-400">
-                          {urlMetadata.headings.length} Überschriften gefunden
+                          {t.headingsFound(urlMetadata.headings.length)}
                         </span>
                       </div>
                     )}
@@ -296,13 +302,13 @@ export default function ContentAnalyzerPage() {
 
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                Ziel-Keyword {inputMode === "url" ? <span className="text-red-500">*</span> : "(optional)"}
+                {t.targetKeyword} {inputMode === "url" ? <span className="text-red-500">*</span> : t.optional}
               </label>
               <input
                 type="text"
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
-                placeholder="z.B. Hypothek Schweiz"
+                placeholder={t.keywordPlaceholder}
                 className={`w-full px-4 py-3 rounded-xl border bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
                   inputMode === "url" && !keyword.trim() 
                     ? "border-amber-300 dark:border-amber-600" 
@@ -311,7 +317,7 @@ export default function ContentAnalyzerPage() {
               />
               {inputMode === "url" && !keyword.trim() && (
                 <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
-                  Bitte gib ein Keyword ein, um die URL zu laden
+                  {t.keywordRequired}
                 </p>
               )}
             </div>
@@ -319,16 +325,16 @@ export default function ContentAnalyzerPage() {
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                  Content {inputMode === "url" && urlMetadata && "(von URL geladen)"}
+                  {t.contentLabel} {inputMode === "url" && urlMetadata && t.loadedFromUrl}
                 </label>
                 <span className="text-xs text-slate-500">
-                  {content.split(/\s+/).filter(w => w.length > 0).length} Wörter
+                  {t.wordCount(content.split(/\s+/).filter(w => w.length > 0).length)}
                 </span>
               </div>
               <textarea
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                placeholder={inputMode === "url" ? "Content wird hier nach dem Laden angezeigt..." : "Füge deinen Text hier ein..."}
+                placeholder={inputMode === "url" ? t.contentPlaceholderUrl : t.contentPlaceholderText}
                 rows={15}
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none font-mono text-sm"
               />
@@ -339,7 +345,7 @@ export default function ContentAnalyzerPage() {
               disabled={!content.trim()}
               className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-medium shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
-              Analysieren
+              {t.analyze}
             </button>
           </div>
 
@@ -350,34 +356,34 @@ export default function ContentAnalyzerPage() {
             // Content improvements
             if (analysis.wordCount < 300) {
               improvements.push({
-                issue: "Zu wenig Content",
-                suggestion: `Erhöhe die Wortanzahl von ${analysis.wordCount} auf mindestens 300 Wörter`
+                issue: t.improvements.tooLittleContent,
+                suggestion: t.improvements.tooLittleContentSuggestion(analysis.wordCount)
               });
             } else if (analysis.wordCount < 1000) {
               improvements.push({
-                issue: "Content könnte umfangreicher sein",
-                suggestion: `Erweitere den Content von ${analysis.wordCount} auf mindestens 1000 Wörter für bessere Rankings`
+                issue: t.improvements.couldBeLonger,
+                suggestion: t.improvements.couldBeLongerSuggestion(analysis.wordCount)
               });
             }
             
             if (analysis.avgWordsPerSentence > 20) {
               improvements.push({
-                issue: "Sätze zu lang",
-                suggestion: `Kürze die Sätze von durchschnittlich ${analysis.avgWordsPerSentence} auf max. 20 Wörter pro Satz`
+                issue: t.improvements.sentencesTooLong,
+                suggestion: t.improvements.sentencesTooLongSuggestion(analysis.avgWordsPerSentence)
               });
             }
             
             if (analysis.paragraphCount < 3) {
               improvements.push({
-                issue: "Zu wenige Absätze",
-                suggestion: "Strukturiere den Text in mindestens 3 Absätze für bessere Lesbarkeit"
+                issue: t.improvements.tooFewParagraphs,
+                suggestion: t.improvements.tooFewParagraphsSuggestion
               });
             }
             
             if (analysis.readabilityScore < 30) {
               improvements.push({
-                issue: "Schwere Lesbarkeit",
-                suggestion: "Vereinfache die Sprache und verwende kürzere Sätze und einfachere Wörter"
+                issue: t.improvements.hardToRead,
+                suggestion: t.improvements.hardToReadSuggestion
               });
             }
             
@@ -385,18 +391,18 @@ export default function ContentAnalyzerPage() {
             if (keyword) {
               if (analysis.keywordCount === 0) {
                 improvements.push({
-                  issue: "Keyword fehlt",
-                  suggestion: `Füge das Keyword "${keyword}" natürlich in den Text ein`
+                  issue: t.improvements.keywordMissing,
+                  suggestion: t.improvements.keywordMissingSuggestion(keyword)
                 });
               } else if (analysis.keywordDensity < 1) {
                 improvements.push({
-                  issue: "Keyword-Dichte zu niedrig",
-                  suggestion: `Erhöhe die Keyword-Dichte von ${analysis.keywordDensity.toFixed(2)}% auf 1-2.5%`
+                  issue: t.improvements.densityTooLow,
+                  suggestion: t.improvements.densityTooLowSuggestion(analysis.keywordDensity.toFixed(2))
                 });
               } else if (analysis.keywordDensity > 2.5) {
                 improvements.push({
-                  issue: "Keyword-Stuffing",
-                  suggestion: `Reduziere die Keyword-Dichte von ${analysis.keywordDensity.toFixed(2)}% auf 1-2.5%`
+                  issue: t.improvements.keywordStuffing,
+                  suggestion: t.improvements.keywordStuffingSuggestion(analysis.keywordDensity.toFixed(2))
                 });
               }
             }
@@ -405,31 +411,31 @@ export default function ContentAnalyzerPage() {
             if (urlMetadata) {
               if (!urlMetadata.title) {
                 improvements.push({
-                  issue: "Title-Tag fehlt",
-                  suggestion: "Füge einen aussagekräftigen Title-Tag hinzu (50-60 Zeichen)"
+                  issue: t.improvements.titleMissing,
+                  suggestion: t.improvements.titleMissingSuggestion
                 });
               }
               if (!urlMetadata.metaDescription) {
                 improvements.push({
-                  issue: "Meta-Description fehlt",
-                  suggestion: "Füge eine Meta-Description hinzu (150-160 Zeichen)"
+                  issue: t.improvements.metaMissing,
+                  suggestion: t.improvements.metaMissingSuggestion
                 });
               }
               if (!urlMetadata.headings.some(h => h.level === "H1")) {
                 improvements.push({
-                  issue: "H1-Überschrift fehlt",
-                  suggestion: "Füge eine H1-Überschrift als Haupttitel der Seite hinzu"
+                  issue: t.improvements.h1Missing,
+                  suggestion: t.improvements.h1MissingSuggestion
                 });
               } else if (urlMetadata.headings.filter(h => h.level === "H1").length > 1) {
                 improvements.push({
-                  issue: "Mehrere H1-Überschriften",
-                  suggestion: `Reduziere die ${urlMetadata.headings.filter(h => h.level === "H1").length} H1-Überschriften auf genau eine`
+                  issue: t.improvements.multipleH1,
+                  suggestion: t.improvements.multipleH1Suggestion(urlMetadata.headings.filter(h => h.level === "H1").length)
                 });
               }
               if (!urlMetadata.headings.some(h => h.level === "H2")) {
                 improvements.push({
-                  issue: "H2-Überschriften fehlen",
-                  suggestion: "Strukturiere den Content mit H2-Überschriften für Abschnitte"
+                  issue: t.improvements.h2Missing,
+                  suggestion: t.improvements.h2MissingSuggestion
                 });
               }
             }
@@ -443,7 +449,7 @@ export default function ContentAnalyzerPage() {
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
-                    Verbesserungsvorschläge ({improvements.length})
+                    {t.improvements.heading(improvements.length)}
                   </h3>
                   <div className="flex items-center gap-2">
                     {taskCopySuccess && (
@@ -451,24 +457,24 @@ export default function ContentAnalyzerPage() {
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
-                        Kopiert
+                        {t.improvements.copied}
                       </span>
                     )}
                     <button
                       type="button"
                       onClick={async () => {
-                        const taskText = `Content-Optimierung: ${urlMetadata?.title || urlMetadata?.url || "Content Analyse"}
-${urlMetadata?.url ? `URL: ${urlMetadata.url}\n` : ""}${keyword ? `Keyword: ${keyword}\n` : ""}
-Verbesserungsvorschläge (${improvements.length}):
+                        const taskText = `${t.task.title(urlMetadata?.title || urlMetadata?.url || t.task.fallbackName)}
+${urlMetadata?.url ? `${t.task.url(urlMetadata.url)}\n` : ""}${keyword ? `${t.task.keyword(keyword)}\n` : ""}
+${t.task.improvements(improvements.length)}
 
 ${improvements.map((imp, i) => `${i + 1}. ${imp.issue}
    → ${imp.suggestion}`).join("\n\n")}
 
-Aktuelle Werte:
-- Wörter: ${analysis.wordCount}
-- Lesbarkeit: ${analysis.readabilityScore}/100 (${analysis.readabilityLabel})
-- Wörter/Satz: ${analysis.avgWordsPerSentence}
-${keyword ? `- Keyword-Dichte: ${analysis.keywordDensity.toFixed(2)}%` : ""}`;
+${t.task.currentValues}
+${t.task.words(analysis.wordCount)}
+${t.task.readability(analysis.readabilityScore, t.readability.levels[analysis.readabilityLevel])}
+${t.task.wordsPerSentence(analysis.avgWordsPerSentence)}
+${keyword ? t.task.keywordDensity(analysis.keywordDensity.toFixed(2)) : ""}`;
                         
                         await navigator.clipboard.writeText(taskText);
                         setTaskCopySuccess(true);
@@ -479,7 +485,7 @@ ${keyword ? `- Keyword-Dichte: ${analysis.keywordDensity.toFixed(2)}%` : ""}`;
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
                       </svg>
-                      Als Task kopieren
+                      {t.improvements.copyAsTask}
                     </button>
                   </div>
                 </div>
@@ -510,29 +516,29 @@ ${keyword ? `- Keyword-Dichte: ${analysis.keywordDensity.toFixed(2)}%` : ""}`;
             <>
               {/* Quick Stats */}
               <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
-                <h3 className="font-semibold text-slate-900 dark:text-white mb-4">Übersicht</h3>
+                <h3 className="font-semibold text-slate-900 dark:text-white mb-4">{t.overview}</h3>
                 <div className="grid grid-cols-2 gap-4">
-                  <StatBox label="Wörter" value={analysis.wordCount.toLocaleString()} />
-                  <StatBox label="Zeichen" value={analysis.charCount.toLocaleString()} />
-                  <StatBox label="Sätze" value={analysis.sentenceCount.toString()} />
-                  <StatBox label="Absätze" value={analysis.paragraphCount.toString()} />
-                  <StatBox label="Lesezeit" value={`${analysis.readingTime} min`} />
-                  <StatBox label="Wörter/Satz" value={analysis.avgWordsPerSentence.toString()} />
+                  <StatBox label={t.stats.words} value={analysis.wordCount.toLocaleString(intlLocale)} />
+                  <StatBox label={t.stats.characters} value={analysis.charCount.toLocaleString(intlLocale)} />
+                  <StatBox label={t.stats.sentences} value={analysis.sentenceCount.toString()} />
+                  <StatBox label={t.stats.paragraphs} value={analysis.paragraphCount.toString()} />
+                  <StatBox label={t.stats.readingTime} value={t.stats.readingTimeValue(analysis.readingTime)} />
+                  <StatBox label={t.stats.wordsPerSentence} value={analysis.avgWordsPerSentence.toString()} />
                 </div>
               </div>
 
               {/* Readability */}
               <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
                 <div className="flex items-center gap-2 mb-4">
-                  <h3 className="font-semibold text-slate-900 dark:text-white">Lesbarkeit</h3>
+                  <h3 className="font-semibold text-slate-900 dark:text-white">{t.readability.heading}</h3>
                   <div className="relative group">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 cursor-help transition-colors">
                       <path fillRule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0ZM8.94 6.94a.75.75 0 1 1-1.061-1.061 3.75 3.75 0 1 1 0 5.304.75.75 0 0 1 1.06-1.06 2.25 2.25 0 1 0 0-3.183ZM10 15a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clipRule="evenodd" />
                     </svg>
                     <div className="invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-64 bg-slate-900 dark:bg-slate-700 text-white text-xs rounded-lg px-3 py-2 shadow-lg z-50">
-                      <p className="mb-1">Berechnung nach dem <strong>Flesch-Reading-Ease</strong>-Index, angepasst für deutsche Texte.</p>
+                      <p className="mb-1">{t.readability.tooltipBefore}<strong>Flesch-Reading-Ease</strong>{t.readability.tooltipAfter}</p>
                       <a href="https://simple.wikipedia.org/wiki/Flesch_Reading_Ease" target="_blank" rel="noopener noreferrer" className="text-blue-300 hover:text-blue-200 underline">
-                        Mehr erfahren →
+                        {t.readability.learnMore}
                       </a>
                       <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-x-[6px] border-x-transparent border-t-[6px] border-t-slate-900 dark:border-t-slate-700" />
                     </div>
@@ -540,7 +546,7 @@ ${keyword ? `- Keyword-Dichte: ${analysis.keywordDensity.toFixed(2)}%` : ""}`;
                 </div>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-slate-600 dark:text-slate-400">Score</span>
+                    <span className="text-sm text-slate-600 dark:text-slate-400">{t.readability.score}</span>
                     <span className={`font-semibold ${
                       analysis.readabilityScore >= 50 ? "text-green-600" : 
                       analysis.readabilityScore >= 30 ? "text-amber-600" : "text-red-600"
@@ -557,25 +563,25 @@ ${keyword ? `- Keyword-Dichte: ${analysis.keywordDensity.toFixed(2)}%` : ""}`;
                       style={{ width: `${analysis.readabilityScore}%` }}
                     />
                   </div>
-                  <p className="text-sm text-slate-500">{analysis.readabilityLabel}</p>
+                  <p className="text-sm text-slate-500">{t.readability.levels[analysis.readabilityLevel]}</p>
                 </div>
               </div>
 
               {/* Keyword Analysis */}
               {keyword && (
                 <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
-                  <h3 className="font-semibold text-slate-900 dark:text-white mb-4">Keyword-Analyse</h3>
+                  <h3 className="font-semibold text-slate-900 dark:text-white mb-4">{t.keywordAnalysis.heading}</h3>
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-slate-600 dark:text-slate-400">Keyword</span>
+                      <span className="text-sm text-slate-600 dark:text-slate-400">{t.keywordAnalysis.keyword}</span>
                       <span className="font-medium text-slate-900 dark:text-white">{keyword}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-slate-600 dark:text-slate-400">Vorkommen</span>
-                      <span className="font-semibold text-slate-900 dark:text-white">{analysis.keywordCount}x</span>
+                      <span className="text-sm text-slate-600 dark:text-slate-400">{t.keywordAnalysis.occurrences}</span>
+                      <span className="font-semibold text-slate-900 dark:text-white">{t.keywordAnalysis.occurrencesValue(analysis.keywordCount)}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-slate-600 dark:text-slate-400">Dichte</span>
+                      <span className="text-sm text-slate-600 dark:text-slate-400">{t.keywordAnalysis.density}</span>
                       <span className={`font-semibold ${
                         analysis.keywordDensity >= 1 && analysis.keywordDensity <= 2.5 ? "text-green-600" :
                         analysis.keywordDensity > 2.5 ? "text-red-600" : "text-amber-600"
@@ -585,9 +591,9 @@ ${keyword ? `- Keyword-Dichte: ${analysis.keywordDensity.toFixed(2)}%` : ""}`;
                     </div>
                     <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50">
                       <p className="text-xs text-slate-500">
-                        {analysis.keywordDensity < 1 && "Die Keyword-Dichte ist niedrig. Versuche das Keyword natürlicher einzubauen."}
-                        {analysis.keywordDensity >= 1 && analysis.keywordDensity <= 2.5 && "Optimale Keyword-Dichte!"}
-                        {analysis.keywordDensity > 2.5 && "Die Keyword-Dichte ist hoch. Vermeide Keyword-Stuffing."}
+                        {analysis.keywordDensity < 1 && t.keywordAnalysis.densityLow}
+                        {analysis.keywordDensity >= 1 && analysis.keywordDensity <= 2.5 && t.keywordAnalysis.densityOptimal}
+                        {analysis.keywordDensity > 2.5 && t.keywordAnalysis.densityHigh}
                       </p>
                     </div>
                   </div>
@@ -597,7 +603,7 @@ ${keyword ? `- Keyword-Dichte: ${analysis.keywordDensity.toFixed(2)}%` : ""}`;
               {/* Headings from URL */}
               {urlMetadata && urlMetadata.headings.length > 0 && (
                 <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
-                  <h3 className="font-semibold text-slate-900 dark:text-white mb-4">Überschriften-Struktur</h3>
+                  <h3 className="font-semibold text-slate-900 dark:text-white mb-4">{t.headingStructure}</h3>
                   <div className="space-y-2 max-h-48 overflow-y-auto">
                     {urlMetadata.headings.map((heading, index) => (
                       <div 
@@ -623,33 +629,33 @@ ${keyword ? `- Keyword-Dichte: ${analysis.keywordDensity.toFixed(2)}%` : ""}`;
 
               {/* SEO Checklist */}
               <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
-                <h3 className="font-semibold text-slate-900 dark:text-white mb-4">SEO Checkliste</h3>
+                <h3 className="font-semibold text-slate-900 dark:text-white mb-4">{t.checklist.heading}</h3>
                 <ul className="space-y-2">
                   <ChecklistItem 
                     checked={analysis.wordCount >= 300} 
-                    label="Mindestens 300 Wörter" 
+                    label={t.checklist.min300} 
                   />
                   <ChecklistItem 
                     checked={analysis.wordCount >= 1000} 
-                    label="Mindestens 1000 Wörter (empfohlen)" 
+                    label={t.checklist.min1000} 
                   />
                   <ChecklistItem 
                     checked={analysis.avgWordsPerSentence <= 20} 
-                    label="Kurze Sätze (max. 20 Wörter/Satz)" 
+                    label={t.checklist.shortSentences} 
                   />
                   <ChecklistItem 
                     checked={analysis.paragraphCount >= 3} 
-                    label="Mehrere Absätze vorhanden" 
+                    label={t.checklist.multipleParagraphs} 
                   />
                   {keyword && (
                     <>
                       <ChecklistItem 
                         checked={analysis.keywordCount > 0} 
-                        label="Keyword im Text vorhanden" 
+                        label={t.checklist.keywordPresent} 
                       />
                       <ChecklistItem 
                         checked={analysis.keywordDensity >= 1 && analysis.keywordDensity <= 2.5} 
-                        label="Optimale Keyword-Dichte (1-2.5%)" 
+                        label={t.checklist.optimalDensity} 
                       />
                     </>
                   )}
@@ -657,23 +663,23 @@ ${keyword ? `- Keyword-Dichte: ${analysis.keywordDensity.toFixed(2)}%` : ""}`;
                     <>
                       <ChecklistItem 
                         checked={!!urlMetadata.title} 
-                        label="Title-Tag vorhanden" 
+                        label={t.checklist.titlePresent} 
                       />
                       <ChecklistItem 
                         checked={!!urlMetadata.metaDescription} 
-                        label="Meta-Description vorhanden" 
+                        label={t.checklist.metaPresent} 
                       />
                       <ChecklistItem 
                         checked={urlMetadata.headings.some(h => h.level === "H1")} 
-                        label="H1-Überschrift vorhanden" 
+                        label={t.checklist.h1Present} 
                       />
                       <ChecklistItem 
                         checked={urlMetadata.headings.filter(h => h.level === "H1").length === 1} 
-                        label="Genau eine H1-Überschrift" 
+                        label={t.checklist.exactlyOneH1} 
                       />
                       <ChecklistItem 
                         checked={urlMetadata.headings.some(h => h.level === "H2")} 
-                        label="H2-Überschriften vorhanden" 
+                        label={t.checklist.h2Present} 
                       />
                     </>
                   )}
@@ -683,7 +689,7 @@ ${keyword ? `- Keyword-Dichte: ${analysis.keywordDensity.toFixed(2)}%` : ""}`;
           ) : (
             <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 flex items-center justify-center min-h-[200px]">
               <p className="text-slate-500 text-center">
-                Füge Content ein und klicke auf "Analysieren"
+                {t.emptyState}
               </p>
             </div>
           )}

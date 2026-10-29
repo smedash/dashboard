@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useLocale, useMessages } from "@/i18n/I18nProvider";
+import { seoHelperBenchmarkerMessages } from "@/i18n/messages/seo-helper-benchmarker";
 
 interface SerpResult {
   rank: number;
@@ -51,6 +53,8 @@ interface AnalysisResult {
 }
 
 export default function BenchmarkerPage() {
+  const t = useMessages(seoHelperBenchmarkerMessages);
+  const { intlLocale } = useLocale();
   // Step 1: Keyword & SERP
   const [keyword, setKeyword] = useState("");
   const [serpResults, setSerpResults] = useState<SerpResult[]>([]);
@@ -86,12 +90,12 @@ export default function BenchmarkerPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Fehler bei der SERP-Abfrage");
+        throw new Error(data.error || t.errors.serpFailed);
       }
 
       setSerpResults(data.results);
     } catch (err) {
-      setSerpError(err instanceof Error ? err.message : "Unbekannter Fehler");
+      setSerpError(err instanceof Error ? err.message : t.errors.unknown);
     } finally {
       setIsLoadingSerp(false);
     }
@@ -139,12 +143,12 @@ export default function BenchmarkerPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Fehler bei der Analyse");
+        throw new Error(data.error || t.errors.analysisFailed);
       }
 
       setAnalysisResult(data);
     } catch (err) {
-      setAnalysisError(err instanceof Error ? err.message : "Unbekannter Fehler");
+      setAnalysisError(err instanceof Error ? err.message : t.errors.unknown);
     } finally {
       setIsAnalyzing(false);
     }
@@ -163,14 +167,7 @@ export default function BenchmarkerPage() {
     }
   };
 
-  const getPriorityLabel = (priority: string) => {
-    switch (priority) {
-      case "high": return "Hoch";
-      case "medium": return "Mittel";
-      case "low": return "Niedrig";
-      default: return priority;
-    }
-  };
+  const getPriorityLabel = (priority: string) => t.priorities[priority] ?? priority;
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
@@ -225,8 +222,8 @@ export default function BenchmarkerPage() {
           </svg>
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Benchmarker</h1>
-          <p className="text-slate-500 dark:text-slate-400">Vergleiche deinen Content mit den Top-Konkurrenten</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h1>
+          <p className="text-slate-500 dark:text-slate-400">{t.subtitle}</p>
         </div>
       </div>
 
@@ -236,7 +233,7 @@ export default function BenchmarkerPage() {
           <div className="flex items-center justify-center w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-900/50 text-orange-600 dark:text-orange-400 font-semibold text-sm">
             1
           </div>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Keyword eingeben</h2>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{t.step1.title}</h2>
         </div>
         
         <div className="flex gap-3">
@@ -245,7 +242,7 @@ export default function BenchmarkerPage() {
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSearchSerp()}
-            placeholder="z.B. Hypothek Schweiz, Kreditkarte vergleichen..."
+            placeholder={t.step1.placeholder}
             className="flex-1 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
           />
           <button
@@ -259,14 +256,14 @@ export default function BenchmarkerPage() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
-                Suche...
+                {t.step1.searching}
               </>
             ) : (
               <>
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
-                SERP laden
+                {t.step1.loadSerp}
               </>
             )}
           </button>
@@ -279,7 +276,7 @@ export default function BenchmarkerPage() {
         )}
 
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          Sucht die Top 10 Google-Ergebnisse für dein Keyword in der Schweiz
+          {t.step1.hint}
         </p>
       </div>
 
@@ -291,13 +288,13 @@ export default function BenchmarkerPage() {
               <div className="flex items-center justify-center w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-900/50 text-orange-600 dark:text-orange-400 font-semibold text-sm">
                 2
               </div>
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Konkurrenten auswählen</h2>
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{t.step2.title}</h2>
             </div>
             <button
               onClick={toggleAllUrls}
               className="text-sm text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300"
             >
-              {selectedUrls.size === serpResults.length ? "Alle abwählen" : "Alle auswählen"}
+              {selectedUrls.size === serpResults.length ? t.step2.deselectAll : t.step2.selectAll}
             </button>
           </div>
 
@@ -344,7 +341,7 @@ export default function BenchmarkerPage() {
 
           <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              {selectedUrls.size} von {serpResults.length} Konkurrenten ausgewählt
+              {t.step2.selectedCount(selectedUrls.size, serpResults.length)}
             </p>
           </div>
         </div>
@@ -357,7 +354,7 @@ export default function BenchmarkerPage() {
             <div className="flex items-center justify-center w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-900/50 text-orange-600 dark:text-orange-400 font-semibold text-sm">
               3
             </div>
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Eigene URL eingeben & analysieren</h2>
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{t.step3.title}</h2>
           </div>
 
           <div className="flex gap-3">
@@ -365,7 +362,7 @@ export default function BenchmarkerPage() {
               type="url"
               value={ownUrl}
               onChange={(e) => setOwnUrl(e.target.value)}
-              placeholder="https://www.deine-seite.ch/deine-unterseite"
+              placeholder={t.step3.placeholder}
               className="flex-1 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
             />
             <button
@@ -379,14 +376,14 @@ export default function BenchmarkerPage() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
-                  Analysiere...
+                  {t.step3.analyzing}
                 </>
               ) : (
                 <>
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                   </svg>
-                  Analyse starten
+                  {t.step3.startAnalysis}
                 </>
               )}
             </button>
@@ -399,7 +396,7 @@ export default function BenchmarkerPage() {
           )}
 
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Deine URL wird mit {selectedUrls.size} Konkurrenten verglichen
+            {t.step3.hint(selectedUrls.size)}
           </p>
         </div>
       )}
@@ -411,44 +408,44 @@ export default function BenchmarkerPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
               <div className="text-2xl font-bold text-slate-900 dark:text-white">
-                {analysisResult.summary.ownWordCount.toLocaleString()}
+                {analysisResult.summary.ownWordCount.toLocaleString(intlLocale)}
               </div>
-              <div className="text-sm text-slate-500 dark:text-slate-400">Wörter (Deine Seite)</div>
+              <div className="text-sm text-slate-500 dark:text-slate-400">{t.stats.ownWords}</div>
               <div className={`text-xs mt-1 ${
                 analysisResult.summary.ownWordCount >= analysisResult.summary.avgCompetitorWordCount 
                   ? "text-green-600" : "text-red-600"
               }`}>
-                vs. Ø {analysisResult.summary.avgCompetitorWordCount.toLocaleString()} (Konkurrenz)
+                {t.stats.vsCompetitors(analysisResult.summary.avgCompetitorWordCount.toLocaleString(intlLocale))}
               </div>
             </div>
             <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
               <div className="text-2xl font-bold text-slate-900 dark:text-white">
                 {analysisResult.summary.ownHeadingsCount}
               </div>
-              <div className="text-sm text-slate-500 dark:text-slate-400">Überschriften</div>
+              <div className="text-sm text-slate-500 dark:text-slate-400">{t.stats.headings}</div>
               <div className={`text-xs mt-1 ${
                 analysisResult.summary.ownHeadingsCount >= analysisResult.summary.avgCompetitorHeadingsCount 
                   ? "text-green-600" : "text-red-600"
               }`}>
-                vs. Ø {analysisResult.summary.avgCompetitorHeadingsCount} (Konkurrenz)
+                {t.stats.vsCompetitors(String(analysisResult.summary.avgCompetitorHeadingsCount))}
               </div>
             </div>
             <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
               <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
                 {analysisResult.contentGaps.length}
               </div>
-              <div className="text-sm text-slate-500 dark:text-slate-400">Content Gaps</div>
+              <div className="text-sm text-slate-500 dark:text-slate-400">{t.stats.contentGaps}</div>
               <div className="text-xs mt-1 text-slate-400">
-                Themen die fehlen
+                {t.stats.missingTopics}
               </div>
             </div>
             <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
               <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                 {analysisResult.recommendations.length}
               </div>
-              <div className="text-sm text-slate-500 dark:text-slate-400">Empfehlungen</div>
+              <div className="text-sm text-slate-500 dark:text-slate-400">{t.stats.recommendations}</div>
               <div className="text-xs mt-1 text-slate-400">
-                Verbesserungsvorschläge
+                {t.stats.improvements}
               </div>
             </div>
           </div>
@@ -462,11 +459,11 @@ export default function BenchmarkerPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
                 </div>
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Content Gaps</h2>
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{t.contentGaps.title}</h2>
               </div>
 
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                Diese Themen werden von deinen Konkurrenten behandelt, fehlen aber auf deiner Seite:
+                {t.contentGaps.intro}
               </p>
 
               <div className="space-y-3">
@@ -491,7 +488,7 @@ export default function BenchmarkerPage() {
                         {gap.foundIn && gap.foundIn.length > 0 && (
                           <div className="mt-2">
                             <p className="text-xs text-slate-400">
-                              Gefunden bei: {gap.foundIn.map(url => new URL(url).hostname).join(", ")}
+                              {t.contentGaps.foundIn(gap.foundIn.map(url => new URL(url).hostname).join(", "))}
                             </p>
                           </div>
                         )}
@@ -512,11 +509,11 @@ export default function BenchmarkerPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                   </svg>
                 </div>
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Empfehlungen</h2>
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{t.recommendations.title}</h2>
               </div>
 
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                Konkrete Verbesserungsvorschläge basierend auf der Analyse:
+                {t.recommendations.intro}
               </p>
 
               <div className="space-y-3">
@@ -532,7 +529,7 @@ export default function BenchmarkerPage() {
                       <div className="flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400">
-                            {rec.category}
+                            {t.categories[rec.category] ?? rec.category}
                           </span>
                           <h3 className="font-medium text-slate-900 dark:text-white">
                             {rec.title}
@@ -560,30 +557,30 @@ export default function BenchmarkerPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
               </div>
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Analysierte Konkurrenten</h2>
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{t.competitors.title}</h2>
             </div>
 
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 dark:border-slate-700">
-                    <th className="text-left py-2 px-3 font-medium text-slate-500 dark:text-slate-400">URL</th>
-                    <th className="text-right py-2 px-3 font-medium text-slate-500 dark:text-slate-400">Wörter</th>
-                    <th className="text-right py-2 px-3 font-medium text-slate-500 dark:text-slate-400">Überschriften</th>
+                    <th className="text-left py-2 px-3 font-medium text-slate-500 dark:text-slate-400">{t.competitors.url}</th>
+                    <th className="text-right py-2 px-3 font-medium text-slate-500 dark:text-slate-400">{t.competitors.words}</th>
+                    <th className="text-right py-2 px-3 font-medium text-slate-500 dark:text-slate-400">{t.competitors.headings}</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr className="border-b border-slate-200 dark:border-slate-700 bg-orange-50 dark:bg-orange-900/20">
                     <td className="py-2 px-3">
                       <div className="flex items-center gap-2">
-                        <span className="px-1.5 py-0.5 text-xs font-medium bg-orange-500 text-white rounded">Du</span>
+                        <span className="px-1.5 py-0.5 text-xs font-medium bg-orange-500 text-white rounded">{t.competitors.you}</span>
                         <span className="truncate max-w-xs" title={analysisResult.ownContent.url}>
                           {new URL(analysisResult.ownContent.url).hostname}
                         </span>
                       </div>
                     </td>
                     <td className="text-right py-2 px-3 font-medium text-slate-900 dark:text-white">
-                      {analysisResult.ownContent.wordCount.toLocaleString()}
+                      {analysisResult.ownContent.wordCount.toLocaleString(intlLocale)}
                     </td>
                     <td className="text-right py-2 px-3 font-medium text-slate-900 dark:text-white">
                       {analysisResult.ownContent.headings.length}
@@ -597,7 +594,7 @@ export default function BenchmarkerPage() {
                         </span>
                       </td>
                       <td className="text-right py-2 px-3 text-slate-600 dark:text-slate-400">
-                        {comp.wordCount.toLocaleString()}
+                        {comp.wordCount.toLocaleString(intlLocale)}
                       </td>
                       <td className="text-right py-2 px-3 text-slate-600 dark:text-slate-400">
                         {comp.headings.length}
@@ -620,23 +617,21 @@ export default function BenchmarkerPage() {
             </svg>
           </div>
           <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-            Content-Benchmark starten
+            {t.empty.title}
           </h3>
           <p className="text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-            Gib ein Keyword ein, um die Top 10 Google-Ergebnisse in der Schweiz zu laden. 
-            Wähle dann Konkurrenten aus und vergleiche deinen Content mit deren Inhalten.
+            {t.empty.text}
           </p>
         </div>
       )}
 
       {/* Info Note */}
       <div className="bg-orange-50 dark:bg-orange-900/20 rounded-xl p-4 border border-orange-200 dark:border-orange-800">
-        <h3 className="font-medium text-orange-900 dark:text-orange-100 mb-2">So funktioniert der Benchmarker</h3>
+        <h3 className="font-medium text-orange-900 dark:text-orange-100 mb-2">{t.howItWorks.title}</h3>
         <ul className="text-sm text-orange-800 dark:text-orange-200 space-y-1">
-          <li>1. Gib ein Keyword ein und lade die Top 10 Suchergebnisse aus der Schweiz</li>
-          <li>2. Wähle die Konkurrenten aus, mit denen du dich vergleichen möchtest</li>
-          <li>3. Gib deine eigene URL ein und starte die Analyse</li>
-          <li>4. Erhalte Content-Gaps und konkrete Verbesserungsvorschläge</li>
+          {t.howItWorks.steps.map((step) => (
+            <li key={step}>{step}</li>
+          ))}
         </ul>
       </div>
     </div>

@@ -1,101 +1,106 @@
+import type { Locale } from '@/i18n/config';
+import { urlCheckerUserExperienceMessages } from '@/i18n/messages/url-checker/user-experience';
 import { CheckResult, ParsedPage } from '../types';
 
-export function runUserExperienceChecks(page: ParsedPage): CheckResult[] {
+type Texts = (typeof urlCheckerUserExperienceMessages)[Locale];
+
+export function runUserExperienceChecks(page: ParsedPage, locale: Locale): CheckResult[] {
+  const t = urlCheckerUserExperienceMessages[locale];
   const checks: CheckResult[] = [];
 
-  checks.push(checkResourceCount(page));
-  checks.push(checkRenderBlockingScripts(page));
-  checks.push(checkContentAboveFold(page));
+  checks.push(checkResourceCount(page, t));
+  checks.push(checkRenderBlockingScripts(page, t));
+  checks.push(checkContentAboveFold(page, t));
 
   return checks;
 }
 
-function checkResourceCount(page: ParsedPage): CheckResult {
+function checkResourceCount(page: ParsedPage, t: Texts): CheckResult {
   const jsCount = page.scripts.filter(s => s.src).length;
   const cssCount = page.stylesheets.length;
   const total = jsCount + cssCount;
 
   if (total > 50) {
     return {
-      factor: 'Ressourcen-Anzahl (Clutter)',
+      factor: t.resources.factor,
       status: 'fail',
       value: `${jsCount} JS, ${cssCount} CSS`,
-      recommendation: `${total} externe Ressourcen geladen. Google's clutterScore bestraft Seiten mit vielen ablenkenden/bremsenden Ressourcen. B\u00fcndle und reduziere.`,
+      recommendation: t.resources.failRecommendation(total),
       leakAttribute: 'nsr.clutterScore',
     };
   }
 
   if (total > 25) {
     return {
-      factor: 'Ressourcen-Anzahl (Clutter)',
+      factor: t.resources.factor,
       status: 'warn',
       value: `${jsCount} JS, ${cssCount} CSS`,
-      recommendation: `${total} Ressourcen geladen. Pr\u00fcfe ob alle n\u00f6tig sind \u2013 weniger Ressourcen = schnelleres Rendering = bessere UX-Signale (NavBoost).`,
+      recommendation: t.resources.warnRecommendation(total),
       leakAttribute: 'nsr.clutterScore',
     };
   }
 
   return {
-    factor: 'Ressourcen-Anzahl (Clutter)',
+    factor: t.resources.factor,
     status: 'pass',
     value: `${jsCount} JS, ${cssCount} CSS`,
-    recommendation: 'Moderate Ressourcen-Anzahl \u2013 gutes Zeichen f\u00fcr schnelles Rendering.',
+    recommendation: t.resources.passRecommendation,
     leakAttribute: 'nsr.clutterScore',
   };
 }
 
-function checkRenderBlockingScripts(page: ParsedPage): CheckResult {
+function checkRenderBlockingScripts(page: ParsedPage, t: Texts): CheckResult {
   const blockingScripts = page.scripts.filter(s => s.src && !s.isAsync && !s.isDefer);
 
   if (blockingScripts.length > 5) {
     return {
-      factor: 'Render-blockierende Skripte',
+      factor: t.renderBlocking.factor,
       status: 'fail',
-      value: `${blockingScripts.length} blockierend`,
-      recommendation: `${blockingScripts.length} Skripte ohne async/defer blockieren das Rendering. Dies verz\u00f6gert den First Paint und erh\u00f6ht die Absprungrate (NavBoost-Signal).`,
+      value: t.renderBlocking.blockingValue(blockingScripts.length),
+      recommendation: t.renderBlocking.failRecommendation(blockingScripts.length),
       leakAttribute: 'navBoost.renderBlocking',
     };
   }
 
   if (blockingScripts.length > 2) {
     return {
-      factor: 'Render-blockierende Skripte',
+      factor: t.renderBlocking.factor,
       status: 'warn',
-      value: `${blockingScripts.length} blockierend`,
-      recommendation: `${blockingScripts.length} render-blockierende Skripte. F\u00fcge async oder defer hinzu f\u00fcr schnelleres Laden.`,
+      value: t.renderBlocking.blockingValue(blockingScripts.length),
+      recommendation: t.renderBlocking.warnRecommendation(blockingScripts.length),
       leakAttribute: 'navBoost.renderBlocking',
     };
   }
 
   return {
-    factor: 'Render-blockierende Skripte',
+    factor: t.renderBlocking.factor,
     status: 'pass',
-    value: blockingScripts.length === 0 ? 'Keine' : `${blockingScripts.length}`,
-    recommendation: 'Skripte sind gut optimiert (async/defer).',
+    value: blockingScripts.length === 0 ? t.renderBlocking.noneValue : `${blockingScripts.length}`,
+    recommendation: t.renderBlocking.passRecommendation,
     leakAttribute: 'navBoost.renderBlocking',
   };
 }
 
-function checkContentAboveFold(page: ParsedPage): CheckResult {
+function checkContentAboveFold(page: ParsedPage, t: Texts): CheckResult {
   // Heuristic: check if meaningful content appears early in the HTML
   const headSection = page.textContent.slice(0, 500);
   const words = headSection.split(/\s+/).filter(w => w.length > 3);
 
   if (words.length < 10) {
     return {
-      factor: 'Content Above-the-Fold',
+      factor: t.aboveFold.factor,
       status: 'warn',
-      value: `${words.length} W\u00f6rter im oberen Bereich`,
-      recommendation: 'Wenig sichtbarer Content im oberen Seitenbereich. Nutzer (und NavBoost) bewerten, ob sofort relevanter Inhalt sichtbar ist.',
+      value: t.aboveFold.wordsValue(words.length),
+      recommendation: t.aboveFold.warnRecommendation,
       leakAttribute: 'navBoost.aboveFoldContent',
     };
   }
 
   return {
-    factor: 'Content Above-the-Fold',
+    factor: t.aboveFold.factor,
     status: 'pass',
-    value: 'Ausreichend',
-    recommendation: 'Content ist fr\u00fch im Dokument verf\u00fcgbar \u2013 gutes Signal f\u00fcr schnelle Nutzerzufriedenheit.',
+    value: t.aboveFold.passValue,
+    recommendation: t.aboveFold.passRecommendation,
     leakAttribute: 'navBoost.aboveFoldContent',
   };
 }

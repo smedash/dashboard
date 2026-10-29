@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState, ReactElement, forwardRef, useImperativeHandle, useRef, useCallback } from "react";
+import { useMessages } from "@/i18n/I18nProvider";
+import { chartsMessages } from "@/i18n/messages/charts";
 
 interface SunburstData {
   name: string;
@@ -79,6 +81,7 @@ const getPriorityTextColor = (priority: string | null | undefined): string => {
 
 export const SunburstChart = forwardRef<SunburstChartRef, SunburstChartProps>(
   function SunburstChart({ data, width = 1200, height = 1200 }, ref) {
+  const t = useMessages(chartsMessages);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [hoveredScore, setHoveredScore] = useState<number | null>(null);
   const [hoveredPriority, setHoveredPriority] = useState<string | null>(null);
@@ -161,7 +164,7 @@ export const SunburstChart = forwardRef<SunburstChartRef, SunburstChartProps>(
     const categories = new Map<string, SunburstData>();
     
     data.forEach((item) => {
-      const category = item.name.split(":")[0] || "Allgemein";
+      const category = item.name.split(":")[0] || t.sunburst.generalCategory;
       if (!categories.has(category)) {
         categories.set(category, {
           name: category,
@@ -175,7 +178,7 @@ export const SunburstChart = forwardRef<SunburstChartRef, SunburstChartProps>(
     });
 
     return Array.from(categories.values());
-  }, [data]);
+  }, [data, t]);
 
   const centerX = width / 2;
   const centerY = height / 2;
@@ -493,7 +496,7 @@ export const SunburstChart = forwardRef<SunburstChartRef, SunburstChartProps>(
   if (processedData.length === 0) {
     return (
       <div className="flex items-center justify-center h-96 text-slate-400">
-        Keine Daten verfügbar
+        {t.noData}
       </div>
     );
   }
@@ -660,7 +663,7 @@ export const SunburstChart = forwardRef<SunburstChartRef, SunburstChartProps>(
                     fontSize={12}
                     fontWeight="bold"
                   >
-                    Bewertung: {hoveredScore.toFixed(1)} / 10
+                    {t.sunburst.score(hoveredScore.toFixed(1))}
                   </text>
                   {/* Priorität */}
                   {hoveredPriority && (
@@ -679,7 +682,7 @@ export const SunburstChart = forwardRef<SunburstChartRef, SunburstChartProps>(
                         fontSize={12}
                         fontWeight="bold"
                       >
-                        Priorität: {hoveredPriority.toUpperCase()}
+                        {t.sunburst.priority(hoveredPriority.toUpperCase())}
                       </text>
                     </>
                   )}
@@ -702,7 +705,7 @@ export const SunburstChart = forwardRef<SunburstChartRef, SunburstChartProps>(
                         fontSize={11}
                         fontWeight="bold"
                       >
-                        Zuständige Teams:
+                        {t.sunburst.responsibleTeams}
                       </text>
                       {hoveredTeams.map((team, idx) => (
                         <text
@@ -729,38 +732,38 @@ export const SunburstChart = forwardRef<SunburstChartRef, SunburstChartProps>(
         <div className="flex gap-4 flex-wrap justify-center">
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded bg-red-500"></div>
-            <span className="text-sm text-slate-300">1-3: Unausgereift</span>
+            <span className="text-sm text-slate-300">{t.sunburst.legend.immature}</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded bg-orange-500"></div>
-            <span className="text-sm text-slate-300">4-5: Wenig ausgereift</span>
+            <span className="text-sm text-slate-300">{t.sunburst.legend.slightlyMature}</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded bg-blue-500"></div>
-            <span className="text-sm text-slate-300">6-7: Ausgereift</span>
+            <span className="text-sm text-slate-300">{t.sunburst.legend.mature}</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded bg-green-500"></div>
-            <span className="text-sm text-slate-300">8-10: Vollständig ausgereift</span>
+            <span className="text-sm text-slate-300">{t.sunburst.legend.fullyMature}</span>
           </div>
         </div>
         <div className="flex gap-4 flex-wrap justify-center">
-          <span className="text-xs text-slate-400">Priorität:</span>
+          <span className="text-xs text-slate-400">{t.sunburst.legend.priority}</span>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded" style={{ backgroundColor: getPriorityColor("A") }}></div>
-            <span className="text-sm text-slate-300">A: Höchste Priorität</span>
+            <span className="text-sm text-slate-300">{t.sunburst.legend.priorityA}</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded" style={{ backgroundColor: getPriorityColor("B") }}></div>
-            <span className="text-sm text-slate-300">B: Hohe Priorität</span>
+            <span className="text-sm text-slate-300">{t.sunburst.legend.priorityB}</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded" style={{ backgroundColor: getPriorityColor("C") }}></div>
-            <span className="text-sm text-slate-300">C: Mittlere Priorität</span>
+            <span className="text-sm text-slate-300">{t.sunburst.legend.priorityC}</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded" style={{ backgroundColor: getPriorityColor("D") }}></div>
-            <span className="text-sm text-slate-300">D: Niedrige Priorität</span>
+            <span className="text-sm text-slate-300">{t.sunburst.legend.priorityD}</span>
           </div>
         </div>
       </div>

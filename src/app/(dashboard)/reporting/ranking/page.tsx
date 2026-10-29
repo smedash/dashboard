@@ -5,6 +5,8 @@ import Link from "next/link";
 import { StatCard } from "@/components/ui/StatCard";
 import { BarChart, LineChart, PieChart } from "@/components/charts";
 import { sanitizeHtml } from "@/lib/sanitize";
+import { useLocale, useMessages } from "@/i18n/I18nProvider";
+import { reportingRankingMessages } from "@/i18n/messages/reporting-ranking";
 
 const KEYWORD_CATEGORIES = [
   "Mortgages",
@@ -72,6 +74,8 @@ interface RankingReportData {
 }
 
 export default function RankingReportPage() {
+  const t = useMessages(reportingRankingMessages);
+  const { intlLocale } = useLocale();
   const [mounted, setMounted] = useState(false);
   const [data, setData] = useState<RankingReportData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -177,9 +181,9 @@ export default function RankingReportPage() {
       { name: "Top 11-20", value: data.stats.top20 },
       { name: "Top 21-50", value: data.stats.top50 },
       { name: "Top 51-100", value: data.stats.top100 },
-      { name: "Nicht rankend", value: data.stats.notRanking },
+      { name: t.stats.notRanking, value: data.stats.notRanking },
     ].filter((d) => d.value > 0);
-  }, [data]);
+  }, [data, t]);
 
   const categoryChartData = useMemo(() => {
     if (!data) return [];
@@ -187,39 +191,39 @@ export default function RankingReportPage() {
       .sort((a, b) => b.total - a.total)
       .map((cat) => ({
         category: cat.category,
-        "Top 10": cat.top10,
-        Rankend: cat.ranking - cat.top10,
-        "Nicht rankend": cat.total - cat.ranking,
+        [t.charts.top10Series]: cat.top10,
+        [t.charts.rankingSeries]: cat.ranking - cat.top10,
+        [t.charts.notRankingSeries]: cat.total - cat.ranking,
       }));
-  }, [data]);
+  }, [data, t]);
 
   const trendData = useMemo(() => {
     if (!data || data.historicalTrend.length === 0) return [];
     return data.historicalTrend.map((point) => ({
-      date: new Date(point.date).toLocaleDateString("de-DE", {
+      date: new Date(point.date).toLocaleDateString(intlLocale, {
         day: "2-digit",
         month: "2-digit",
       }),
-      "Ø Position": point.avgPosition,
-      Keywords: point.keywordsTracked,
+      avgPosition: point.avgPosition,
+      keywords: point.keywordsTracked,
     }));
-  }, [data]);
+  }, [data, intlLocale]);
 
   const improversData = useMemo(() => {
     if (!data) return [];
     return data.topImprovers.map((kw) => ({
       keyword: kw.keyword.length > 25 ? kw.keyword.substring(0, 25) + "..." : kw.keyword,
-      verbesserung: kw.deltaLast || 0,
+      [t.charts.improvementSeries]: kw.deltaLast || 0,
     }));
-  }, [data]);
+  }, [data, t]);
 
   const declinersData = useMemo(() => {
     if (!data) return [];
     return data.topDecliners.map((kw) => ({
       keyword: kw.keyword.length > 25 ? kw.keyword.substring(0, 25) + "..." : kw.keyword,
-      verschlechterung: Math.abs(kw.deltaLast || 0),
+      [t.charts.declineSeries]: Math.abs(kw.deltaLast || 0),
     }));
-  }, [data]);
+  }, [data, t]);
 
   const handleSort = (column: typeof sortBy) => {
     if (sortBy === column) {
@@ -278,14 +282,14 @@ export default function RankingReportPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "Fehler beim Generieren des Reports");
+        throw new Error(errorData.error || t.ai.errorGenerating);
       }
 
       const result = await response.json();
       setAiReport(result.report);
     } catch (error) {
       console.error("Error generating AI report:", error);
-      setAiReportError(error instanceof Error ? error.message : "Unbekannter Fehler");
+      setAiReportError(error instanceof Error ? error.message : t.ai.unknownError);
     } finally {
       setIsGeneratingAiReport(false);
     }
@@ -311,11 +315,11 @@ export default function RankingReportPage() {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            Zurück zu Reporting
+            {t.backToReporting}
           </Link>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Ranking Report</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Analyse und Auswertung der Ranktracker-Daten
+            {t.subtitle}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -324,7 +328,7 @@ export default function RankingReportPage() {
             onChange={(e) => setCategoryFilter(e.target.value)}
             className="px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="">Alle Kategorien</option>
+            <option value="">{t.allCategories}</option>
             {KEYWORD_CATEGORIES.map((cat) => (
               <option key={cat} value={cat}>
                 {cat}
@@ -336,11 +340,11 @@ export default function RankingReportPage() {
             onChange={(e) => setDays(parseInt(e.target.value))}
             className="px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value={30}>30 Tage</option>
-            <option value={60}>60 Tage</option>
-            <option value={90}>90 Tage</option>
-            <option value={180}>180 Tage</option>
-            <option value={365}>365 Tage</option>
+            <option value={30}>{t.days(30)}</option>
+            <option value={60}>{t.days(60)}</option>
+            <option value={90}>{t.days(90)}</option>
+            <option value={180}>{t.days(180)}</option>
+            <option value={365}>{t.days(365)}</option>
           </select>
         </div>
       </div>
@@ -354,47 +358,47 @@ export default function RankingReportPage() {
           <svg className="w-16 h-16 mx-auto mb-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
           </svg>
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Keine Keywords im Ranktracker</h3>
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">{t.empty.title}</h3>
           <p className="text-slate-500 dark:text-slate-400 mb-4">
-            Füge zuerst Keywords im Ranktracker hinzu, um einen Ranking Report zu erstellen.
+            {t.empty.description}
           </p>
           <a
             href="/ranktracker"
             className="inline-block px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
           >
-            Zum Ranktracker
+            {t.empty.cta}
           </a>
         </div>
       ) : (
         <>
           {/* Übersicht Stats */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            <StatCard title="Keywords gesamt" value={data.stats.total} />
+            <StatCard title={t.stats.totalKeywords} value={data.stats.total} />
             <StatCard
-              title="Ø Position"
+              title={t.stats.avgPosition}
               value={data.stats.avgPosition}
               format="position"
             />
             <StatCard
-              title="Top 10"
+              title={t.stats.top10}
               value={data.stats.top3 + data.stats.top10}
-              subtitle={`${data.stats.top3} in Top 3`}
+              subtitle={t.stats.inTop3(data.stats.top3)}
               trend="up"
             />
             <StatCard
-              title="Verbessert"
+              title={t.stats.improved}
               value={data.stats.improved}
-              subtitle={`seit letztem Update`}
+              subtitle={t.stats.sinceLastUpdate}
               trend="up"
             />
             <StatCard
-              title="Verschlechtert"
+              title={t.stats.declined}
               value={data.stats.declined}
-              subtitle={`seit letztem Update`}
+              subtitle={t.stats.sinceLastUpdate}
               trend="down"
             />
             <StatCard
-              title="Nicht rankend"
+              title={t.stats.notRanking}
               value={data.stats.notRanking}
             />
           </div>
@@ -403,12 +407,12 @@ export default function RankingReportPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Ranking-Verteilung */}
             <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Ranking-Verteilung</h3>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">{t.charts.distribution}</h3>
               {distributionData.length > 0 ? (
                 <PieChart data={distributionData} height={300} />
               ) : (
                 <div className="h-[300px] flex items-center justify-center text-slate-500">
-                  Keine Daten verfügbar
+                  {t.charts.noData}
                 </div>
               )}
             </div>
@@ -416,20 +420,20 @@ export default function RankingReportPage() {
             {/* Historischer Trend */}
             <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
               <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-                Ø Position im Zeitverlauf
+                {t.charts.avgPositionOverTime}
               </h3>
               {trendData.length > 0 ? (
                 <LineChart
                   data={trendData}
                   xKey="date"
                   lines={[
-                    { key: "Ø Position", name: "Ø Position", color: "#3b82f6" },
+                    { key: "avgPosition", name: t.charts.avgPositionSeries, color: "#3b82f6" },
                   ]}
                   height={300}
                 />
               ) : (
                 <div className="h-[300px] flex items-center justify-center text-slate-500">
-                  Keine historischen Daten verfügbar
+                  {t.charts.noHistoricalData}
                 </div>
               )}
             </div>
@@ -439,12 +443,12 @@ export default function RankingReportPage() {
           {categoryChartData.length > 0 && (
             <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
               <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-                Keywords nach Kategorie
+                {t.charts.byCategory}
               </h3>
               <BarChart
                 data={categoryChartData}
                 xKey="category"
-                yKey="Top 10"
+                yKey={t.charts.top10Series}
                 height={300}
               />
             </div>
@@ -455,15 +459,15 @@ export default function RankingReportPage() {
             {improversData.length > 0 && (
               <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
                 <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">
-                  Top Gewinner
+                  {t.charts.topWinners}
                 </h3>
                 <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-                  Grösste Positionsverbesserungen seit letztem Update
+                  {t.charts.topWinnersDescription}
                 </p>
                 <BarChart
                   data={improversData}
                   xKey="keyword"
-                  yKey="verbesserung"
+                  yKey={t.charts.improvementSeries}
                   color="#10b981"
                   height={300}
                   horizontal
@@ -474,15 +478,15 @@ export default function RankingReportPage() {
             {declinersData.length > 0 && (
               <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
                 <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">
-                  Top Verlierer
+                  {t.charts.topLosers}
                 </h3>
                 <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-                  Grösste Positionsverschlechterungen seit letztem Update
+                  {t.charts.topLosersDescription}
                 </p>
                 <BarChart
                   data={declinersData}
                   xKey="keyword"
-                  yKey="verschlechterung"
+                  yKey={t.charts.declineSeries}
                   color="#ef4444"
                   height={300}
                   horizontal
@@ -496,10 +500,10 @@ export default function RankingReportPage() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
               <div>
                 <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">
-                  KI-generierter Ranking Report
+                  {t.ai.title}
                 </h2>
                 <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Generiere eine KI-Analyse der aktuellen Ranking-Situation mit Handlungsempfehlungen
+                  {t.ai.description}
                 </p>
               </div>
               <button
@@ -510,7 +514,7 @@ export default function RankingReportPage() {
                 {isGeneratingAiReport ? (
                   <>
                     <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                    <span>Generiere Report...</span>
+                    <span>{t.ai.generating}</span>
                   </>
                 ) : (
                   <>
@@ -522,7 +526,7 @@ export default function RankingReportPage() {
                         d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
                       />
                     </svg>
-                    <span>KI-Report generieren</span>
+                    <span>{t.ai.generate}</span>
                   </>
                 )}
               </button>
@@ -582,14 +586,14 @@ export default function RankingReportPage() {
             <div className="p-6 border-b border-slate-200 dark:border-slate-700">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-                  Alle Keywords ({filteredKeywords.length})
+                  {t.table.allKeywords(filteredKeywords.length)}
                 </h3>
                 <div className="relative">
                   <input
                     type="text"
                     value={searchText}
                     onChange={(e) => setSearchText(e.target.value)}
-                    placeholder="Keyword oder URL suchen..."
+                    placeholder={t.table.searchPlaceholder}
                     className="w-full sm:w-72 px-4 py-2 pl-10 bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <svg
@@ -618,21 +622,21 @@ export default function RankingReportPage() {
                       onClick={() => handleSort("keyword")}
                     >
                       <div className="flex items-center gap-1">
-                        Keyword
+                        {t.table.keyword}
                         {sortBy === "keyword" && (
                           <span>{sortDir === "asc" ? "↑" : "↓"}</span>
                         )}
                       </div>
                     </th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                      Kategorie
+                      {t.table.category}
                     </th>
                     <th
                       className="text-right px-4 py-3 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider cursor-pointer hover:text-slate-900 dark:hover:text-white"
                       onClick={() => handleSort("position")}
                     >
                       <div className="flex items-center justify-end gap-1">
-                        Position
+                        {t.table.position}
                         {sortBy === "position" && (
                           <span>{sortDir === "asc" ? "↑" : "↓"}</span>
                         )}
@@ -643,28 +647,28 @@ export default function RankingReportPage() {
                       onClick={() => handleSort("delta")}
                     >
                       <div className="flex items-center justify-end gap-1">
-                        Δ Letztes Update
+                        {t.table.deltaLast}
                         {sortBy === "delta" && (
                           <span>{sortDir === "asc" ? "↑" : "↓"}</span>
                         )}
                       </div>
                     </th>
                     <th className="text-right px-4 py-3 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                      Δ Start
+                      {t.table.deltaStart}
                     </th>
                     <th
                       className="text-right px-4 py-3 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider cursor-pointer hover:text-slate-900 dark:hover:text-white"
                       onClick={() => handleSort("volume")}
                     >
                       <div className="flex items-center justify-end gap-1">
-                        Suchvolumen
+                        {t.table.searchVolume}
                         {sortBy === "volume" && (
                           <span>{sortDir === "asc" ? "↑" : "↓"}</span>
                         )}
                       </div>
                     </th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                      URL
+                      {t.table.url}
                     </th>
                   </tr>
                 </thead>
@@ -746,7 +750,7 @@ export default function RankingReportPage() {
                       <td className="px-4 py-3 text-right">
                         {kw.searchVolume !== null ? (
                           <span className="text-sm text-slate-700 dark:text-slate-300">
-                            {kw.searchVolume.toLocaleString("de-DE")}
+                            {kw.searchVolume.toLocaleString(intlLocale)}
                           </span>
                         ) : (
                           <span className="text-sm text-slate-400">—</span>
@@ -780,7 +784,7 @@ export default function RankingReportPage() {
             {totalPages > 1 && (
               <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between">
                 <span className="text-sm text-slate-500 dark:text-slate-400">
-                  Seite {currentPage} von {totalPages} ({filteredKeywords.length} Keywords)
+                  {t.pagination.summary(currentPage, totalPages, filteredKeywords.length)}
                 </span>
                 <div className="flex items-center gap-2">
                   <button
@@ -788,7 +792,7 @@ export default function RankingReportPage() {
                     disabled={currentPage === 1}
                     className="px-3 py-1 text-sm bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    Zurück
+                    {t.pagination.previous}
                   </button>
                   {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                     let page: number;
@@ -820,7 +824,7 @@ export default function RankingReportPage() {
                     disabled={currentPage === totalPages}
                     className="px-3 py-1 text-sm bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    Weiter
+                    {t.pagination.next}
                   </button>
                 </div>
               </div>

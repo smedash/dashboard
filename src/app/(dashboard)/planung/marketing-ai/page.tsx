@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { jsPDF } from "jspdf";
+import { useLocale, useMessages } from "@/i18n/I18nProvider";
+import { planningMarketingAiMessages } from "@/i18n/messages/planning-marketing-ai";
 
 interface RefinementMessage {
   id: string;
@@ -53,12 +55,12 @@ interface MarketingStrategy {
 }
 
 const CHANNELS = [
-  { id: "organic_seo", label: "Organic SEO", color: "blue", icon: "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" },
-  { id: "social_media", label: "Social Media", color: "pink", icon: "M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" },
-  { id: "newsletter", label: "Newsletter", color: "amber", icon: "M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" },
-  { id: "out_of_home", label: "Out of Home", color: "emerald", icon: "M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" },
-  { id: "cooperations", label: "Kooperationen", color: "violet", icon: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" },
-  { id: "tv_campaigns", label: "TV Kampagnen", color: "red", icon: "M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" },
+  { id: "organic_seo", color: "blue", icon: "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" },
+  { id: "social_media", color: "pink", icon: "M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" },
+  { id: "newsletter", color: "amber", icon: "M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" },
+  { id: "out_of_home", color: "emerald", icon: "M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" },
+  { id: "cooperations", color: "violet", icon: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" },
+  { id: "tv_campaigns", color: "red", icon: "M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" },
 ] as const;
 
 const COLOR_MAP: Record<string, { bg: string; text: string; border: string; badge: string; tabActive: string; tabHover: string }> = {
@@ -70,21 +72,25 @@ const COLOR_MAP: Record<string, { bg: string; text: string; border: string; badg
   red: { bg: "bg-red-900/20", text: "text-red-400", border: "border-red-500/30", badge: "bg-red-500/20 text-red-300", tabActive: "bg-red-600 text-white", tabHover: "hover:bg-red-900/30" },
 };
 
-const PRIORITY_CONFIG: Record<string, { label: string; color: string }> = {
-  high: { label: "Hoch", color: "bg-red-500/20 text-red-300" },
-  medium: { label: "Mittel", color: "bg-amber-500/20 text-amber-300" },
-  low: { label: "Niedrig", color: "bg-emerald-500/20 text-emerald-300" },
+const PRIORITY_COLORS: Record<string, string> = {
+  high: "bg-red-500/20 text-red-300",
+  medium: "bg-amber-500/20 text-amber-300",
+  low: "bg-emerald-500/20 text-emerald-300",
 };
 
-const EFFORT_LABELS: Record<string, string> = { low: "Gering", medium: "Mittel", high: "Hoch" };
-const IMPACT_LABELS: Record<string, string> = { low: "Gering", medium: "Mittel", high: "Hoch" };
+type ChannelId = (typeof CHANNELS)[number]["id"];
+
+type ErrorState = { kind: "loadFailed" | "unknown" } | { kind: "message"; message: string };
 
 export default function MarketingAIPage() {
+  const t = useMessages(planningMarketingAiMessages);
+  const { intlLocale } = useLocale();
+  const channelLabel = (id: string) => t.channels[id as ChannelId] ?? id;
   const [strategies, setStrategies] = useState<Record<string, MarketingStrategy>>({});
   const [activeTab, setActiveTab] = useState<string>(CHANNELS[0].id);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorState | null>(null);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["details", "actions"]));
 
   const [refinements, setRefinements] = useState<Record<string, RefinementMessage[]>>({});
@@ -95,7 +101,10 @@ export default function MarketingAIPage() {
   const loadStrategies = useCallback(async () => {
     try {
       const res = await fetch("/api/planung/marketing-ai");
-      if (!res.ok) throw new Error("Fehler beim Laden");
+      if (!res.ok) {
+        setError({ kind: "loadFailed" });
+        return;
+      }
       const json = await res.json();
 
       const map: Record<string, MarketingStrategy> = {};
@@ -104,7 +113,7 @@ export default function MarketingAIPage() {
       }
       setStrategies(map);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unbekannter Fehler");
+      setError(err instanceof Error ? { kind: "message", message: err.message } : { kind: "unknown" });
     } finally {
       setLoading(false);
     }
@@ -126,13 +135,13 @@ export default function MarketingAIPage() {
 
       if (!res.ok) {
         const errData = await res.json();
-        throw new Error(errData.error || "Fehler bei der Generierung");
+        throw new Error(errData.error || t.errors.generationFailed);
       }
 
       const strategy = await res.json();
       setStrategies((prev) => ({ ...prev, [channel]: strategy }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler bei der Generierung");
+      setError({ kind: "message", message: err instanceof Error ? err.message : t.errors.generationFailed });
     } finally {
       setGenerating(null);
     }
@@ -184,7 +193,8 @@ export default function MarketingAIPage() {
     const contentWidth = pageWidth - 2 * margin;
     let y = margin;
 
-    const channelLabel = CHANNELS.find((c) => c.id === strategy.channel)?.label || strategy.channel;
+    const pdfChannelLabel = channelLabel(strategy.channel);
+    const pdfT = t.pdfLabels;
 
     const checkPageBreak = (needed: number) => {
       if (y + needed > pageHeight - margin) {
@@ -227,12 +237,12 @@ export default function MarketingAIPage() {
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(100, 100, 100);
-    doc.text(`Kanal: ${channelLabel}`, margin, y);
+    doc.text(pdfT.channel(pdfChannelLabel), margin, y);
     if (strategy.dataContext?.generatedAt) {
-      const date = new Date(strategy.dataContext.generatedAt).toLocaleDateString("de-CH", {
+      const date = new Date(strategy.dataContext.generatedAt).toLocaleDateString(intlLocale, {
         day: "2-digit", month: "2-digit", year: "numeric",
       });
-      doc.text(`Generiert: ${date}`, margin + 60, y);
+      doc.text(pdfT.generated(date), margin + 60, y);
     }
     y += 10;
 
@@ -244,12 +254,12 @@ export default function MarketingAIPage() {
     const details = strategy.details;
 
     if (details.targetAudience) {
-      addSectionTitle("Zielgruppe");
+      addSectionTitle(pdfT.targetAudience);
       addWrappedText(details.targetAudience);
     }
 
     if (details.goals && details.goals.length > 0) {
-      addSectionTitle("Ziele");
+      addSectionTitle(pdfT.goals);
       for (const goal of details.goals) {
         checkPageBreak(10);
         const lines = doc.splitTextToSize(`\u2022 ${goal}`, contentWidth - 5);
@@ -262,7 +272,7 @@ export default function MarketingAIPage() {
     }
 
     if (details.keyInsights && details.keyInsights.length > 0) {
-      addSectionTitle("Daten-Insights");
+      addSectionTitle(pdfT.dataInsights);
       for (const insight of details.keyInsights) {
         checkPageBreak(10);
         const lines = doc.splitTextToSize(`\u2022 ${insight}`, contentWidth - 5);
@@ -275,7 +285,7 @@ export default function MarketingAIPage() {
     }
 
     if (details.recommendations && details.recommendations.length > 0) {
-      addSectionTitle("Empfehlungen");
+      addSectionTitle(pdfT.recommendations);
       details.recommendations.forEach((rec, i) => {
         checkPageBreak(10);
         const lines = doc.splitTextToSize(`${i + 1}. ${rec}`, contentWidth - 5);
@@ -288,21 +298,21 @@ export default function MarketingAIPage() {
     }
 
     if (details.timeline) {
-      addSectionTitle("Timeline");
+      addSectionTitle(pdfT.timeline);
       addWrappedText(details.timeline);
     }
 
     if (details.kpis && details.kpis.length > 0) {
-      addSectionTitle("KPIs");
+      addSectionTitle(pdfT.kpis);
       addWrappedText(details.kpis.join("  |  "));
     }
 
     // Actions
     if (strategy.actions.length > 0) {
-      addSectionTitle("Massnahmen");
+      addSectionTitle(pdfT.actions);
       for (const action of strategy.actions) {
         checkPageBreak(20);
-        const priorityLabel = PRIORITY_CONFIG[action.priority]?.label || action.priority;
+        const priorityLabel = t.priority[action.priority] || action.priority;
         const status = action.completed ? "[x]" : "[ ]";
         doc.setFontSize(10);
         doc.setFont("helvetica", "bold");
@@ -312,9 +322,9 @@ export default function MarketingAIPage() {
         doc.text(titleLines, margin + 3, y);
         y += titleLines.length * 5 + 2;
 
-        const meta: string[] = [`Prioritaet: ${priorityLabel}`];
-        if (action.effort) meta.push(`Aufwand: ${EFFORT_LABELS[action.effort] || action.effort}`);
-        if (action.impact) meta.push(`Impact: ${IMPACT_LABELS[action.impact] || action.impact}`);
+        const meta: string[] = [pdfT.priority(priorityLabel)];
+        if (action.effort) meta.push(pdfT.effort(t.levels[action.effort] || action.effort));
+        if (action.impact) meta.push(pdfT.impact(t.levels[action.impact] || action.impact));
         doc.setFontSize(8);
         doc.setFont("helvetica", "normal");
         doc.setTextColor(120, 120, 120);
@@ -338,13 +348,13 @@ export default function MarketingAIPage() {
       doc.setFont("helvetica", "normal");
       doc.setTextColor(150, 150, 150);
       doc.text(
-        `Marketing AI - ${channelLabel} | Seite ${i}/${totalPages}`,
+        pdfT.footer(pdfChannelLabel, i, totalPages),
         margin,
         pageHeight - 10
       );
     }
 
-    const filename = `Marketing-AI_${channelLabel.replace(/\s+/g, "-")}_${new Date().toISOString().slice(0, 10)}.pdf`;
+    const filename = `Marketing-AI_${pdfChannelLabel.replace(/\s+/g, "-")}_${new Date().toISOString().slice(0, 10)}.pdf`;
     doc.save(filename);
   };
 
@@ -395,7 +405,7 @@ export default function MarketingAIPage() {
 
       if (!res.ok) {
         const errData = await res.json();
-        throw new Error(errData.error || "Fehler bei der Verfeinerung");
+        throw new Error(errData.error || t.errors.refinementFailed);
       }
 
       const data = await res.json();
@@ -409,7 +419,7 @@ export default function MarketingAIPage() {
 
       await loadRefinements(strategy.id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler bei der Verfeinerung");
+      setError({ kind: "message", message: err instanceof Error ? err.message : t.errors.refinementFailed });
     } finally {
       setRefinerLoading(false);
     }
@@ -433,7 +443,7 @@ export default function MarketingAIPage() {
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="flex flex-col items-center gap-3">
           <div className="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full" />
-          <p className="text-sm text-slate-400">Strategien werden geladen...</p>
+          <p className="text-sm text-slate-400">{t.loading}</p>
         </div>
       </div>
     );
@@ -448,18 +458,18 @@ export default function MarketingAIPage() {
             <svg className="w-7 h-7 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
             </svg>
-            Marketing AI
+            {t.title}
           </h1>
           <p className="text-sm text-slate-400 mt-1">
-            KI-gestützte Marketing-Strategien basierend auf deinen SEO- und Keyword-Daten
+            {t.subtitle}
           </p>
         </div>
         <div className="flex items-center gap-3">
           {totalStrategies > 0 && (
             <div className="text-right text-xs text-slate-500">
-              <span className="text-slate-300 font-medium">{totalStrategies}</span>/{CHANNELS.length} Kanäle
+              <span className="text-slate-300 font-medium">{totalStrategies}</span>/{CHANNELS.length} {t.channelsCount}
               {totalActions > 0 && (
-                <> · <span className="text-emerald-400">{completedActions}</span>/{totalActions} Massnahmen</>
+                <> · <span className="text-emerald-400">{completedActions}</span>/{totalActions} {t.actionsCount}</>
               )}
             </div>
           )}
@@ -472,9 +482,9 @@ export default function MarketingAIPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
           </svg>
           <div>
-            <p className="text-sm text-red-300">{error}</p>
+            <p className="text-sm text-red-300">{error.kind === "message" ? error.message : t.errors[error.kind]}</p>
             <button onClick={() => setError(null)} className="text-xs text-red-400 hover:text-red-300 mt-1 underline">
-              Schliessen
+              {t.close}
             </button>
           </div>
         </div>
@@ -500,7 +510,7 @@ export default function MarketingAIPage() {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={channel.icon} />
               </svg>
-              {channel.label}
+              {channelLabel(channel.id)}
               {hasStrategy && (
                 <span className={`w-2 h-2 rounded-full ${isActive ? "bg-white/60" : "bg-emerald-400"}`} />
               )}
@@ -520,19 +530,19 @@ export default function MarketingAIPage() {
                   <div className="flex items-center gap-3 mb-2">
                     <h2 className="text-lg font-bold text-white">{activeStrategy.title}</h2>
                     <span className={`text-xs px-2 py-0.5 rounded-full ${colors.badge}`}>
-                      {activeChannel.label}
+                      {channelLabel(activeChannel.id)}
                     </span>
                   </div>
                   <p className="text-sm text-slate-300 leading-relaxed">{activeStrategy.summary}</p>
                   {activeStrategy.dataContext?.generatedAt && (
                     <p className="text-xs text-slate-500 mt-3">
-                      Generiert am {new Date(activeStrategy.dataContext.generatedAt).toLocaleDateString("de-CH", {
+                      {t.generatedAt(new Date(activeStrategy.dataContext.generatedAt).toLocaleDateString(intlLocale, {
                         day: "2-digit",
                         month: "2-digit",
                         year: "numeric",
                         hour: "2-digit",
                         minute: "2-digit",
-                      })}
+                      }))}
                     </p>
                   )}
                 </div>
@@ -540,12 +550,12 @@ export default function MarketingAIPage() {
                   <button
                     onClick={() => downloadStrategyPdf(activeStrategy)}
                     className="flex items-center gap-2 px-4 py-2 bg-emerald-700/50 hover:bg-emerald-600/50 text-sm text-emerald-200 rounded-lg transition-colors"
-                    title="Als PDF herunterladen"
+                    title={t.downloadPdf}
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                    PDF
+                    {t.pdf}
                   </button>
                   <button
                     onClick={() => generateStrategy(activeTab)}
@@ -555,14 +565,14 @@ export default function MarketingAIPage() {
                     {generating === activeTab ? (
                       <>
                         <div className="animate-spin h-4 w-4 border-2 border-slate-400 border-t-transparent rounded-full" />
-                        Generiert...
+                        {t.generating}
                       </>
                     ) : (
                       <>
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                         </svg>
-                        Neu generieren
+                        {t.regenerate}
                       </>
                     )}
                   </button>
@@ -576,7 +586,7 @@ export default function MarketingAIPage() {
                 onClick={() => toggleSection("details")}
                 className="w-full flex items-center justify-between p-4 hover:bg-slate-700/20 transition-colors"
               >
-                <h3 className="text-sm font-semibold text-slate-300">Strategie-Details</h3>
+                <h3 className="text-sm font-semibold text-slate-300">{t.strategyDetails}</h3>
                 <svg
                   className={`w-4 h-4 text-slate-500 transition-transform ${expandedSections.has("details") ? "rotate-180" : ""}`}
                   fill="none" stroke="currentColor" viewBox="0 0 24 24"
@@ -588,14 +598,14 @@ export default function MarketingAIPage() {
                 <div className="px-6 pb-6 space-y-5">
                   {activeStrategy.details.targetAudience && (
                     <div>
-                      <h4 className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Zielgruppe</h4>
+                      <h4 className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">{t.targetAudience}</h4>
                       <p className="text-sm text-slate-300">{activeStrategy.details.targetAudience}</p>
                     </div>
                   )}
 
                   {activeStrategy.details.goals && activeStrategy.details.goals.length > 0 && (
                     <div>
-                      <h4 className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">Ziele</h4>
+                      <h4 className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">{t.goals}</h4>
                       <ul className="space-y-1.5">
                         {activeStrategy.details.goals.map((goal, i) => (
                           <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
@@ -611,7 +621,7 @@ export default function MarketingAIPage() {
 
                   {activeStrategy.details.keyInsights && activeStrategy.details.keyInsights.length > 0 && (
                     <div>
-                      <h4 className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">Daten-Insights</h4>
+                      <h4 className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">{t.dataInsights}</h4>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                         {activeStrategy.details.keyInsights.map((insight, i) => (
                           <div key={i} className="bg-slate-700/30 rounded-lg p-3 text-xs text-slate-300">
@@ -624,7 +634,7 @@ export default function MarketingAIPage() {
 
                   {activeStrategy.details.recommendations && activeStrategy.details.recommendations.length > 0 && (
                     <div>
-                      <h4 className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">Empfehlungen</h4>
+                      <h4 className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">{t.recommendations}</h4>
                       <ul className="space-y-1.5">
                         {activeStrategy.details.recommendations.map((rec, i) => (
                           <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
@@ -639,13 +649,13 @@ export default function MarketingAIPage() {
                   <div className="flex gap-6">
                     {activeStrategy.details.timeline && (
                       <div>
-                        <h4 className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Timeline</h4>
+                        <h4 className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">{t.timeline}</h4>
                         <p className="text-sm text-slate-300">{activeStrategy.details.timeline}</p>
                       </div>
                     )}
                     {activeStrategy.details.kpis && activeStrategy.details.kpis.length > 0 && (
                       <div>
-                        <h4 className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">KPIs</h4>
+                        <h4 className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">{t.kpis}</h4>
                         <div className="flex flex-wrap gap-1.5">
                           {activeStrategy.details.kpis.map((kpi, i) => (
                             <span key={i} className="text-xs bg-slate-700/50 text-slate-300 px-2 py-1 rounded">
@@ -667,9 +677,9 @@ export default function MarketingAIPage() {
                 className="w-full flex items-center justify-between p-4 hover:bg-slate-700/20 transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <h3 className="text-sm font-semibold text-slate-300">Massnahmen</h3>
+                  <h3 className="text-sm font-semibold text-slate-300">{t.actions}</h3>
                   <span className="text-xs text-slate-500">
-                    {activeStrategy.actions.filter((a) => a.completed).length}/{activeStrategy.actions.length} erledigt
+                    {t.actionsDone(activeStrategy.actions.filter((a) => a.completed).length, activeStrategy.actions.length)}
                   </span>
                 </div>
                 <svg
@@ -708,19 +718,19 @@ export default function MarketingAIPage() {
                             <h4 className={`text-sm font-medium ${action.completed ? "text-slate-500 line-through" : "text-slate-200"}`}>
                               {action.title}
                             </h4>
-                            {PRIORITY_CONFIG[action.priority] && (
-                              <span className={`text-[10px] px-1.5 py-0.5 rounded ${PRIORITY_CONFIG[action.priority].color}`}>
-                                {PRIORITY_CONFIG[action.priority].label}
+                            {PRIORITY_COLORS[action.priority] && (
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded ${PRIORITY_COLORS[action.priority]}`}>
+                                {t.priority[action.priority] || action.priority}
                               </span>
                             )}
                             {action.effort && (
                               <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-700/50 text-slate-400">
-                                Aufwand: {EFFORT_LABELS[action.effort] || action.effort}
+                                {t.effort(t.levels[action.effort] || action.effort)}
                               </span>
                             )}
                             {action.impact && (
                               <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-700/50 text-slate-400">
-                                Impact: {IMPACT_LABELS[action.impact] || action.impact}
+                                {t.impact(t.levels[action.impact] || action.impact)}
                               </span>
                             )}
                           </div>
@@ -742,7 +752,7 @@ export default function MarketingAIPage() {
                   onClick={() => toggleSection("datacontext")}
                   className="w-full flex items-center justify-between p-4 hover:bg-slate-700/20 transition-colors"
                 >
-                  <h3 className="text-sm font-semibold text-slate-300">Daten-Grundlage</h3>
+                  <h3 className="text-sm font-semibold text-slate-300">{t.dataBasis}</h3>
                   <svg
                     className={`w-4 h-4 text-slate-500 transition-transform ${expandedSections.has("datacontext") ? "rotate-180" : ""}`}
                     fill="none" stroke="currentColor" viewBox="0 0 24 24"
@@ -754,14 +764,14 @@ export default function MarketingAIPage() {
                   <div className="px-6 pb-6">
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                       {[
-                        { label: "Topic-Graphen", value: activeStrategy.dataContext.dataPoints.topicGraphs },
-                        { label: "Fragen-Sets", value: activeStrategy.dataContext.dataPoints.questionSets },
-                        { label: "Keyword-Volumen", value: activeStrategy.dataContext.dataPoints.keywordVolumes },
-                        { label: "Trend-Daten", value: activeStrategy.dataContext.dataPoints.trends },
-                        { label: "Intent-Daten", value: activeStrategy.dataContext.dataPoints.intents },
+                        { label: t.dataPoints.topicGraphs, value: activeStrategy.dataContext.dataPoints.topicGraphs },
+                        { label: t.dataPoints.questionSets, value: activeStrategy.dataContext.dataPoints.questionSets },
+                        { label: t.dataPoints.keywordVolumes, value: activeStrategy.dataContext.dataPoints.keywordVolumes },
+                        { label: t.dataPoints.trends, value: activeStrategy.dataContext.dataPoints.trends },
+                        { label: t.dataPoints.intents, value: activeStrategy.dataContext.dataPoints.intents },
                       ].map((dp) => (
                         <div key={dp.label} className="bg-slate-700/30 rounded-lg p-3 text-center">
-                          <p className="text-lg font-bold text-slate-200">{(dp.value || 0).toLocaleString("de-DE")}</p>
+                          <p className="text-lg font-bold text-slate-200">{(dp.value || 0).toLocaleString(intlLocale)}</p>
                           <p className="text-[10px] text-slate-500 uppercase tracking-wider">{dp.label}</p>
                         </div>
                       ))}
@@ -782,11 +792,11 @@ export default function MarketingAIPage() {
                     <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                     </svg>
-                    ReFiner
+                    {t.refiner}
                   </h3>
                   {(refinements[activeStrategy.id]?.length || 0) > 0 && (
                     <span className="text-xs text-slate-500">
-                      {refinements[activeStrategy.id].length} Nachrichten
+                      {t.messagesCount(refinements[activeStrategy.id].length)}
                     </span>
                   )}
                 </div>
@@ -800,7 +810,7 @@ export default function MarketingAIPage() {
               {expandedSections.has("refiner") && (
                 <div className="px-6 pb-6">
                   <p className="text-xs text-slate-500 mb-4">
-                    Diskutiere die Strategie mit der KI. Schlage Änderungen vor, stelle Fragen oder ergänze Punkte — die Strategie wird gezielt angepasst, nicht neu generiert.
+                    {t.refinerHint}
                   </p>
 
                   {/* Chat Messages */}
@@ -819,17 +829,17 @@ export default function MarketingAIPage() {
                         >
                           <div className="flex items-center gap-2 mb-1">
                             {msg.role === "user" ? (
-                              <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Du</span>
+                              <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">{t.you}</span>
                             ) : (
                               <span className="text-[10px] font-medium text-purple-400 uppercase tracking-wider flex items-center gap-1">
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
                                 </svg>
-                                KI ReFiner
+                                {t.aiRefiner}
                               </span>
                             )}
                             <span className="text-[10px] text-slate-600">
-                              {new Date(msg.createdAt).toLocaleTimeString("de-CH", { hour: "2-digit", minute: "2-digit" })}
+                              {new Date(msg.createdAt).toLocaleTimeString(intlLocale, { hour: "2-digit", minute: "2-digit" })}
                             </span>
                           </div>
                           <div className="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">
@@ -843,7 +853,7 @@ export default function MarketingAIPage() {
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                 </svg>
-                                Änderungen wurden angewendet
+                                {t.changesApplied}
                               </span>
                             </div>
                           )}
@@ -859,7 +869,7 @@ export default function MarketingAIPage() {
                               <div className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
                               <div className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
                             </div>
-                            <span className="text-xs text-slate-500">KI analysiert dein Feedback...</span>
+                            <span className="text-xs text-slate-500">{t.aiAnalyzingFeedback}</span>
                           </div>
                         </div>
                       </div>
@@ -878,7 +888,7 @@ export default function MarketingAIPage() {
                           sendRefinement();
                         }
                       }}
-                      placeholder="z.B. &quot;Die Social Media Strategie sollte stärker auf LinkedIn fokussieren...&quot;"
+                      placeholder={t.refinerPlaceholder}
                       rows={2}
                       className="flex-1 bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-3 text-sm text-slate-200 placeholder-slate-500 resize-none focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/20"
                     />
@@ -905,10 +915,10 @@ export default function MarketingAIPage() {
               </svg>
             </div>
             <h3 className="text-lg font-semibold text-white mb-2">
-              {activeChannel.label} Strategie
+              {t.channelStrategy(channelLabel(activeChannel.id))}
             </h3>
             <p className="text-sm text-slate-400 mb-6 max-w-md mx-auto">
-              Noch keine Strategie für diesen Kanal vorhanden. Lasse die KI basierend auf deinen SEO- und Keyword-Daten eine massgeschneiderte Strategie generieren.
+              {t.emptyHint}
             </p>
             <button
               onClick={() => generateStrategy(activeTab)}
@@ -918,14 +928,14 @@ export default function MarketingAIPage() {
               {generating === activeTab ? (
                 <>
                   <div className="animate-spin h-4 w-4 border-2 border-white/50 border-t-white rounded-full" />
-                  KI analysiert Daten...
+                  {t.aiAnalyzingData}
                 </>
               ) : (
                 <>
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
                   </svg>
-                  Strategie generieren
+                  {t.generateStrategy}
                 </>
               )}
             </button>
@@ -938,8 +948,8 @@ export default function MarketingAIPage() {
         <div className="bg-slate-800/30 border border-slate-700 rounded-xl p-6 text-center">
           <p className="text-sm text-slate-400 mb-4">
             {totalStrategies === 0
-              ? "Starte mit der Generierung aller Kanal-Strategien auf einmal."
-              : `${CHANNELS.length - totalStrategies} Kanäle haben noch keine Strategie.`}
+              ? t.startGenerateAll
+              : t.channelsWithoutStrategy(CHANNELS.length - totalStrategies)}
           </p>
           <button
             onClick={async () => {
@@ -954,14 +964,14 @@ export default function MarketingAIPage() {
             {generating ? (
               <>
                 <div className="animate-spin h-4 w-4 border-2 border-white/50 border-t-white rounded-full" />
-                Generierung läuft...
+                {t.generationRunning}
               </>
             ) : (
               <>
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
                 </svg>
-                Alle fehlenden Strategien generieren
+                {t.generateAllMissing}
               </>
             )}
           </button>

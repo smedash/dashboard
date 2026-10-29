@@ -1,44 +1,49 @@
+import type { Locale } from '@/i18n/config';
+import { urlCheckerAuthorityTrustMessages } from '@/i18n/messages/url-checker/authority-trust';
 import { CheckResult, ParsedPage } from '../types';
 
-export function runAuthorityTrustChecks(page: ParsedPage): CheckResult[] {
+type Texts = (typeof urlCheckerAuthorityTrustMessages)[Locale];
+
+export function runAuthorityTrustChecks(page: ParsedPage, locale: Locale): CheckResult[] {
+  const t = urlCheckerAuthorityTrustMessages[locale];
   const checks: CheckResult[] = [];
 
-  checks.push(checkHttpsSecurity(page));
-  checks.push(checkNofollowRatio(page));
-  checks.push(checkHiddenContent(page));
-  checks.push(checkRedirectIntegrity(page));
+  checks.push(checkHttpsSecurity(page, t));
+  checks.push(checkNofollowRatio(page, t));
+  checks.push(checkHiddenContent(page, t));
+  checks.push(checkRedirectIntegrity(page, t));
 
   return checks;
 }
 
-function checkHttpsSecurity(page: ParsedPage): CheckResult {
+function checkHttpsSecurity(page: ParsedPage, t: Texts): CheckResult {
   if (!page.isHttps) {
     return {
-      factor: 'HTTPS-Vertrauen',
+      factor: t.https.factor,
       status: 'fail',
       value: 'HTTP',
-      recommendation: 'Kein HTTPS. Dies ist ein negatives Trust-Signal in Google\'s NSR-Framework. Migriere zu HTTPS.',
+      recommendation: t.https.failRecommendation,
       leakAttribute: 'nsr.trustSignal',
     };
   }
 
   return {
-    factor: 'HTTPS-Vertrauen',
+    factor: t.https.factor,
     status: 'pass',
-    value: 'HTTPS aktiv',
-    recommendation: 'HTTPS ist aktiv \u2013 positives Trust-Signal.',
+    value: t.https.passValue,
+    recommendation: t.https.passRecommendation,
     leakAttribute: 'nsr.trustSignal',
   };
 }
 
-function checkNofollowRatio(page: ParsedPage): CheckResult {
+function checkNofollowRatio(page: ParsedPage, t: Texts): CheckResult {
   const externalLinks = page.externalLinks;
   if (externalLinks.length === 0) {
     return {
-      factor: 'Externe Links & Nofollow',
+      factor: t.nofollow.factor,
       status: 'pass',
-      value: 'Keine externen Links',
-      recommendation: 'Keine externen Links vorhanden. F\u00fcr Informationsseiten k\u00f6nnen qualitative externe Quellen Vertrauen st\u00e4rken.',
+      value: t.nofollow.noLinksValue,
+      recommendation: t.nofollow.noLinksRecommendation,
       leakAttribute: 'anchors.nofollowRatio',
     };
   }
@@ -48,89 +53,89 @@ function checkNofollowRatio(page: ParsedPage): CheckResult {
 
   if (ratio > 0.9 && externalLinks.length > 5) {
     return {
-      factor: 'Externe Links & Nofollow',
+      factor: t.nofollow.factor,
       status: 'warn',
       value: `${nofollowLinks.length}/${externalLinks.length} nofollow`,
-      recommendation: 'Fast alle externen Links sind nofollow. Ein nat\u00fcrliches Linkprofil enth\u00e4lt auch dofollow-Links zu vertrauensw\u00fcrdigen Quellen.',
+      recommendation: t.nofollow.tooManyRecommendation,
       leakAttribute: 'anchors.nofollowRatio',
     };
   }
 
   if (ratio < 0.1 && externalLinks.length > 10) {
     return {
-      factor: 'Externe Links & Nofollow',
+      factor: t.nofollow.factor,
       status: 'warn',
       value: `${nofollowLinks.length}/${externalLinks.length} nofollow`,
-      recommendation: 'Kaum nofollow bei externen Links. Setze nofollow f\u00fcr Werbung, Affiliate und nutzergenerierte Links.',
+      recommendation: t.nofollow.tooFewRecommendation,
       leakAttribute: 'anchors.nofollowRatio',
     };
   }
 
   return {
-    factor: 'Externe Links & Nofollow',
+    factor: t.nofollow.factor,
     status: 'pass',
     value: `${nofollowLinks.length}/${externalLinks.length} nofollow`,
-    recommendation: 'Ausgewogene Nofollow-Verteilung bei externen Links.',
+    recommendation: t.nofollow.passRecommendation,
     leakAttribute: 'anchors.nofollowRatio',
   };
 }
 
-function checkHiddenContent(page: ParsedPage): CheckResult {
+function checkHiddenContent(page: ParsedPage, t: Texts): CheckResult {
   if (page.hiddenTextRatio > 0.1) {
     return {
-      factor: 'Versteckte Inhalte',
+      factor: t.hiddenContent.factor,
       status: 'fail',
-      value: `${Math.round(page.hiddenTextRatio * 100)}% versteckt`,
-      recommendation: 'Hoher Anteil versteckter Elemente (display:none, visibility:hidden). SpamBrain erkennt Hidden-Text-Techniken als Manipulationsversuch.',
+      value: t.hiddenContent.hiddenValue(Math.round(page.hiddenTextRatio * 100)),
+      recommendation: t.hiddenContent.failRecommendation,
       leakAttribute: 'spamBrain.hiddenText',
     };
   }
 
   if (page.hiddenTextRatio > 0.05) {
     return {
-      factor: 'Versteckte Inhalte',
+      factor: t.hiddenContent.factor,
       status: 'warn',
-      value: `${Math.round(page.hiddenTextRatio * 100)}% versteckt`,
-      recommendation: 'Einige versteckte Elemente erkannt. Stelle sicher, dass dies f\u00fcr UX-Zwecke ist (Akkordeons, Men\u00fcs) und nicht zur Manipulation.',
+      value: t.hiddenContent.hiddenValue(Math.round(page.hiddenTextRatio * 100)),
+      recommendation: t.hiddenContent.warnRecommendation,
       leakAttribute: 'spamBrain.hiddenText',
     };
   }
 
   return {
-    factor: 'Versteckte Inhalte',
+    factor: t.hiddenContent.factor,
     status: 'pass',
-    value: 'Minimal',
-    recommendation: 'Kein auff\u00e4lliger versteckter Content erkannt.',
+    value: t.hiddenContent.passValue,
+    recommendation: t.hiddenContent.passRecommendation,
     leakAttribute: 'spamBrain.hiddenText',
   };
 }
 
-function checkRedirectIntegrity(page: ParsedPage): CheckResult {
+function checkRedirectIntegrity(page: ParsedPage, t: Texts): CheckResult {
   if (page.redirectChain.length > 2) {
     return {
-      factor: 'Redirect-Integrit\u00e4t',
+      factor: t.redirect.factor,
       status: 'fail',
-      value: `${page.redirectChain.length} Hops`,
-      recommendation: 'Mehrere Redirects in der Kette. Jeder Redirect kann PageRank-Verlust bedeuten und Crawl-Budget verschwenden.',
+      value: t.redirect.hopsValue(page.redirectChain.length),
+      recommendation: t.redirect.failRecommendation,
       leakAttribute: 'pagerank.redirectLoss',
     };
   }
 
   if (page.redirectChain.length > 0) {
     return {
-      factor: 'Redirect-Integrit\u00e4t',
+      factor: t.redirect.factor,
       status: 'warn',
-      value: `${page.redirectChain.length} Redirect(s)`,
-      recommendation: 'Redirect erkannt. Verlinke m\u00f6glichst direkt auf die Ziel-URL.',
+      value: t.redirect.redirectsValue(page.redirectChain.length),
+      recommendation: t.redirect.warnRecommendation,
       leakAttribute: 'pagerank.redirectLoss',
     };
   }
 
   return {
-    factor: 'Redirect-Integrit\u00e4t',
+    factor: t.redirect.factor,
     status: 'pass',
-    value: 'Direkt',
-    recommendation: 'Kein Redirect \u2013 direkte Erreichbarkeit.',
+    value: t.redirect.passValue,
+    recommendation: t.redirect.passRecommendation,
     leakAttribute: 'pagerank.redirectLoss',
   };
 }

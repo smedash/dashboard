@@ -11,66 +11,68 @@ import { runHreflangChecks } from './checks/hreflang';
 import { runSpamRiskChecks } from './checks/spam-risk';
 import { runCatalogChecks } from './catalog-bridge';
 import { calculateCategoryScore, calculateOverallScore } from './scorer';
+import type { Locale } from '@/i18n/config';
+import { urlCheckerCommonMessages } from '@/i18n/messages/url-checker/common';
 
 export { parseHtml } from './parser';
 export type { UrlCheckResult, ParsedPage } from './types';
 export { runCatalogEvaluation } from './catalog-bridge';
 
-export function runAllChecks(page: ParsedPage): UrlCheckResult {
+export function runAllChecks(page: ParsedPage, locale: Locale = 'de'): UrlCheckResult {
   const categories: CategoryResult[] = [
     {
       name: 'Technical / Indexing',
       leakReference: 'Mustang, DocJoiner, FreshDocs',
-      checks: runTechnicalChecks(page),
+      checks: runTechnicalChecks(page, locale),
       score: 0,
     },
     {
       name: 'Content Quality',
       leakReference: 'NSR, QualityBoost, Panda/BabyPanda',
-      checks: runContentQualityChecks(page),
+      checks: runContentQualityChecks(page, locale),
       score: 0,
     },
     {
       name: 'Entity & Topicality',
       leakReference: 'WebRef, Pianno, TopicEmbeddings',
-      checks: runEntityTopicalityChecks(page),
+      checks: runEntityTopicalityChecks(page, locale),
       score: 0,
     },
     {
       name: 'Freshness',
       leakReference: 'FreshnessTwiddler, LastSignificantUpdate',
-      checks: runFreshnessChecks(page),
+      checks: runFreshnessChecks(page, locale),
       score: 0,
     },
     {
       name: 'Authority & Trust',
       leakReference: 'NSR, SpamBrain, PageRank',
-      checks: runAuthorityTrustChecks(page),
+      checks: runAuthorityTrustChecks(page, locale),
       score: 0,
     },
     {
       name: 'User Experience',
       leakReference: 'NavBoost, ClutterScore',
-      checks: runUserExperienceChecks(page),
+      checks: runUserExperienceChecks(page, locale),
       score: 0,
     },
     {
       name: 'Hreflang & i18n',
       leakReference: 'indexing.hreflang, i18nBucket',
-      checks: runHreflangChecks(page),
+      checks: runHreflangChecks(page, locale),
       score: 0,
     },
     {
       name: 'Spam-Risiko',
       leakReference: 'SpamBrain, spamrank, exactMatchDomainDemotion',
-      checks: runSpamRiskChecks(page),
+      checks: runSpamRiskChecks(page, locale),
       score: 0,
     },
   ];
 
   // Add keyword category if keyword provided
   if (page.keyword) {
-    const keywordChecks = runKeywordRelevanceChecks(page);
+    const keywordChecks = runKeywordRelevanceChecks(page, locale);
     if (keywordChecks.length > 0) {
       categories.unshift({
         name: 'Keyword-Relevanz',
@@ -82,8 +84,8 @@ export function runAllChecks(page: ParsedPage): UrlCheckResult {
   }
 
   // Run catalog-based checks and merge into existing/new categories
-  const catalogCategories = runCatalogChecks(page);
-  mergeCatalogResults(categories, catalogCategories);
+  const catalogCategories = runCatalogChecks(page, locale);
+  mergeCatalogResults(categories, catalogCategories, locale);
 
   for (const category of categories) {
     category.score = calculateCategoryScore(category.checks);
@@ -107,7 +109,8 @@ export function runAllChecks(page: ParsedPage): UrlCheckResult {
  */
 function mergeCatalogResults(
   existing: CategoryResult[],
-  catalogResults: CategoryResult[]
+  catalogResults: CategoryResult[],
+  locale: Locale
 ): void {
   const existingFactors = new Set<string>();
   for (const cat of existing) {
@@ -127,8 +130,8 @@ function mergeCatalogResults(
 
     if (match) {
       match.checks.push(...newChecks);
-      if (!match.leakReference.includes("Katalog")) {
-        match.leakReference += ` + Katalog (${newChecks.length})`;
+      if (!match.leakReference.includes(" + ")) {
+        match.leakReference += urlCheckerCommonMessages[locale].catalogSuffix(newChecks.length);
       }
     } else {
       existing.push({
@@ -147,11 +150,12 @@ export function analyzeUrl(
   statusCode: number,
   redirectChain: string[],
   lastModifiedHeader: string | null,
-  keyword?: string
+  keyword?: string,
+  locale: Locale = 'de'
 ): UrlCheckResult {
   const page = parseHtml(html, url, statusCode, redirectChain, lastModifiedHeader);
   if (keyword) {
     page.keyword = keyword;
   }
-  return runAllChecks(page);
+  return runAllChecks(page, locale);
 }

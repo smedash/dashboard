@@ -6,6 +6,9 @@ import { DataTable } from "@/components/ui/DataTable";
 import { StatCard } from "@/components/ui/StatCard";
 import { LineChart } from "@/components/charts/LineChart";
 import { canEdit } from "@/lib/rbac";
+import { useLocale, useMessages } from "@/i18n/I18nProvider";
+import { commonMessages } from "@/i18n/messages/common";
+import { ranktrackerMessages } from "@/i18n/messages/ranktracker";
 
 interface RankingData {
   id: string;
@@ -65,6 +68,9 @@ interface Ranking {
 export default function RankTrackerPage() {
   const { data: session } = useSession();
   const canEditData = canEdit(session?.user?.role);
+  const t = useMessages(ranktrackerMessages);
+  const tc = useMessages(commonMessages);
+  const { intlLocale } = useLocale();
   const [tracker, setTracker] = useState<Tracker | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isFetching, setIsFetching] = useState(false);
@@ -131,7 +137,7 @@ export default function RankTrackerPage() {
 
       if (!response.ok) {
         const error = await response.json();
-        alert(error.error || "Fehler beim Hinzufügen des Keywords");
+        alert(error.error || t.errors.addKeyword);
         return;
       }
 
@@ -142,12 +148,12 @@ export default function RankTrackerPage() {
       await fetchTracker();
     } catch (error) {
       console.error("Error adding keyword:", error);
-      alert("Fehler beim Hinzufügen des Keywords");
+      alert(t.errors.addKeyword);
     }
   }
 
   async function handleDeleteKeyword(id: string) {
-    if (!confirm("Möchtest Du dieses Keyword wirklich löschen?")) return;
+    if (!confirm(t.confirmDelete)) return;
 
     try {
       const response = await fetch(`/api/rank-tracker/keywords/${id}`, {
@@ -155,7 +161,7 @@ export default function RankTrackerPage() {
       });
 
       if (!response.ok) {
-        alert("Fehler beim Löschen des Keywords");
+        alert(t.errors.deleteKeyword);
         return;
       }
 
@@ -168,7 +174,7 @@ export default function RankTrackerPage() {
       }
     } catch (error) {
       console.error("Error deleting keyword:", error);
-      alert("Fehler beim Löschen des Keywords");
+      alert(t.errors.deleteKeyword);
     }
   }
 
@@ -181,17 +187,17 @@ export default function RankTrackerPage() {
 
       if (!response.ok) {
         const error = await response.json();
-        alert(error.error || "Fehler beim Abrufen der Rankings");
+        alert(error.error || t.errors.fetchRankings);
         return;
       }
 
       const data = await response.json();
-      alert(data.message || "Rankings erfolgreich abgerufen");
+      alert(data.message || t.rankingsFetched);
       await fetchTracker();
       await fetchHistoricalRankings(selectedKeyword || undefined);
     } catch (error) {
       console.error("Error fetching rankings:", error);
-      alert("Fehler beim Abrufen der Rankings");
+      alert(t.errors.fetchRankings);
     } finally {
       setIsFetching(false);
     }
@@ -206,7 +212,7 @@ export default function RankTrackerPage() {
 
       if (!response.ok) {
         const error = await response.json();
-        alert(error.error || "Fehler beim Abrufen des Rankings");
+        alert(error.error || t.errors.fetchRanking);
         return;
       }
 
@@ -214,7 +220,7 @@ export default function RankTrackerPage() {
       await fetchHistoricalRankings(selectedKeyword || undefined);
     } catch (error) {
       console.error("Error refreshing keyword:", error);
-      alert("Fehler beim Abrufen des Rankings");
+      alert(t.errors.fetchRanking);
     } finally {
       setRefreshingKeywordId(null);
     }
@@ -240,7 +246,7 @@ export default function RankTrackerPage() {
 
       if (!response.ok) {
         const error = await response.json();
-        alert(error.error || "Fehler beim Aktualisieren der Kategorie");
+        alert(error.error || t.errors.updateCategory);
         return;
       }
 
@@ -255,7 +261,7 @@ export default function RankTrackerPage() {
       });
     } catch (error) {
       console.error("Error updating category:", error);
-      alert("Fehler beim Aktualisieren der Kategorie");
+      alert(t.errors.updateCategory);
     } finally {
       setEditingCategoryId(null);
     }
@@ -270,16 +276,16 @@ export default function RankTrackerPage() {
 
       if (!response.ok) {
         const error = await response.json();
-        alert(error.error || "Fehler beim Abrufen des Suchvolumens");
+        alert(error.error || t.errors.fetchSearchVolume);
         return;
       }
 
       const data = await response.json();
-      alert(data.message || "Suchvolumen erfolgreich abgerufen");
+      alert(data.message || t.searchVolumeFetched);
       await fetchTracker();
     } catch (error) {
       console.error("Error fetching search volume:", error);
-      alert("Fehler beim Abrufen des Suchvolumens");
+      alert(t.errors.fetchSearchVolume);
     } finally {
       setIsFetchingVolume(false);
     }
@@ -336,11 +342,11 @@ export default function RankTrackerPage() {
         deltaFirst: calculateDelta(currentPosition, firstPosition),
         url: latestRanking?.url ?? null,
         lastUpdate: latestRanking?.date
-          ? new Date(latestRanking.date).toLocaleDateString("de-DE")
-          : "Nie",
+          ? new Date(latestRanking.date).toLocaleDateString(intlLocale)
+          : t.never,
         firstUpdate: firstRanking?.date
-          ? new Date(firstRanking.date).toLocaleDateString("de-DE")
-          : "Nie",
+          ? new Date(firstRanking.date).toLocaleDateString(intlLocale)
+          : t.never,
         kvp: keyword.kvp || null,
         searchVolume: keyword.searchVolume ?? null,
       };
@@ -397,6 +403,11 @@ export default function RankTrackerPage() {
   // Reset auf Seite 1 wenn Filter sich ändern
   const resetPagination = () => setCurrentPage(1);
 
+  const toDisplayDate = (deDate: string) => {
+    const [day, month, year] = deDate.split(".").map(Number);
+    return new Date(year, month - 1, day).toLocaleDateString(intlLocale);
+  };
+
   // Bereite Chart-Daten vor
   const chartData: Array<Record<string, unknown>> = [];
   if (selectedKeyword && historicalRankings.length > 0) {
@@ -420,7 +431,7 @@ export default function RankTrackerPage() {
 
     sortedDates.forEach(([date, position]) => {
       chartData.push({
-        date,
+        date: toDisplayDate(date),
         position: position ?? null,
       });
     });
@@ -450,7 +461,7 @@ export default function RankTrackerPage() {
         rankings.reduce((sum, r) => sum + (r.position ?? 100), 0) /
         rankings.length;
       chartData.push({
-        date,
+        date: toDisplayDate(date),
         position: avgPosition,
       });
     });
@@ -468,7 +479,7 @@ export default function RankTrackerPage() {
   return (
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Ranktracker</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h1>
         <div className="flex items-center gap-3 flex-wrap">
           {/* Keyword-Suchfeld */}
           <div className="relative">
@@ -479,7 +490,7 @@ export default function RankTrackerPage() {
                 setSearchText(e.target.value);
                 setCurrentPage(1);
               }}
-              placeholder="Keyword suchen..."
+              placeholder={t.searchKeywordPlaceholder}
               className="pl-9 pr-4 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white text-sm placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 w-44"
             />
             <svg
@@ -505,7 +516,7 @@ export default function RankTrackerPage() {
                 setUrlFilter(e.target.value);
                 setCurrentPage(1);
               }}
-              placeholder="URL enthält..."
+              placeholder={t.urlContainsPlaceholder}
               className="pl-9 pr-4 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white text-sm placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 w-44"
             />
             <svg
@@ -531,8 +542,8 @@ export default function RankTrackerPage() {
             }}
             className="px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="">Alle Kategorien</option>
-            <option value="__none__">Ohne Kategorie</option>
+            <option value="">{t.allCategories}</option>
+            <option value="__none__">{t.withoutCategory}</option>
             {KEYWORD_CATEGORIES.map((cat) => (
               <option key={cat} value={cat}>
                 {cat}
@@ -548,16 +559,16 @@ export default function RankTrackerPage() {
             }}
             className="px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="">Alle Entwicklungen</option>
-            <optgroup label="Seit letzter Aktualisierung">
-              <option value="improved_last">↑ Verbessert</option>
-              <option value="declined_last">↓ Verschlechtert</option>
-              <option value="unchanged_last">± Unverändert</option>
+            <option value="">{t.development.all}</option>
+            <optgroup label={t.development.sinceLastUpdate}>
+              <option value="improved_last">{t.development.improvedLast}</option>
+              <option value="declined_last">{t.development.declinedLast}</option>
+              <option value="unchanged_last">{t.development.unchangedLast}</option>
             </optgroup>
-            <optgroup label="Seit Start">
-              <option value="improved_start">↑ Verbessert seit Start</option>
-              <option value="declined_start">↓ Verschlechtert seit Start</option>
-              <option value="unchanged_start">± Unverändert seit Start</option>
+            <optgroup label={t.development.sinceStart}>
+              <option value="improved_start">{t.development.improvedStart}</option>
+              <option value="declined_start">{t.development.declinedStart}</option>
+              <option value="unchanged_start">{t.development.unchangedStart}</option>
             </optgroup>
           </select>
           {/* Filter zurücksetzen */}
@@ -572,7 +583,7 @@ export default function RankTrackerPage() {
               }}
               className="px-3 py-2 bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500 text-slate-700 dark:text-slate-200 rounded-lg text-sm transition-colors"
             >
-              Filter zurücksetzen
+              {t.resetFilters}
             </button>
           )}
           {canEditData && (
@@ -580,7 +591,7 @@ export default function RankTrackerPage() {
               onClick={() => setShowAddForm(!showAddForm)}
               className="px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-900 dark:text-white rounded-lg transition-colors"
             >
-              {showAddForm ? "Abbrechen" : "Keyword hinzufügen"}
+              {showAddForm ? tc.actions.cancel : t.addKeyword}
             </button>
           )}
           <button
@@ -594,14 +605,14 @@ export default function RankTrackerPage() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
-                Lädt...
+                {tc.actions.loading}
               </>
             ) : (
               <>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
-                Rankings abrufen
+                {t.fetchRankings}
               </>
             )}
           </button>
@@ -616,14 +627,14 @@ export default function RankTrackerPage() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
-                Lädt...
+                {tc.actions.loading}
               </>
             ) : (
               <>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
-                Suchvolumen abrufen
+                {t.fetchSearchVolume}
               </>
             )}
           </button>
@@ -632,25 +643,25 @@ export default function RankTrackerPage() {
 
       {showAddForm && canEditData && (
         <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Neues Keyword hinzufügen</h2>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">{t.form.title}</h2>
           <form onSubmit={handleAddKeyword} className="space-y-4">
             <div>
               <label htmlFor="keyword" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                Keyword *
+                {t.form.keyword}
               </label>
               <input
                 id="keyword"
                 type="text"
                 value={newKeyword}
                 onChange={(e) => setNewKeyword(e.target.value)}
-                placeholder="z.B. seo tools"
+                placeholder={t.form.keywordPlaceholder}
                 required
                 className="w-full px-4 py-2 bg-white dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <div>
               <label htmlFor="category" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                Kategorie (optional)
+                {t.form.category}
               </label>
               <select
                 id="category"
@@ -658,7 +669,7 @@ export default function RankTrackerPage() {
                 onChange={(e) => setNewCategory(e.target.value)}
                 className="w-full px-4 py-2 bg-white dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">Keine Kategorie</option>
+                <option value="">{t.noCategory}</option>
                 {KEYWORD_CATEGORIES.map((cat) => (
                   <option key={cat} value={cat}>
                     {cat}
@@ -668,18 +679,18 @@ export default function RankTrackerPage() {
             </div>
             <div>
               <label htmlFor="targetUrl" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                Ziel-URL (optional)
+                {t.form.targetUrl}
               </label>
               <input
                 id="targetUrl"
                 type="text"
                 value={newTargetUrl}
                 onChange={(e) => setNewTargetUrl(e.target.value)}
-                placeholder="ubs.com (Standard)"
+                placeholder={t.form.targetUrlPlaceholder}
                 className="w-full px-4 py-2 bg-white dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
-                Standardmäßig wird nach ubs.com URLs gesucht. Du kannst eine andere Domain angeben.
+                {t.form.targetUrlHint}
               </p>
             </div>
             <div className="flex gap-3">
@@ -687,7 +698,7 @@ export default function RankTrackerPage() {
                 type="submit"
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors"
               >
-                Hinzufügen
+                {t.form.submit}
               </button>
               <button
                 type="button"
@@ -699,7 +710,7 @@ export default function RankTrackerPage() {
                 }}
                 className="px-4 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-900 dark:text-white rounded-lg transition-colors"
               >
-                Abbrechen
+                {tc.actions.cancel}
               </button>
             </div>
           </form>
@@ -711,14 +722,14 @@ export default function RankTrackerPage() {
           <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-                Keywords & Rankings
+                {t.keywordsAndRankings}
                 <span className="ml-2 text-sm font-normal text-slate-500 dark:text-slate-400">
                   ({tracker.keywords.length})
                 </span>
               </h2>
               {(categoryFilter || developmentFilter || searchText || urlFilter) && (
                 <span className="text-sm text-slate-600 dark:text-slate-400">
-                  {tableData.length} von {tracker.keywords.length} gefiltert
+                  {t.filteredCount(tableData.length, tracker.keywords.length)}
                 </span>
               )}
             </div>
@@ -727,12 +738,12 @@ export default function RankTrackerPage() {
               columns={[
                 {
                   key: "keyword",
-                  header: "Keyword",
+                  header: t.columns.keyword,
                   sortable: true,
                 },
                 {
                   key: "category",
-                  header: "Kategorie",
+                  header: t.columns.category,
                   sortable: true,
                   render: (value, row) => {
                     const isEditing = editingCategoryId === row.id;
@@ -751,7 +762,7 @@ export default function RankTrackerPage() {
                           onBlur={() => setEditingCategoryId(null)}
                           className="px-2 py-1 bg-white dark:bg-slate-700 border border-blue-500 rounded text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[140px]"
                         >
-                          <option value="">Keine Kategorie</option>
+                          <option value="">{t.noCategory}</option>
                           {KEYWORD_CATEGORIES.map((cat) => (
                             <option key={cat} value={cat}>
                               {cat}
@@ -769,7 +780,7 @@ export default function RankTrackerPage() {
                             ? "text-slate-700 dark:text-slate-300"
                             : "text-slate-400 dark:text-slate-500 italic"
                         }`}
-                        title={canEditData ? "Klicken zum Bearbeiten" : undefined}
+                        title={canEditData ? t.clickToEdit : undefined}
                       >
                         {(value as string) || "–"}
                       </span>
@@ -778,14 +789,14 @@ export default function RankTrackerPage() {
                 },
                 {
                   key: "searchVolume",
-                  header: "Suchvolumen",
+                  header: t.columns.searchVolume,
                   sortable: true,
                   render: (value) => {
                     if (value === null || value === undefined) {
                       return <span className="text-slate-500 dark:text-slate-500">-</span>;
                     }
                     // Formatiere das Suchvolumen mit Tausender-Trennzeichen
-                    const formattedVolume = (value as number).toLocaleString("de-DE");
+                    const formattedVolume = (value as number).toLocaleString(intlLocale);
                     return (
                       <span className="text-slate-700 dark:text-slate-300 font-medium">
                         {formattedVolume}
@@ -795,12 +806,12 @@ export default function RankTrackerPage() {
                 },
                 {
                   key: "position",
-                  header: "Position",
+                  header: t.columns.position,
                   sortable: true,
                   render: (value, row) => {
                     if (value === null) {
                       // Zeige ">100" wenn es ein Aktualisierungsdatum gibt, sonst "-"
-                      if (row.lastUpdate && row.lastUpdate !== "Nie") {
+                      if (row.lastUpdate && row.lastUpdate !== t.never) {
                         return <span className="text-slate-500 dark:text-slate-500">&gt;100</span>;
                       }
                       return <span className="text-slate-500 dark:text-slate-500">-</span>;
@@ -814,19 +825,19 @@ export default function RankTrackerPage() {
                 },
                 {
                   key: "deltaLast",
-                  header: "Δ Letzte",
+                  header: t.columns.deltaLast,
                   sortable: true,
                   render: (value) => renderDelta(value as number | null),
                 },
                 {
                   key: "deltaFirst",
-                  header: "Δ Start",
+                  header: t.columns.deltaStart,
                   sortable: true,
                   render: (value) => renderDelta(value as number | null),
                 },
                 {
                   key: "url",
-                  header: "Ranking URL",
+                  header: t.columns.rankingUrl,
                   render: (value) => {
                     if (!value) return <span className="text-slate-500 dark:text-slate-500">-</span>;
                     return (
@@ -843,12 +854,12 @@ export default function RankTrackerPage() {
                 },
                 {
                   key: "lastUpdate",
-                  header: "Aktualisiert",
+                  header: t.columns.updated,
                   sortable: true,
                 },
                 {
                   key: "kvp",
-                  header: "KVP",
+                  header: t.columns.kvp,
                   render: (value) => {
                     const kvp = value as KvpInfo | null;
                     if (!kvp) {
@@ -863,14 +874,14 @@ export default function RankTrackerPage() {
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        Ja
+                        {t.yes}
                       </a>
                     );
                   },
                 },
                 {
                   key: "actions",
-                  header: "Aktionen",
+                  header: t.columns.actions,
                   render: (_, row) => (
                     <div className="flex gap-2 items-center">
                       {canEditData && (
@@ -879,7 +890,7 @@ export default function RankTrackerPage() {
                             onClick={() => handleRefreshKeyword(row.id as string)}
                             disabled={refreshingKeywordId === row.id}
                             className="p-1.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 hover:text-slate-900 dark:hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            title="Ranking aktualisieren"
+                            title={t.refreshRanking}
                           >
                             <svg
                               className={`w-4 h-4 ${refreshingKeywordId === row.id ? "animate-spin" : ""}`}
@@ -898,7 +909,7 @@ export default function RankTrackerPage() {
                           <button
                             onClick={() => handleDeleteKeyword(row.id as string)}
                             className="p-1.5 rounded bg-red-600/20 text-red-400 hover:bg-red-600/30 transition-colors"
-                            title="Löschen"
+                            title={tc.actions.delete}
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -917,7 +928,7 @@ export default function RankTrackerPage() {
             {totalPages > 1 && (
               <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
                 <div className="text-sm text-slate-600 dark:text-slate-400">
-                  Zeige {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, tableData.length)} von {tableData.length}
+                  {t.showing((currentPage - 1) * itemsPerPage + 1, Math.min(currentPage * itemsPerPage, tableData.length), tableData.length)}
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -991,13 +1002,13 @@ export default function RankTrackerPage() {
           {chartData.length > 0 && (
             <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
               <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-                Ranking-Verlauf {selectedKeyword ? `(${tracker.keywords.find(k => k.id === selectedKeyword)?.keyword})` : "(Durchschnitt)"}
+                {t.rankingHistory} {selectedKeyword ? `(${tracker.keywords.find(k => k.id === selectedKeyword)?.keyword})` : t.average}
               </h2>
               <LineChart
                 data={chartData}
                 xKey="date"
                 lines={[
-                  { key: "position", name: "Position", color: "#3b82f6" },
+                  { key: "position", name: t.columns.position, color: "#3b82f6" },
                 ]}
                 height={300}
               />
@@ -1023,9 +1034,9 @@ export default function RankTrackerPage() {
             return (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <StatCard
-                  title="Gestiegen"
+                  title={t.stats.improved}
                   value={improved}
-                  subtitle="seit letzter Aktualisierung"
+                  subtitle={t.stats.sinceLastUpdate}
                   trend="up"
                   icon={
                     <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
@@ -1034,9 +1045,9 @@ export default function RankTrackerPage() {
                   }
                 />
                 <StatCard
-                  title="Gefallen"
+                  title={t.stats.declined}
                   value={declined}
-                  subtitle="seit letzter Aktualisierung"
+                  subtitle={t.stats.sinceLastUpdate}
                   trend="down"
                   icon={
                     <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
@@ -1045,9 +1056,9 @@ export default function RankTrackerPage() {
                   }
                 />
                 <StatCard
-                  title="Keine Änderung"
+                  title={t.stats.unchanged}
                   value={unchanged}
-                  subtitle="seit letzter Aktualisierung"
+                  subtitle={t.stats.sinceLastUpdate}
                   icon={
                     <svg className="w-5 h-5 text-slate-500" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M5 10a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1z" clipRule="evenodd" />
@@ -1065,18 +1076,18 @@ export default function RankTrackerPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           </div>
-          <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">Noch keine Keywords</h3>
+          <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">{t.empty.title}</h3>
           <p className="text-slate-600 dark:text-slate-400 mb-6">
             {canEditData 
-              ? "Füge Dein erstes Keyword hinzu, um Rankings zu tracken."
-              : "Es sind noch keine Keywords vorhanden."}
+              ? t.empty.editorHint
+              : t.empty.viewerHint}
           </p>
           {canEditData && (
             <button
               onClick={() => setShowAddForm(true)}
               className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors"
             >
-              Erstes Keyword hinzufügen
+              {t.empty.addFirst}
             </button>
           )}
         </div>

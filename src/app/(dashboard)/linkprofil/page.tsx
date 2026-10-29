@@ -4,6 +4,26 @@ import { useState, useEffect, useCallback } from "react";
 import { DataTable } from "@/components/ui/DataTable";
 import { StatCard } from "@/components/ui/StatCard";
 import { PieChart } from "@/components/charts/PieChart";
+import { useLocale, useMessages } from "@/i18n/I18nProvider";
+import { linkProfileMessages } from "@/i18n/messages/link-profile";
+
+type ErrorKey = "loadSummary" | "refresh" | "loadBacklinks" | "loadDomains" | "unknown";
+type ErrorState = { key: ErrorKey } | { message: string };
+
+class LinkProfileError extends Error {
+  key: ErrorKey;
+
+  constructor(key: ErrorKey) {
+    super(key);
+    this.key = key;
+  }
+}
+
+function toErrorState(err: unknown): ErrorState {
+  if (err instanceof LinkProfileError) return { key: err.key };
+  if (err instanceof Error) return { message: err.message };
+  return { key: "unknown" };
+}
 
 interface BacklinksSummary {
   target: string;
@@ -52,6 +72,8 @@ type TabType = "overview" | "backlinks" | "domains";
 type FilterType = "all" | "dofollow" | "nofollow" | "new" | "lost";
 
 export default function LinkprofilPage() {
+  const t = useMessages(linkProfileMessages);
+  const { intlLocale } = useLocale();
   const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [summary, setSummary] = useState<BacklinksSummary | null>(null);
   const [backlinks, setBacklinks] = useState<Backlink[]>([]);
@@ -60,7 +82,7 @@ export default function LinkprofilPage() {
   const [isLoadingBacklinks, setIsLoadingBacklinks] = useState(false);
   const [isLoadingDomains, setIsLoadingDomains] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorState | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [needsRefresh, setNeedsRefresh] = useState(false);
   
@@ -76,13 +98,13 @@ export default function LinkprofilPage() {
   const fetchSummary = useCallback(async () => {
     try {
       const response = await fetch("/api/backlinks?type=summary");
-      if (!response.ok) throw new Error("Fehler beim Laden der Summary");
+      if (!response.ok) throw new LinkProfileError("loadSummary");
       const data = await response.json();
       setSummary(data.summary);
       setLastUpdated(data.lastUpdated || null);
       setNeedsRefresh(data.needsRefresh || false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unbekannter Fehler");
+      setError(toErrorState(err));
     }
   }, []);
 
@@ -96,10 +118,11 @@ export default function LinkprofilPage() {
       });
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Fehler beim Aktualisieren");
+        if (data.error) throw new Error(data.error);
+        throw new LinkProfileError("refresh");
       }
       const data = await response.json();
-      alert(data.message || "Linkprofil erfolgreich aktualisiert!");
+      alert(data.message || t.refreshSuccess);
       
       // Daten neu laden
       setNeedsRefresh(false);
@@ -110,11 +133,11 @@ export default function LinkprofilPage() {
       setBacklinksPage(0);
       setDomainsPage(0);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unbekannter Fehler");
+      setError(toErrorState(err));
     } finally {
       setIsRefreshing(false);
     }
-  }, [fetchSummary]);
+  }, [fetchSummary, t]);
 
   // Backlinks laden
   const fetchBacklinks = useCallback(async (page: number, currentFilter: FilterType) => {
@@ -128,12 +151,12 @@ export default function LinkprofilPage() {
       else if (currentFilter === "lost") url += "&isLost=true";
 
       const response = await fetch(url);
-      if (!response.ok) throw new Error("Fehler beim Laden der Backlinks");
+      if (!response.ok) throw new LinkProfileError("loadBacklinks");
       const data = await response.json();
       setBacklinks(data.backlinks || []);
       setBacklinksTotal(data.total_count || 0);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unbekannter Fehler");
+      setError(toErrorState(err));
     } finally {
       setIsLoadingBacklinks(false);
     }
@@ -144,12 +167,12 @@ export default function LinkprofilPage() {
     setIsLoadingDomains(true);
     try {
       const response = await fetch(`/api/backlinks?type=domains&limit=${pageSize}&offset=${page * pageSize}`);
-      if (!response.ok) throw new Error("Fehler beim Laden der Referring Domains");
+      if (!response.ok) throw new LinkProfileError("loadDomains");
       const data = await response.json();
       setDomains(data.domains || []);
       setDomainsTotal(data.total_count || 0);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unbekannter Fehler");
+      setError(toErrorState(err));
     } finally {
       setIsLoadingDomains(false);
     }
@@ -183,10 +206,10 @@ export default function LinkprofilPage() {
   }, [filter, activeTab, fetchBacklinks]);
 
   // Formatierung
-  const formatNumber = (num: number) => num.toLocaleString("de-DE");
+  const formatNumber = (num: number) => num.toLocaleString(intlLocale);
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    return date.toLocaleDateString("de-DE");
+    return date.toLocaleDateString(intlLocale);
   };
 
   // Spam-Score Farbe
@@ -219,8 +242,8 @@ export default function LinkprofilPage() {
   if (error) {
     return (
       <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-6">
-        <h3 className="text-lg font-semibold text-red-800 dark:text-red-200 mb-2">Fehler</h3>
-        <p className="text-red-600 dark:text-red-300">{error}</p>
+        <h3 className="text-lg font-semibold text-red-800 dark:text-red-200 mb-2">{t.errors.title}</h3>
+        <p className="text-red-600 dark:text-red-300">{"message" in error ? error.message : t.errors[error.key]}</p>
         <button
           onClick={() => {
             setError(null);
@@ -228,7 +251,7 @@ export default function LinkprofilPage() {
           }}
           className="mt-4 px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg transition-colors"
         >
-          Erneut versuchen
+          {t.retry}
         </button>
       </div>
     );
@@ -244,7 +267,7 @@ export default function LinkprofilPage() {
   const formatLastUpdated = (dateStr: string | null) => {
     if (!dateStr) return null;
     const date = new Date(dateStr);
-    return date.toLocaleString("de-DE", {
+    return date.toLocaleString(intlLocale, {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -258,9 +281,9 @@ export default function LinkprofilPage() {
     return (
       <div className="space-y-8">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Linkprofil</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h1>
           <p className="text-slate-600 dark:text-slate-400 mt-1">
-            Backlink-Analyse für <span className="font-semibold text-blue-600 dark:text-blue-400">ubs.com</span>
+            {t.analysisFor} <span className="font-semibold text-blue-600 dark:text-blue-400">ubs.com</span>
           </p>
         </div>
         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-8 text-center">
@@ -269,10 +292,10 @@ export default function LinkprofilPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
             </svg>
           </div>
-          <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">Noch keine Daten vorhanden</h3>
+          <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">{t.noData.title}</h3>
           <p className="text-slate-600 dark:text-slate-400 mb-6">
-            Klicke auf &quot;Daten abrufen&quot;, um das Linkprofil von ubs.com zu laden.<br />
-            <span className="text-sm text-slate-500">Hinweis: Dies verbraucht API-Credits bei DataForSEO.</span>
+            {t.noData.text}<br />
+            <span className="text-sm text-slate-500">{t.noData.hint}</span>
           </p>
           <button
             onClick={refreshFromAPI}
@@ -285,14 +308,14 @@ export default function LinkprofilPage() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
-                Lade Daten...
+                {t.noData.loading}
               </>
             ) : (
               <>
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
-                Daten abrufen
+                {t.noData.fetch}
               </>
             )}
           </button>
@@ -306,12 +329,12 @@ export default function LinkprofilPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Linkprofil</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h1>
           <p className="text-slate-600 dark:text-slate-400 mt-1">
-            Backlink-Analyse für <span className="font-semibold text-blue-600 dark:text-blue-400">ubs.com</span>
+            {t.analysisFor} <span className="font-semibold text-blue-600 dark:text-blue-400">ubs.com</span>
             {lastUpdated && (
               <span className="ml-2 text-sm text-slate-500">
-                • Stand: {formatLastUpdated(lastUpdated)}
+                {t.asOf(formatLastUpdated(lastUpdated))}
               </span>
             )}
           </p>
@@ -327,14 +350,14 @@ export default function LinkprofilPage() {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
-              Aktualisiere...
+              {t.refreshing}
             </>
           ) : (
             <>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
-              Aktualisieren
+              {t.refresh}
             </>
           )}
         </button>
@@ -344,9 +367,9 @@ export default function LinkprofilPage() {
       <div className="border-b border-slate-200 dark:border-slate-700">
         <nav className="flex gap-4">
           {[
-            { id: "overview", label: "Übersicht", icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" },
-            { id: "backlinks", label: "Backlinks", icon: "M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" },
-            { id: "domains", label: "Referring Domains", icon: "M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" },
+            { id: "overview", label: t.tabs.overview, icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" },
+            { id: "backlinks", label: t.tabs.backlinks, icon: "M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" },
+            { id: "domains", label: t.tabs.domains, icon: "M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -372,18 +395,18 @@ export default function LinkprofilPage() {
           {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <StatCard
-              title="Gesamt Backlinks"
+              title={t.stats.totalBacklinks}
               value={formatNumber(summary.total_backlinks)}
               icon={
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                 </svg>
               }
-              subtitle={summary.new_backlinks > 0 ? `+${formatNumber(summary.new_backlinks)} neue Links` : undefined}
+              subtitle={summary.new_backlinks > 0 ? t.stats.newLinks(formatNumber(summary.new_backlinks)) : undefined}
               trend={summary.new_backlinks > 0 ? "up" : undefined}
             />
             <StatCard
-              title="Referring Domains"
+              title={t.stats.referringDomains}
               value={formatNumber(summary.total_referring_domains)}
               icon={
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -392,72 +415,72 @@ export default function LinkprofilPage() {
               }
             />
             <StatCard
-              title="Dofollow Links"
+              title={t.stats.dofollowLinks}
               value={formatNumber(summary.dofollow)}
               icon={
                 <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               }
-              subtitle={`${((summary.dofollow / summary.total_backlinks) * 100).toFixed(1)}% aller Links`}
+              subtitle={t.stats.shareOfAll(((summary.dofollow / summary.total_backlinks) * 100).toFixed(1))}
             />
             <StatCard
-              title="Nofollow Links"
+              title={t.stats.nofollowLinks}
               value={formatNumber(summary.nofollow)}
               icon={
                 <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
                 </svg>
               }
-              subtitle={`${((summary.nofollow / summary.total_backlinks) * 100).toFixed(1)}% aller Links`}
+              subtitle={t.stats.shareOfAll(((summary.nofollow / summary.total_backlinks) * 100).toFixed(1))}
             />
           </div>
 
           {/* Weitere Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
-              <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-4">Dofollow vs. Nofollow</h3>
+              <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-4">{t.dofollowVsNofollow}</h3>
               <div className="h-64">
                 <PieChart data={pieData} />
               </div>
             </div>
             <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
-              <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-4">Netzwerk-Metriken</h3>
+              <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-4">{t.networkMetrics}</h3>
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-700 dark:text-slate-300">Main Domains</span>
+                  <span className="text-slate-700 dark:text-slate-300">{t.mainDomains}</span>
                   <span className="font-semibold text-slate-900 dark:text-white">{formatNumber(summary.total_referring_main_domains)}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-700 dark:text-slate-300">Referring IPs</span>
+                  <span className="text-slate-700 dark:text-slate-300">{t.referringIps}</span>
                   <span className="font-semibold text-slate-900 dark:text-white">{formatNumber(summary.total_referring_ips)}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-700 dark:text-slate-300">Referring Subnets</span>
+                  <span className="text-slate-700 dark:text-slate-300">{t.referringSubnets}</span>
                   <span className="font-semibold text-slate-900 dark:text-white">{formatNumber(summary.total_referring_subnets)}</span>
                 </div>
               </div>
             </div>
             <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
-              <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-4">Link-Dynamik</h3>
+              <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-4">{t.linkDynamics}</h3>
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-slate-700 dark:text-slate-300 flex items-center gap-2">
                     <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                    Neue Backlinks
+                    {t.newBacklinks}
                   </span>
                   <span className="font-semibold text-green-600 dark:text-green-400">+{formatNumber(summary.new_backlinks)}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-slate-700 dark:text-slate-300 flex items-center gap-2">
                     <span className="w-2 h-2 bg-red-500 rounded-full"></span>
-                    Verlorene Backlinks
+                    {t.lostBacklinks}
                   </span>
                   <span className="font-semibold text-red-600 dark:text-red-400">-{formatNumber(summary.lost_backlinks)}</span>
                 </div>
                 <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
                   <div className="flex justify-between items-center">
-                    <span className="text-slate-700 dark:text-slate-300">Netto-Veränderung</span>
+                    <span className="text-slate-700 dark:text-slate-300">{t.netChange}</span>
                     <span className={`font-semibold ${summary.new_backlinks - summary.lost_backlinks >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
                       {summary.new_backlinks - summary.lost_backlinks >= 0 ? "+" : ""}{formatNumber(summary.new_backlinks - summary.lost_backlinks)}
                     </span>
@@ -475,11 +498,11 @@ export default function LinkprofilPage() {
           {/* Filter */}
           <div className="flex flex-wrap gap-2">
             {[
-              { id: "all", label: "Alle", count: backlinksTotal },
-              { id: "dofollow", label: "Dofollow" },
-              { id: "nofollow", label: "Nofollow" },
-              { id: "new", label: "Neue" },
-              { id: "lost", label: "Verloren" },
+              { id: "all", label: t.filters.all, count: backlinksTotal },
+              { id: "dofollow", label: t.filters.dofollow },
+              { id: "nofollow", label: t.filters.nofollow },
+              { id: "new", label: t.filters.new },
+              { id: "lost", label: t.filters.lost },
             ].map((f) => (
               <button
                 key={f.id}
@@ -503,7 +526,7 @@ export default function LinkprofilPage() {
             {isLoadingBacklinks ? (
               <div className="p-12 text-center">
                 <div className="animate-spin h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto"></div>
-                <p className="mt-4 text-slate-600 dark:text-slate-400">Lade Backlinks...</p>
+                <p className="mt-4 text-slate-600 dark:text-slate-400">{t.loadingBacklinks}</p>
               </div>
             ) : (
               <>
@@ -512,7 +535,7 @@ export default function LinkprofilPage() {
                   columns={[
                     {
                       key: "domain_from",
-                      header: "Quell-Domain",
+                      header: t.columns.sourceDomain,
                       sortable: true,
                       render: (value, row) => (
                         <div>
@@ -534,16 +557,16 @@ export default function LinkprofilPage() {
                     },
                     {
                       key: "anchor",
-                      header: "Anchor-Text",
+                      header: t.columns.anchorText,
                       render: (value) => (
                         <span className="text-slate-700 dark:text-slate-300 truncate max-w-xs block">
-                          {(value as string) || <span className="text-slate-500 italic">kein Anchor</span>}
+                          {(value as string) || <span className="text-slate-500 italic">{t.noAnchor}</span>}
                         </span>
                       ),
                     },
                     {
                       key: "url_to",
-                      header: "Ziel-URL",
+                      header: t.columns.targetUrl,
                       render: (value) => (
                         <a
                           href={value as string}
@@ -557,7 +580,7 @@ export default function LinkprofilPage() {
                     },
                     {
                       key: "domain_from_rank",
-                      header: "Domain Rank",
+                      header: t.columns.domainRank,
                       sortable: true,
                       render: (value) => (
                         <span className={`font-semibold ${getRankColor(value as number)}`}>
@@ -567,7 +590,7 @@ export default function LinkprofilPage() {
                     },
                     {
                       key: "dofollow",
-                      header: "Typ",
+                      header: t.columns.type,
                       render: (value) => (
                         <span className={`px-2 py-1 rounded text-xs font-medium ${
                           value
@@ -580,7 +603,7 @@ export default function LinkprofilPage() {
                     },
                     {
                       key: "backlink_spam_score",
-                      header: "Spam Score",
+                      header: t.columns.spamScore,
                       sortable: true,
                       render: (value) => (
                         <span className={`font-medium ${getSpamScoreColor(value as number)}`}>
@@ -590,7 +613,7 @@ export default function LinkprofilPage() {
                     },
                     {
                       key: "first_seen",
-                      header: "Entdeckt",
+                      header: t.columns.discovered,
                       sortable: true,
                       render: (value) => (
                         <span className="text-slate-600 dark:text-slate-400 text-sm">
@@ -605,7 +628,7 @@ export default function LinkprofilPage() {
                 {/* Pagination */}
                 <div className="flex items-center justify-between p-4 border-t border-slate-200 dark:border-slate-700">
                   <span className="text-sm text-slate-600 dark:text-slate-400">
-                    Zeige {backlinksPage * pageSize + 1} - {Math.min((backlinksPage + 1) * pageSize, backlinksTotal)} von {formatNumber(backlinksTotal)}
+                    {t.showing(backlinksPage * pageSize + 1, Math.min((backlinksPage + 1) * pageSize, backlinksTotal), formatNumber(backlinksTotal))}
                   </span>
                   <div className="flex gap-2">
                     <button
@@ -617,7 +640,7 @@ export default function LinkprofilPage() {
                       disabled={backlinksPage === 0}
                       className="px-3 py-1 text-sm bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 dark:text-slate-300 rounded transition-colors"
                     >
-                      Zurück
+                      {t.previous}
                     </button>
                     <button
                       onClick={() => {
@@ -628,7 +651,7 @@ export default function LinkprofilPage() {
                       disabled={(backlinksPage + 1) * pageSize >= backlinksTotal}
                       className="px-3 py-1 text-sm bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 dark:text-slate-300 rounded transition-colors"
                     >
-                      Weiter
+                      {t.next}
                     </button>
                   </div>
                 </div>
@@ -645,7 +668,7 @@ export default function LinkprofilPage() {
             {isLoadingDomains ? (
               <div className="p-12 text-center">
                 <div className="animate-spin h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto"></div>
-                <p className="mt-4 text-slate-600 dark:text-slate-400">Lade Referring Domains...</p>
+                <p className="mt-4 text-slate-600 dark:text-slate-400">{t.loadingDomains}</p>
               </div>
             ) : (
               <>
@@ -654,7 +677,7 @@ export default function LinkprofilPage() {
                   columns={[
                     {
                       key: "domain",
-                      header: "Domain",
+                      header: t.columns.domain,
                       sortable: true,
                       render: (value) => (
                         <a
@@ -669,7 +692,7 @@ export default function LinkprofilPage() {
                     },
                     {
                       key: "rank",
-                      header: "Domain Rank",
+                      header: t.columns.domainRank,
                       sortable: true,
                       render: (value) => (
                         <span className={`font-semibold ${getRankColor(value as number)}`}>
@@ -679,7 +702,7 @@ export default function LinkprofilPage() {
                     },
                     {
                       key: "backlinks",
-                      header: "Backlinks",
+                      header: t.columns.backlinks,
                       sortable: true,
                       render: (value) => (
                         <span className="font-medium text-slate-900 dark:text-white">
@@ -689,7 +712,7 @@ export default function LinkprofilPage() {
                     },
                     {
                       key: "backlinks_spam_score",
-                      header: "Spam Score",
+                      header: t.columns.spamScore,
                       sortable: true,
                       render: (value) => (
                         <span className={`font-medium ${getSpamScoreColor(value as number)}`}>
@@ -699,7 +722,7 @@ export default function LinkprofilPage() {
                     },
                     {
                       key: "first_seen",
-                      header: "Entdeckt",
+                      header: t.columns.discovered,
                       sortable: true,
                       render: (value) => (
                         <span className="text-slate-600 dark:text-slate-400 text-sm">
@@ -714,7 +737,7 @@ export default function LinkprofilPage() {
                 {/* Pagination */}
                 <div className="flex items-center justify-between p-4 border-t border-slate-200 dark:border-slate-700">
                   <span className="text-sm text-slate-600 dark:text-slate-400">
-                    Zeige {domainsPage * pageSize + 1} - {Math.min((domainsPage + 1) * pageSize, domainsTotal)} von {formatNumber(domainsTotal)}
+                    {t.showing(domainsPage * pageSize + 1, Math.min((domainsPage + 1) * pageSize, domainsTotal), formatNumber(domainsTotal))}
                   </span>
                   <div className="flex gap-2">
                     <button
@@ -726,7 +749,7 @@ export default function LinkprofilPage() {
                       disabled={domainsPage === 0}
                       className="px-3 py-1 text-sm bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 dark:text-slate-300 rounded transition-colors"
                     >
-                      Zurück
+                      {t.previous}
                     </button>
                     <button
                       onClick={() => {
@@ -737,7 +760,7 @@ export default function LinkprofilPage() {
                       disabled={(domainsPage + 1) * pageSize >= domainsTotal}
                       className="px-3 py-1 text-sm bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 dark:text-slate-300 rounded transition-colors"
                     >
-                      Weiter
+                      {t.next}
                     </button>
                   </div>
                 </div>

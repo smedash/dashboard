@@ -2,6 +2,10 @@
 
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import changelogData from "@/data/changelog.json";
+import { useLocale, useMessages } from "@/i18n/I18nProvider";
+import { changelogMessages } from "@/i18n/messages/changelog";
+
+type ChangelogTexts = (typeof changelogMessages)["de"];
 
 interface Commit {
   hash: string;
@@ -65,9 +69,9 @@ function getTypeDotClasses(type: string): string {
   }
 }
 
-function formatDate(dateStr: string): string {
+function formatDate(dateStr: string, intlLocale: string): string {
   const date = new Date(dateStr);
-  return date.toLocaleDateString("de-DE", {
+  return date.toLocaleDateString(intlLocale, {
     weekday: "long",
     year: "numeric",
     month: "long",
@@ -75,26 +79,26 @@ function formatDate(dateStr: string): string {
   });
 }
 
-function formatRelativeDate(dateStr: string): string {
+function formatRelativeDate(dateStr: string, t: ChangelogTexts["relative"]): string {
   const date = new Date(dateStr);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-  if (diffDays === 0) return "Heute";
-  if (diffDays === 1) return "Gestern";
-  if (diffDays < 7) return `Vor ${diffDays} Tagen`;
-  if (diffDays < 30) return `Vor ${Math.floor(diffDays / 7)} Wochen`;
-  if (diffDays < 365) return `Vor ${Math.floor(diffDays / 30)} Monaten`;
-  return `Vor ${Math.floor(diffDays / 365)} Jahren`;
+  if (diffDays === 0) return t.today;
+  if (diffDays === 1) return t.yesterday;
+  if (diffDays < 7) return t.daysAgo(diffDays);
+  if (diffDays < 30) return t.weeksAgo(Math.floor(diffDays / 7));
+  if (diffDays < 365) return t.monthsAgo(Math.floor(diffDays / 30));
+  return t.yearsAgo(Math.floor(diffDays / 365));
 }
 
-function formatMinutes(totalMinutes: number): string {
+function formatMinutes(totalMinutes: number, t: ChangelogTexts["duration"]): string {
   const hours = Math.floor(totalMinutes / 60);
   const mins = totalMinutes % 60;
-  if (hours === 0) return `${mins} Min.`;
-  if (mins === 0) return `${hours} Std.`;
-  return `${hours} Std. ${mins} Min.`;
+  if (hours === 0) return t.minutes(mins);
+  if (mins === 0) return t.hours(hours);
+  return t.hoursMinutes(hours, mins);
 }
 
 // Verfügbare Commit-Typen aus den Daten extrahieren
@@ -114,6 +118,8 @@ function getAvailableTypes(commits: Commit[]): { type: string; label: string; co
 }
 
 export default function ChangelogPage() {
+  const t = useMessages(changelogMessages);
+  const { intlLocale } = useLocale();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set());
   const [showAll, setShowAll] = useState(false);
@@ -246,13 +252,13 @@ export default function ChangelogPage() {
         (c) =>
           c.message.toLowerCase().includes(query) ||
           (c.scope && c.scope.toLowerCase().includes(query)) ||
-          c.typeLabel.toLowerCase().includes(query) ||
+          (t.typeLabels[c.type] ?? c.typeLabel).toLowerCase().includes(query) ||
           c.subject.toLowerCase().includes(query)
       );
     }
 
     return filtered;
-  }, [commits, searchQuery, selectedTypes, showAll]);
+  }, [commits, searchQuery, selectedTypes, showAll, t]);
 
   // Nach Datum gruppieren
   const groupedCommits = useMemo(() => {
@@ -312,11 +318,11 @@ export default function ChangelogPage() {
       <div className="mb-8 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-            Changelog
+            {t.title}
           </h1>
           <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-            Alle Entwicklungsschritte und Updates im Überblick. Stand:{" "}
-            {new Date(generatedAt).toLocaleDateString("de-DE", {
+            {t.subtitle}{" "}
+            {new Date(generatedAt).toLocaleDateString(intlLocale, {
               day: "2-digit",
               month: "2-digit",
               year: "numeric",
@@ -325,7 +331,7 @@ export default function ChangelogPage() {
             })}
             {lastSource !== "static" && (
               <span className="ml-2 text-xs text-emerald-600 dark:text-emerald-400">
-                (Live)
+                {t.live}
               </span>
             )}
           </p>
@@ -343,7 +349,7 @@ export default function ChangelogPage() {
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
-          {isRefreshing ? "Aktualisiere..." : "Aktualisieren"}
+          {isRefreshing ? t.refreshing : t.refresh}
         </button>
       </div>
 
@@ -359,10 +365,10 @@ export default function ChangelogPage() {
             </div>
             <div>
               <p className="text-2xl font-bold">
-                {timesLoaded ? formatMinutes(stats.totalMinutes) : "..."}
+                {timesLoaded ? formatMinutes(stats.totalMinutes, t.duration) : "..."}
               </p>
               <p className="text-xs text-blue-100">
-                Gesamtaufwand{timesLoaded && stats.totalMinutes >= 480 ? ` (${(stats.totalMinutes / 480).toFixed(1)} Arbeitstage)` : ""}
+                {t.totalEffort}{timesLoaded && stats.totalMinutes >= 480 ? t.workDays((stats.totalMinutes / 480).toFixed(1)) : ""}
               </p>
             </div>
           </div>
@@ -377,7 +383,7 @@ export default function ChangelogPage() {
             </div>
             <div>
               <p className="text-2xl font-bold text-slate-900 dark:text-white">{stats.features}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Features</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{t.features}</p>
             </div>
           </div>
         </div>
@@ -390,7 +396,7 @@ export default function ChangelogPage() {
             </div>
             <div>
               <p className="text-2xl font-bold text-slate-900 dark:text-white">{stats.fixes}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Bugfixes</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{t.bugfixes}</p>
             </div>
           </div>
         </div>
@@ -403,7 +409,7 @@ export default function ChangelogPage() {
             </div>
             <div>
               <p className="text-2xl font-bold text-slate-900 dark:text-white">{stats.refactors}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Refactorings</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{t.refactorings}</p>
             </div>
           </div>
         </div>
@@ -429,7 +435,7 @@ export default function ChangelogPage() {
             </svg>
             <input
               type="text"
-              placeholder="Suche in Änderungen..."
+              placeholder={t.searchPlaceholder}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 placeholder-slate-400 dark:placeholder-slate-500"
@@ -448,7 +454,7 @@ export default function ChangelogPage() {
                 : "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
             }`}
           >
-            Alle anzeigen
+            {t.showAll}
           </button>
         </div>
 
@@ -464,7 +470,7 @@ export default function ChangelogPage() {
                   : "bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600"
               }`}
             >
-              {label}
+              {t.typeLabels[type] ?? label}
               <span className="text-[10px] opacity-70">({count})</span>
             </button>
           ))}
@@ -474,7 +480,7 @@ export default function ChangelogPage() {
       {/* Ergebnis-Info */}
       <div className="flex items-center justify-between mb-4">
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          {filteredCommits.length} von {stats.total} Änderungen
+          {t.resultCount(filteredCommits.length, stats.total)}
         </p>
       </div>
 
@@ -494,10 +500,10 @@ export default function ChangelogPage() {
                       </svg>
                     </div>
                     <h2 className="text-sm font-bold text-slate-900 dark:text-white">
-                      {formatDate(dateKey)}
+                      {formatDate(dateKey, intlLocale)}
                     </h2>
                     <span className="text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/40 px-2 py-0.5 rounded-full">
-                      {formatRelativeDate(dateKey)}
+                      {formatRelativeDate(dateKey, t.relative)}
                     </span>
                   </div>
                   <div className="flex-1" />
@@ -506,11 +512,11 @@ export default function ChangelogPage() {
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
-                      {formatMinutes(dayMinutes)}
+                      {formatMinutes(dayMinutes, t.duration)}
                     </span>
                     <span className="text-xs text-slate-400 dark:text-slate-500">|</span>
                     <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">
-                      {commits.length} {commits.length === 1 ? "Änderung" : "Änderungen"}
+                      {t.changeCount(commits.length)}
                     </span>
                   </div>
                 </div>
@@ -535,7 +541,7 @@ export default function ChangelogPage() {
                         <span
                           className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium ${getTypeBadgeClasses(commit.type)}`}
                         >
-                          {commit.typeLabel}
+                          {t.typeLabels[commit.type] ?? commit.typeLabel}
                         </span>
 
                         {/* Scope Badge */}
@@ -565,7 +571,7 @@ export default function ChangelogPage() {
                                 }}
                                 className="w-14 px-1.5 py-0.5 text-xs text-right rounded border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                               />
-                              <span className="ml-1 text-xs text-slate-400 dark:text-slate-500">Min.</span>
+                              <span className="ml-1 text-xs text-slate-400 dark:text-slate-500">{t.minutesShort}</span>
                               {savingHash === commit.shortHash && (
                                 <div className="absolute -right-5 top-1/2 -translate-y-1/2">
                                   <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
@@ -577,7 +583,7 @@ export default function ChangelogPage() {
                               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                               </svg>
-                              {getMinutes(commit.shortHash)} Min.
+                              {t.duration.minutes(getMinutes(commit.shortHash))}
                             </span>
                           )}
                         </div>
@@ -590,7 +596,7 @@ export default function ChangelogPage() {
                         <span className="hidden sm:inline">smedash</span>
                         <span>•</span>
                         <span>
-                          {new Date(commit.date).toLocaleTimeString("de-DE", {
+                          {new Date(commit.date).toLocaleTimeString(intlLocale, {
                             hour: "2-digit",
                             minute: "2-digit",
                           })}
@@ -622,10 +628,10 @@ export default function ChangelogPage() {
             />
           </svg>
           <p className="text-slate-500 dark:text-slate-400 text-sm">
-            Keine Änderungen gefunden.
+            {t.emptyTitle}
           </p>
           <p className="text-slate-400 dark:text-slate-500 text-xs mt-1">
-            Versuche einen anderen Suchbegriff oder ändere die Filter.
+            {t.emptyHint}
           </p>
         </div>
       )}
@@ -633,7 +639,7 @@ export default function ChangelogPage() {
       {/* Footer */}
       <div className="mt-12 mb-8 text-center">
         <p className="text-xs text-slate-400 dark:text-slate-500">
-          Basierend auf {stats.total} Git-Commits &middot; Gesamtaufwand: {formatMinutes(stats.totalMinutes)}
+          {t.footer(stats.total, formatMinutes(stats.totalMinutes, t.duration))}
         </p>
       </div>
     </div>

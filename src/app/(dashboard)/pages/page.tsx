@@ -5,6 +5,8 @@ import { downloadExcel } from "@/lib/excel-export";
 import { DataTable } from "@/components/ui/DataTable";
 import { PeriodSelector } from "@/components/ui/PeriodSelector";
 import { useProperty } from "@/contexts/PropertyContext";
+import { useLocale, useMessages } from "@/i18n/I18nProvider";
+import { pagesMessages } from "@/i18n/messages/pages";
 import Link from "next/link";
 
 interface PageRow {
@@ -77,6 +79,8 @@ function lookupConductor(
 
 export default function PagesPage() {
   const { selectedProperty } = useProperty();
+  const t = useMessages(pagesMessages);
+  const { intlLocale } = useLocale();
   const [period, setPeriod] = useState("28d");
   const [data, setData] = useState<PageRow[]>([]);
   const [kvpUrls, setKvpUrls] = useState<KVPUrl[]>([]);
@@ -196,18 +200,19 @@ export default function PagesPage() {
   const exportToXlsx = useCallback(() => {
     if (tableData.length === 0) return;
 
+    const e = t.export;
     const rows = tableData.map((r) => ({
-      Seite: r.page,
-      KVP: r.hasKvp ? "Ja" : "Nein",
-      Klicks: r.clicks,
-      Impressionen: r.impressions,
-      "CTR (%)": Math.round(r.ctr * 10000) / 100,
-      Position: Math.round(r.position * 10) / 10,
-      "Health Score": r.cmHealth ?? "",
-      Indexierbar: r.cmIndexable === null ? "" : r.cmIndexable ? "Ja" : "Nein",
-      "In Sitemap": r.cmInSitemap === null ? "" : r.cmInSitemap ? "Ja" : "Nein",
-      "Status Code": r.cmStatusCode ?? "",
-      "Performance": r.cmLighthousePerf
+      [e.page]: r.page,
+      [e.kvp]: r.hasKvp ? e.yes : e.no,
+      [e.clicks]: r.clicks,
+      [e.impressions]: r.impressions,
+      [e.ctr]: Math.round(r.ctr * 10000) / 100,
+      [e.position]: Math.round(r.position * 10) / 10,
+      [e.healthScore]: r.cmHealth ?? "",
+      [e.indexable]: r.cmIndexable === null ? "" : r.cmIndexable ? e.yes : e.no,
+      [e.inSitemap]: r.cmInSitemap === null ? "" : r.cmInSitemap ? e.yes : e.no,
+      [e.statusCode]: r.cmStatusCode ?? "",
+      [e.performance]: r.cmLighthousePerf
         ? (r.cmLighthousePerf as { value: number }).value
         : "",
     }));
@@ -220,15 +225,15 @@ export default function PagesPage() {
       }
     })();
     const stamp = new Date().toISOString().slice(0, 10);
-    downloadExcel(`gsc-seiten_${host}_${period}_${stamp}.xlsx`, [
-      { name: "Seiten", rows },
+    downloadExcel(`${e.filePrefix}_${host}_${period}_${stamp}.xlsx`, [
+      { name: e.sheetName, rows },
     ]);
-  }, [tableData, selectedProperty, period]);
+  }, [tableData, selectedProperty, period, t]);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Seiten</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h1>
         <div className="flex flex-wrap items-center gap-4">
           <PeriodSelector value={period} onChange={setPeriod} />
         </div>
@@ -247,7 +252,7 @@ export default function PagesPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="URLs durchsuchen..."
+              placeholder={t.searchPlaceholder}
               className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             {searchQuery && (
@@ -272,7 +277,7 @@ export default function PagesPage() {
                   : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
               }`}
             >
-              Alle
+              {t.filter.all}
             </button>
             <button
               onClick={() => setKvpFilter("with")}
@@ -285,7 +290,7 @@ export default function PagesPage() {
               <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
-              Mit KVP
+              {t.filter.withKvp}
             </button>
             <button
               onClick={() => setKvpFilter("without")}
@@ -298,17 +303,17 @@ export default function PagesPage() {
               <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
-              Ohne KVP
+              {t.filter.withoutKvp}
             </button>
           </div>
 
           <span className="text-sm text-slate-600 dark:text-slate-400">
-            {tableData.length} von {data.length} Seiten
+            {t.resultCount(tableData.length, data.length)}
           </span>
 
           {conductorLastSync && (
-            <span className="text-xs text-slate-500 dark:text-slate-500" title="Letzter Conductor Monitoring Sync">
-              CM: {new Date(conductorLastSync).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+            <span className="text-xs text-slate-500 dark:text-slate-500" title={t.lastConductorSync}>
+              CM: {new Date(conductorLastSync).toLocaleDateString(intlLocale, { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
             </span>
           )}
 
@@ -317,7 +322,7 @@ export default function PagesPage() {
             onClick={exportToXlsx}
             disabled={isLoading || tableData.length === 0}
             className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-600 disabled:opacity-50 disabled:pointer-events-none transition-colors"
-            title="Aktuelle Tabelle (inkl. Filter) als Excel-Datei speichern"
+            title={t.exportTitle}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -333,10 +338,10 @@ export default function PagesPage() {
             <div className="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full mb-4"></div>
             <div className="text-center">
               <p className="text-lg font-medium text-slate-900 dark:text-white mb-2">
-                Hole Live-Daten aus der GSC...
+                {t.loadingTitle}
               </p>
               <p className="text-sm text-slate-600 dark:text-slate-400">
-                Das kann einige Sekunden dauern!
+                {t.loadingHint}
               </p>
             </div>
           </div>
@@ -347,7 +352,7 @@ export default function PagesPage() {
             columns={[
               {
                 key: "page",
-                header: "Seite",
+                header: t.columns.page,
                 sortable: true,
                 render: (value) => (
                   <a
@@ -363,14 +368,14 @@ export default function PagesPage() {
               },
               {
                 key: "hasKvp",
-                header: "KVP",
+                header: t.columns.kvp,
                 sortable: true,
                 render: (value, row) => (
                   value ? (
                     <Link
                       href={`/ubs-kvp?search=${encodeURIComponent(String(row.page))}`}
                       className="inline-flex items-center justify-center w-6 h-6 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors"
-                      title="KVP vorhanden - klicken zum Anzeigen"
+                      title={t.kvpExists}
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -380,7 +385,7 @@ export default function PagesPage() {
                     <Link
                       href={`/ubs-kvp`}
                       className="inline-flex items-center justify-center w-6 h-6 text-slate-400 dark:text-slate-500 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors"
-                      title="Kein KVP vorhanden - klicken zum Erstellen"
+                      title={t.kvpMissing}
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -391,33 +396,33 @@ export default function PagesPage() {
               },
               {
                 key: "clicks",
-                header: "Klicks",
+                header: t.columns.clicks,
                 sortable: true,
                 render: (value) => (
-                  <span className="text-blue-600 dark:text-blue-400">{Number(value).toLocaleString("de-DE")}</span>
+                  <span className="text-blue-600 dark:text-blue-400">{Number(value).toLocaleString(intlLocale)}</span>
                 ),
               },
               {
                 key: "impressions",
-                header: "Impressionen",
+                header: t.columns.impressions,
                 sortable: true,
-                render: (value) => Number(value).toLocaleString("de-DE"),
+                render: (value) => Number(value).toLocaleString(intlLocale),
               },
               {
                 key: "ctr",
-                header: "CTR",
+                header: t.columns.ctr,
                 sortable: true,
                 render: (value) => `${(Number(value) * 100).toFixed(2)}%`,
               },
               {
                 key: "position",
-                header: "Position",
+                header: t.columns.position,
                 sortable: true,
                 render: (value) => Number(value).toFixed(1),
               },
               {
                 key: "cmHealth",
-                header: "Health",
+                header: t.columns.health,
                 sortable: true,
                 render: (value) => {
                   if (value === null || value === undefined) return <span className="text-slate-400">–</span>;
@@ -437,16 +442,16 @@ export default function PagesPage() {
               },
               {
                 key: "cmIndexable",
-                header: "Index",
+                header: t.columns.index,
                 sortable: true,
                 render: (value) => {
                   if (value === null || value === undefined) return <span className="text-slate-400">–</span>;
                   return value ? (
-                    <span className="inline-flex items-center justify-center w-5 h-5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full" title="Indexierbar">
+                    <span className="inline-flex items-center justify-center w-5 h-5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full" title={t.indexable}>
                       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
                     </span>
                   ) : (
-                    <span className="inline-flex items-center justify-center w-5 h-5 bg-red-100 dark:bg-red-900/30 text-red-500 dark:text-red-400 rounded-full" title="Nicht indexierbar">
+                    <span className="inline-flex items-center justify-center w-5 h-5 bg-red-100 dark:bg-red-900/30 text-red-500 dark:text-red-400 rounded-full" title={t.notIndexable}>
                       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
                     </span>
                   );
@@ -454,16 +459,16 @@ export default function PagesPage() {
               },
               {
                 key: "cmInSitemap",
-                header: "Sitemap",
+                header: t.columns.sitemap,
                 sortable: true,
                 render: (value) => {
                   if (value === null || value === undefined) return <span className="text-slate-400">–</span>;
                   return value ? (
-                    <span className="inline-flex items-center justify-center w-5 h-5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full" title="In Sitemap">
+                    <span className="inline-flex items-center justify-center w-5 h-5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full" title={t.inSitemap}>
                       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
                     </span>
                   ) : (
-                    <span className="inline-flex items-center justify-center w-5 h-5 bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 rounded-full" title="Nicht in Sitemap">
+                    <span className="inline-flex items-center justify-center w-5 h-5 bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 rounded-full" title={t.notInSitemap}>
                       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
                     </span>
                   );
@@ -471,7 +476,7 @@ export default function PagesPage() {
               },
               {
                 key: "cmStatusCode",
-                header: "Status",
+                header: t.columns.status,
                 sortable: true,
                 render: (value) => {
                   if (value === null || value === undefined) return <span className="text-slate-400">–</span>;
@@ -487,7 +492,7 @@ export default function PagesPage() {
               },
               {
                 key: "cmLighthousePerf",
-                header: "Perf.",
+                header: t.columns.performance,
                 sortable: true,
                 render: (value) => {
                   if (!value || value === null) return <span className="text-slate-400">–</span>;
@@ -507,7 +512,7 @@ export default function PagesPage() {
               },
               {
                 key: "cmLighthouseLcp",
-                header: "LCP",
+                header: t.columns.lcp,
                 sortable: true,
                 render: (value) => {
                   if (!value || value === null) return <span className="text-slate-400">–</span>;

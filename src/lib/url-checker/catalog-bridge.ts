@@ -16,6 +16,8 @@ import {
   ParsedPageData,
   getCatalog,
 } from "./engine";
+import type { Locale } from "@/i18n/config";
+import { urlCheckerCommonMessages } from "@/i18n/messages/url-checker/common";
 
 const CATALOG_TO_UI_CATEGORY: Record<string, string> = {
   content_quality: "Content Quality",
@@ -224,9 +226,10 @@ const RESOLVABLE_FIELDS = new Set([
  * Only returns checks that produced a definitive pass/warn/fail
  * AND whose rule.field is resolvable from standard page data.
  */
-export function runCatalogChecks(page: ParsedPage): CategoryResult[] {
+export function runCatalogChecks(page: ParsedPage, locale: Locale): CategoryResult[] {
+  const t = urlCheckerCommonMessages[locale];
   const pageData = resolvePageData(page);
-  const evaluation = evaluateCatalog(pageData);
+  const evaluation = evaluateCatalog(pageData, { locale });
 
   // Build a set of IDs whose rule.field we can actually resolve
   const catalog = getCatalog();
@@ -254,7 +257,7 @@ export function runCatalogChecks(page: ParsedPage): CategoryResult[] {
     grouped[uiCategory].push({
       factor: result.message.slice(0, 80),
       status: mapStatus(result.status),
-      value: result.value !== undefined ? formatValue(result.value) : null,
+      value: result.value !== undefined ? formatValue(result.value, t) : null,
       recommendation: result.recommendation,
       leakAttribute: result.leakReference,
     });
@@ -262,7 +265,7 @@ export function runCatalogChecks(page: ParsedPage): CategoryResult[] {
 
   return Object.entries(grouped).map(([name, checks]) => ({
     name,
-    leakReference: `Leak-Katalog (${checks.length} Checks)`,
+    leakReference: t.catalogReference(checks.length),
     checks,
     score: 0,
   }));
@@ -284,10 +287,13 @@ export function runCatalogEvaluation(page: ParsedPage): CatalogEvaluationResult 
   return evaluateCatalog(pageData);
 }
 
-function formatValue(value: unknown): string | number | null {
+function formatValue(
+  value: unknown,
+  t: (typeof urlCheckerCommonMessages)[Locale]
+): string | number | null {
   if (value === null || value === undefined) return null;
   if (typeof value === "number") return value;
-  if (typeof value === "boolean") return value ? "Ja" : "Nein";
+  if (typeof value === "boolean") return value ? t.yes : t.no;
   if (typeof value === "string") return value.slice(0, 100);
   return String(value).slice(0, 100);
 }

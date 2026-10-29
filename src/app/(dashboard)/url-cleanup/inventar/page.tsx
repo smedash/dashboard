@@ -17,6 +17,8 @@ import {
   filtersToParams,
   type InventoryFilters,
 } from "@/components/url-cleanup/filter-state";
+import { useMessages } from "@/i18n/I18nProvider";
+import { urlCleanupMessages } from "@/i18n/messages/url-cleanup";
 
 type Row = {
   id: string;
@@ -57,6 +59,7 @@ type Row = {
 type LabsRow = { keyword: string; rankGroup: number; searchVolume: number | null };
 
 export default function InventarPage() {
+  const t = useMessages(urlCleanupMessages);
   const [filters, setFilters] = useState<InventoryFilters>(EMPTY_FILTERS);
   const [debounced, setDebounced] = useState(filters);
   const [page, setPage] = useState(0);
@@ -77,11 +80,11 @@ export default function InventarPage() {
   const [statusCounts, setStatusCounts] = useState<CleanupStatusCounts>(emptyCleanupStatusCounts);
 
   useEffect(() => {
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       setDebounced(filters);
       setPage(0);
     }, 300);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [filters]);
 
   useEffect(() => {
@@ -146,18 +149,17 @@ export default function InventarPage() {
     });
     const data = await res.json();
     if (!res.ok) {
-      setStatusMsg(data.error || "Fehler");
+      setStatusMsg(data.error || t.error);
       return;
     }
     const kept = Array.isArray(data.languageKeptIds) ? data.languageKeptIds.length : 0;
     if (kept > 0 && status !== "keep") {
-      const stayed =
-        kept === 1
-          ? "1 URL bleibt Keep, weil eine andere Sprachversion Keep ist."
-          : `${kept} URLs bleiben Keep, weil eine andere Sprachversion Keep ist.`;
-      setStatusMsg(kept === ids.length ? stayed : `${ids.length - kept} URLs → ${formatCleanupStatus(status)}. ${stayed}`);
+      const stayed = kept === 1 ? t.inventory.keptOne : t.inventory.keptMany(kept);
+      setStatusMsg(
+        kept === ids.length ? stayed : `${t.inventory.moved(ids.length - kept, formatCleanupStatus(status))}. ${stayed}`
+      );
     } else {
-      setStatusMsg(`${ids.length} URLs → ${formatCleanupStatus(status)}`);
+      setStatusMsg(t.inventory.moved(ids.length, formatCleanupStatus(status)));
     }
     setSelected(new Set());
     load();
@@ -179,16 +181,16 @@ export default function InventarPage() {
 
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm text-slate-500">
-          {total.toLocaleString("de-CH")} URLs
+          {total.toLocaleString(t.displayLocale)} URLs
         </span>
         <a
           href={exportHref}
           className="px-3 py-1.5 text-sm rounded-lg bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-900"
         >
-          Excel-Export
+          {t.inventory.excelExport}
         </a>
         <button type="button" className="px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-600" onClick={() => setStatus("kill")}>
-          Markieren: Kill
+          {t.inventory.markKill}
         </button>
         <button type="button" className="px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-600" onClick={() => setStatus("keep")}>
           Keep
@@ -213,28 +215,28 @@ export default function InventarPage() {
                   }}
                 />
               </th>
-              <th className="w-[26%] px-3 py-2 text-left">URL</th>
-              <th className="w-24 px-3 py-2 text-left">Konfidenz</th>
-              <th className="px-3 py-2 text-left">Begründung</th>
-              <th className="w-24 px-3 py-2 text-right">GSC</th>
-              <th className="w-24 px-3 py-2 text-right">Adobe</th>
-              <th className="w-36 px-3 py-2 text-left">Fokuskeywords</th>
-              <th className="w-44 px-3 py-2 text-left">ranked Keywords</th>
-              <th className="w-24 px-3 py-2 text-left">Status</th>
+              <th className="w-[26%] px-3 py-2 text-left">{t.inventory.columns.url}</th>
+              <th className="w-24 px-3 py-2 text-left">{t.inventory.columns.confidence}</th>
+              <th className="px-3 py-2 text-left">{t.inventory.columns.reason}</th>
+              <th className="w-24 px-3 py-2 text-right">{t.inventory.columns.gsc}</th>
+              <th className="w-24 px-3 py-2 text-right">{t.inventory.columns.adobe}</th>
+              <th className="w-36 px-3 py-2 text-left">{t.inventory.columns.focusKeywords}</th>
+              <th className="w-44 px-3 py-2 text-left">{t.inventory.columns.rankedKeywords}</th>
+              <th className="w-24 px-3 py-2 text-left">{t.inventory.columns.status}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
             {loading && (
               <tr>
                 <td colSpan={9} className="px-4 py-8 text-center text-slate-500">
-                  Laden…
+                  {t.loading}
                 </td>
               </tr>
             )}
             {!loading && rows.length === 0 && (
               <tr>
                 <td colSpan={9} className="px-4 py-8 text-center text-slate-500">
-                  Keine Treffer. Inventar ggf. zuerst importieren.
+                  {t.inventory.noResults}
                 </td>
               </tr>
             )}
@@ -274,12 +276,12 @@ export default function InventarPage() {
                   </span>
                 </td>
                 <td className="px-3 py-2 text-right tabular-nums text-xs align-top overflow-hidden">
-                  {r.gscClicks.toLocaleString("de-CH")} / {r.gscImpressions.toLocaleString("de-CH")}
+                  {r.gscClicks.toLocaleString(t.displayLocale)} / {r.gscImpressions.toLocaleString(t.displayLocale)}
                   <div className="text-[10px] text-slate-400">{r.gscPeriod ?? ""}</div>
                 </td>
                 <td className="px-3 py-2 text-right tabular-nums text-xs align-top overflow-hidden">
-                  {r.aaVisits.toLocaleString("de-CH")} Vis.
-                  <div className="text-[10px] text-slate-400">{r.aaFormSuccess} Leads</div>
+                  {t.inventory.visits(r.aaVisits.toLocaleString(t.displayLocale))}
+                  <div className="text-[10px] text-slate-400">{t.inventory.leads(r.aaFormSuccess)}</div>
                   {r.aaTimeSpentHasData && (
                     <div className="text-[10px] text-slate-400">
                       {Math.round(r.aaTimeSpentShortPct)}% &lt;15s · {Math.round(r.aaTimeSpentEngagedPct)}% ≥1m
@@ -321,7 +323,7 @@ export default function InventarPage() {
         </table>
         <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200 dark:border-slate-700 text-sm">
           <span className="text-slate-500">
-            Seite {page + 1} / {pageCount}
+            {t.inventory.page(page + 1, pageCount)}
           </span>
           <div className="flex gap-1">
             <button
@@ -330,7 +332,7 @@ export default function InventarPage() {
               onClick={() => setPage((p) => Math.max(0, p - 1))}
               className="px-2 py-1 rounded border border-slate-300 dark:border-slate-600 disabled:opacity-40"
             >
-              Zurück
+              {t.inventory.previous}
             </button>
             <button
               type="button"
@@ -338,7 +340,7 @@ export default function InventarPage() {
               onClick={() => setPage((p) => p + 1)}
               className="px-2 py-1 rounded border border-slate-300 dark:border-slate-600 disabled:opacity-40"
             >
-              Weiter
+              {t.inventory.next}
             </button>
           </div>
         </div>
@@ -354,41 +356,45 @@ export default function InventarPage() {
             <KillBadge score={detail.killConfidence} band={detail.killBand} />
             <p className="text-sm text-slate-600 dark:text-slate-300">{detail.killReason}</p>
             <dl className="grid grid-cols-2 gap-2 text-sm">
-              <dt className="text-slate-500">GSC Klicks</dt>
+              <dt className="text-slate-500">{t.inventory.detail.gscClicks}</dt>
               <dd>{detail.gscClicks}</dd>
-              <dt className="text-slate-500">GSC Impressions</dt>
+              <dt className="text-slate-500">{t.inventory.detail.gscImpressions}</dt>
               <dd>{detail.gscImpressions}</dd>
-              <dt className="text-slate-500">Adobe Visits</dt>
+              <dt className="text-slate-500">{t.inventory.detail.adobeVisits}</dt>
               <dd>{detail.aaVisits}</dd>
-              <dt className="text-slate-500">Leads</dt>
+              <dt className="text-slate-500">{t.inventory.detail.leads}</dt>
               <dd>{detail.aaFormSuccess}</dd>
-              <dt className="text-slate-500">Segmente</dt>
+              <dt className="text-slate-500">{t.inventory.detail.segments}</dt>
               <dd>{detail.aaSegments.join(", ") || "—"}</dd>
-              <dt className="text-slate-500">Time Spent</dt>
+              <dt className="text-slate-500">{t.inventory.detail.timeSpent}</dt>
               <dd>
                 {detail.aaTimeSpentHasData
-                  ? `${detail.aaTimeSpentVisits.toLocaleString("de-CH")} Vis. · ${Math.round(detail.aaTimeSpentShortPct)}% <15s · ${Math.round(detail.aaTimeSpentEngagedPct)}% ≥1 Min.`
+                  ? t.inventory.detail.timeSpentValue(
+                      detail.aaTimeSpentVisits.toLocaleString(t.displayLocale),
+                      Math.round(detail.aaTimeSpentShortPct),
+                      Math.round(detail.aaTimeSpentEngagedPct)
+                    )
                   : "—"}
               </dd>
-              <dt className="text-slate-500">Gating</dt>
+              <dt className="text-slate-500">{t.inventory.detail.gating}</dt>
               <dd>
                 {detail.gatingHasData
-                  ? `${detail.gatingIsGated ? "gated" : "offen"}${detail.gatingRoles.length ? ` · ${detail.gatingRoles.join(", ")}` : ""}`
+                  ? `${detail.gatingIsGated ? t.inventory.detail.gated : t.inventory.detail.open}${detail.gatingRoles.length ? ` · ${detail.gatingRoles.join(", ")}` : ""}`
                   : "—"}
               </dd>
               {detail.gatingPageTitle ? (
                 <>
-                  <dt className="text-slate-500">Page Title</dt>
+                  <dt className="text-slate-500">{t.inventory.detail.pageTitle}</dt>
                   <dd>{detail.gatingPageTitle}</dd>
                 </>
               ) : null}
-              <dt className="text-slate-500">Status</dt>
+              <dt className="text-slate-500">{t.inventory.detail.status}</dt>
               <dd>
                 <CleanupStatusBadge killBand={detail.killBand} />
               </dd>
             </dl>
             <div>
-              <div className="text-xs font-medium text-slate-500 mb-1">Fokuskeywords</div>
+              <div className="text-xs font-medium text-slate-500 mb-1">{t.inventory.detail.focusKeywords}</div>
               <p className="text-sm">{detail.focusKeywords.join(", ") || "—"}</p>
             </div>
             <button
@@ -396,7 +402,7 @@ export default function InventarPage() {
               onClick={() => setDetail(null)}
               className="mt-4 px-3 py-1.5 text-sm rounded-lg border border-slate-300 dark:border-slate-600"
             >
-              Schliessen
+              {t.inventory.detail.close}
             </button>
           </div>
         </div>

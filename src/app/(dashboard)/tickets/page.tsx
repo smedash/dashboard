@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { canEdit } from "@/lib/rbac";
 import { StatCard } from "@/components/ui/StatCard";
+import { useLocale, useMessages } from "@/i18n/I18nProvider";
+import { ticketsMessages } from "@/i18n/messages/tickets";
 
 interface TicketComment {
   id: string;
@@ -47,6 +49,8 @@ interface UserOption {
 export default function TicketsPage() {
   const { data: session } = useSession();
   const canEditData = canEdit(session?.user?.role);
+  const t = useMessages(ticketsMessages);
+  const { intlLocale } = useLocale();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [users, setUsers] = useState<UserOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -138,7 +142,7 @@ export default function TicketsPage() {
       }
     } catch (error) {
       console.error("Error creating ticket:", error);
-      alert("Fehler beim Erstellen des Tickets");
+      alert(t.form.createError);
     } finally {
       setIsSubmitting(false);
     }
@@ -217,7 +221,7 @@ export default function TicketsPage() {
   };
 
   const deleteTicket = async (ticketId: string) => {
-    if (!confirm("Ticket wirklich löschen?")) return;
+    if (!confirm(t.detail.deleteConfirm)) return;
 
     try {
       const response = await fetch(`/api/tickets/${ticketId}`, {
@@ -236,7 +240,7 @@ export default function TicketsPage() {
   };
 
   const getTypeLabel = (type: string) => {
-    return type === "bug" ? "Bug" : "Feature";
+    return type === "bug" ? t.types.bug : t.types.feature;
   };
 
   const getTypeColor = (type: string) => {
@@ -246,16 +250,7 @@ export default function TicketsPage() {
   };
 
   const getStatusLabel = (status: string) => {
-    switch (status) {
-      case "open":
-        return "Offen";
-      case "in_progress":
-        return "In Bearbeitung";
-      case "closed":
-        return "Geschlossen";
-      default:
-        return status;
-    }
+    return t.statuses[status] ?? status;
   };
 
   const getStatusColor = (status: string) => {
@@ -272,16 +267,7 @@ export default function TicketsPage() {
   };
 
   const getPriorityLabel = (priority: string) => {
-    switch (priority) {
-      case "high":
-        return "Hoch";
-      case "medium":
-        return "Mittel";
-      case "low":
-        return "Niedrig";
-      default:
-        return priority;
-    }
+    return t.priorities[priority] ?? priority;
   };
 
   const getPriorityColor = (priority: string) => {
@@ -324,7 +310,7 @@ export default function TicketsPage() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("de-DE", {
+    return new Date(dateString).toLocaleDateString(intlLocale, {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -336,7 +322,7 @@ export default function TicketsPage() {
   if (isLoading) {
     return (
       <div className="space-y-8">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Tickets</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h1>
         <div className="h-64 bg-slate-200 dark:bg-slate-800 rounded-xl animate-pulse"></div>
       </div>
     );
@@ -347,9 +333,9 @@ export default function TicketsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Tickets</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h1>
           <p className="text-slate-600 dark:text-slate-400 mt-1">
-            Bugs melden und Feature-Wünsche einreichen
+            {t.subtitle}
           </p>
         </div>
         {canEditData && (
@@ -360,7 +346,7 @@ export default function TicketsPage() {
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            Neues Ticket
+            {t.newTicket}
           </button>
         )}
       </div>
@@ -368,7 +354,7 @@ export default function TicketsPage() {
       {/* Stat Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
-          title="Gesamt Tickets"
+          title={t.stats.total}
           value={ticketStats.total}
           icon={
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -377,7 +363,7 @@ export default function TicketsPage() {
           }
         />
         <StatCard
-          title="Offen"
+          title={t.stats.open}
           value={ticketStats.open}
           icon={
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -386,7 +372,7 @@ export default function TicketsPage() {
           }
         />
         <StatCard
-          title="In Bearbeitung"
+          title={t.stats.inProgress}
           value={ticketStats.inProgress}
           icon={
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -395,7 +381,7 @@ export default function TicketsPage() {
           }
         />
         <StatCard
-          title="Geschlossen"
+          title={t.stats.closed}
           value={ticketStats.closed}
           icon={
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -409,58 +395,58 @@ export default function TicketsPage() {
       {showNewForm && canEditData && (
         <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-            Neues Ticket erstellen
+            {t.form.heading}
           </h2>
           <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Typ *
+                  {t.form.typeRequired}
                 </label>
                 <select
                   value={newType}
                   onChange={(e) => setNewType(e.target.value as "bug" | "feature")}
                   className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
                 >
-                  <option value="feature">Feature-Wunsch</option>
-                  <option value="bug">Bug-Report</option>
+                  <option value="feature">{t.form.typeFeature}</option>
+                  <option value="bug">{t.form.typeBug}</option>
                 </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Priorität
+                  {t.form.priority}
                 </label>
                 <select
                   value={newPriority}
                   onChange={(e) => setNewPriority(e.target.value as "low" | "medium" | "high")}
                   className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
                 >
-                  <option value="low">Niedrig</option>
-                  <option value="medium">Mittel</option>
-                  <option value="high">Hoch</option>
+                  <option value="low">{t.priorities.low}</option>
+                  <option value="medium">{t.priorities.medium}</option>
+                  <option value="high">{t.priorities.high}</option>
                 </select>
               </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                Titel *
+                {t.form.titleRequired}
               </label>
               <input
                 type="text"
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
-                placeholder="Kurze Beschreibung des Problems oder Wunsches"
+                placeholder={t.form.titlePlaceholder}
                 className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                Beschreibung *
+                {t.form.descriptionRequired}
               </label>
               <textarea
                 value={newDescription}
                 onChange={(e) => setNewDescription(e.target.value)}
-                placeholder="Detaillierte Beschreibung..."
+                placeholder={t.form.descriptionPlaceholder}
                 rows={4}
                 className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
               />
@@ -469,7 +455,7 @@ export default function TicketsPage() {
             {/* Assignee Multi-Select */}
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                Zuweisen an
+                {t.form.assignTo}
               </label>
               <div className="border border-slate-300 dark:border-slate-600 rounded-lg overflow-hidden">
                 {/* Ausgewählte Assignees als Tags */}
@@ -524,7 +510,7 @@ export default function TicketsPage() {
                 </div>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Zugewiesene Personen werden per E-Mail benachrichtigt
+                {t.form.assigneeHint}
               </p>
             </div>
 
@@ -534,7 +520,7 @@ export default function TicketsPage() {
                 disabled={isSubmitting || !newTitle.trim() || !newDescription.trim()}
                 className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
               >
-                {isSubmitting ? "Erstelle..." : "Ticket erstellen"}
+                {isSubmitting ? t.form.creating : t.form.create}
               </button>
               <button
                 onClick={() => {
@@ -545,7 +531,7 @@ export default function TicketsPage() {
                 }}
                 className="px-4 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-white rounded-lg transition-colors"
               >
-                Abbrechen
+                {t.form.cancel}
               </button>
             </div>
           </div>
@@ -556,31 +542,31 @@ export default function TicketsPage() {
       <div className="flex flex-wrap gap-4">
         <div>
           <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
-            Typ
+            {t.filter.type}
           </label>
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
             className="px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white text-sm"
           >
-            <option value="all">Alle</option>
-            <option value="bug">Bugs</option>
-            <option value="feature">Features</option>
+            <option value="all">{t.filter.all}</option>
+            <option value="bug">{t.filter.bugs}</option>
+            <option value="feature">{t.filter.features}</option>
           </select>
         </div>
         <div>
           <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
-            Status
+            {t.filter.status}
           </label>
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
             className="px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white text-sm"
           >
-            <option value="all">Alle</option>
-            <option value="open">Offen</option>
-            <option value="in_progress">In Bearbeitung</option>
-            <option value="closed">Geschlossen</option>
+            <option value="all">{t.filter.all}</option>
+            <option value="open">{t.statuses.open}</option>
+            <option value="in_progress">{t.statuses.in_progress}</option>
+            <option value="closed">{t.statuses.closed}</option>
           </select>
         </div>
       </div>
@@ -593,8 +579,8 @@ export default function TicketsPage() {
             <div className="bg-white dark:bg-slate-800 rounded-xl p-8 border border-slate-200 dark:border-slate-700 text-center">
               <p className="text-slate-500 dark:text-slate-400">
                 {tickets.length === 0
-                  ? "Noch keine Tickets vorhanden"
-                  : "Keine Tickets mit diesen Filtern"}
+                  ? t.list.empty
+                  : t.list.emptyFiltered}
               </p>
             </div>
           ) : (
@@ -642,7 +628,7 @@ export default function TicketsPage() {
                       {ticket.comments && ticket.comments.length > 0 && (
                         <>
                           <span>·</span>
-                          <span>{ticket.comments.length} Kommentare</span>
+                          <span>{t.list.comments(ticket.comments.length)}</span>
                         </>
                       )}
                     </div>
@@ -689,22 +675,24 @@ export default function TicketsPage() {
                       {getTypeLabel(selectedTicket.type)}
                     </span>
                     <span className={`text-sm ${getPriorityColor(selectedTicket.priority)}`}>
-                      Priorität: {getPriorityLabel(selectedTicket.priority)}
+                      {t.detail.priority(getPriorityLabel(selectedTicket.priority))}
                     </span>
                   </div>
                   <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
                     {selectedTicket.title}
                   </h2>
                   <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                    Erstellt von {selectedTicket.user.name || selectedTicket.user.email} am{" "}
-                    {formatDate(selectedTicket.createdAt)}
+                    {t.detail.createdBy(
+                      selectedTicket.user.name || selectedTicket.user.email,
+                      formatDate(selectedTicket.createdAt)
+                    )}
                   </p>
                 </div>
                 {canEditData && (
                   <button
                     onClick={() => deleteTicket(selectedTicket.id)}
                     className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
-                    title="Ticket löschen"
+                    title={t.detail.deleteTitle}
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path
@@ -721,7 +709,7 @@ export default function TicketsPage() {
               {/* Status ändern */}
               <div className="mt-4">
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Status ändern
+                  {t.detail.changeStatus}
                 </label>
                 <select
                   value={selectedTicket.status}
@@ -730,9 +718,9 @@ export default function TicketsPage() {
                     selectedTicket.status
                   )} bg-transparent`}
                 >
-                  <option value="open">Offen</option>
-                  <option value="in_progress">In Bearbeitung</option>
-                  <option value="closed">Geschlossen</option>
+                  <option value="open">{t.statuses.open}</option>
+                  <option value="in_progress">{t.statuses.in_progress}</option>
+                  <option value="closed">{t.statuses.closed}</option>
                 </select>
               </div>
             </div>
@@ -741,7 +729,7 @@ export default function TicketsPage() {
             <div className="p-6 border-b border-slate-200 dark:border-slate-700">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                  Zugewiesen an
+                  {t.detail.assignedTo}
                 </h3>
                 {canEditData && !isEditingAssignees && (
                   <button
@@ -751,7 +739,7 @@ export default function TicketsPage() {
                     }}
                     className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
                   >
-                    Bearbeiten
+                    {t.detail.edit}
                   </button>
                 )}
               </div>
@@ -815,13 +803,13 @@ export default function TicketsPage() {
                       disabled={isSavingAssignees}
                       className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 text-white text-sm rounded-lg transition-colors"
                     >
-                      {isSavingAssignees ? "Speichere..." : "Speichern"}
+                      {isSavingAssignees ? t.detail.saving : t.detail.save}
                     </button>
                     <button
                       onClick={() => setIsEditingAssignees(false)}
                       className="px-3 py-1.5 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-white text-sm rounded-lg transition-colors"
                     >
-                      Abbrechen
+                      {t.detail.cancel}
                     </button>
                   </div>
                 </div>
@@ -845,7 +833,7 @@ export default function TicketsPage() {
                     </div>
                   ) : (
                     <p className="text-sm text-slate-500 dark:text-slate-400 italic">
-                      Niemand zugewiesen
+                      {t.detail.nobodyAssigned}
                     </p>
                   )}
                 </div>
@@ -855,7 +843,7 @@ export default function TicketsPage() {
             {/* Beschreibung */}
             <div className="p-6 border-b border-slate-200 dark:border-slate-700">
               <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                Beschreibung
+                {t.detail.description}
               </h3>
               <p className="text-slate-600 dark:text-slate-400 whitespace-pre-wrap">
                 {selectedTicket.description}
@@ -865,7 +853,7 @@ export default function TicketsPage() {
             {/* Kommentare */}
             <div className="p-6">
               <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-4">
-                Kommentare ({selectedTicket.comments?.length || 0})
+                {t.detail.comments(selectedTicket.comments?.length || 0)}
               </h3>
 
               {selectedTicket.comments && selectedTicket.comments.length > 0 && (
@@ -891,7 +879,7 @@ export default function TicketsPage() {
                 <textarea
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Kommentar hinzufügen..."
+                  placeholder={t.detail.commentPlaceholder}
                   rows={2}
                   className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white text-sm"
                 />
@@ -900,7 +888,7 @@ export default function TicketsPage() {
                   disabled={isAddingComment || !newComment.trim()}
                   className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors"
                 >
-                  {isAddingComment ? "Sende..." : "Kommentar senden"}
+                  {isAddingComment ? t.detail.sending : t.detail.sendComment}
                 </button>
               </div>
             </div>

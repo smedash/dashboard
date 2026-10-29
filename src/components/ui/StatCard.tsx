@@ -1,3 +1,7 @@
+"use client";
+
+import { useLocale } from "@/i18n/I18nProvider";
+
 interface StatCardProps {
   title: string;
   value: string | number;
@@ -9,6 +13,8 @@ interface StatCardProps {
 }
 
 export function StatCard({ title, value, change, subtitle, trend, format = "number", icon }: StatCardProps) {
+  const { intlLocale } = useLocale();
+
   const formatValue = (val: string | number) => {
     if (typeof val === "string") return val;
     
@@ -18,7 +24,7 @@ export function StatCard({ title, value, change, subtitle, trend, format = "numb
       case "position":
         return val.toFixed(1);
       default:
-        return val.toLocaleString("de-DE");
+        return val.toLocaleString(intlLocale);
     }
   };
 

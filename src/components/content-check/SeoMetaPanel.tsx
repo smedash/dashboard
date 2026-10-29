@@ -1,5 +1,8 @@
 "use client";
 
+import { useMessages } from "@/i18n/I18nProvider";
+import { contentCheckMessages } from "@/i18n/messages/content-check";
+
 const TITLE_MIN = 50;
 const TITLE_MAX = 60;
 const DESC_MIN = 140;
@@ -38,6 +41,7 @@ export function SeoMetaPanel({
   saveSuccess?: boolean;
   dirty?: boolean;
 }) {
+  const t = useMessages(contentCheckMessages).seoMeta;
   const titleLen = metaTitle.length;
   const descLen = metaDescription.length;
   const previewTitle = titleLen > TITLE_MAX ? `${metaTitle.slice(0, TITLE_MAX)}…` : metaTitle;
@@ -49,18 +53,18 @@ export function SeoMetaPanel({
     <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5 space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Title & Meta Description</h2>
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-white">{t.heading}</h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Sachlich, im Bank-Sprech. Klickstark durch Klarheit – nicht durch Werbesprache.
+            {t.hint}
           </p>
         </div>
         {onSave && !readOnly && (
           <div className="flex items-center gap-2 shrink-0">
             {saveSuccess && (
-              <span className="text-xs text-emerald-600 dark:text-emerald-400">Gespeichert</span>
+              <span className="text-xs text-emerald-600 dark:text-emerald-400">{t.saved}</span>
             )}
             {dirty && !saveSuccess && (
-              <span className="text-xs text-amber-600 dark:text-amber-400">Ungespeichert</span>
+              <span className="text-xs text-amber-600 dark:text-amber-400">{t.unsaved}</span>
             )}
             <button
               type="button"
@@ -68,7 +72,7 @@ export function SeoMetaPanel({
               disabled={saving || !dirty}
               className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg disabled:opacity-50"
             >
-              {saving ? "Speichern…" : "Speichern"}
+              {saving ? t.saving : t.save}
             </button>
           </div>
         )}
@@ -78,7 +82,7 @@ export function SeoMetaPanel({
         <div className="space-y-3">
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Title</label>
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">{t.title}</label>
               <span className={`text-xs font-medium ${countClass(titleLen, TITLE_MIN, TITLE_MAX)}`}>
                 {titleLen}/{TITLE_MAX}
               </span>
@@ -89,7 +93,7 @@ export function SeoMetaPanel({
               readOnly={readOnly}
               disabled={readOnly}
               className={inputClass}
-              placeholder="SEO-Title | UBS"
+              placeholder={t.titlePlaceholder}
             />
             <div className="mt-1.5 h-1 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
               <div
@@ -101,7 +105,7 @@ export function SeoMetaPanel({
 
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Meta Description</label>
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">{t.metaDescription}</label>
               <span className={`text-xs font-medium ${countClass(descLen, DESC_MIN, DESC_MAX)}`}>
                 {descLen}/{DESC_MAX}
               </span>
@@ -113,7 +117,7 @@ export function SeoMetaPanel({
               disabled={readOnly}
               rows={3}
               className={`${inputClass} resize-none`}
-              placeholder="Sachliche Beschreibung mit klarem Nutzen, 140–160 Zeichen."
+              placeholder={t.descriptionPlaceholder}
             />
             <div className="mt-1.5 h-1 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
               <div
@@ -125,7 +129,7 @@ export function SeoMetaPanel({
         </div>
 
         <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4">
-          <p className="text-[11px] uppercase tracking-wide text-slate-400 mb-3">Google-Vorschau</p>
+          <p className="text-[11px] uppercase tracking-wide text-slate-400 mb-3">{t.googlePreview}</p>
           <div className="flex items-center gap-2 text-sm mb-1">
             <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
               <span className="text-[10px] font-semibold text-red-600">U</span>
@@ -136,10 +140,10 @@ export function SeoMetaPanel({
             </div>
           </div>
           <p className="text-[18px] leading-snug text-[#1a0dab] dark:text-blue-400 hover:underline cursor-default">
-            {previewTitle || "SEO-Title"}
+            {previewTitle || t.previewTitleFallback}
           </p>
           <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
-            {previewDesc || "Meta Description erscheint hier."}
+            {previewDesc || t.previewDescriptionFallback}
           </p>
         </div>
       </div>

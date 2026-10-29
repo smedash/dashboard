@@ -5,6 +5,8 @@ import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber";
 import { OrbitControls, Html } from "@react-three/drei";
 import * as THREE from "three";
 import { displayCleanupStatus } from "@/lib/url-cleanup/cleanup-status";
+import { useMessages } from "@/i18n/I18nProvider";
+import { urlCleanupMessages } from "@/i18n/messages/url-cleanup";
 
 export type CloudPoint = {
   id: string;
@@ -103,10 +105,14 @@ function CountryLabels({
   points,
   activeCountry,
   onCountryClick,
+  filterTitle,
+  displayLocale,
 }: {
   points: CloudPoint[];
   activeCountry?: string;
   onCountryClick?: (code: string) => void;
+  filterTitle: (country: string) => string;
+  displayLocale: string;
 }) {
   const labels = useMemo(() => {
     const countries = countryCodes(points);
@@ -150,11 +156,11 @@ function CountryLabels({
                   ? "bg-blue-600 ring-blue-300"
                   : "bg-slate-900/85 ring-white/25 hover:bg-slate-800"
               }`}
-              title={clickable ? `Nach ${countryLabel(l.code)} filtern` : undefined}
+              title={clickable ? filterTitle(countryLabel(l.code)) : undefined}
             >
               <div className="text-[11px] font-semibold tracking-wide text-white">{countryLabel(l.code)}</div>
               <div className="text-[9px] tabular-nums text-slate-200">
-                {l.count.toLocaleString("de-CH")}
+                {l.count.toLocaleString(displayLocale)}
               </div>
             </button>
           </Html>
@@ -259,6 +265,7 @@ export function Cloud3D({
   country?: string;
   onCountryFilter?: (code: string) => void;
 }) {
+  const t = useMessages(urlCleanupMessages);
   const [mode, setMode] = useState<"cluster" | "scatter">("cluster");
   const [selected, setSelected] = useState<Selection | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
@@ -338,7 +345,7 @@ export function Cloud3D({
           }}
           className={`px-3 py-1.5 text-sm rounded-lg ${mode === "cluster" ? "bg-blue-600 text-white" : `border ${fullscreen ? "border-slate-500 text-slate-100" : "border-slate-300 dark:border-slate-600"}`}`}
         >
-          Pfad-Cluster
+          {t.cloud.pathCluster}
         </button>
         <button
           type="button"
@@ -348,19 +355,18 @@ export function Cloud3D({
           }}
           className={`px-3 py-1.5 text-sm rounded-lg ${mode === "scatter" ? "bg-blue-600 text-white" : `border ${fullscreen ? "border-slate-500 text-slate-100" : "border-slate-300 dark:border-slate-600"}`}`}
         >
-          Metrik-Scatter
+          {t.cloud.metricScatter}
         </button>
         <span className="text-xs text-slate-500">
-          {points.length.toLocaleString("de-CH")} Punkte · rot = Kill · orange = Candidate · grün =
-          Keep · blau = MustKeep
+          {t.cloud.legend(points.length.toLocaleString(t.displayLocale))}
         </span>
         <button
           type="button"
           onClick={() => void toggleFullscreen()}
           className={`ml-auto px-3 py-1.5 text-sm rounded-lg border ${fullscreen ? "border-slate-500 text-slate-100" : "border-slate-300 dark:border-slate-600"}`}
-          title={fullscreen ? "Esc zum Beenden" : "Wolke im Vollbild öffnen"}
+          title={fullscreen ? t.cloud.exitFullscreenHint : t.cloud.openFullscreenHint}
         >
-          {fullscreen ? "Vollbild beenden" : "Vollbild"}
+          {fullscreen ? t.cloud.exitFullscreen : t.cloud.fullscreen}
         </button>
       </div>
       <div
@@ -382,6 +388,8 @@ export function Cloud3D({
               points={points}
               activeCountry={country}
               onCountryClick={onCountryFilter}
+              filterTitle={t.cloud.filterByCountry}
+              displayLocale={t.displayLocale}
             />
           )}
           <OrbitControls enableDamping makeDefault />
@@ -401,12 +409,12 @@ export function Cloud3D({
                 </a>
                 <div className="mt-1.5 space-y-0.5 text-slate-500 dark:text-slate-400">
                   <div>
-                    Konfidenz {selected.point.k} ({displayCleanupStatus(selected.point.b).label})
+                    {t.cloud.confidence(selected.point.k, displayCleanupStatus(selected.point.b).label)}
                   </div>
-                  <div>GSC Impressions {selected.point.gi.toLocaleString("de-CH")}</div>
-                  <div>GSC Klicks {selected.point.gc.toLocaleString("de-CH")}</div>
-                  <div>Adobe Visits {selected.point.av.toLocaleString("de-CH")}</div>
-                  <div>Leads {selected.point.ld.toLocaleString("de-CH")}</div>
+                  <div>{t.cloud.gscImpressions} {selected.point.gi.toLocaleString(t.displayLocale)}</div>
+                  <div>{t.cloud.gscClicks} {selected.point.gc.toLocaleString(t.displayLocale)}</div>
+                  <div>{t.cloud.adobeVisits} {selected.point.av.toLocaleString(t.displayLocale)}</div>
+                  <div>{t.cloud.leads} {selected.point.ld.toLocaleString(t.displayLocale)}</div>
                 </div>
               </div>
             </Html>

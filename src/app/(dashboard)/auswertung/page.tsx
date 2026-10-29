@@ -6,6 +6,14 @@ import { BarChart } from "@/components/charts/BarChart";
 import { StatCard } from "@/components/ui/StatCard";
 import { PeriodSelector } from "@/components/ui/PeriodSelector";
 import { useProperty } from "@/contexts/PropertyContext";
+import { useLocale, useMessages } from "@/i18n/I18nProvider";
+import { analysisMessages } from "@/i18n/messages/analysis";
+
+const TIMEOUT_ERROR = "TIMEOUT";
+
+type ErrorState =
+  | { kind: "message"; message: string }
+  | { kind: "timeout" | "loadFailed" | "unknown" };
 
 interface GSCRow {
   keys: string[];
@@ -40,13 +48,15 @@ interface DirectoryStats {
 
 export default function AuswertungPage() {
   const { selectedProperty } = useProperty();
+  const t = useMessages(analysisMessages);
+  const { intlLocale } = useLocale();
   const [mounted, setMounted] = useState(false);
   const [period, setPeriod] = useState("28d");
   const [pagesData, setPagesData] = useState<GSCRow[]>([]);
   const [queryPageData, setQueryPageData] = useState<GSCRow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorState | null>(null);
   const [needsGoogleConnection, setNeedsGoogleConnection] = useState(false);
   const [selectedDirectory, setSelectedDirectory] = useState<string | null>(null);
   const [directoryDepth, setDirectoryDepth] = useState(4);
@@ -78,7 +88,7 @@ export default function AuswertungPage() {
       try {
         // Create timeout promise
         const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error("Zeitüberschreitung beim Laden der Daten")), 60000); // 60 seconds timeout
+          setTimeout(() => reject(new Error(TIMEOUT_ERROR)), 60000); // 60 seconds timeout
         });
 
         // Fetch data with timeout protection
@@ -119,7 +129,7 @@ export default function AuswertungPage() {
           
           const errorMsg = pagesResult.error || queryPageResult.error;
           console.error("Error fetching data:", errorMsg);
-          setError(errorMsg || "Fehler beim Laden der Daten");
+          setError(errorMsg ? { kind: "message", message: errorMsg } : { kind: "loadFailed" });
           return;
         }
         
@@ -144,7 +154,13 @@ export default function AuswertungPage() {
         setSelectedDirectory(null);
       } catch (error) {
         console.error("Error fetching GSC data:", error);
-        setError(error instanceof Error ? error.message : "Unbekannter Fehler beim Laden der Daten");
+        if (error instanceof Error && error.message === TIMEOUT_ERROR) {
+          setError({ kind: "timeout" });
+        } else if (error instanceof Error) {
+          setError({ kind: "message", message: error.message });
+        } else {
+          setError({ kind: "unknown" });
+        }
       } finally {
         setIsLoadingData(false);
         setIsLoading(false);
@@ -304,14 +320,14 @@ export default function AuswertungPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <h1 className="text-2xl font-bold text-white">Auswertung</h1>
+        <h1 className="text-2xl font-bold text-white">{t.title}</h1>
 
         <div className="flex flex-wrap items-center gap-4">
           <PeriodSelector value={period} onChange={setPeriod} />
 
           {/* Directory Depth */}
           <div className="flex items-center gap-2">
-            <span className="text-sm text-slate-400">Tiefe:</span>
+            <span className="text-sm text-slate-400">{t.depth}</span>
             <select
               value={directoryDepth}
               onChange={(e) => setDirectoryDepth(parseInt(e.target.value))}
@@ -319,7 +335,7 @@ export default function AuswertungPage() {
             >
               {[1, 2, 3, 4, 5].map((depth) => (
                 <option key={depth} value={depth}>
-                  {depth} {depth === 1 ? "Ebene" : "Ebenen"}
+                  {t.levels(depth)}
                 </option>
               ))}
             </select>
@@ -336,9 +352,9 @@ export default function AuswertungPage() {
               </svg>
             </div>
             <div className="flex-1">
-              <h3 className="text-blue-400 font-semibold mb-2">Google Account nicht verbunden</h3>
+              <h3 className="text-blue-400 font-semibold mb-2">{t.googleNotConnected.title}</h3>
               <p className="text-blue-300 mb-4">
-                Du hast Dich noch nicht via Google OAuth mit Deinem Google Account verbunden und kannst deshalb hier keine Daten sehen.
+                {t.googleNotConnected.text}
               </p>
               <a
                 href="/settings"
@@ -348,7 +364,7 @@ export default function AuswertungPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
-                Zu den Einstellungen gehen
+                {t.googleNotConnected.goToSettings}
               </a>
             </div>
           </div>
@@ -359,9 +375,9 @@ export default function AuswertungPage() {
             <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <span className="text-red-400 font-medium">Fehler</span>
+            <span className="text-red-400 font-medium">{t.errors.title}</span>
           </div>
-          <p className="text-red-300 mt-2">{error}</p>
+          <p className="text-red-300 mt-2">{error.kind === "message" ? error.message : t.errors[error.kind]}</p>
         </div>
       )}
 
@@ -370,10 +386,10 @@ export default function AuswertungPage() {
           <div className="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full mb-4"></div>
           <div className="text-center">
             <p className="text-lg font-medium text-white mb-2">
-              Hole Live-Daten aus der GSC...
+              {t.loadingTitle}
             </p>
             <p className="text-sm text-slate-400">
-              Das kann einige Sekunden dauern!
+              {t.loadingHint}
             </p>
           </div>
         </div>
@@ -384,9 +400,9 @@ export default function AuswertungPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
           </div>
-          <h2 className="text-xl font-bold text-white mb-2">Bitte Property auswählen</h2>
+          <h2 className="text-xl font-bold text-white mb-2">{t.selectProperty}</h2>
           <p className="text-slate-400">
-            Wähle eine Property aus, um die Auswertung zu starten.
+            {t.selectPropertyHint}
           </p>
         </div>
       ) : (
@@ -394,19 +410,19 @@ export default function AuswertungPage() {
           {/* Overview Stats */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <StatCard
-              title="Verzeichnisse"
+              title={t.stats.directories}
               value={directoryStats.directories.length}
             />
             <StatCard
-              title="Gesamt Klicks"
+              title={t.stats.totalClicks}
               value={totals.clicks}
             />
             <StatCard
-              title="Gesamt Impressionen"
+              title={t.stats.totalImpressions}
               value={totals.impressions}
             />
             <StatCard
-              title="Ø Position"
+              title={t.stats.avgPosition}
               value={totals.position}
               format="position"
             />
@@ -414,12 +430,12 @@ export default function AuswertungPage() {
 
           {/* Chart */}
           <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-            <h3 className="text-lg font-semibold text-white mb-4">Top 10 Verzeichnisse nach Klicks</h3>
+            <h3 className="text-lg font-semibold text-white mb-4">{t.topDirectories}</h3>
             {chartData.length > 0 ? (
               <BarChart data={chartData} xKey="directory" yKey="clicks" height={400} horizontal />
             ) : (
               <div className="h-[400px] flex items-center justify-center text-slate-500">
-                Keine Daten verfügbar
+                {t.noData}
               </div>
             )}
           </div>
@@ -429,8 +445,8 @@ export default function AuswertungPage() {
             {/* Directory List */}
             <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
               <div className="p-4 border-b border-slate-700">
-                <h3 className="text-lg font-semibold text-white">Verzeichnisse</h3>
-                <p className="text-sm text-slate-400">Klicke auf ein Verzeichnis für Details</p>
+                <h3 className="text-lg font-semibold text-white">{t.directories}</h3>
+                <p className="text-sm text-slate-400">{t.clickDirectoryHint}</p>
               </div>
               <div className="max-h-[500px] overflow-y-auto">
                 {directoryStats.directories.map((dir) => (
@@ -449,14 +465,14 @@ export default function AuswertungPage() {
                         {dir.path}
                       </span>
                       <span className="text-blue-400 font-medium">
-                        {dir.clicks.toLocaleString("de-DE")}
+                        {dir.clicks.toLocaleString(intlLocale)}
                       </span>
                     </div>
                     <div className="flex gap-4 mt-1 text-xs text-slate-400">
-                      <span>{dir.impressions.toLocaleString("de-DE")} Impr.</span>
-                      <span>{(dir.ctr * 100).toFixed(1)}% CTR</span>
-                      <span>Pos. {dir.position.toFixed(1)}</span>
-                      <span>{dir.pageCount} Seiten</span>
+                      <span>{t.impressionsShort(dir.impressions.toLocaleString(intlLocale))}</span>
+                      <span>{t.ctrValue((dir.ctr * 100).toFixed(1))}</span>
+                      <span>{t.positionShort(dir.position.toFixed(1))}</span>
+                      <span>{t.pagesCount(dir.pageCount)}</span>
                     </div>
                   </button>
                 ))}
@@ -472,9 +488,9 @@ export default function AuswertungPage() {
                       {selectedDir.path}
                     </h3>
                     <div className="flex gap-4 mt-2 text-sm">
-                      <span className="text-blue-400">{selectedDir.clicks.toLocaleString("de-DE")} Klicks</span>
-                      <span className="text-slate-400">{selectedDir.impressions.toLocaleString("de-DE")} Impr.</span>
-                      <span className="text-slate-400">{(selectedDir.ctr * 100).toFixed(2)}% CTR</span>
+                      <span className="text-blue-400">{t.clicksCount(selectedDir.clicks.toLocaleString(intlLocale))}</span>
+                      <span className="text-slate-400">{t.impressionsShort(selectedDir.impressions.toLocaleString(intlLocale))}</span>
+                      <span className="text-slate-400">{t.ctrValue((selectedDir.ctr * 100).toFixed(2))}</span>
                     </div>
 
                     {/* View Toggle */}
@@ -487,7 +503,7 @@ export default function AuswertungPage() {
                             : "bg-slate-700 text-slate-300 hover:text-white"
                         }`}
                       >
-                        Seiten ({selectedDir.pageCount})
+                        {t.pagesTab(selectedDir.pageCount)}
                       </button>
                       <button
                         onClick={() => setViewMode("keywords")}
@@ -497,7 +513,7 @@ export default function AuswertungPage() {
                             : "bg-slate-700 text-slate-300 hover:text-white"
                         }`}
                       >
-                        Keywords ({directoryKeywords.length})
+                        {t.keywordsTab(directoryKeywords.length)}
                       </button>
                     </div>
 
@@ -513,19 +529,19 @@ export default function AuswertungPage() {
                               onChange={(e) => setExcludeBrand(e.target.checked)}
                               className="w-4 h-4 rounded border-slate-500 bg-slate-600 text-blue-600 focus:ring-blue-500 focus:ring-offset-0"
                             />
-                            <span className="text-sm text-slate-300">Brand ausschließen:</span>
+                            <span className="text-sm text-slate-300">{t.excludeBrand}</span>
                           </label>
                           <input
                             type="text"
                             value={brandFilter}
                             onChange={(e) => setBrandFilter(e.target.value)}
-                            placeholder="z.B. ubs, bank"
+                            placeholder={t.brandPlaceholder}
                             disabled={!excludeBrand}
                             className="flex-1 px-3 py-1.5 text-sm bg-slate-600 border border-slate-500 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                           />
                         </div>
                         <p className="text-xs text-slate-500 mt-2">
-                          Keywords werden basierend auf den Seiten in diesem Verzeichnis gefiltert
+                          {t.keywordFilterHint}
                         </p>
                       </div>
                     )}
@@ -537,9 +553,9 @@ export default function AuswertungPage() {
                       <table className="w-full">
                         <thead className="bg-slate-700/50 sticky top-0">
                           <tr>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-slate-400">Seite</th>
-                            <th className="px-4 py-2 text-right text-xs font-medium text-slate-400">Klicks</th>
-                            <th className="px-4 py-2 text-right text-xs font-medium text-slate-400">Pos.</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-slate-400">{t.columns.page}</th>
+                            <th className="px-4 py-2 text-right text-xs font-medium text-slate-400">{t.columns.clicks}</th>
+                            <th className="px-4 py-2 text-right text-xs font-medium text-slate-400">{t.columns.positionShort}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -557,7 +573,7 @@ export default function AuswertungPage() {
                                 </a>
                               </td>
                               <td className="px-4 py-2 text-right text-sm text-white">
-                                {page.clicks.toLocaleString("de-DE")}
+                                {page.clicks.toLocaleString(intlLocale)}
                               </td>
                               <td className="px-4 py-2 text-right text-sm text-slate-400">
                                 {page.position.toFixed(1)}
@@ -570,16 +586,16 @@ export default function AuswertungPage() {
                       // Keywords
                       directoryKeywords.length === 0 ? (
                         <div className="p-6 text-center text-slate-400">
-                          <p>Keine Keywords für dieses Verzeichnis gefunden.</p>
+                          <p>{t.noKeywords}</p>
                         </div>
                       ) : (
                         <table className="w-full">
                           <thead className="bg-slate-700/50 sticky top-0">
                             <tr>
-                              <th className="px-4 py-2 text-left text-xs font-medium text-slate-400">Keyword</th>
-                              <th className="px-4 py-2 text-right text-xs font-medium text-slate-400">Klicks</th>
-                              <th className="px-4 py-2 text-right text-xs font-medium text-slate-400">Impr.</th>
-                              <th className="px-4 py-2 text-right text-xs font-medium text-slate-400">Pos.</th>
+                              <th className="px-4 py-2 text-left text-xs font-medium text-slate-400">{t.columns.keyword}</th>
+                              <th className="px-4 py-2 text-right text-xs font-medium text-slate-400">{t.columns.clicks}</th>
+                              <th className="px-4 py-2 text-right text-xs font-medium text-slate-400">{t.columns.impressionsShort}</th>
+                              <th className="px-4 py-2 text-right text-xs font-medium text-slate-400">{t.columns.positionShort}</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -589,10 +605,10 @@ export default function AuswertungPage() {
                                   <span className="text-sm text-white">{kw.keyword}</span>
                                 </td>
                                 <td className="px-4 py-2 text-right text-sm text-blue-400">
-                                  {kw.clicks.toLocaleString("de-DE")}
+                                  {kw.clicks.toLocaleString(intlLocale)}
                                 </td>
                                 <td className="px-4 py-2 text-right text-sm text-slate-400">
-                                  {kw.impressions.toLocaleString("de-DE")}
+                                  {kw.impressions.toLocaleString(intlLocale)}
                                 </td>
                                 <td className="px-4 py-2 text-right text-sm text-slate-400">
                                   {kw.position.toFixed(1)}
@@ -611,7 +627,7 @@ export default function AuswertungPage() {
                     <svg className="w-12 h-12 mx-auto mb-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
                     </svg>
-                    <p>Wähle ein Verzeichnis aus der Liste</p>
+                    <p>{t.selectDirectory}</p>
                   </div>
                 </div>
               )}
@@ -621,7 +637,7 @@ export default function AuswertungPage() {
           {/* Full Directory Table */}
           <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
             <div className="p-4 border-b border-slate-700">
-              <h3 className="text-lg font-semibold text-white">Alle Verzeichnisse</h3>
+              <h3 className="text-lg font-semibold text-white">{t.allDirectories}</h3>
             </div>
             <DataTable
               data={directoryStats.directories.map((dir, index) => ({
@@ -637,7 +653,7 @@ export default function AuswertungPage() {
               columns={[
                 {
                   key: "path",
-                  header: "Verzeichnis",
+                  header: t.columns.directory,
                   sortable: true,
                   render: (value) => (
                     <span className="font-medium text-white">{String(value)}</span>
@@ -645,35 +661,35 @@ export default function AuswertungPage() {
                 },
                 {
                   key: "clicks",
-                  header: "Klicks",
+                  header: t.columns.clicks,
                   sortable: true,
                   render: (value) => (
-                    <span className="text-blue-400">{Number(value).toLocaleString("de-DE")}</span>
+                    <span className="text-blue-400">{Number(value).toLocaleString(intlLocale)}</span>
                   ),
                 },
                 {
                   key: "impressions",
-                  header: "Impressionen",
+                  header: t.columns.impressions,
                   sortable: true,
-                  render: (value) => Number(value).toLocaleString("de-DE"),
+                  render: (value) => Number(value).toLocaleString(intlLocale),
                 },
                 {
                   key: "ctr",
-                  header: "CTR",
+                  header: t.columns.ctr,
                   sortable: true,
                   render: (value) => `${(Number(value) * 100).toFixed(2)}%`,
                 },
                 {
                   key: "position",
-                  header: "Ø Position",
+                  header: t.columns.avgPosition,
                   sortable: true,
                   render: (value) => Number(value).toFixed(1),
                 },
                 {
                   key: "pageCount",
-                  header: "Seiten",
+                  header: t.columns.pages,
                   sortable: true,
-                  render: (value) => Number(value).toLocaleString("de-DE"),
+                  render: (value) => Number(value).toLocaleString(intlLocale),
                 },
               ]}
             />

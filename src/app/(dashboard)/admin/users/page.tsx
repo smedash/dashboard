@@ -2,7 +2,23 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { ROLE_LABELS, ROLE_DESCRIPTIONS, type Role } from "@/lib/rbac";
+import type { Role } from "@/lib/rbac";
+import { useLocale, useMessages } from "@/i18n/I18nProvider";
+import { commonMessages } from "@/i18n/messages/common";
+import { adminUsersMessages } from "@/i18n/messages/admin-users";
+
+const ROLE_OPTION_ORDER: Role[] = [
+  "viewer",
+  "member",
+  "seo_manager",
+  "content_manager",
+  "segment_manager",
+  "compliance_manager",
+  "legal",
+  "translation_manager",
+  "agentur",
+  "superadmin",
+];
 
 interface User {
   id: string;
@@ -15,6 +31,9 @@ interface User {
 
 export default function AdminUsersPage() {
   const { data: session } = useSession();
+  const t = useMessages(adminUsersMessages);
+  const tc = useMessages(commonMessages);
+  const { intlLocale } = useLocale();
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showNewForm, setShowNewForm] = useState(false);
@@ -36,14 +55,14 @@ export default function AdminUsersPage() {
       setIsLoading(true);
       const response = await fetch("/api/admin/users");
       if (response.status === 403) {
-        setError("Keine Berechtigung für diese Seite");
+        setError(t.noPermissionError);
         return;
       }
       const data = await response.json();
       setUsers(data.users || []);
     } catch (error) {
       console.error("Error fetching users:", error);
-      setError("Fehler beim Laden der Nutzer");
+      setError(t.loadError);
     } finally {
       setIsLoading(false);
     }
@@ -80,7 +99,7 @@ export default function AdminUsersPage() {
       }
     } catch (error) {
       console.error("Error creating user:", error);
-      setError("Fehler beim Erstellen des Nutzers");
+      setError(t.createError);
     } finally {
       setIsSubmitting(false);
     }
@@ -107,12 +126,12 @@ export default function AdminUsersPage() {
       }
     } catch (error) {
       console.error("Error updating user:", error);
-      setError("Fehler beim Aktualisieren des Nutzers");
+      setError(t.updateError);
     }
   };
 
   const deleteUser = async (userId: string) => {
-    if (!confirm("Nutzer wirklich löschen? Alle zugehörigen Daten werden ebenfalls gelöscht.")) return;
+    if (!confirm(t.confirmDelete)) return;
 
     try {
       setError(null);
@@ -129,7 +148,7 @@ export default function AdminUsersPage() {
       setUsers(users.filter((u) => u.id !== userId));
     } catch (error) {
       console.error("Error deleting user:", error);
-      setError("Fehler beim Löschen des Nutzers");
+      setError(t.deleteError);
     }
   };
 
@@ -161,7 +180,7 @@ export default function AdminUsersPage() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("de-DE", {
+    return new Date(dateString).toLocaleDateString(intlLocale, {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -173,10 +192,10 @@ export default function AdminUsersPage() {
   if (!hasAdminRights) {
     return (
       <div className="space-y-8">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Nutzerverwaltung</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h1>
         <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-6 text-center">
-          <p className="text-red-400">Sie haben keine Berechtigung für diese Seite.</p>
-          <p className="text-slate-400 text-sm mt-2">Nur Superadmins und Agenturen können Nutzer verwalten.</p>
+          <p className="text-red-400">{t.noAccess}</p>
+          <p className="text-slate-400 text-sm mt-2">{t.noAccessHint}</p>
         </div>
       </div>
     );
@@ -185,7 +204,7 @@ export default function AdminUsersPage() {
   if (isLoading) {
     return (
       <div className="space-y-8">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Nutzerverwaltung</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h1>
         <div className="h-64 bg-slate-200 dark:bg-slate-800 rounded-xl animate-pulse"></div>
       </div>
     );
@@ -196,9 +215,9 @@ export default function AdminUsersPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Nutzerverwaltung</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h1>
           <p className="text-slate-600 dark:text-slate-400 mt-1">
-            {users.length} Nutzer im System
+            {t.userCount(users.length)}
           </p>
         </div>
         <button
@@ -208,7 +227,7 @@ export default function AdminUsersPage() {
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
-          Neuer Nutzer
+          {t.newUser}
         </button>
       </div>
 
@@ -223,57 +242,52 @@ export default function AdminUsersPage() {
       {showNewForm && (
         <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-            Neuen Nutzer anlegen
+            {t.createTitle}
           </h2>
           <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  E-Mail *
+                  {t.emailLabel}
                 </label>
                 <input
                   type="email"
                   value={newEmail}
                   onChange={(e) => setNewEmail(e.target.value)}
-                  placeholder="nutzer@example.com"
+                  placeholder={t.emailPlaceholder}
                   className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Name
+                  {t.nameLabel}
                 </label>
                 <input
                   type="text"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  placeholder="Max Mustermann"
+                  placeholder={t.namePlaceholder}
                   className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
                 />
               </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                Rolle
+                {t.roleLabel}
               </label>
               <select
                 value={newRole}
                 onChange={(e) => setNewRole(e.target.value as Role)}
                 className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
               >
-                <option value="viewer">Betrachter - Kann nur lesen</option>
-                <option value="member">Mitglied - Kann bearbeiten</option>
-                <option value="seo_manager">Search Manager - Content-Check Stufe 1</option>
-                <option value="content_manager">Content Manager - Content-Check Stufe 2</option>
-                <option value="segment_manager">Segment Manager - Content-Check Stufe 3</option>
-                <option value="compliance_manager">Compliance Manager - Content-Check Stufe 4</option>
-                <option value="legal">Legal - Content-Check Stufe 5</option>
-                <option value="translation_manager">Translation Manager - Content-Check Stufe 6</option>
-                <option value="agentur">Agentur - Volle Rechte</option>
-                <option value="superadmin">Superadmin - Volle Rechte</option>
+                {ROLE_OPTION_ORDER.map((role) => (
+                  <option key={role} value={role}>
+                    {t.roleOptions[role]}
+                  </option>
+                ))}
               </select>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                {ROLE_DESCRIPTIONS[newRole]}
+                {t.roleDescriptions[newRole]}
               </p>
             </div>
             <div className="flex gap-2">
@@ -282,7 +296,7 @@ export default function AdminUsersPage() {
                 disabled={isSubmitting || !newEmail.trim()}
                 className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
               >
-                {isSubmitting ? "Erstelle..." : "Nutzer anlegen"}
+                {isSubmitting ? t.creating : t.createUser}
               </button>
               <button
                 onClick={() => {
@@ -294,7 +308,7 @@ export default function AdminUsersPage() {
                 }}
                 className="px-4 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-white rounded-lg transition-colors"
               >
-                Abbrechen
+                {tc.actions.cancel}
               </button>
             </div>
           </div>
@@ -312,12 +326,12 @@ export default function AdminUsersPage() {
             >
               <div className="flex items-center justify-between">
                 <span className={`px-2 py-1 text-xs rounded-full border ${getRoleColor(role)}`}>
-                  {ROLE_LABELS[role]}
+                  {t.roleLabels[role]}
                 </span>
                 <span className="text-2xl font-bold text-slate-900 dark:text-white">{count}</span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-                {ROLE_DESCRIPTIONS[role]}
+                {t.roleDescriptions[role]}
               </p>
             </div>
           );
@@ -330,16 +344,16 @@ export default function AdminUsersPage() {
           <thead className="bg-slate-100 dark:bg-slate-900">
             <tr>
               <th className="px-4 py-3 text-left text-sm font-medium text-slate-700 dark:text-slate-300">
-                Nutzer
+                {t.columns.user}
               </th>
               <th className="px-4 py-3 text-left text-sm font-medium text-slate-700 dark:text-slate-300">
-                Rolle
+                {t.columns.role}
               </th>
               <th className="px-4 py-3 text-left text-sm font-medium text-slate-700 dark:text-slate-300">
-                Erstellt
+                {t.columns.created}
               </th>
               <th className="px-4 py-3 text-right text-sm font-medium text-slate-700 dark:text-slate-300">
-                Aktionen
+                {t.columns.actions}
               </th>
             </tr>
           </thead>
@@ -351,7 +365,7 @@ export default function AdminUsersPage() {
                     <p className="font-medium text-slate-900 dark:text-white">
                       {user.name || "—"}
                       {user.id === session?.user?.id && (
-                        <span className="ml-2 text-xs text-blue-500">(Sie)</span>
+                        <span className="ml-2 text-xs text-blue-500">{t.you}</span>
                       )}
                     </p>
                     <p className="text-sm text-slate-500 dark:text-slate-400">{user.email}</p>
@@ -364,20 +378,15 @@ export default function AdminUsersPage() {
                       onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value })}
                       className="px-2 py-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded text-sm"
                     >
-                      <option value="viewer">Betrachter</option>
-                      <option value="member">Mitglied</option>
-                      <option value="seo_manager">Search Manager</option>
-                      <option value="content_manager">Content Manager</option>
-                      <option value="segment_manager">Segment Manager</option>
-                      <option value="compliance_manager">Compliance Manager</option>
-                      <option value="legal">Legal</option>
-                      <option value="translation_manager">Translation Manager</option>
-                      <option value="agentur">Agentur</option>
-                      <option value="superadmin">Superadmin</option>
+                      {ROLE_OPTION_ORDER.map((role) => (
+                        <option key={role} value={role}>
+                          {t.roleLabels[role]}
+                        </option>
+                      ))}
                     </select>
                   ) : (
                     <span className={`px-2 py-1 text-xs rounded-full border ${getRoleColor(user.role)}`}>
-                      {ROLE_LABELS[user.role as Role] || user.role}
+                      {t.roleLabels[user.role as Role] || user.role}
                     </span>
                   )}
                 </td>
@@ -391,7 +400,7 @@ export default function AdminUsersPage() {
                         <button
                           onClick={() => updateUser(user.id, { role: editingUser.role })}
                           className="p-1.5 text-green-500 hover:bg-green-500/10 rounded transition-colors"
-                          title="Speichern"
+                          title={tc.actions.save}
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -400,7 +409,7 @@ export default function AdminUsersPage() {
                         <button
                           onClick={() => setEditingUser(null)}
                           className="p-1.5 text-slate-500 hover:bg-slate-500/10 rounded transition-colors"
-                          title="Abbrechen"
+                          title={tc.actions.cancel}
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -412,7 +421,7 @@ export default function AdminUsersPage() {
                         <button
                           onClick={() => setEditingUser(user)}
                           className="p-1.5 text-blue-500 hover:bg-blue-500/10 rounded transition-colors"
-                          title="Bearbeiten"
+                          title={tc.actions.edit}
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -422,7 +431,7 @@ export default function AdminUsersPage() {
                           <button
                             onClick={() => deleteUser(user.id)}
                             className="p-1.5 text-red-500 hover:bg-red-500/10 rounded transition-colors"
-                            title="Löschen"
+                            title={tc.actions.delete}
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

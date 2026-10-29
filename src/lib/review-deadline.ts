@@ -52,10 +52,10 @@ export function isReviewStepPastDue(dueAt: Date | null, now: Date = new Date()):
   return nowYmd > dueYmd;
 }
 
-export function formatReviewDueDateDe(dueAt: Date | string | null): string {
+export function formatReviewDueDate(dueAt: Date | string | null, intlLocale = "de-DE"): string {
   if (!dueAt) return "";
   const d = typeof dueAt === "string" ? new Date(dueAt) : dueAt;
-  return d.toLocaleDateString("de-DE", {
+  return d.toLocaleDateString(intlLocale, {
     timeZone: "UTC",
     day: "2-digit",
     month: "2-digit",

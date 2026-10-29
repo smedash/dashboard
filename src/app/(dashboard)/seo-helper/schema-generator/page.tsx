@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useMessages } from "@/i18n/I18nProvider";
+import { seoHelperSchemaGeneratorMessages } from "@/i18n/messages/seo-helper-schema-generator";
 
 type SchemaType = "faq" | "howto" | "article" | "product" | "localbusiness" | "breadcrumb" | "financialproduct" | "bank" | "definedterm" | "collectionpage";
 
@@ -22,6 +24,7 @@ interface CollectionItem {
 }
 
 export default function SchemaGeneratorPage() {
+  const t = useMessages(seoHelperSchemaGeneratorMessages);
   const [schemaType, setSchemaType] = useState<SchemaType>("faq");
   const [generatedSchema, setGeneratedSchema] = useState("");
   const [copied, setCopied] = useState(false);
@@ -63,8 +66,8 @@ export default function SchemaGeneratorPage() {
   const [businessPhone, setBusinessPhone] = useState("");
 
   // Breadcrumb State
-  const [breadcrumbs, setBreadcrumbs] = useState([
-    { name: "Startseite", url: "https://www.beispiel.ch" },
+  const [breadcrumbs, setBreadcrumbs] = useState(() => [
+    { name: t.breadcrumb.homeDefault, url: "https://www.beispiel.ch" },
     { name: "", url: "" },
   ]);
 
@@ -104,16 +107,16 @@ export default function SchemaGeneratorPage() {
   ]);
 
   const schemaTypes: { value: SchemaType; label: string; description: string }[] = [
-    { value: "faq", label: "FAQ", description: "Häufig gestellte Fragen" },
-    { value: "howto", label: "HowTo", description: "Schritt-für-Schritt Anleitungen" },
-    { value: "article", label: "Article", description: "Blog-Artikel & News" },
-    { value: "product", label: "Product", description: "Produkte & Angebote" },
-    { value: "localbusiness", label: "LocalBusiness", description: "Lokale Unternehmen" },
-    { value: "breadcrumb", label: "Breadcrumb", description: "Navigations-Pfade" },
-    { value: "financialproduct", label: "FinancialProduct", description: "Finanzprodukte & Services" },
-    { value: "bank", label: "Bank", description: "Banken & Kreditinstitute" },
-    { value: "definedterm", label: "DefinedTerm", description: "Glossar & Definitionen" },
-    { value: "collectionpage", label: "CollectionPage", description: "Übersichts- & Kategorieseiten" },
+    { value: "faq", label: "FAQ", description: t.typeDescriptions.faq },
+    { value: "howto", label: "HowTo", description: t.typeDescriptions.howto },
+    { value: "article", label: "Article", description: t.typeDescriptions.article },
+    { value: "product", label: "Product", description: t.typeDescriptions.product },
+    { value: "localbusiness", label: "LocalBusiness", description: t.typeDescriptions.localbusiness },
+    { value: "breadcrumb", label: "Breadcrumb", description: t.typeDescriptions.breadcrumb },
+    { value: "financialproduct", label: "FinancialProduct", description: t.typeDescriptions.financialproduct },
+    { value: "bank", label: "Bank", description: t.typeDescriptions.bank },
+    { value: "definedterm", label: "DefinedTerm", description: t.typeDescriptions.definedterm },
+    { value: "collectionpage", label: "CollectionPage", description: t.typeDescriptions.collectionpage },
   ];
 
   const generateSchema = () => {
@@ -354,8 +357,8 @@ export default function SchemaGeneratorPage() {
           </svg>
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Schema Generator</h1>
-          <p className="text-slate-500 dark:text-slate-400">Strukturierte Daten für Rich Snippets</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h1>
+          <p className="text-slate-500 dark:text-slate-400">{t.subtitle}</p>
         </div>
       </div>
 
@@ -364,7 +367,7 @@ export default function SchemaGeneratorPage() {
         <div className="space-y-6">
           {/* Schema Type Selector */}
           <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
-            <h2 className="font-semibold text-slate-900 dark:text-white mb-4">Schema-Typ wählen</h2>
+            <h2 className="font-semibold text-slate-900 dark:text-white mb-4">{t.chooseType}</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {schemaTypes.map((type) => (
                 <button
@@ -387,7 +390,7 @@ export default function SchemaGeneratorPage() {
 
           {/* Dynamic Form based on Schema Type */}
           <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 space-y-4">
-            <h2 className="font-semibold text-slate-900 dark:text-white">Daten eingeben</h2>
+            <h2 className="font-semibold text-slate-900 dark:text-white">{t.enterData}</h2>
 
             {/* FAQ Form */}
             {schemaType === "faq" && (
@@ -396,20 +399,20 @@ export default function SchemaGeneratorPage() {
                   <div key={index} className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                        Frage {index + 1}
+                        {t.faq.question(index + 1)}
                       </span>
                       {faqItems.length > 1 && (
                         <button
                           onClick={() => removeFaqItem(index)}
                           className="text-red-500 hover:text-red-700 text-sm"
                         >
-                          Entfernen
+                          {t.remove}
                         </button>
                       )}
                     </div>
                     <input
                       type="text"
-                      placeholder="Frage eingeben..."
+                      placeholder={t.faq.questionPlaceholder}
                       value={item.question}
                       onChange={(e) => {
                         const newItems = [...faqItems];
@@ -419,7 +422,7 @@ export default function SchemaGeneratorPage() {
                       className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                     />
                     <textarea
-                      placeholder="Antwort eingeben..."
+                      placeholder={t.faq.answerPlaceholder}
                       value={item.answer}
                       onChange={(e) => {
                         const newItems = [...faqItems];
@@ -435,7 +438,7 @@ export default function SchemaGeneratorPage() {
                   onClick={addFaqItem}
                   className="w-full py-2 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl text-slate-500 hover:border-pink-500 hover:text-pink-500 transition-colors"
                 >
-                  + Weitere Frage hinzufügen
+                  {t.faq.add}
                 </button>
               </div>
             )}
@@ -445,13 +448,13 @@ export default function SchemaGeneratorPage() {
               <div className="space-y-4">
                 <input
                   type="text"
-                  placeholder="Titel der Anleitung"
+                  placeholder={t.howto.titlePlaceholder}
                   value={howToTitle}
                   onChange={(e) => setHowToTitle(e.target.value)}
                   className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white"
                 />
                 <textarea
-                  placeholder="Beschreibung der Anleitung"
+                  placeholder={t.howto.descriptionPlaceholder}
                   value={howToDescription}
                   onChange={(e) => setHowToDescription(e.target.value)}
                   rows={2}
@@ -461,17 +464,17 @@ export default function SchemaGeneratorPage() {
                   <div key={index} className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                        Schritt {index + 1}
+                        {t.howto.step(index + 1)}
                       </span>
                       {howToSteps.length > 1 && (
                         <button onClick={() => removeHowToStep(index)} className="text-red-500 hover:text-red-700 text-sm">
-                          Entfernen
+                          {t.remove}
                         </button>
                       )}
                     </div>
                     <input
                       type="text"
-                      placeholder="Schritt-Titel"
+                      placeholder={t.howto.stepTitlePlaceholder}
                       value={step.name}
                       onChange={(e) => {
                         const newSteps = [...howToSteps];
@@ -481,7 +484,7 @@ export default function SchemaGeneratorPage() {
                       className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                     />
                     <textarea
-                      placeholder="Schritt-Beschreibung"
+                      placeholder={t.howto.stepDescriptionPlaceholder}
                       value={step.text}
                       onChange={(e) => {
                         const newSteps = [...howToSteps];
@@ -497,7 +500,7 @@ export default function SchemaGeneratorPage() {
                   onClick={addHowToStep}
                   className="w-full py-2 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl text-slate-500 hover:border-pink-500 hover:text-pink-500 transition-colors"
                 >
-                  + Weiteren Schritt hinzufügen
+                  {t.howto.add}
                 </button>
               </div>
             )}
@@ -505,21 +508,21 @@ export default function SchemaGeneratorPage() {
             {/* Article Form */}
             {schemaType === "article" && (
               <div className="space-y-4">
-                <input type="text" placeholder="Artikel-Titel" value={articleTitle} onChange={(e) => setArticleTitle(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
-                <textarea placeholder="Artikel-Beschreibung" value={articleDescription} onChange={(e) => setArticleDescription(e.target.value)} rows={2} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white resize-none" />
-                <input type="text" placeholder="Autor" value={articleAuthor} onChange={(e) => setArticleAuthor(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
-                <input type="date" placeholder="Veröffentlichungsdatum" value={articlePublishDate} onChange={(e) => setArticlePublishDate(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
-                <input type="text" placeholder="Bild-URL (optional)" value={articleImage} onChange={(e) => setArticleImage(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
+                <input type="text" placeholder={t.article.titlePlaceholder} value={articleTitle} onChange={(e) => setArticleTitle(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
+                <textarea placeholder={t.article.descriptionPlaceholder} value={articleDescription} onChange={(e) => setArticleDescription(e.target.value)} rows={2} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white resize-none" />
+                <input type="text" placeholder={t.article.authorPlaceholder} value={articleAuthor} onChange={(e) => setArticleAuthor(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
+                <input type="date" placeholder={t.article.publishDatePlaceholder} value={articlePublishDate} onChange={(e) => setArticlePublishDate(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
+                <input type="text" placeholder={t.imageUrlOptional} value={articleImage} onChange={(e) => setArticleImage(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
               </div>
             )}
 
             {/* Product Form */}
             {schemaType === "product" && (
               <div className="space-y-4">
-                <input type="text" placeholder="Produktname" value={productName} onChange={(e) => setProductName(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
-                <textarea placeholder="Produktbeschreibung" value={productDescription} onChange={(e) => setProductDescription(e.target.value)} rows={2} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white resize-none" />
+                <input type="text" placeholder={t.product.namePlaceholder} value={productName} onChange={(e) => setProductName(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
+                <textarea placeholder={t.product.descriptionPlaceholder} value={productDescription} onChange={(e) => setProductDescription(e.target.value)} rows={2} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white resize-none" />
                 <div className="grid grid-cols-2 gap-4">
-                  <input type="number" placeholder="Preis" value={productPrice} onChange={(e) => setProductPrice(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
+                  <input type="number" placeholder={t.product.pricePlaceholder} value={productPrice} onChange={(e) => setProductPrice(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
                   <select value={productCurrency} onChange={(e) => setProductCurrency(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white">
                     <option value="CHF">CHF</option>
                     <option value="EUR">EUR</option>
@@ -527,31 +530,31 @@ export default function SchemaGeneratorPage() {
                   </select>
                 </div>
                 <select value={productAvailability} onChange={(e) => setProductAvailability(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white">
-                  <option value="InStock">Auf Lager</option>
-                  <option value="OutOfStock">Nicht verfügbar</option>
-                  <option value="PreOrder">Vorbestellung</option>
+                  <option value="InStock">{t.product.availability.InStock}</option>
+                  <option value="OutOfStock">{t.product.availability.OutOfStock}</option>
+                  <option value="PreOrder">{t.product.availability.PreOrder}</option>
                 </select>
-                <input type="text" placeholder="Bild-URL (optional)" value={productImage} onChange={(e) => setProductImage(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
+                <input type="text" placeholder={t.imageUrlOptional} value={productImage} onChange={(e) => setProductImage(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
               </div>
             )}
 
             {/* LocalBusiness Form */}
             {schemaType === "localbusiness" && (
               <div className="space-y-4">
-                <input type="text" placeholder="Firmenname" value={businessName} onChange={(e) => setBusinessName(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
+                <input type="text" placeholder={t.business.namePlaceholder} value={businessName} onChange={(e) => setBusinessName(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
                 <select value={businessType} onChange={(e) => setBusinessType(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white">
-                  <option value="LocalBusiness">Lokales Unternehmen</option>
-                  <option value="Restaurant">Restaurant</option>
-                  <option value="Store">Geschäft</option>
-                  <option value="MedicalBusiness">Medizinisches Unternehmen</option>
-                  <option value="FinancialService">Finanzdienstleister</option>
+                  <option value="LocalBusiness">{t.business.types.LocalBusiness}</option>
+                  <option value="Restaurant">{t.business.types.Restaurant}</option>
+                  <option value="Store">{t.business.types.Store}</option>
+                  <option value="MedicalBusiness">{t.business.types.MedicalBusiness}</option>
+                  <option value="FinancialService">{t.business.types.FinancialService}</option>
                 </select>
-                <input type="text" placeholder="Strasse & Hausnummer" value={businessAddress} onChange={(e) => setBusinessAddress(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
+                <input type="text" placeholder={t.address.street} value={businessAddress} onChange={(e) => setBusinessAddress(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
                 <div className="grid grid-cols-2 gap-4">
-                  <input type="text" placeholder="PLZ" value={businessPostal} onChange={(e) => setBusinessPostal(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
-                  <input type="text" placeholder="Stadt" value={businessCity} onChange={(e) => setBusinessCity(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
+                  <input type="text" placeholder={t.address.postal} value={businessPostal} onChange={(e) => setBusinessPostal(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
+                  <input type="text" placeholder={t.address.city} value={businessCity} onChange={(e) => setBusinessCity(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
                 </div>
-                <input type="tel" placeholder="Telefon (optional)" value={businessPhone} onChange={(e) => setBusinessPhone(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
+                <input type="tel" placeholder={t.address.phoneOptional} value={businessPhone} onChange={(e) => setBusinessPhone(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
               </div>
             )}
 
@@ -563,7 +566,7 @@ export default function SchemaGeneratorPage() {
                     <span className="text-sm text-slate-500 w-6">{index + 1}.</span>
                     <input
                       type="text"
-                      placeholder="Name"
+                      placeholder={t.breadcrumb.name}
                       value={item.name}
                       onChange={(e) => {
                         const newItems = [...breadcrumbs];
@@ -596,7 +599,7 @@ export default function SchemaGeneratorPage() {
                   onClick={addBreadcrumb}
                   className="w-full py-2 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl text-slate-500 hover:border-pink-500 hover:text-pink-500 transition-colors"
                 >
-                  + Weitere Ebene hinzufügen
+                  {t.breadcrumb.add}
                 </button>
               </div>
             )}
@@ -605,51 +608,51 @@ export default function SchemaGeneratorPage() {
             {schemaType === "financialproduct" && (
               <div className="space-y-4">
                 <select value={finProductType} onChange={(e) => setFinProductType(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white">
-                  <option value="FinancialProduct">Finanzprodukt (allgemein)</option>
-                  <option value="LoanOrCredit">Kredit / Darlehen</option>
-                  <option value="BankAccount">Bankkonto</option>
-                  <option value="InvestmentOrDeposit">Investment / Anlage</option>
-                  <option value="PaymentCard">Zahlungskarte</option>
-                  <option value="CurrencyConversionService">Währungsumrechnung</option>
+                  <option value="FinancialProduct">{t.finProduct.types.FinancialProduct}</option>
+                  <option value="LoanOrCredit">{t.finProduct.types.LoanOrCredit}</option>
+                  <option value="BankAccount">{t.finProduct.types.BankAccount}</option>
+                  <option value="InvestmentOrDeposit">{t.finProduct.types.InvestmentOrDeposit}</option>
+                  <option value="PaymentCard">{t.finProduct.types.PaymentCard}</option>
+                  <option value="CurrencyConversionService">{t.finProduct.types.CurrencyConversionService}</option>
                 </select>
-                <input type="text" placeholder="Produktname (z.B. Festhypothek 10 Jahre)" value={finProductName} onChange={(e) => setFinProductName(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
-                <textarea placeholder="Produktbeschreibung" value={finProductDescription} onChange={(e) => setFinProductDescription(e.target.value)} rows={3} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white resize-none" />
-                <input type="text" placeholder="Anbieter (z.B. UBS)" value={finProductProvider} onChange={(e) => setFinProductProvider(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
+                <input type="text" placeholder={t.finProduct.namePlaceholder} value={finProductName} onChange={(e) => setFinProductName(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
+                <textarea placeholder={t.finProduct.descriptionPlaceholder} value={finProductDescription} onChange={(e) => setFinProductDescription(e.target.value)} rows={3} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white resize-none" />
+                <input type="text" placeholder={t.finProduct.providerPlaceholder} value={finProductProvider} onChange={(e) => setFinProductProvider(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs text-slate-500 mb-1">Zinssatz (%)</label>
-                    <input type="number" step="0.01" placeholder="z.B. 1.5" value={finProductInterestRate} onChange={(e) => setFinProductInterestRate(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
+                    <label className="block text-xs text-slate-500 mb-1">{t.finProduct.interestRate}</label>
+                    <input type="number" step="0.01" placeholder={t.finProduct.interestRatePlaceholder} value={finProductInterestRate} onChange={(e) => setFinProductInterestRate(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
                   </div>
                   <div>
-                    <label className="block text-xs text-slate-500 mb-1">Effektivzins / APR (%)</label>
-                    <input type="number" step="0.01" placeholder="z.B. 1.65" value={finProductAnnualRate} onChange={(e) => setFinProductAnnualRate(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
+                    <label className="block text-xs text-slate-500 mb-1">{t.finProduct.annualRate}</label>
+                    <input type="number" step="0.01" placeholder={t.finProduct.annualRatePlaceholder} value={finProductAnnualRate} onChange={(e) => setFinProductAnnualRate(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
                   </div>
                 </div>
-                <input type="url" placeholder="URL zur Produktseite (optional)" value={finProductUrl} onChange={(e) => setFinProductUrl(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
+                <input type="url" placeholder={t.finProduct.urlPlaceholder} value={finProductUrl} onChange={(e) => setFinProductUrl(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
               </div>
             )}
 
             {/* BankOrCreditUnion Form */}
             {schemaType === "bank" && (
               <div className="space-y-4">
-                <input type="text" placeholder="Name der Bank" value={bankName} onChange={(e) => setBankName(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
-                <textarea placeholder="Beschreibung (optional)" value={bankDescription} onChange={(e) => setBankDescription(e.target.value)} rows={2} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white resize-none" />
-                <input type="text" placeholder="Strasse & Hausnummer" value={bankAddress} onChange={(e) => setBankAddress(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
+                <input type="text" placeholder={t.bank.namePlaceholder} value={bankName} onChange={(e) => setBankName(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
+                <textarea placeholder={t.bank.descriptionPlaceholder} value={bankDescription} onChange={(e) => setBankDescription(e.target.value)} rows={2} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white resize-none" />
+                <input type="text" placeholder={t.address.street} value={bankAddress} onChange={(e) => setBankAddress(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
                 <div className="grid grid-cols-2 gap-4">
-                  <input type="text" placeholder="PLZ" value={bankPostal} onChange={(e) => setBankPostal(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
-                  <input type="text" placeholder="Stadt" value={bankCity} onChange={(e) => setBankCity(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
+                  <input type="text" placeholder={t.address.postal} value={bankPostal} onChange={(e) => setBankPostal(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
+                  <input type="text" placeholder={t.address.city} value={bankCity} onChange={(e) => setBankCity(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
                 </div>
                 <select value={bankCountry} onChange={(e) => setBankCountry(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white">
-                  <option value="CH">Schweiz</option>
-                  <option value="DE">Deutschland</option>
-                  <option value="AT">Österreich</option>
-                  <option value="LI">Liechtenstein</option>
+                  <option value="CH">{t.bank.countries.CH}</option>
+                  <option value="DE">{t.bank.countries.DE}</option>
+                  <option value="AT">{t.bank.countries.AT}</option>
+                  <option value="LI">{t.bank.countries.LI}</option>
                 </select>
-                <input type="tel" placeholder="Telefon (optional)" value={bankPhone} onChange={(e) => setBankPhone(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
-                <input type="url" placeholder="Website URL (optional)" value={bankUrl} onChange={(e) => setBankUrl(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
+                <input type="tel" placeholder={t.address.phoneOptional} value={bankPhone} onChange={(e) => setBankPhone(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
+                <input type="url" placeholder={t.bank.websitePlaceholder} value={bankUrl} onChange={(e) => setBankUrl(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
                 <div>
-                  <label className="block text-xs text-slate-500 mb-1">Öffnungszeiten (optional, z.B. Mo-Fr 08:00-18:00)</label>
-                  <input type="text" placeholder="Mo-Fr 08:00-18:00" value={bankOpeningHours} onChange={(e) => setBankOpeningHours(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
+                  <label className="block text-xs text-slate-500 mb-1">{t.bank.openingHours}</label>
+                  <input type="text" placeholder={t.bank.openingHoursPlaceholder} value={bankOpeningHours} onChange={(e) => setBankOpeningHours(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
                 </div>
               </div>
             )}
@@ -657,13 +660,13 @@ export default function SchemaGeneratorPage() {
             {/* DefinedTerm Form */}
             {schemaType === "definedterm" && (
               <div className="space-y-4">
-                <input type="text" placeholder="Begriff (z.B. Hypothek)" value={termName} onChange={(e) => setTermName(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
-                <textarea placeholder="Definition / Beschreibung des Begriffs" value={termDescription} onChange={(e) => setTermDescription(e.target.value)} rows={3} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white resize-none" />
-                <input type="text" placeholder="Term-Code (optional, z.B. HYP-001)" value={termCode} onChange={(e) => setTermCode(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
+                <input type="text" placeholder={t.term.namePlaceholder} value={termName} onChange={(e) => setTermName(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
+                <textarea placeholder={t.term.descriptionPlaceholder} value={termDescription} onChange={(e) => setTermDescription(e.target.value)} rows={3} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white resize-none" />
+                <input type="text" placeholder={t.term.codePlaceholder} value={termCode} onChange={(e) => setTermCode(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
                 <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl space-y-3">
-                  <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Zugehöriges Glossar/Wörterbuch (optional)</span>
-                  <input type="text" placeholder="Name des Glossars (z.B. Finanzlexikon)" value={termSetName} onChange={(e) => setTermSetName(e.target.value)} className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white" />
-                  <input type="url" placeholder="URL des Glossars" value={termSetUrl} onChange={(e) => setTermSetUrl(e.target.value)} className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white" />
+                  <span className="text-sm font-medium text-slate-600 dark:text-slate-400">{t.term.setHeading}</span>
+                  <input type="text" placeholder={t.term.setNamePlaceholder} value={termSetName} onChange={(e) => setTermSetName(e.target.value)} className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white" />
+                  <input type="url" placeholder={t.term.setUrlPlaceholder} value={termSetUrl} onChange={(e) => setTermSetUrl(e.target.value)} className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white" />
                 </div>
               </div>
             )}
@@ -671,32 +674,32 @@ export default function SchemaGeneratorPage() {
             {/* CollectionPage Form */}
             {schemaType === "collectionpage" && (
               <div className="space-y-4">
-                <input type="text" placeholder="Seitenname (z.B. Hypotheken-Übersicht)" value={collectionName} onChange={(e) => setCollectionName(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
-                <textarea placeholder="Seitenbeschreibung (optional)" value={collectionDescription} onChange={(e) => setCollectionDescription(e.target.value)} rows={2} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white resize-none" />
-                <input type="url" placeholder="Seiten-URL (optional)" value={collectionUrl} onChange={(e) => setCollectionUrl(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
+                <input type="text" placeholder={t.collection.namePlaceholder} value={collectionName} onChange={(e) => setCollectionName(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
+                <textarea placeholder={t.collection.descriptionPlaceholder} value={collectionDescription} onChange={(e) => setCollectionDescription(e.target.value)} rows={2} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white resize-none" />
+                <input type="url" placeholder={t.collection.urlPlaceholder} value={collectionUrl} onChange={(e) => setCollectionUrl(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white" />
 
                 <div className="pt-2">
-                  <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Einträge der Sammlung</span>
+                  <span className="text-sm font-medium text-slate-600 dark:text-slate-400">{t.collection.itemsHeading}</span>
                 </div>
 
                 {collectionItems.map((item, index) => (
                   <div key={index} className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                        Eintrag {index + 1}
+                        {t.collection.item(index + 1)}
                       </span>
                       {collectionItems.length > 1 && (
                         <button
                           onClick={() => removeCollectionItem(index)}
                           className="text-red-500 hover:text-red-700 text-sm"
                         >
-                          Entfernen
+                          {t.remove}
                         </button>
                       )}
                     </div>
                     <input
                       type="text"
-                      placeholder="Name (z.B. Festhypothek)"
+                      placeholder={t.collection.itemNamePlaceholder}
                       value={item.name}
                       onChange={(e) => {
                         const newItems = [...collectionItems];
@@ -707,7 +710,7 @@ export default function SchemaGeneratorPage() {
                     />
                     <input
                       type="url"
-                      placeholder="URL des Eintrags"
+                      placeholder={t.collection.itemUrlPlaceholder}
                       value={item.url}
                       onChange={(e) => {
                         const newItems = [...collectionItems];
@@ -718,7 +721,7 @@ export default function SchemaGeneratorPage() {
                     />
                     <input
                       type="text"
-                      placeholder="Beschreibung (optional)"
+                      placeholder={t.collection.itemDescriptionPlaceholder}
                       value={item.description}
                       onChange={(e) => {
                         const newItems = [...collectionItems];
@@ -733,7 +736,7 @@ export default function SchemaGeneratorPage() {
                   onClick={addCollectionItem}
                   className="w-full py-2 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl text-slate-500 hover:border-pink-500 hover:text-pink-500 transition-colors"
                 >
-                  + Weiteren Eintrag hinzufügen
+                  {t.collection.add}
                 </button>
               </div>
             )}
@@ -742,7 +745,7 @@ export default function SchemaGeneratorPage() {
               onClick={generateSchema}
               className="w-full py-3 rounded-xl bg-gradient-to-r from-pink-500 to-rose-500 text-white font-medium shadow-lg shadow-pink-500/25 hover:shadow-pink-500/40 transition-all"
             >
-              Schema generieren
+              {t.generate}
             </button>
           </div>
         </div>
@@ -750,7 +753,7 @@ export default function SchemaGeneratorPage() {
         {/* Output Section */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-slate-900 dark:text-white">Generiertes Schema (JSON-LD)</h2>
+            <h2 className="font-semibold text-slate-900 dark:text-white">{t.outputHeading}</h2>
             {generatedSchema && (
               <button
                 onClick={copyToClipboard}
@@ -761,14 +764,14 @@ export default function SchemaGeneratorPage() {
                     <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
-                    Kopiert!
+                    {t.copied}
                   </>
                 ) : (
                   <>
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                     </svg>
-                    Kopieren
+                    {t.copy}
                   </>
                 )}
               </button>
@@ -782,17 +785,16 @@ export default function SchemaGeneratorPage() {
               </pre>
             ) : (
               <div className="flex items-center justify-center h-full text-slate-500">
-                <p>Schema wird hier angezeigt...</p>
+                <p>{t.outputPlaceholder}</p>
               </div>
             )}
           </div>
 
           {/* Integration Hint */}
           <div className="bg-pink-50 dark:bg-pink-900/20 rounded-xl p-4 border border-pink-200 dark:border-pink-800">
-            <h3 className="font-medium text-pink-900 dark:text-pink-100 mb-2">Integration</h3>
+            <h3 className="font-medium text-pink-900 dark:text-pink-100 mb-2">{t.integrationHeading}</h3>
             <p className="text-sm text-pink-800 dark:text-pink-200">
-              Füge den generierten Code in den <code className="bg-pink-100 dark:bg-pink-800 px-1 rounded">&lt;head&gt;</code> Bereich deiner HTML-Seite ein. 
-              Teste das Schema mit dem <a href="https://search.google.com/test/rich-results" target="_blank" rel="noopener noreferrer" className="underline hover:text-pink-600">Google Rich Results Test</a>.
+              {t.integrationBefore}<code className="bg-pink-100 dark:bg-pink-800 px-1 rounded">&lt;head&gt;</code>{t.integrationAfter}<a href="https://search.google.com/test/rich-results" target="_blank" rel="noopener noreferrer" className="underline hover:text-pink-600">Google Rich Results Test</a>{t.integrationEnd}
             </p>
           </div>
         </div>

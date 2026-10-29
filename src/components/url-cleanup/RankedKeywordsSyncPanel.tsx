@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { RecomputeProgressBar } from "./RecomputeProgressBar";
 import { runChunkedRecompute, type RecomputeProgress } from "./run-recompute";
 import { runChunkedRankedKeywordsSync } from "./run-ranked-keywords";
+import { useMessages } from "@/i18n/I18nProvider";
+import { urlCleanupMessages } from "@/i18n/messages/url-cleanup";
 
 type Status = {
   inventoryCount: number;
@@ -13,6 +15,7 @@ type Status = {
 };
 
 export function RankedKeywordsSyncPanel({ onDone }: { onDone?: () => void }) {
+  const t = useMessages(urlCleanupMessages);
   const [status, setStatus] = useState<Status | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -44,18 +47,18 @@ export function RankedKeywordsSyncPanel({ onDone }: { onDone?: () => void }) {
 
   return (
     <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 space-y-3 h-full">
-      <h2 className="font-semibold">ranked Keywords (DataForSEO)</h2>
+      <h2 className="font-semibold">{t.rankedKeywords.title}</h2>
       <p className="text-sm text-slate-500">
-        Einmaliger Abruf der Top-Rankings je Inventar-URL. Bereits gespeicherte URLs werden übersprungen.
-        Kostenpflichtig — DataForSEO rechnet pro URL. Danach kannst du in der Übersicht nach «mit / ohne
-        Rankings» filtern.
+        {t.rankedKeywords.description}
       </p>
       {status && (
         <p className="text-sm text-slate-600 dark:text-slate-300">
-          Inventar {status.inventoryCount.toLocaleString("de-CH")} · bereits abgerufen{" "}
-          {(status.inventoryCount - status.missing).toLocaleString("de-CH")} · offen{" "}
-          {status.missing.toLocaleString("de-CH")} · mit Rankings{" "}
-          {status.withRankings.toLocaleString("de-CH")}
+          {t.rankedKeywords.status(
+            status.inventoryCount.toLocaleString(t.displayLocale),
+            (status.inventoryCount - status.missing).toLocaleString(t.displayLocale),
+            status.missing.toLocaleString(t.displayLocale),
+            status.withRankings.toLocaleString(t.displayLocale)
+          )}
         </p>
       )}
       <button
@@ -63,9 +66,7 @@ export function RankedKeywordsSyncPanel({ onDone }: { onDone?: () => void }) {
         disabled={busy || (status?.missing ?? 0) === 0}
         onClick={async () => {
           const missing = status?.missing ?? 0;
-          const ok = window.confirm(
-            `Ranked Keywords für ${missing.toLocaleString("de-CH")} URLs bei DataForSEO holen?\n\nKostenpflichtig, kann mehrere Stunden dauern. Bitte dieses Fenster geöffnet lassen.`
-          );
+          const ok = window.confirm(t.rankedKeywords.confirm(missing.toLocaleString(t.displayLocale)));
           if (!ok) return;
           setBusy(true);
           setMsg(null);
@@ -76,12 +77,15 @@ export function RankedKeywordsSyncPanel({ onDone }: { onDone?: () => void }) {
             setPhase("scores");
             await runChunkedRecompute(setProgress);
             setMsg(
-              `Fertig: ${result.fetched.toLocaleString("de-CH")} URLs abgerufen, ${result.withKeywords.toLocaleString("de-CH")} mit Rankings. Scores neu berechnet.`
+              t.rankedKeywords.done(
+                result.fetched.toLocaleString(t.displayLocale),
+                result.withKeywords.toLocaleString(t.displayLocale)
+              )
             );
             loadStatus();
             onDone?.();
           } catch (e) {
-            setMsg(e instanceof Error ? e.message : "Fehler");
+            setMsg(e instanceof Error && e.message ? e.message : t.error);
           } finally {
             setBusy(false);
             setProgress(null);
@@ -92,9 +96,9 @@ export function RankedKeywordsSyncPanel({ onDone }: { onDone?: () => void }) {
       >
         {busy
           ? phase === "scores"
-            ? "Scores…"
-            : "Hole ranked Keywords…"
-          : "Fehlende ranked Keywords holen"}
+            ? t.rankedKeywords.busyScores
+            : t.rankedKeywords.busyFetch
+          : t.rankedKeywords.button}
       </button>
       {msg && <p className="text-xs text-slate-500">{msg}</p>}
       {progress && (
@@ -102,8 +106,8 @@ export function RankedKeywordsSyncPanel({ onDone }: { onDone?: () => void }) {
           progress={progress}
           title={
             phase === "scores"
-              ? "Scores werden berechnet…"
-              : "ranked Keywords werden abgerufen…"
+              ? t.rankedKeywords.progressScores
+              : t.rankedKeywords.progressFetch
           }
         />
       )}

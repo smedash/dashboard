@@ -5,8 +5,11 @@ import type { KillScoreSettings } from "@/lib/url-cleanup/kill-score";
 import { parseKeepUrlPatterns } from "@/lib/url-cleanup/keep-patterns";
 import { RecomputeProgressBar } from "./RecomputeProgressBar";
 import { runChunkedRecompute, type RecomputeProgress } from "./run-recompute";
+import { useMessages } from "@/i18n/I18nProvider";
+import { urlCleanupMessages } from "@/i18n/messages/url-cleanup";
 
 export function ThresholdPanel({ onSaved }: { onSaved?: () => void }) {
+  const t = useMessages(urlCleanupMessages);
   const [settings, setSettings] = useState<KillScoreSettings | null>(null);
   const [keepText, setKeepText] = useState("");
   const [saving, setSaving] = useState(false);
@@ -60,7 +63,7 @@ export function ThresholdPanel({ onSaved }: { onSaved?: () => void }) {
         }}
         className="w-full px-4 py-3 text-left text-sm font-medium text-slate-800 dark:text-slate-100"
       >
-        Score-Schwellen & Keep-URLs
+        {t.thresholds.title}
         {parseKeepUrlPatterns(keepText).length > 0
           ? ` (${parseKeepUrlPatterns(keepText).length})`
           : ""}{" "}
@@ -70,7 +73,7 @@ export function ThresholdPanel({ onSaved }: { onSaved?: () => void }) {
         <div className="px-4 pb-4 space-y-3">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <label className="block text-xs text-slate-500">
-              GSC-Zeitraum
+              {t.thresholds.gscPeriod}
               <select
                 value={settings.gscPeriod}
                 onChange={(e) => setSettings({ ...settings, gscPeriod: e.target.value })}
@@ -84,20 +87,19 @@ export function ThresholdPanel({ onSaved }: { onSaved?: () => void }) {
                 ))}
               </select>
             </label>
-            {num("maxGscClicks", "Max. GSC-Klicks")}
-            {num("maxGscImpressions", "Max. GSC-Impressions")}
-            {num("maxAaVisits", "Max. Adobe-Visits")}
-            {num("maxAaLeads", "Max. Leads")}
-            {num("lastmodMonths", "lastmod älter (Monate)")}
-            {num("vetoGscClicks", "Veto ab GSC-Klicks")}
-            {num("vetoAaVisits", "Veto ab Adobe-Visits")}
+            {num("maxGscClicks", t.thresholds.maxGscClicks)}
+            {num("maxGscImpressions", t.thresholds.maxGscImpressions)}
+            {num("maxAaVisits", t.thresholds.maxAaVisits)}
+            {num("maxAaLeads", t.thresholds.maxAaLeads)}
+            {num("lastmodMonths", t.thresholds.lastmodMonths)}
+            {num("vetoGscClicks", t.thresholds.vetoGscClicks)}
+            {num("vetoAaVisits", t.thresholds.vetoAaVisits)}
           </div>
           <label className="block text-xs text-slate-500">
-            Keep-URLs (Allowlist)
+            {t.thresholds.keepUrls}
             <span className="mt-0.5 block font-normal text-slate-400">
-              Eine Zeile pro Eintrag. Ordner wie <code className="text-slate-500">/legal/</code> oder
-              komplette URLs. Treffer gelten als MustKeep, nie als Kill, und erscheinen in der
-              3D-Wolke als blaue Punkte.
+              {t.thresholds.keepHelpBefore} <code className="text-slate-500">/legal/</code>{" "}
+              {t.thresholds.keepHelpAfter}
             </span>
             <textarea
               value={keepText}
@@ -109,7 +111,10 @@ export function ThresholdPanel({ onSaved }: { onSaved?: () => void }) {
               className="mt-1 w-full px-2 py-1.5 text-sm font-mono rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
             />
             <span className="mt-1 block text-[11px] text-slate-400">
-              {parseKeepUrlPatterns(keepText).length.toLocaleString("de-CH")} Muster
+              {t.thresholds.patterns(
+                parseKeepUrlPatterns(keepText).length,
+                parseKeepUrlPatterns(keepText).length.toLocaleString(t.displayLocale)
+              )}
             </span>
           </label>
           <div className="flex items-center gap-3">
@@ -130,14 +135,14 @@ export function ThresholdPanel({ onSaved }: { onSaved?: () => void }) {
                     body: JSON.stringify({ settings: payload, recompute: false }),
                   });
                   const data = await res.json();
-                  if (!res.ok) throw new Error(data.error || "Fehler");
+                  if (!res.ok) throw new Error(data.error || t.error);
                   const updated = await runChunkedRecompute(setProgress);
                   setSettings({ ...payload });
                   setKeepText(keepUrlPatterns.join("\n"));
-                  setMsg(`Neu berechnet: ${updated.toLocaleString("de-CH")} URLs`);
+                  setMsg(t.thresholds.recomputed(updated.toLocaleString(t.displayLocale)));
                   onSaved?.();
                 } catch (e) {
-                  setMsg(e instanceof Error ? e.message : "Fehler");
+                  setMsg(e instanceof Error && e.message ? e.message : t.error);
                 } finally {
                   setSaving(false);
                   setProgress(null);
@@ -145,7 +150,7 @@ export function ThresholdPanel({ onSaved }: { onSaved?: () => void }) {
               }}
               className="px-3 py-1.5 text-sm rounded-lg bg-blue-600 text-white disabled:opacity-50"
             >
-              {saving ? "Berechne…" : "Speichern & Scores neu rechnen"}
+              {saving ? t.thresholds.saving : t.thresholds.save}
             </button>
             {msg && !saving && <span className="text-xs text-slate-500">{msg}</span>}
           </div>

@@ -11,6 +11,8 @@ import {
   Cell,
   Legend,
 } from "recharts";
+import { useLocale, useMessages } from "@/i18n/I18nProvider";
+import { planningComponentsMessages } from "@/i18n/messages/planning-components";
 
 const COLORS = [
   "#3b82f6",
@@ -49,8 +51,10 @@ export default function CategoryTotalsChart({
   countLabel,
   totalLabel,
   extraMetrics,
-  emptyMessage = "Noch keine Kategorie-Daten vorhanden",
+  emptyMessage,
 }: CategoryTotalsChartProps) {
+  const t = useMessages(planningComponentsMessages).categoryTotals;
+  const { intlLocale } = useLocale();
   const sorted = useMemo(
     () => [...data].sort((a, b) => b.total - a.total),
     [data]
@@ -83,16 +87,16 @@ export default function CategoryTotalsChart({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
           <h3 className="text-sm font-semibold text-slate-300">
-            Totals nach Kategorie
+            {t.title}
           </h3>
         </div>
         <div className="flex items-center gap-4 text-xs text-slate-400">
           <span>
-            {grandCount.toLocaleString("de-DE")} {countLabel}
+            {grandCount.toLocaleString(intlLocale)} {countLabel}
           </span>
           <span className="text-slate-600">|</span>
           <span>
-            {grandTotal.toLocaleString("de-DE")} {totalLabel}
+            {grandTotal.toLocaleString(intlLocale)} {totalLabel}
           </span>
           {hasExtras &&
             extraMetrics.map((m) => {
@@ -101,7 +105,7 @@ export default function CategoryTotalsChart({
                 <span key={m.key}>
                   <span className="text-slate-600 mr-4">|</span>
                   <span style={{ color: m.color }}>
-                    {sum.toLocaleString("de-DE")} {m.label}
+                    {sum.toLocaleString(intlLocale)} {m.label}
                   </span>
                 </span>
               );
@@ -127,7 +131,7 @@ export default function CategoryTotalsChart({
                   </span>
                 </div>
                 <p className="text-lg font-bold text-white">
-                  {item.total.toLocaleString("de-DE")}
+                  {item.total.toLocaleString(intlLocale)}
                 </p>
                 <p className="text-[10px] text-slate-500">
                   {item.count} {countLabel}
@@ -143,7 +147,7 @@ export default function CategoryTotalsChart({
                           backgroundColor: m.color + "18",
                         }}
                       >
-                        {((item[m.key] as number) || 0).toLocaleString("de-DE")} {m.label}
+                        {((item[m.key] as number) || 0).toLocaleString(intlLocale)} {m.label}
                       </span>
                     ))}
                   </div>
@@ -197,7 +201,7 @@ export default function CategoryTotalsChart({
                           </p>
                           <p style={{ margin: "4px 0 0 0", color: "#94a3b8", fontSize: 12 }}>
                             {d.count} {countLabel} &middot;{" "}
-                            {d.total.toLocaleString("de-DE")} {totalLabel}
+                            {d.total.toLocaleString(intlLocale)} {totalLabel}
                           </p>
                           {hasExtras &&
                             extraMetrics.map((m) => (
@@ -205,7 +209,7 @@ export default function CategoryTotalsChart({
                                 key={m.key}
                                 style={{ margin: "2px 0 0 0", fontSize: 12, color: m.color }}
                               >
-                                {((d[m.key] as number) || 0).toLocaleString("de-DE")} {m.label}
+                                {((d[m.key] as number) || 0).toLocaleString(intlLocale)} {m.label}
                               </p>
                             ))}
                         </div>
@@ -244,7 +248,7 @@ export default function CategoryTotalsChart({
             </ResponsiveContainer>
           ) : (
             <p className="text-sm text-slate-500 text-center py-8">
-              {emptyMessage}
+              {emptyMessage ?? t.noData}
             </p>
           )}
         </div>

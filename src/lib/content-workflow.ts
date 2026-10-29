@@ -154,34 +154,67 @@ export const NEXT_STATUS: Record<
   },
 };
 
-export function describeHistoryEntry(entry: {
-  fromStatus: string;
-  toStatus: string;
-  comment: string | null;
-}): { action: string; status: string } {
-  const from = STATUS_CONFIG[entry.fromStatus]?.label || entry.fromStatus;
-  const to = STATUS_CONFIG[entry.toStatus]?.label || entry.toStatus;
+export type HistoryAction =
+  | "revision_requested"
+  | "revision_resolved"
+  | "status_reset"
+  | "content_updated"
+  | "pdf_approved"
+  | "pdf_unapproved"
+  | "implicit_approval"
+  | "approved"
+  | "forwarded";
+
+const HISTORY_ACTION_LABELS_DE: Record<HistoryAction, string> = {
+  revision_requested: "Überarbeitung angefordert",
+  revision_resolved: "Überarbeitet",
+  status_reset: "Zurückgesetzt",
+  content_updated: "Inhalt gespeichert",
+  pdf_approved: "PDF freigegeben",
+  pdf_unapproved: "PDF-Freigabe entfernt",
+  implicit_approval: "Freigegeben (o. Recheck)",
+  approved: "Freigegeben",
+  forwarded: "Weitergereicht",
+};
+
+export function describeHistoryEntry(
+  entry: {
+    fromStatus: string;
+    toStatus: string;
+    comment: string | null;
+  },
+  labels: {
+    statuses: Record<string, string | undefined>;
+    actions: Record<HistoryAction, string>;
+  } = {
+    statuses: Object.fromEntries(Object.entries(STATUS_CONFIG).map(([k, v]) => [k, v.label])),
+    actions: HISTORY_ACTION_LABELS_DE,
+  }
+): { action: string; status: string } {
+  const from = labels.statuses[entry.fromStatus] || entry.fromStatus;
+  const to = labels.statuses[entry.toStatus] || entry.toStatus;
+  const a = labels.actions;
 
   switch (entry.comment) {
     case "revision_requested":
-      return { action: "Überarbeitung angefordert", status: from };
+      return { action: a.revision_requested, status: from };
     case "revision_resolved":
-      return { action: "Überarbeitet", status: from };
+      return { action: a.revision_resolved, status: from };
     case "status_reset":
-      return { action: "Zurückgesetzt", status: `${from} → ${to}` };
+      return { action: a.status_reset, status: `${from} → ${to}` };
     case "content_updated":
-      return { action: "Inhalt gespeichert", status: from };
+      return { action: a.content_updated, status: from };
     case "pdf_approved":
-      return { action: "PDF freigegeben", status: from };
+      return { action: a.pdf_approved, status: from };
     case "pdf_unapproved":
-      return { action: "PDF-Freigabe entfernt", status: from };
+      return { action: a.pdf_unapproved, status: from };
     case "implicit_approval":
-      return { action: "Freigegeben (o. Recheck)", status: from };
+      return { action: a.implicit_approval, status: from };
     default:
       if (entry.toStatus === "approved" || entry.toStatus.endsWith("_approved")) {
-        return { action: "Freigegeben", status: `${from} → ${to}` };
+        return { action: a.approved, status: `${from} → ${to}` };
       }
-      return { action: "Weitergereicht", status: `${from} → ${to}` };
+      return { action: a.forwarded, status: `${from} → ${to}` };
   }
 }
 

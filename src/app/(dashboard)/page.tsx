@@ -8,6 +8,8 @@ import { LineChart } from "@/components/charts/LineChart";
 import { PieChart } from "@/components/charts/PieChart";
 import { BarChart } from "@/components/charts/BarChart";
 import { useProperty } from "@/contexts/PropertyContext";
+import { useMessages } from "@/i18n/I18nProvider";
+import { dashboardMessages } from "@/i18n/messages/dashboard";
 
 interface StatsData {
   current: {
@@ -65,6 +67,7 @@ interface DashboardStats {
 
 export default function DashboardPage() {
   const { selectedProperty } = useProperty();
+  const t = useMessages(dashboardMessages);
   const [mounted, setMounted] = useState(false);
   const [period, setPeriod] = useState("28d");
   const [stats, setStats] = useState<StatsData | null>(null);
@@ -170,7 +173,7 @@ export default function DashboardPage() {
     return (
       <div className="space-y-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <h1 className="text-2xl font-bold text-white">Dashboard</h1>
+          <h1 className="text-2xl font-bold text-white">{t.title}</h1>
         </div>
         <div className="bg-blue-500/20 border border-blue-500/50 rounded-xl p-6">
           <div className="flex items-start gap-4">
@@ -180,9 +183,9 @@ export default function DashboardPage() {
               </svg>
             </div>
             <div className="flex-1">
-              <h3 className="text-blue-400 font-semibold mb-2">Google Account nicht verbunden</h3>
+              <h3 className="text-blue-400 font-semibold mb-2">{t.googleNotConnected.title}</h3>
               <p className="text-blue-300 mb-4">
-                Du hast Dich noch nicht via Google OAuth mit Deinem Google Account verbunden und kannst deshalb hier keine Daten sehen.
+                {t.googleNotConnected.text}
               </p>
               <a
                 href="/settings"
@@ -192,7 +195,7 @@ export default function DashboardPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
-                Zu den Einstellungen gehen
+                {t.googleNotConnected.goToSettings}
               </a>
             </div>
           </div>
@@ -215,7 +218,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h1 className="text-2xl font-bold text-white">Dashboard</h1>
+        <h1 className="text-2xl font-bold text-white">{t.title}</h1>
         <div className="flex flex-wrap items-center gap-4">
           <PeriodSelector value={period} onChange={setPeriod} />
         </div>
@@ -227,10 +230,10 @@ export default function DashboardPage() {
             <div className="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full mb-4"></div>
             <div className="text-center">
               <p className="text-lg font-medium text-white mb-2">
-                Hole Live-Daten aus der GSC...
+                {t.loadingTitle}
               </p>
               <p className="text-sm text-slate-400">
-                Das kann einige Sekunden dauern!
+                {t.loadingHint}
               </p>
             </div>
           </div>
@@ -244,7 +247,7 @@ export default function DashboardPage() {
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <StatCard
-              title="Klicks"
+              title={t.stats.clicks}
               value={stats?.current?.clicks || 0}
               change={stats?.changes?.clicks}
               icon={
@@ -254,7 +257,7 @@ export default function DashboardPage() {
               }
             />
             <StatCard
-              title="Impressionen"
+              title={t.stats.impressions}
               value={stats?.current?.impressions || 0}
               change={stats?.changes?.impressions}
               icon={
@@ -265,7 +268,7 @@ export default function DashboardPage() {
               }
             />
             <StatCard
-              title="CTR"
+              title={t.stats.ctr}
               value={stats?.current?.ctr || 0}
               change={stats?.changes?.ctr}
               format="percentage"
@@ -276,7 +279,7 @@ export default function DashboardPage() {
               }
             />
             <StatCard
-              title="Ø Position"
+              title={t.stats.avgPosition}
               value={stats?.current?.position || 0}
               change={stats?.changes?.position}
               format="position"
@@ -290,31 +293,31 @@ export default function DashboardPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 bg-slate-800 rounded-xl p-6 border border-slate-700">
-              <h3 className="text-lg font-semibold text-white mb-4">Klicks & Impressionen</h3>
+              <h3 className="text-lg font-semibold text-white mb-4">{t.clicksAndImpressions}</h3>
               {chartData.length > 0 ? (
                 <LineChart
                   data={chartData}
                   xKey="date"
                   lines={[
-                    { key: "clicks", name: "Klicks", color: "#3b82f6" },
-                    { key: "impressions", name: "Impressionen", color: "#10b981" },
+                    { key: "clicks", name: t.stats.clicks, color: "#3b82f6" },
+                    { key: "impressions", name: t.stats.impressions, color: "#10b981" },
                   ]}
                   height={300}
                 />
               ) : (
                 <div className="h-[300px] flex items-center justify-center text-slate-500">
-                  Keine Daten verfügbar
+                  {t.noData}
                 </div>
               )}
             </div>
 
             <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-              <h3 className="text-lg font-semibold text-white mb-4">Geräte</h3>
+              <h3 className="text-lg font-semibold text-white mb-4">{t.devices}</h3>
               {deviceData.length > 0 ? (
                 <PieChart data={deviceData} height={300} />
               ) : (
                 <div className="h-[300px] flex items-center justify-center text-slate-500">
-                  Keine Daten verfügbar
+                  {t.noData}
                 </div>
               )}
             </div>
@@ -324,7 +327,7 @@ export default function DashboardPage() {
 
       {/* Dashboard Statistiken - Weitere Auswertungen */}
       <div className="border-t border-slate-700 pt-8 mt-8">
-        <h2 className="text-xl font-bold text-white mb-6">Weitere Auswertungen</h2>
+        <h2 className="text-xl font-bold text-white mb-6">{t.moreAnalyses}</h2>
         
         {isDashboardStatsLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
@@ -338,7 +341,7 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
               <Link href="/admin/users" className="block hover:scale-[1.02] transition-transform">
                 <StatCard
-                  title="Benutzer"
+                  title={t.users}
                   value={dashboardStats.users.count}
                   icon={
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -350,7 +353,7 @@ export default function DashboardPage() {
               
               <Link href="/ubs-kvp" className="block hover:scale-[1.02] transition-transform">
                 <StatCard
-                  title="KVP-URLs"
+                  title={t.kvpUrls}
                   value={dashboardStats.kvp.count}
                   icon={
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -362,7 +365,7 @@ export default function DashboardPage() {
               
               <Link href="/seo-reifegrad" className="block hover:scale-[1.02] transition-transform">
                 <StatCard
-                  title="Reifegradmodelle"
+                  title={t.maturityModels}
                   value={dashboardStats.seoMaturity.count}
                   subtitle={dashboardStats.seoMaturity.models[0]?.name || undefined}
                   icon={
@@ -375,9 +378,9 @@ export default function DashboardPage() {
               
               <Link href="/briefings" className="block hover:scale-[1.02] transition-transform">
                 <StatCard
-                  title="Briefings"
+                  title={t.briefings}
                   value={dashboardStats.briefings.total}
-                  subtitle={`${dashboardStats.briefings.ordered} offen, ${dashboardStats.briefings.inProgress} in Arbeit`}
+                  subtitle={t.briefingsSubtitle(dashboardStats.briefings.ordered, dashboardStats.briefings.inProgress)}
                   icon={
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -388,9 +391,9 @@ export default function DashboardPage() {
               
               <Link href="/ranktracker" className="block hover:scale-[1.02] transition-transform">
                 <StatCard
-                  title="Ranktracker Keywords"
+                  title={t.ranktrackerKeywords}
                   value={dashboardStats.rankTracker.totalKeywords}
-                  subtitle={dashboardStats.rankTracker.avgPosition ? `Ø Position: ${dashboardStats.rankTracker.avgPosition}` : undefined}
+                  subtitle={dashboardStats.rankTracker.avgPosition ? t.avgPositionValue(dashboardStats.rankTracker.avgPosition) : undefined}
                   icon={
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
@@ -405,30 +408,30 @@ export default function DashboardPage() {
               {/* Briefings nach Status */}
               <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-white">Briefings nach Status</h3>
+                  <h3 className="text-lg font-semibold text-white">{t.briefingsByStatus}</h3>
                   <Link href="/briefings" className="text-sm text-blue-400 hover:text-blue-300">
-                    Alle anzeigen →
+                    {t.showAll}
                   </Link>
                 </div>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-3 h-3 rounded-full bg-amber-500"></div>
-                      <span className="text-slate-300">Offen</span>
+                      <span className="text-slate-300">{t.briefingStatus.open}</span>
                     </div>
                     <span className="text-white font-semibold">{dashboardStats.briefings.ordered}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                      <span className="text-slate-300">In Arbeit</span>
+                      <span className="text-slate-300">{t.briefingStatus.inProgress}</span>
                     </div>
                     <span className="text-white font-semibold">{dashboardStats.briefings.inProgress}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
-                      <span className="text-slate-300">Abgeschlossen</span>
+                      <span className="text-slate-300">{t.briefingStatus.completed}</span>
                     </div>
                     <span className="text-white font-semibold">{dashboardStats.briefings.completed}</span>
                   </div>
@@ -457,9 +460,9 @@ export default function DashboardPage() {
               {/* Ranktracker Positionsverteilung */}
               <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-white">Ranktracker Positionen</h3>
+                  <h3 className="text-lg font-semibold text-white">{t.ranktrackerPositions}</h3>
                   <Link href="/ranktracker" className="text-sm text-blue-400 hover:text-blue-300">
-                    Alle anzeigen →
+                    {t.showAll}
                   </Link>
                 </div>
                 {dashboardStats.rankTracker.totalKeywords > 0 ? (
@@ -470,7 +473,7 @@ export default function DashboardPage() {
                       { name: "Top 20", value: dashboardStats.rankTracker.positionBuckets.top20 },
                       { name: "Top 50", value: dashboardStats.rankTracker.positionBuckets.top50 },
                       { name: ">50", value: dashboardStats.rankTracker.positionBuckets.beyond50 },
-                      { name: "Nicht gefunden", value: dashboardStats.rankTracker.positionBuckets.notRanking },
+                      { name: t.notFound, value: dashboardStats.rankTracker.positionBuckets.notRanking },
                     ]}
                     xKey="name"
                     yKey="value"
@@ -479,7 +482,7 @@ export default function DashboardPage() {
                   />
                 ) : (
                   <div className="h-[200px] flex items-center justify-center text-slate-500">
-                    Keine Keywords im Ranktracker
+                    {t.noRanktrackerKeywords}
                   </div>
                 )}
               </div>
@@ -489,9 +492,9 @@ export default function DashboardPage() {
             {dashboardStats.seoMaturity.models.length > 0 && (
               <div className="mt-6 bg-slate-800 rounded-xl p-6 border border-slate-700">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-white">SEO-Reifegradmodelle</h3>
+                  <h3 className="text-lg font-semibold text-white">{t.seoMaturityModels}</h3>
                   <Link href="/seo-reifegrad" className="text-sm text-blue-400 hover:text-blue-300">
-                    Alle anzeigen →
+                    {t.showAll}
                   </Link>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -503,7 +506,7 @@ export default function DashboardPage() {
                     >
                       <div>
                         <p className="text-white font-medium">{model.name}</p>
-                        <p className="text-sm text-slate-400">{model.itemCount} Checkpunkte</p>
+                        <p className="text-sm text-slate-400">{t.checkpoints(model.itemCount)}</p>
                       </div>
                       <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -516,7 +519,7 @@ export default function DashboardPage() {
           </>
         ) : (
           <div className="text-center py-8 text-slate-500">
-            Keine Statistiken verfügbar
+            {t.noStats}
           </div>
         )}
       </div>
