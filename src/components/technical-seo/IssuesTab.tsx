@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { DataTable } from "@/components/ui/DataTable";
+import { canEdit } from "@/lib/rbac";
 import { downloadExcel } from "@/lib/excel-export";
 import { useLocale } from "@/i18n/I18nProvider";
 import {
@@ -10,6 +13,7 @@ import {
   type PageIssueCoverage,
   type TechnicalSeoIssue,
 } from "@/lib/technical-seo";
+import { IssueTaskDialog } from "./IssueTaskDialog";
 import { IssueUrls } from "./IssueUrls";
 import {
   ExportButton,
@@ -26,6 +30,10 @@ type TagFilter = "all" | "seo" | "aeo";
 
 export function IssuesTab({ domain, t }: { domain: string; t: TechnicalSeoTexts }) {
   const { intlLocale } = useLocale();
+  const { data: session } = useSession();
+  const canCreateTasks = canEdit(session?.user?.role);
+  const [taskIssue, setTaskIssue] = useState<(TechnicalSeoIssue & { label: string }) | null>(null);
+  const [createdTaskKeys, setCreatedTaskKeys] = useState<Set<string>>(new Set());
   const [result, setResult] = useState<{
     domain: string;
     issues: TechnicalSeoIssue[] | null;
@@ -242,10 +250,57 @@ export function IssuesTab({ domain, t }: { domain: string; t: TechnicalSeoTexts 
                   ),
               },
               { key: "pointsGained", header: c.pointsGained, sortable: true, render: formatNumber },
+              ...(canCreateTasks
+                ? [
+                    {
+                      key: "task",
+                      header: "",
+                      render: (_: unknown, row: (typeof rows)[number]) =>
+                        createdTaskKeys.has(`${domain}::${row.name}`) ? (
+                          <Link
+                            href="/tasks"
+                            onClick={(e) => e.stopPropagation()}
+                            title={t.issues.task.openTasks}
+                            className="inline-flex items-center gap-1 whitespace-nowrap text-xs px-2.5 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium hover:underline"
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            {t.issues.task.created}
+                          </Link>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setTaskIssue(row);
+                            }}
+                            className="whitespace-nowrap text-xs px-2.5 py-1 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors font-medium"
+                          >
+                            {t.issues.task.create}
+                          </button>
+                        ),
+                    },
+                  ]
+                : []),
             ]}
           />
         )}
       </div>
+
+      {taskIssue && (
+        <IssueTaskDialog
+          domain={domain}
+          issue={taskIssue}
+          label={taskIssue.label}
+          t={t}
+          onClose={() => setTaskIssue(null)}
+          onCreated={() => {
+            setCreatedTaskKeys((prev) => new Set(prev).add(`${domain}::${taskIssue.name}`));
+            setTaskIssue(null);
+          }}
+        />
+      )}
     </div>
   );
 }
