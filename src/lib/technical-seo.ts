@@ -90,6 +90,9 @@ export interface TechnicalSeoUrl {
   outgoingInternalLinks: number;
   outgoingExternalLinks: number;
   timeDocumentDownload: number | null;
+  appUrl: string | null;
+  openIssues: string[];
+  issuesSyncedAt: string | null;
 }
 
 export interface UrlListResponse {
@@ -108,6 +111,18 @@ export interface TechnicalSeoIssue {
   pagesIgnored: number;
   pointsGained: number;
   pointsToGain: number;
+}
+
+/** How many pages already have their per-URL issue list from Conductor. */
+export interface PageIssueCoverage {
+  pages: number;
+  synced: number;
+  syncedAt: string | null;
+}
+
+export interface IssuesResponse {
+  issues: TechnicalSeoIssue[];
+  coverage: PageIssueCoverage | null;
 }
 
 export interface CrawlerSummary {

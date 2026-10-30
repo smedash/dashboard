@@ -4,7 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import { DataTable } from "@/components/ui/DataTable";
 import { downloadExcel } from "@/lib/excel-export";
 import { useLocale } from "@/i18n/I18nProvider";
-import { isOpenIssue, type TechnicalSeoIssue } from "@/lib/technical-seo";
+import {
+  isOpenIssue,
+  type IssuesResponse,
+  type PageIssueCoverage,
+  type TechnicalSeoIssue,
+} from "@/lib/technical-seo";
+import { IssueUrls } from "./IssueUrls";
 import {
   ExportButton,
   IssueTypeBadge,
@@ -23,10 +29,12 @@ export function IssuesTab({ domain, t }: { domain: string; t: TechnicalSeoTexts 
   const [result, setResult] = useState<{
     domain: string;
     issues: TechnicalSeoIssue[] | null;
+    coverage: PageIssueCoverage | null;
     error: boolean;
   } | null>(null);
   const current = result?.domain === domain ? result : null;
   const issues = current?.issues ?? null;
+  const coverage = current?.coverage ?? null;
   const error = current?.error ?? false;
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
@@ -37,11 +45,13 @@ export function IssuesTab({ domain, t }: { domain: string; t: TechnicalSeoTexts 
     let cancelled = false;
     fetch(`/api/conductor-monitoring/issues?domain=${encodeURIComponent(domain)}`)
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error(res.statusText))))
-      .then((data) => {
-        if (!cancelled) setResult({ domain, issues: data.issues ?? [], error: false });
+      .then((data: IssuesResponse) => {
+        if (!cancelled) {
+          setResult({ domain, issues: data.issues ?? [], coverage: data.coverage ?? null, error: false });
+        }
       })
       .catch(() => {
-        if (!cancelled) setResult({ domain, issues: null, error: true });
+        if (!cancelled) setResult({ domain, issues: null, coverage: null, error: true });
       });
     return () => {
       cancelled = true;
@@ -143,6 +153,25 @@ export function IssuesTab({ domain, t }: { domain: string; t: TechnicalSeoTexts 
             title={t.common.exportTitle}
           />
         </div>
+        {coverage && coverage.pages > 0 && (
+          <p
+            className={`mt-3 text-sm ${
+              coverage.synced < coverage.pages
+                ? "text-amber-600 dark:text-amber-400"
+                : "text-slate-500 dark:text-slate-400"
+            }`}
+          >
+            {coverage.synced === 0
+              ? t.issues.coverageNone
+              : coverage.synced < coverage.pages
+                ? t.issues.coveragePartial(coverage.synced, coverage.pages)
+                : `${t.issues.expandHint} ${
+                    coverage.syncedAt
+                      ? t.issues.coverageAsOf(new Date(coverage.syncedAt).toLocaleDateString(intlLocale))
+                      : ""
+                  }`}
+          </p>
+        )}
       </div>
 
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
@@ -152,6 +181,9 @@ export function IssuesTab({ domain, t }: { domain: string; t: TechnicalSeoTexts 
           <DataTable
             data={rows}
             keyField="id"
+            expandableRow={{
+              render: (row) => <IssueUrls domain={domain} issue={row} label={row.label} t={t} />,
+            }}
             columns={[
               {
                 key: "label",

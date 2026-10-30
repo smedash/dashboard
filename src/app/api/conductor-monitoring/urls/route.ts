@@ -36,6 +36,7 @@ export async function GET(request: NextRequest) {
       : "url";
     const dir = params.get("dir") === "desc" ? "desc" : "asc";
     const search = (params.get("search") ?? "").trim();
+    const issue = params.get("issue")?.trim() || undefined;
     const isExport = params.get("export") === "1";
     const page = Math.max(1, Number(params.get("page")) || 1);
 
@@ -48,6 +49,7 @@ export async function GET(request: NextRequest) {
     const { rows, total } = await queryConductorUrls(website.id, {
       filter,
       search,
+      issue,
       sort,
       dir,
       skip: isExport ? 0 : (page - 1) * URL_PAGE_SIZE,

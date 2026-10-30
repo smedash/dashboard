@@ -11,11 +11,12 @@ import {
   type UrlListResponse,
   type UrlSortField,
 } from "@/lib/technical-seo";
-import { BoolIcon, MetricBadge, Spinner, type TechnicalSeoTexts } from "./shared";
+import { BoolIcon, MetricBadge, Spinner, formatIssueName, type TechnicalSeoTexts } from "./shared";
 
 export interface UrlQueryState {
   filter: UrlFilter;
   search: string;
+  issue?: string;
   sort: UrlSortField;
   dir: "asc" | "desc";
   page: number;
@@ -35,6 +36,7 @@ function buildQuery(domain: string, q: Omit<UrlQueryState, "page">, extra: Recor
     search: q.search,
     sort: q.sort,
     dir: q.dir,
+    ...(q.issue ? { issue: q.issue } : {}),
     ...extra,
   });
   return `/api/conductor-monitoring/urls?${params.toString()}`;
@@ -45,8 +47,8 @@ export function useUrlList(domain: string, q: UrlQueryState) {
   const [result, setResult] = useState<{ url: string; data: UrlListResponse | null; error: boolean } | null>(
     null
   );
-  const { filter, search, sort, dir, page } = q;
-  const url = buildQuery(domain, { filter, search, sort, dir }, { page: String(page) });
+  const { filter, search, issue, sort, dir, page } = q;
+  const url = buildQuery(domain, { filter, search, issue, sort, dir }, { page: String(page) });
 
   useEffect(() => {
     let cancelled = false;
@@ -111,6 +113,59 @@ function DetailField({ label, value, t }: { label: string; value: string | null;
   );
 }
 
+export function ConductorLink({ href, label }: { href: string; label: string }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={(e) => e.stopPropagation()}
+      className="inline-flex text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap"
+    >
+      {label} ↗
+    </a>
+  );
+}
+
+function OpenIssueList({ row, t }: { row: TechnicalSeoUrl; t: TechnicalSeoTexts }) {
+  const { intlLocale } = useLocale();
+  const d = t.urls.detail;
+  return (
+    <div>
+      <div className="flex items-baseline gap-2">
+        <span className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+          {d.openIssues}
+        </span>
+        {row.issuesSyncedAt && (
+          <span className="text-xs text-slate-400 dark:text-slate-500">
+            {d.issuesAsOf(new Date(row.issuesSyncedAt).toLocaleDateString(intlLocale))}
+          </span>
+        )}
+      </div>
+      {!row.issuesSyncedAt ? (
+        <p className="text-sm text-slate-400">{d.issuesNotSynced}</p>
+      ) : row.openIssues.length === 0 ? (
+        <p className="text-sm text-slate-400">{d.noOpenIssues}</p>
+      ) : (
+        <div className="flex flex-wrap gap-1.5 mt-1">
+          {row.openIssues.map((name) => {
+            const { group, label } = formatIssueName(name, t);
+            return (
+              <span
+                key={name}
+                title={name}
+                className="px-2 py-0.5 rounded text-xs bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
+              >
+                {group}: {label}
+              </span>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function UrlDetail({ row, t }: { row: TechnicalSeoUrl; t: TechnicalSeoTexts }) {
   const { intlLocale } = useLocale();
   const d = t.urls.detail;
@@ -133,14 +188,18 @@ function UrlDetail({ row, t }: { row: TechnicalSeoUrl; t: TechnicalSeoTexts }) {
         <DetailField label={d.title} value={row.title} t={t} />
         <DetailField label={d.h1} value={row.h1} t={t} />
         <DetailField label={d.metaDescription} value={row.metaDescription} t={t} />
-        <a
-          href={row.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline break-all"
-        >
-          {d.open} ↗
-        </a>
+        {row.type === "page" && <OpenIssueList row={row} t={t} />}
+        <div className="flex flex-wrap gap-4">
+          <a
+            href={row.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline break-all"
+          >
+            {d.open} ↗
+          </a>
+          {row.appUrl && <ConductorLink href={row.appUrl} label={d.openInConductor} />}
+        </div>
       </div>
       <div className="space-y-4">
         <div>
@@ -221,6 +280,7 @@ export function UrlTable({
   query,
   onSort,
   onPageChange,
+  emptyText,
   t,
 }: {
   data: UrlListResponse | null;
@@ -230,6 +290,7 @@ export function UrlTable({
   query: UrlQueryState;
   onSort: (field: UrlSortField) => void;
   onPageChange: (page: number) => void;
+  emptyText?: string;
   t: TechnicalSeoTexts;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -305,7 +366,7 @@ export function UrlTable({
           </tbody>
         </table>
         {data.rows.length === 0 && (
-          <div className="py-12 text-center text-slate-500 dark:text-slate-500">{t.urls.noResults}</div>
+          <div className="py-12 text-center text-slate-500 dark:text-slate-500">{emptyText ?? t.urls.noResults}</div>
         )}
       </div>
 

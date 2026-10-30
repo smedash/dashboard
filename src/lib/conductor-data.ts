@@ -298,12 +298,17 @@ function toUrl(p: ConductorPage): TechnicalSeoUrl {
     outgoingInternalLinks: p.outgoingInternalLinks,
     outgoingExternalLinks: p.outgoingExternalLinks,
     timeDocumentDownload: p.timeDocumentDownload,
+    appUrl: p.appUrl,
+    openIssues: p.openIssues,
+    issuesSyncedAt: iso(p.issuesSyncedAt),
   };
 }
 
 export interface UrlQuery {
   filter: UrlFilter;
   search: string;
+  /** Only pages with this open issue, e.g. "links/broken". */
+  issue?: string;
   sort: UrlSortField;
   dir: "asc" | "desc";
   skip: number;
@@ -318,6 +323,7 @@ export async function queryConductorUrls(
     websiteId,
     ...urlFilterWhere(q.filter),
     ...(q.search ? { url: { contains: q.search, mode: "insensitive" } } : {}),
+    ...(q.issue ? { openIssues: { has: q.issue } } : {}),
   };
   const orderBy: Prisma.ConductorPageOrderByWithRelationInput[] = [
     NULLABLE_SORT_FIELDS.has(q.sort)

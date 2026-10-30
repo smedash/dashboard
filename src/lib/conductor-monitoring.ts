@@ -14,15 +14,26 @@ const USER_AGENT =
   "Mozilla/5.0 (compatible; SMEDashboard/1.0; +https://smedash.com)";
 
 const MIN_REQUEST_INTERVAL_MS = 170; // ~6 req/s (API limit)
-let lastRequestTime = 0;
+let nextRequestSlot = 0;
 
+/** Hands out start slots one interval apart, so concurrent callers stay within the rate limit too. */
 async function throttle(): Promise<void> {
   const now = Date.now();
-  const elapsed = now - lastRequestTime;
-  if (elapsed < MIN_REQUEST_INTERVAL_MS) {
-    await new Promise((r) => setTimeout(r, MIN_REQUEST_INTERVAL_MS - elapsed));
+  const slot = Math.max(now, nextRequestSlot);
+  nextRequestSlot = slot + MIN_REQUEST_INTERVAL_MS;
+  if (slot > now) {
+    await new Promise((r) => setTimeout(r, slot - now));
   }
-  lastRequestTime = Date.now();
+}
+
+export class ConductorApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number
+  ) {
+    super(message);
+    this.name = "ConductorApiError";
+  }
 }
 
 async function conductorFetch<T>(
@@ -43,8 +54,6 @@ async function conductorFetch<T>(
     );
   }
 
-  await throttle();
-
   const url = `${BASE_URL}${path}`;
   const headers: Record<string, string> = {
     Authorization: `token ${token}`,
@@ -58,6 +67,7 @@ async function conductorFetch<T>(
   }
 
   for (let attempt = 0; attempt <= retries; attempt++) {
+    await throttle();
     const res = await fetch(url, fetchOptions);
 
     if (res.status === 429) {
@@ -70,8 +80,9 @@ async function conductorFetch<T>(
 
     if (!res.ok) {
       const errorBody = await res.text().catch(() => "");
-      throw new Error(
-        `Conductor API ${method} ${path} failed: ${res.status} ${res.statusText} — ${errorBody}`
+      throw new ConductorApiError(
+        `Conductor API ${method} ${path} failed: ${res.status} ${res.statusText} — ${errorBody}`,
+        res.status
       );
     }
 
@@ -226,7 +237,7 @@ interface IssuesResponse {
 interface PageDetailResponse {
   data: ConductorPageData & {
     content: Array<{ type: string; content: string; hreflang?: string }>;
-    open_issues: Array<{ name: string }>;
+    open_issues: Array<{ name: string; type: string; tags: string[] }>;
     schema_org: unknown[];
   };
   data_captured_at: string;

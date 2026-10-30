@@ -1,7 +1,7 @@
 "use client";
 
 import { signOut, useSession } from "next-auth/react";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { useProperty } from "@/contexts/PropertyContext";
 import { useLocale, useMessages } from "@/i18n/I18nProvider";
@@ -42,6 +42,10 @@ export default function SettingsPage() {
   const [cmSyncResult, setCmSyncResult] = useState<{ pages: number; issues: number; durationMs: number } | null>(null);
   const [cmSyncLogs, setCmSyncLogs] = useState<SyncLogEntry[]>([]);
   const [cmProgress, setCmProgress] = useState<number | null>(null);
+  const [piRunning, setPiRunning] = useState(false);
+  const [piProgress, setPiProgress] = useState<{ done: number; pending: number | null }>({ done: 0, pending: null });
+  const [piResult, setPiResult] = useState<string | null>(null);
+  const piStopRequested = useRef(false);
 
   const currentDomain = selectedProperty ? extractDomain(selectedProperty) : null;
 
@@ -91,6 +95,41 @@ export default function SettingsPage() {
       fetchCmSyncLogs();
     }
   }, [currentDomain, t, fetchCmSyncLogs]);
+
+  const handlePageIssues = useCallback(async () => {
+    if (!currentDomain) return;
+    piStopRequested.current = false;
+    setPiRunning(true);
+    setPiResult(null);
+    setPiProgress({ done: 0, pending: null });
+    let done = 0;
+    try {
+      // Each request works through a time slice; the server keeps the progress.
+      for (;;) {
+        const res = await fetch("/api/conductor-monitoring/page-issues", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ domain: currentDomain }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || t.conductor.pageIssues.failed);
+        done += data.processed;
+        setPiProgress({ done, pending: data.pending });
+        if (data.pending === 0) {
+          setPiResult(t.conductor.pageIssues.done(done));
+          break;
+        }
+        if (piStopRequested.current) {
+          setPiResult(t.conductor.pageIssues.stopped(data.pending));
+          break;
+        }
+      }
+    } catch (err) {
+      setMessage({ type: "error", text: err instanceof Error ? err.message : t.conductor.pageIssues.failed });
+    } finally {
+      setPiRunning(false);
+    }
+  }, [currentDomain, t]);
 
   // Check for success/error messages from OAuth callback
   useEffect(() => {
@@ -295,6 +334,39 @@ export default function SettingsPage() {
             </Link>
           )}
           </div>
+
+          {cmLastSync && (
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  onClick={
+                    piRunning
+                      ? () => {
+                          piStopRequested.current = true;
+                        }
+                      : handlePageIssues
+                  }
+                  disabled={!currentDomain || cmSyncing}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white font-medium rounded-lg transition-colors"
+                >
+                  {piRunning && (
+                    <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                  )}
+                  {piRunning ? t.conductor.pageIssues.stop : t.conductor.pageIssues.start}
+                </button>
+                {piRunning && (
+                  <span className="text-sm text-slate-400">
+                    {t.conductor.pageIssues.running(piProgress.done, piProgress.pending)}
+                  </span>
+                )}
+              </div>
+              {piResult && !piRunning && <p className="text-sm text-emerald-400">{piResult}</p>}
+              <p className="text-xs text-slate-500">{t.conductor.pageIssues.hint}</p>
+            </div>
+          )}
 
           <div className="pt-4 border-t border-slate-700">
             <h3 className="text-sm font-semibold text-white mb-3">{t.conductor.history}</h3>

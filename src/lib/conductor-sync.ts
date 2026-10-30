@@ -21,7 +21,7 @@ import {
 } from "./conductor-monitoring";
 
 const PAGE_BATCH_SIZE = 1000;
-/** 39 bind parameters per row; Prisma allows at most 32,767 per statement. */
+/** 40 bind parameters per row; Prisma allows at most 32,767 per statement. */
 const UPSERT_CHUNK_SIZE = 500;
 const LOCK_TTL_MS = 5 * 60 * 1000;
 /** Cursors of older runs are not trusted anymore; such runs are restarted. */
@@ -104,6 +104,7 @@ async function upsertPageChunk(
       ${p.number_of_outgoing_external_links ?? 0}::int,
       ${p.segments && p.segments.length > 0 ? toJson(p.segments) : null}::jsonb,
       ${typeof p.time_document_download === "number" ? Math.round(p.time_document_download) : null}::int,
+      ${cleanText(p.app_url)}::text,
       ${syncLogId}::text, ${captured}::timestamp, ${now}::timestamp
     )`
   );
@@ -119,7 +120,7 @@ async function upsertPageChunk(
       "lfaGoogleFrequency", "lfaGoogleLastVisit", "lfaBingFrequency", "lfaBingLastVisit",
       "lfaOpenaiFrequency", "lfaOpenaiLastVisit", "lfaPerplexityFrequency", "lfaPerplexityLastVisit",
       "incomingInternalLinks", "outgoingInternalLinks", "outgoingExternalLinks",
-      "segments", "timeDocumentDownload", "syncLogId", "dataCapturedAt", "updatedAt"
+      "segments", "timeDocumentDownload", "appUrl", "syncLogId", "dataCapturedAt", "updatedAt"
     )
     VALUES ${Prisma.join(values)}
     ON CONFLICT ("websiteId", "url") DO UPDATE SET
@@ -156,6 +157,7 @@ async function upsertPageChunk(
       "outgoingExternalLinks" = EXCLUDED."outgoingExternalLinks",
       "segments" = EXCLUDED."segments",
       "timeDocumentDownload" = EXCLUDED."timeDocumentDownload",
+      "appUrl" = EXCLUDED."appUrl",
       "syncLogId" = EXCLUDED."syncLogId",
       "dataCapturedAt" = EXCLUDED."dataCapturedAt",
       "updatedAt" = EXCLUDED."updatedAt"

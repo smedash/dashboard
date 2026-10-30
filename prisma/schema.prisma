@@ -1167,6 +1167,11 @@ model ConductorPage {
   // Meta
   segments              Json?    // JSON-Array von Segment-IDs
   timeDocumentDownload  Int?     // ms
+  appUrl                String?  @db.Text // Link in die Conductor-App
+
+  // Offene Issues der Seite (Namen wie "links/broken"), separat pro URL abgeglichen
+  openIssues            String[] @default([])
+  issuesSyncedAt        DateTime?
 
   syncLogId             String?  // Sync-Lauf, der die Zeile zuletzt geschrieben hat
   dataCapturedAt        DateTime?
@@ -1176,6 +1181,8 @@ model ConductorPage {
   @@unique([websiteId, url])
   @@index([websiteId])
   @@index([websiteId, syncLogId])
+  @@index([websiteId, type, issuesSyncedAt])
+  @@index([openIssues], type: Gin)
   @@index([url])
   @@index([health])
   @@index([statusCode])

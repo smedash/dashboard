@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { findConductorWebsiteForDomain, getConductorIssues } from "@/lib/conductor-data";
+import { getPageIssueCoverage } from "@/lib/conductor-page-issues";
+import type { IssuesResponse } from "@/lib/technical-seo";
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,11 +18,14 @@ export async function GET(request: NextRequest) {
 
     const website = await findConductorWebsiteForDomain(domain);
     if (!website) {
-      return NextResponse.json({ issues: [] });
+      return NextResponse.json({ issues: [], coverage: null } satisfies IssuesResponse);
     }
 
-    const issues = await getConductorIssues(website.id);
-    return NextResponse.json({ issues });
+    const [issues, coverage] = await Promise.all([
+      getConductorIssues(website.id),
+      getPageIssueCoverage(website.id),
+    ]);
+    return NextResponse.json({ issues, coverage } satisfies IssuesResponse);
   } catch (error) {
     console.error("[Conductor Issues]", error);
     return NextResponse.json(

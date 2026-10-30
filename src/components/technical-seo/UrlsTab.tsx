@@ -89,6 +89,7 @@ export function UrlsTab({
         [e.performance]: r.lighthouse.performance?.value ?? "",
         [e.lcp]: r.lighthouse.lcp?.value ?? "",
         [e.cls]: r.lighthouse.cls?.value ?? "",
+        [e.openIssues]: r.openIssues.join(", "),
         ...Object.fromEntries(
           CRAWLER_BOTS.map((bot) => [
             e.lastVisit(t.crawler.bots[bot]),
