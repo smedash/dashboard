@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { hasFullAdminRights, ALL_ROLES, type Role } from "@/lib/rbac";
 import { sendWelcomeEmail } from "@/lib/resend";
+import { getLocale } from "@/i18n/server";
 
 // GET /api/admin/users - Alle User abrufen (nur Superadmin)
 export async function GET() {
@@ -82,6 +83,7 @@ export async function POST(request: NextRequest) {
         email,
         name: name || null,
         role: userRole,
+        locale: await getLocale(),
       },
       select: {
         id: true,

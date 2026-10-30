@@ -19,6 +19,7 @@ model User {
   emailVerified DateTime?
   image         String?
   role          String        @default("member") // superadmin, agentur, seo_manager, content_manager, segment_manager, compliance_manager, legal, translation_manager, member, viewer
+  locale        String        @default("de") // de, en – Sprache für UI-Vorauswahl und E-Mails
   accounts      Account[]
   sessions      Session[]
   gscProperties GSCProperty[]

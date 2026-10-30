@@ -3,12 +3,6 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sendTicketUpdateNotification, sendTicketAssignmentNotification } from "@/lib/resend";
 
-const statusLabels: Record<string, string> = {
-  open: "Offen",
-  in_progress: "In Bearbeitung",
-  closed: "Geschlossen",
-};
-
 // GET /api/tickets/[id] - Einzelnes Ticket abrufen
 export async function GET(
   request: NextRequest,
@@ -213,13 +207,11 @@ export async function PATCH(
 
       // Bestimme Update-Details
       let updateType = "general";
-      let updateDetails = "Das Ticket wurde aktualisiert.";
+      let statusChange: { from: string; to: string } | undefined;
 
       if (status && status !== existingTicket.status) {
         updateType = "status";
-        const oldLabel = statusLabels[existingTicket.status] || existingTicket.status;
-        const newLabel = statusLabels[status] || status;
-        updateDetails = `Status geändert: ${oldLabel} → ${newLabel}`;
+        statusChange = { from: existingTicket.status, to: status };
       }
 
       // An alle Assignees senden, die nicht der aktuelle User sind
@@ -250,7 +242,7 @@ export async function PATCH(
             to: email,
             ticketTitle: ticket.title,
             updateType,
-            updateDetails,
+            statusChange,
             updaterName,
             dashboardUrl,
           });

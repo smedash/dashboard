@@ -3,6 +3,15 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import Resend from "next-auth/providers/resend";
 import { prisma } from "./prisma";
 import { sendMagicLinkEmail } from "./resend";
+import { isLocale, LOCALE_COOKIE, type Locale } from "@/i18n/config";
+
+function getLocaleFromCookieHeader(cookieHeader: string | null): Locale | undefined {
+  const value = cookieHeader
+    ?.split(";")
+    .map((part) => part.trim().split("="))
+    .find(([name]) => name === LOCALE_COOKIE)?.[1];
+  return isLocale(value) ? value : undefined;
+}
 
 // Erstelle einen erweiterten PrismaAdapter mit robuster Token-Verarbeitung
 const basePrismaAdapter = PrismaAdapter(prisma);
@@ -113,7 +122,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       from: process.env.EMAIL_FROM || "SME Dashboard <system@smedash.com>",
       // Custom sendVerificationRequest: Sendet Link zur Zwischenseite statt direkt zum Callback
       // Dies verhindert, dass Security-Scanner den Token "verbrauchen"
-      sendVerificationRequest: async ({ identifier: email, url }) => {
+      sendVerificationRequest: async ({ identifier: email, url, request }) => {
         // Extrahiere Token und CallbackUrl aus der Original-URL
         const originalUrl = new URL(url);
         const token = originalUrl.searchParams.get("token");
@@ -127,10 +136,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         confirmUrl.searchParams.set("email", email);
         confirmUrl.searchParams.set("callbackUrl", callbackUrl);
 
+        // Sprache aus dem Login-Screen übernehmen, sonst die gespeicherte Sprache des Users
+        const cookieLocale = getLocaleFromCookieHeader(request.headers.get("cookie"));
+        let locale = cookieLocale;
+        if (cookieLocale) {
+          await prisma.user.updateMany({ where: { email }, data: { locale: cookieLocale } });
+        } else {
+          const user = await prisma.user.findUnique({ where: { email }, select: { locale: true } });
+          if (isLocale(user?.locale)) locale = user.locale;
+        }
+
         // Sende E-Mail mit Link zur Zwischenseite
         await sendMagicLinkEmail({
           to: email,
           url: confirmUrl.toString(),
+          locale,
         });
       },
     }),

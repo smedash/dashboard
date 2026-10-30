@@ -1,23 +1,41 @@
 import { Resend } from "resend";
+import { defaultLocale, intlLocales, isLocale, type Locale } from "@/i18n/config";
+import { magicLinkEmailMessages, notificationEmailMessages } from "@/i18n/messages/email";
+import { contentCheckMessages } from "@/i18n/messages/content-check";
+import { prisma } from "./prisma";
 
 export const resend = new Resend(process.env.RESEND_API_KEY);
 
 const EMAIL_FROM = process.env.EMAIL_FROM || "SME Dashboard <system@smedash.com>";
 
+async function getRecipientLocale(email: string, locale?: Locale): Promise<Locale> {
+  if (locale) return locale;
+  try {
+    const user = await prisma.user.findUnique({ where: { email }, select: { locale: true } });
+    return isLocale(user?.locale) ? user.locale : defaultLocale;
+  } catch (error) {
+    console.error("Failed to load recipient locale:", error);
+    return defaultLocale;
+  }
+}
+
 export async function sendMagicLinkEmail({
   to,
   url,
+  locale = defaultLocale,
 }: {
   to: string;
   url: string;
+  locale?: Locale;
 }) {
+  const t = magicLinkEmailMessages[locale];
   const { data, error } = await resend.emails.send({
     from: EMAIL_FROM,
     to: to,
-    subject: "Dein Magic Link zum Einloggen",
+    subject: t.subject,
     html: `
       <!DOCTYPE html>
-      <html>
+      <html lang="${locale}">
         <head>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -26,13 +44,13 @@ export async function sendMagicLinkEmail({
           <div style="max-width: 480px; margin: 0 auto; background-color: white; border-radius: 12px; padding: 40px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
             <h1 style="color: #18181b; font-size: 24px; margin: 0 0 16px 0;">SME Dashboard</h1>
             <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 24px 0;">
-              Klicke auf den Button unten, um Dich einzuloggen. Dieser Link ist 24 Stunden gültig.
+              ${t.intro}
             </p>
             <a href="${url}" style="display: inline-block; background-color: #2563eb; color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">
-              Jetzt einloggen
+              ${t.cta}
             </a>
             <p style="color: #a1a1aa; font-size: 14px; margin: 24px 0 0 0;">
-              Falls Du diesen Link nicht angefordert hast, kannst Du diese E-Mail ignorieren.
+              ${t.ignore}
             </p>
           </div>
         </body>
@@ -54,39 +72,43 @@ export async function sendNewBriefingNotification({
   briefingNumber,
   requesterName,
   dashboardUrl,
+  locale,
 }: {
   to: string;
   briefingTitle: string;
   briefingNumber: number;
   requesterName: string;
   dashboardUrl: string;
+  locale?: Locale;
 }) {
+  const lang = await getRecipientLocale(to, locale);
+  const t = notificationEmailMessages[lang];
   const { data, error } = await resend.emails.send({
     from: EMAIL_FROM,
     to: to,
-    subject: `Neue Briefing-Bestellung: ${briefingTitle} (#${briefingNumber})`,
+    subject: t.newBriefing.subject(briefingTitle, briefingNumber),
     html: `
       <!DOCTYPE html>
-      <html>
+      <html lang="${lang}">
         <head>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
         </head>
         <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f4f4f5; margin: 0; padding: 40px 20px;">
           <div style="max-width: 480px; margin: 0 auto; background-color: white; border-radius: 12px; padding: 40px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-            <h1 style="color: #18181b; font-size: 24px; margin: 0 0 16px 0;">Neue Briefing-Bestellung</h1>
+            <h1 style="color: #18181b; font-size: 24px; margin: 0 0 16px 0;">${t.newBriefing.heading}</h1>
             <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 24px 0;">
-              Ein neues Briefing wurde von <strong>${requesterName}</strong> bestellt.
+              ${t.newBriefing.intro(requesterName)}
             </p>
             <div style="background-color: #f4f4f5; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
-              <p style="color: #52525b; font-size: 14px; margin: 0 0 8px 0;"><strong>Briefing-Nr.:</strong> #${briefingNumber}</p>
-              <p style="color: #52525b; font-size: 14px; margin: 0;"><strong>Titel:</strong> ${briefingTitle}</p>
+              <p style="color: #52525b; font-size: 14px; margin: 0 0 8px 0;"><strong>${t.briefingNumber}</strong> #${briefingNumber}</p>
+              <p style="color: #52525b; font-size: 14px; margin: 0;"><strong>${t.briefingTitle}</strong> ${briefingTitle}</p>
             </div>
             <a href="${dashboardUrl}" style="display: inline-block; background-color: #2563eb; color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">
-              Briefing ansehen
+              ${t.newBriefing.cta}
             </a>
             <p style="color: #a1a1aa; font-size: 14px; margin: 24px 0 0 0;">
-              Diese E-Mail wurde automatisch vom SME Dashboard versendet.
+              ${t.autoSent}
             </p>
           </div>
         </body>
@@ -110,6 +132,7 @@ export async function sendTaskAssignmentNotification({
   priority,
   dueDate,
   dashboardUrl,
+  locale,
 }: {
   to: string;
   taskTitle: string;
@@ -118,14 +141,11 @@ export async function sendTaskAssignmentNotification({
   priority: string;
   dueDate: string | null;
   dashboardUrl: string;
+  locale?: Locale;
 }) {
-  const priorityLabels: Record<string, string> = {
-    low: "Niedrig",
-    medium: "Mittel",
-    high: "Hoch",
-    urgent: "Dringend",
-  };
-  
+  const lang = await getRecipientLocale(to, locale);
+  const t = notificationEmailMessages[lang];
+
   const priorityColors: Record<string, string> = {
     low: "#64748b",
     medium: "#3b82f6",
@@ -133,41 +153,41 @@ export async function sendTaskAssignmentNotification({
     urgent: "#ef4444",
   };
 
-  const priorityLabel = priorityLabels[priority] || priority;
+  const priorityLabel = t.taskPriorities[priority] || priority;
   const priorityColor = priorityColors[priority] || "#3b82f6";
 
   const { data, error } = await resend.emails.send({
     from: EMAIL_FROM,
     to: to,
-    subject: `Neuer Task zugewiesen: ${taskTitle}`,
+    subject: t.taskAssignment.subject(taskTitle),
     html: `
       <!DOCTYPE html>
-      <html>
+      <html lang="${lang}">
         <head>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
         </head>
         <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f4f4f5; margin: 0; padding: 40px 20px;">
           <div style="max-width: 480px; margin: 0 auto; background-color: white; border-radius: 12px; padding: 40px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-            <h1 style="color: #18181b; font-size: 24px; margin: 0 0 16px 0;">Neuer Task zugewiesen</h1>
+            <h1 style="color: #18181b; font-size: 24px; margin: 0 0 16px 0;">${t.taskAssignment.heading}</h1>
             <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 24px 0;">
-              Dir wurde ein neuer Task von <strong>${creatorName}</strong> zugewiesen.
+              ${t.taskAssignment.intro(creatorName)}
             </p>
             <div style="background-color: #f4f4f5; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
               <p style="color: #18181b; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">${taskTitle}</p>
               ${taskDescription ? `<p style="color: #52525b; font-size: 14px; margin: 0 0 12px 0;">${taskDescription}</p>` : ""}
               <div style="display: flex; gap: 12px; flex-wrap: wrap;">
                 <span style="display: inline-block; padding: 4px 8px; background-color: ${priorityColor}20; color: ${priorityColor}; font-size: 12px; border-radius: 4px; font-weight: 500;">
-                  Priorität: ${priorityLabel}
+                  ${t.taskAssignment.priority(priorityLabel)}
                 </span>
-                ${dueDate ? `<span style="display: inline-block; padding: 4px 8px; background-color: #e2e8f0; color: #475569; font-size: 12px; border-radius: 4px;">Fällig: ${new Date(dueDate).toLocaleDateString("de-DE")}</span>` : ""}
+                ${dueDate ? `<span style="display: inline-block; padding: 4px 8px; background-color: #e2e8f0; color: #475569; font-size: 12px; border-radius: 4px;">${t.taskAssignment.due(new Date(dueDate).toLocaleDateString(intlLocales[lang]))}</span>` : ""}
               </div>
             </div>
             <a href="${dashboardUrl}" style="display: inline-block; background-color: #2563eb; color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">
-              Task ansehen
+              ${t.taskAssignment.cta}
             </a>
             <p style="color: #a1a1aa; font-size: 14px; margin: 24px 0 0 0;">
-              Diese E-Mail wurde automatisch vom SME Dashboard versendet.
+              ${t.autoSent}
             </p>
           </div>
         </body>
@@ -189,13 +209,18 @@ export async function sendTaskCommentNotification({
   commentText,
   authorName,
   dashboardUrl,
+  locale,
 }: {
   to: string;
   taskTitle: string;
   commentText: string;
   authorName: string;
   dashboardUrl: string;
+  locale?: Locale;
 }) {
+  const lang = await getRecipientLocale(to, locale);
+  const t = notificationEmailMessages[lang];
+
   // Kommentar kürzen wenn zu lang
   const truncatedComment = commentText.length > 300 
     ? commentText.substring(0, 300) + "..." 
@@ -204,28 +229,28 @@ export async function sendTaskCommentNotification({
   const { data, error } = await resend.emails.send({
     from: EMAIL_FROM,
     to: to,
-    subject: `Neuer Kommentar: ${taskTitle}`,
+    subject: t.taskComment.subject(taskTitle),
     html: `
       <!DOCTYPE html>
-      <html>
+      <html lang="${lang}">
         <head>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
         </head>
         <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f4f4f5; margin: 0; padding: 40px 20px;">
           <div style="max-width: 480px; margin: 0 auto; background-color: white; border-radius: 12px; padding: 40px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-            <h1 style="color: #18181b; font-size: 24px; margin: 0 0 16px 0;">Neuer Kommentar</h1>
+            <h1 style="color: #18181b; font-size: 24px; margin: 0 0 16px 0;">${t.taskComment.heading}</h1>
             <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 24px 0;">
-              <strong>${authorName}</strong> hat einen Kommentar zum Task <strong>${taskTitle}</strong> hinzugefügt:
+              ${t.taskComment.intro(authorName, taskTitle)}
             </p>
             <div style="background-color: #f4f4f5; border-radius: 8px; padding: 16px; margin-bottom: 24px; border-left: 4px solid #3b82f6;">
               <p style="color: #52525b; font-size: 14px; margin: 0; white-space: pre-wrap;">${truncatedComment}</p>
             </div>
             <a href="${dashboardUrl}" style="display: inline-block; background-color: #2563eb; color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">
-              Task ansehen
+              ${t.taskComment.cta}
             </a>
             <p style="color: #a1a1aa; font-size: 14px; margin: 24px 0 0 0;">
-              Diese E-Mail wurde automatisch vom SME Dashboard versendet.
+              ${t.autoSent}
             </p>
           </div>
         </body>
@@ -246,19 +271,23 @@ export async function sendBriefingCompletedNotification({
   briefingTitle,
   briefingNumber,
   dashboardUrl,
+  locale,
 }: {
   to: string;
   briefingTitle: string;
   briefingNumber: number;
   dashboardUrl: string;
+  locale?: Locale;
 }) {
+  const lang = await getRecipientLocale(to, locale);
+  const t = notificationEmailMessages[lang];
   const { data, error } = await resend.emails.send({
     from: EMAIL_FROM,
     to: to,
-    subject: `Briefing fertiggestellt: ${briefingTitle} (#${briefingNumber})`,
+    subject: t.briefingCompleted.subject(briefingTitle, briefingNumber),
     html: `
       <!DOCTYPE html>
-      <html>
+      <html lang="${lang}">
         <head>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -272,24 +301,24 @@ export async function sendBriefingCompletedNotification({
                 </svg>
               </div>
             </div>
-            <h1 style="color: #18181b; font-size: 24px; margin: 0 0 16px 0; text-align: center;">Briefing fertiggestellt!</h1>
+            <h1 style="color: #18181b; font-size: 24px; margin: 0 0 16px 0; text-align: center;">${t.briefingCompleted.heading}</h1>
             <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 24px 0; text-align: center;">
-              Dein Briefing wurde fertiggestellt und steht zum Download bereit.
+              ${t.briefingCompleted.intro}
             </p>
             <div style="background-color: #f4f4f5; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
-              <p style="color: #52525b; font-size: 14px; margin: 0 0 8px 0;"><strong>Briefing-Nr.:</strong> #${briefingNumber}</p>
-              <p style="color: #52525b; font-size: 14px; margin: 0;"><strong>Titel:</strong> ${briefingTitle}</p>
+              <p style="color: #52525b; font-size: 14px; margin: 0 0 8px 0;"><strong>${t.briefingNumber}</strong> #${briefingNumber}</p>
+              <p style="color: #52525b; font-size: 14px; margin: 0;"><strong>${t.briefingTitle}</strong> ${briefingTitle}</p>
             </div>
             <p style="color: #52525b; font-size: 14px; line-height: 1.6; margin: 0 0 24px 0;">
-              Du kannst das Briefing jetzt als PDF herunterladen oder direkt im Dashboard ansehen.
+              ${t.briefingCompleted.body}
             </p>
             <div style="text-align: center;">
               <a href="${dashboardUrl}" style="display: inline-block; background-color: #10b981; color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">
-                Briefing ansehen & PDF downloaden
+                ${t.briefingCompleted.cta}
               </a>
             </div>
             <p style="color: #a1a1aa; font-size: 14px; margin: 24px 0 0 0; text-align: center;">
-              Diese E-Mail wurde automatisch vom SME Dashboard versendet.
+              ${t.autoSent}
             </p>
           </div>
         </body>
@@ -314,6 +343,7 @@ export async function sendTicketAssignmentNotification({
   priority,
   creatorName,
   dashboardUrl,
+  locale,
 }: {
   to: string;
   ticketTitle: string;
@@ -321,17 +351,10 @@ export async function sendTicketAssignmentNotification({
   priority: string;
   creatorName: string;
   dashboardUrl: string;
+  locale?: Locale;
 }) {
-  const typeLabels: Record<string, string> = {
-    bug: "Bug",
-    feature: "Feature-Wunsch",
-  };
-
-  const priorityLabels: Record<string, string> = {
-    low: "Niedrig",
-    medium: "Mittel",
-    high: "Hoch",
-  };
+  const lang = await getRecipientLocale(to, locale);
+  const t = notificationEmailMessages[lang];
 
   const priorityColors: Record<string, string> = {
     low: "#64748b",
@@ -339,43 +362,43 @@ export async function sendTicketAssignmentNotification({
     high: "#ef4444",
   };
 
-  const typeLabel = typeLabels[ticketType] || ticketType;
-  const priorityLabel = priorityLabels[priority] || priority;
+  const typeLabel = t.ticketTypes[ticketType] || ticketType;
+  const priorityLabel = t.ticketPriorities[priority] || priority;
   const priorityColor = priorityColors[priority] || "#3b82f6";
 
   const { data, error } = await resend.emails.send({
     from: EMAIL_FROM,
     to: to,
-    subject: `Ticket zugewiesen: ${ticketTitle}`,
+    subject: t.ticketAssignment.subject(ticketTitle),
     html: `
       <!DOCTYPE html>
-      <html>
+      <html lang="${lang}">
         <head>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
         </head>
         <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f4f4f5; margin: 0; padding: 40px 20px;">
           <div style="max-width: 480px; margin: 0 auto; background-color: white; border-radius: 12px; padding: 40px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-            <h1 style="color: #18181b; font-size: 24px; margin: 0 0 16px 0;">Ticket zugewiesen</h1>
+            <h1 style="color: #18181b; font-size: 24px; margin: 0 0 16px 0;">${t.ticketAssignment.heading}</h1>
             <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 24px 0;">
-              Dir wurde ein Ticket von <strong>${creatorName}</strong> zugewiesen.
+              ${t.ticketAssignment.intro(creatorName)}
             </p>
             <div style="background-color: #f4f4f5; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
               <p style="color: #18181b; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">${ticketTitle}</p>
               <div style="display: flex; gap: 12px; flex-wrap: wrap;">
                 <span style="display: inline-block; padding: 4px 8px; background-color: #e2e8f0; color: #475569; font-size: 12px; border-radius: 4px;">
-                  Typ: ${typeLabel}
+                  ${t.ticketAssignment.type(typeLabel)}
                 </span>
                 <span style="display: inline-block; padding: 4px 8px; background-color: ${priorityColor}20; color: ${priorityColor}; font-size: 12px; border-radius: 4px; font-weight: 500;">
-                  Priorität: ${priorityLabel}
+                  ${t.ticketAssignment.priority(priorityLabel)}
                 </span>
               </div>
             </div>
             <a href="${dashboardUrl}" style="display: inline-block; background-color: #2563eb; color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">
-              Ticket ansehen
+              ${t.ticketAssignment.cta}
             </a>
             <p style="color: #a1a1aa; font-size: 14px; margin: 24px 0 0 0;">
-              Diese E-Mail wurde automatisch vom SME Dashboard versendet.
+              ${t.autoSent}
             </p>
           </div>
         </body>
@@ -396,24 +419,30 @@ export async function sendTicketUpdateNotification({
   ticketTitle,
   updateType,
   updateDetails,
+  statusChange,
   updaterName,
   dashboardUrl,
+  locale,
 }: {
   to: string;
   ticketTitle: string;
   updateType: string; // "status", "comment", "assignee", "general"
-  updateDetails: string;
+  updateDetails?: string;
+  statusChange?: { from: string; to: string };
   updaterName: string;
   dashboardUrl: string;
+  locale?: Locale;
 }) {
-  const updateTypeLabels: Record<string, string> = {
-    status: "Status geändert",
-    comment: "Neuer Kommentar",
-    assignee: "Zuweisung geändert",
-    general: "Ticket aktualisiert",
-  };
+  const lang = await getRecipientLocale(to, locale);
+  const t = notificationEmailMessages[lang];
 
-  const subjectPrefix = updateTypeLabels[updateType] || "Ticket aktualisiert";
+  const subjectPrefix = t.ticketUpdate.types[updateType] || t.ticketUpdate.fallbackType;
+  const details = statusChange
+    ? t.ticketUpdate.statusChanged(
+        t.ticketStatuses[statusChange.from] || statusChange.from,
+        t.ticketStatuses[statusChange.to] || statusChange.to
+      )
+    : updateDetails ?? t.ticketUpdate.generalDetails;
 
   const { data, error } = await resend.emails.send({
     from: EMAIL_FROM,
@@ -421,7 +450,7 @@ export async function sendTicketUpdateNotification({
     subject: `${subjectPrefix}: ${ticketTitle}`,
     html: `
       <!DOCTYPE html>
-      <html>
+      <html lang="${lang}">
         <head>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -430,16 +459,16 @@ export async function sendTicketUpdateNotification({
           <div style="max-width: 480px; margin: 0 auto; background-color: white; border-radius: 12px; padding: 40px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
             <h1 style="color: #18181b; font-size: 24px; margin: 0 0 16px 0;">${subjectPrefix}</h1>
             <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 24px 0;">
-              <strong>${updaterName}</strong> hat das Ticket <strong>${ticketTitle}</strong> aktualisiert.
+              ${t.ticketUpdate.intro(updaterName, ticketTitle)}
             </p>
             <div style="background-color: #f4f4f5; border-radius: 8px; padding: 16px; margin-bottom: 24px; border-left: 4px solid #3b82f6;">
-              <p style="color: #52525b; font-size: 14px; margin: 0; white-space: pre-wrap;">${updateDetails}</p>
+              <p style="color: #52525b; font-size: 14px; margin: 0; white-space: pre-wrap;">${details}</p>
             </div>
             <a href="${dashboardUrl}" style="display: inline-block; background-color: #2563eb; color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">
-              Ticket ansehen
+              ${t.ticketUpdate.cta}
             </a>
             <p style="color: #a1a1aa; font-size: 14px; margin: 24px 0 0 0;">
-              Diese E-Mail wurde automatisch vom SME Dashboard versendet.
+              ${t.autoSent}
             </p>
           </div>
         </body>
@@ -459,41 +488,45 @@ export async function sendWelcomeEmail({
   to,
   invitedBy,
   loginUrl,
+  locale,
 }: {
   to: string;
   invitedBy: { name?: string | null; email: string };
   loginUrl: string;
+  locale?: Locale;
 }) {
+  const lang = await getRecipientLocale(to, locale);
+  const t = notificationEmailMessages[lang];
   const invitedByName = invitedBy.name || invitedBy.email;
   
   const { data, error } = await resend.emails.send({
     from: EMAIL_FROM,
     to: to,
-    subject: "Willkommen im SME Dashboard",
+    subject: t.welcome.subject,
     html: `
       <!DOCTYPE html>
-      <html>
+      <html lang="${lang}">
         <head>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
         </head>
         <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f4f4f5; margin: 0; padding: 40px 20px;">
           <div style="max-width: 480px; margin: 0 auto; background-color: white; border-radius: 12px; padding: 40px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-            <h1 style="color: #18181b; font-size: 24px; margin: 0 0 16px 0;">Willkommen im SME Dashboard</h1>
+            <h1 style="color: #18181b; font-size: 24px; margin: 0 0 16px 0;">${t.welcome.heading}</h1>
             <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 24px 0;">
-              Du wurdest von <strong>${invitedByName}</strong> zum SME Dashboard eingeladen.
+              ${t.welcome.invited(invitedByName)}
             </p>
             <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 24px 0;">
-              Ab sofort kannst Du Dich mit Deiner E-Mail-Adresse <strong>${to}</strong> im SME Dashboard anmelden.
+              ${t.welcome.access(to)}
             </p>
             <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 24px 0;">
-              Klicke auf den Button unten, um zur Anmeldeseite zu gelangen. Du erhältst dann einen Magic Link per E-Mail, mit dem Du Dich einloggen kannst.
+              ${t.welcome.howTo}
             </p>
             <a href="${loginUrl}" style="display: inline-block; background-color: #2563eb; color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px; margin-bottom: 24px;">
-              Zur Anmeldeseite
+              ${t.welcome.cta}
             </a>
             <p style="color: #a1a1aa; font-size: 14px; margin: 24px 0 0 0; border-top: 1px solid #e4e4e7; padding-top: 24px;">
-              Falls Du Fragen hast, wende Dich bitte an ${invitedByName}.
+              ${t.welcome.questions(invitedByName)}
             </p>
           </div>
         </body>
@@ -515,49 +548,54 @@ export async function sendSearchIntentCompletedNotification({
   processedKeywords,
   property,
   dashboardUrl,
+  locale,
 }: {
   to: string;
   totalKeywords: number;
   processedKeywords: number;
   property: string;
   dashboardUrl: string;
+  locale?: Locale;
 }) {
+  const lang = await getRecipientLocale(to, locale);
+  const t = notificationEmailMessages[lang];
+  const intlLocale = intlLocales[lang];
   const { data, error } = await resend.emails.send({
     from: EMAIL_FROM,
     to,
-    subject: `Search Intent fertig – ${processedKeywords.toLocaleString("de-DE")} Keywords verarbeitet`,
+    subject: t.searchIntent.subject(processedKeywords.toLocaleString(intlLocale)),
     html: `
       <!DOCTYPE html>
-      <html>
+      <html lang="${lang}">
         <head>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
         </head>
         <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f4f4f5; margin: 0; padding: 40px 20px;">
           <div style="max-width: 480px; margin: 0 auto; background-color: white; border-radius: 12px; padding: 40px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-            <h1 style="color: #18181b; font-size: 24px; margin: 0 0 16px 0;">Search Intent geladen</h1>
+            <h1 style="color: #18181b; font-size: 24px; margin: 0 0 16px 0;">${t.searchIntent.heading}</h1>
             <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 16px 0;">
-              Die Search Intent Daten für <strong>${property}</strong> wurden erfolgreich verarbeitet.
+              ${t.searchIntent.intro(property)}
             </p>
             <table style="width: 100%; border-collapse: collapse; margin: 0 0 24px 0;">
               <tr>
-                <td style="color: #71717a; font-size: 14px; padding: 8px 0; border-bottom: 1px solid #e4e4e7;">Keywords gesamt</td>
-                <td style="color: #18181b; font-size: 14px; padding: 8px 0; border-bottom: 1px solid #e4e4e7; text-align: right; font-weight: 600;">${totalKeywords.toLocaleString("de-DE")}</td>
+                <td style="color: #71717a; font-size: 14px; padding: 8px 0; border-bottom: 1px solid #e4e4e7;">${t.keywordJob.totalKeywords}</td>
+                <td style="color: #18181b; font-size: 14px; padding: 8px 0; border-bottom: 1px solid #e4e4e7; text-align: right; font-weight: 600;">${totalKeywords.toLocaleString(intlLocale)}</td>
               </tr>
               <tr>
-                <td style="color: #71717a; font-size: 14px; padding: 8px 0; border-bottom: 1px solid #e4e4e7;">Erfolgreich verarbeitet</td>
-                <td style="color: #18181b; font-size: 14px; padding: 8px 0; border-bottom: 1px solid #e4e4e7; text-align: right; font-weight: 600;">${processedKeywords.toLocaleString("de-DE")}</td>
+                <td style="color: #71717a; font-size: 14px; padding: 8px 0; border-bottom: 1px solid #e4e4e7;">${t.keywordJob.processed}</td>
+                <td style="color: #18181b; font-size: 14px; padding: 8px 0; border-bottom: 1px solid #e4e4e7; text-align: right; font-weight: 600;">${processedKeywords.toLocaleString(intlLocale)}</td>
               </tr>
               <tr>
-                <td style="color: #71717a; font-size: 14px; padding: 8px 0;">Kategorien</td>
+                <td style="color: #71717a; font-size: 14px; padding: 8px 0;">${t.searchIntent.categories}</td>
                 <td style="color: #18181b; font-size: 14px; padding: 8px 0; text-align: right; font-weight: 600;">I / N / C / T</td>
               </tr>
             </table>
             <a href="${dashboardUrl}" style="display: inline-block; background-color: #7c3aed; color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px; margin-bottom: 24px;">
-              Suchanfragen öffnen
+              ${t.keywordJob.openQueries}
             </a>
             <p style="color: #a1a1aa; font-size: 14px; margin: 24px 0 0 0; border-top: 1px solid #e4e4e7; padding-top: 24px;">
-              Die Intent-Daten sind jetzt auf der Suchanfragen-Seite verfügbar (Spalte "Intent") und können gefiltert werden.
+              ${t.searchIntent.footer}
             </p>
           </div>
         </body>
@@ -579,49 +617,54 @@ export async function sendGoogleTrendsCompletedNotification({
   processedKeywords,
   property,
   dashboardUrl,
+  locale,
 }: {
   to: string;
   totalKeywords: number;
   processedKeywords: number;
   property: string;
   dashboardUrl: string;
+  locale?: Locale;
 }) {
+  const lang = await getRecipientLocale(to, locale);
+  const t = notificationEmailMessages[lang];
+  const intlLocale = intlLocales[lang];
   const { data, error } = await resend.emails.send({
     from: EMAIL_FROM,
     to,
-    subject: `Google Trends fertig – ${processedKeywords} Keywords verarbeitet`,
+    subject: t.googleTrends.subject(processedKeywords),
     html: `
       <!DOCTYPE html>
-      <html>
+      <html lang="${lang}">
         <head>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
         </head>
         <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f4f4f5; margin: 0; padding: 40px 20px;">
           <div style="max-width: 480px; margin: 0 auto; background-color: white; border-radius: 12px; padding: 40px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-            <h1 style="color: #18181b; font-size: 24px; margin: 0 0 16px 0;">Google Trends geladen</h1>
+            <h1 style="color: #18181b; font-size: 24px; margin: 0 0 16px 0;">${t.googleTrends.heading}</h1>
             <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 16px 0;">
-              Die Google Trends Daten für <strong>${property}</strong> wurden erfolgreich verarbeitet.
+              ${t.googleTrends.intro(property)}
             </p>
             <table style="width: 100%; border-collapse: collapse; margin: 0 0 24px 0;">
               <tr>
-                <td style="color: #71717a; font-size: 14px; padding: 8px 0; border-bottom: 1px solid #e4e4e7;">Keywords gesamt</td>
-                <td style="color: #18181b; font-size: 14px; padding: 8px 0; border-bottom: 1px solid #e4e4e7; text-align: right; font-weight: 600;">${totalKeywords.toLocaleString("de-DE")}</td>
+                <td style="color: #71717a; font-size: 14px; padding: 8px 0; border-bottom: 1px solid #e4e4e7;">${t.keywordJob.totalKeywords}</td>
+                <td style="color: #18181b; font-size: 14px; padding: 8px 0; border-bottom: 1px solid #e4e4e7; text-align: right; font-weight: 600;">${totalKeywords.toLocaleString(intlLocale)}</td>
               </tr>
               <tr>
-                <td style="color: #71717a; font-size: 14px; padding: 8px 0; border-bottom: 1px solid #e4e4e7;">Erfolgreich verarbeitet</td>
-                <td style="color: #18181b; font-size: 14px; padding: 8px 0; border-bottom: 1px solid #e4e4e7; text-align: right; font-weight: 600;">${processedKeywords.toLocaleString("de-DE")}</td>
+                <td style="color: #71717a; font-size: 14px; padding: 8px 0; border-bottom: 1px solid #e4e4e7;">${t.keywordJob.processed}</td>
+                <td style="color: #18181b; font-size: 14px; padding: 8px 0; border-bottom: 1px solid #e4e4e7; text-align: right; font-weight: 600;">${processedKeywords.toLocaleString(intlLocale)}</td>
               </tr>
               <tr>
-                <td style="color: #71717a; font-size: 14px; padding: 8px 0;">Location / Sprache</td>
-                <td style="color: #18181b; font-size: 14px; padding: 8px 0; text-align: right; font-weight: 600;">Schweiz / Deutsch</td>
+                <td style="color: #71717a; font-size: 14px; padding: 8px 0;">${t.googleTrends.locationLanguage}</td>
+                <td style="color: #18181b; font-size: 14px; padding: 8px 0; text-align: right; font-weight: 600;">${t.googleTrends.locationLanguageValue}</td>
               </tr>
             </table>
             <a href="${dashboardUrl}" style="display: inline-block; background-color: #059669; color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px; margin-bottom: 24px;">
-              Suchanfragen öffnen
+              ${t.keywordJob.openQueries}
             </a>
             <p style="color: #a1a1aa; font-size: 14px; margin: 24px 0 0 0; border-top: 1px solid #e4e4e7; padding-top: 24px;">
-              Die Trends-Daten sind jetzt auf der Suchanfragen-Seite verfügbar und werden im Excel-Export mit ausgegeben.
+              ${t.googleTrends.footer}
             </p>
           </div>
         </body>
@@ -637,10 +680,10 @@ export async function sendGoogleTrendsCompletedNotification({
   return data;
 }
 
-function emailShell(title: string, bodyHtml: string, ctaLabel: string, ctaUrl: string) {
+function emailShell(lang: Locale, title: string, bodyHtml: string, ctaLabel: string, ctaUrl: string) {
   return `
       <!DOCTYPE html>
-      <html>
+      <html lang="${lang}">
         <head>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -658,29 +701,38 @@ function emailShell(title: string, bodyHtml: string, ctaLabel: string, ctaUrl: s
     `;
 }
 
+function reviewStatusLabel(lang: Locale, status: string) {
+  return contentCheckMessages[lang].statuses[status] ?? status;
+}
+
 export async function sendContentReviewNotification({
   to,
   articleTitle,
   newStatus,
   changedByName,
   dashboardUrl,
+  locale,
 }: {
   to: string;
   articleTitle: string;
   newStatus: string;
   changedByName: string;
   dashboardUrl: string;
+  locale?: Locale;
 }) {
+  const lang = await getRecipientLocale(to, locale);
+  const t = notificationEmailMessages[lang];
   const { data, error } = await resend.emails.send({
     from: EMAIL_FROM,
     to,
-    subject: `Content-Check: ${articleTitle}`,
+    subject: t.contentReview.subject(articleTitle),
     html: emailShell(
-      "Content-Check",
+      lang,
+      t.contentReview.heading,
       `<p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 24px 0;">
-        <strong>${changedByName}</strong> hat den Artikel <strong>${articleTitle}</strong> auf den Status <strong>${newStatus}</strong> gesetzt.
+        ${t.contentReview.body(changedByName, articleTitle, reviewStatusLabel(lang, newStatus))}
       </p>`,
-      "Im Content-Check öffnen",
+      t.contentReview.cta,
       dashboardUrl
     ),
   });
@@ -700,6 +752,7 @@ export async function sendRevisionRequestNotification({
   requestedByName,
   unresolvedCount,
   dashboardUrl,
+  locale,
 }: {
   to: string;
   articleTitle: string;
@@ -707,18 +760,21 @@ export async function sendRevisionRequestNotification({
   requestedByName: string;
   unresolvedCount: number;
   dashboardUrl: string;
+  locale?: Locale;
 }) {
+  const lang = await getRecipientLocale(to, locale);
+  const t = notificationEmailMessages[lang];
   const { data, error } = await resend.emails.send({
     from: EMAIL_FROM,
     to,
-    subject: `Überarbeitung angefordert: ${articleTitle}`,
+    subject: t.revisionRequest.subject(articleTitle),
     html: emailShell(
-      "Überarbeitung angefordert",
+      lang,
+      t.revisionRequest.heading,
       `<p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 24px 0;">
-        <strong>${requestedByName}</strong> hat eine Überarbeitung für <strong>${articleTitle}</strong> angefordert
-        (${unresolvedCount} offene Kommentare, aktueller Status: ${currentStatus}).
+        ${t.revisionRequest.body(requestedByName, articleTitle, unresolvedCount, reviewStatusLabel(lang, currentStatus))}
       </p>`,
-      "Artikel öffnen",
+      t.revisionRequest.cta,
       dashboardUrl
     ),
   });
@@ -730,5 +786,3 @@ export async function sendRevisionRequestNotification({
 
   return data;
 }
-
-

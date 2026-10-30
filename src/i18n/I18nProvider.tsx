@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { intlLocales, LOCALE_COOKIE, type Locale, type Messages } from "./config";
 
 interface I18nContextValue {
@@ -22,6 +23,7 @@ export function I18nProvider({
 }) {
   const [locale, setLocaleState] = useState<Locale>(initialLocale);
   const router = useRouter();
+  const { status } = useSession();
 
   const setLocale = useCallback(
     (next: Locale) => {
@@ -29,8 +31,15 @@ export function I18nProvider({
       document.documentElement.lang = next;
       setLocaleState(next);
       router.refresh();
+      if (status === "authenticated") {
+        fetch("/api/users/me/locale", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ locale: next }),
+        }).catch((error) => console.error("Failed to save locale:", error));
+      }
     },
-    [router]
+    [router, status]
   );
 
   return (
