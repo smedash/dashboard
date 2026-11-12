@@ -296,6 +296,12 @@ export const documentationMessages = defineMessages({
             linkLabel: "Zum Keyword Clustering",
           },
           {
+            title: "Keyword Mapping",
+            body: "Ordne jeder URL ein Fokus-Keyword und passende Nebenkeywords zu. Das Fokus-Keyword kommt aus dem bestplatzierten Ranking via DataForSEO oder wird manuell gesetzt, Nebenkeywords findest du per SEOSpark-Keywordrecherche. Pro URL kannst du eine Topic-Gap-Analyse starten: TopicLoops liefert die Themen zum Fokus-Keyword, die KI gleicht sie mit dem Seiteninhalt ab und zeigt fehlende Topics. Bestehende Mapping-Excel-Dateien lassen sich importieren und wieder exportieren; fertige URLs schiebst du samt Keywords in den SEO KVP.",
+            link: "/seo-helper/keyword-mapping",
+            linkLabel: "Zum Keyword Mapping",
+          },
+          {
             title: "Weitere Tools",
             body: "Der SEO Helper enthält außerdem: SERP Preview (Vorschau deiner Google-Suchergebnisse), Title Generator (KI-generierte Seitentitel), FAQ Generator (automatische FAQ-Erstellung), Schema Generator (strukturierte Daten für Google) und den Benchmarker (Wettbewerbsvergleich).",
             link: "/seo-helper",
@@ -600,6 +606,12 @@ export const documentationMessages = defineMessages({
             body: "Automatically group a list of keywords into topical clusters. This shows you which keywords can be covered on a shared page and which need pages of their own.",
             link: "/seo-helper/keyword-clustering",
             linkLabel: "Go to Keyword Clustering",
+          },
+          {
+            title: "Keyword Mapping",
+            body: "Assign a focus keyword and matching sub keywords to every URL. The focus keyword comes from the best ranking via DataForSEO or is set manually; sub keywords are found with SEOSpark keyword research. Per URL you can run a topic gap analysis: TopicLoops provides the topics for the focus keyword, AI compares them with the page content and shows missing topics. Existing mapping Excel files can be imported and exported again; finished URLs can be pushed into the SEO KVP including their keywords.",
+            link: "/seo-helper/keyword-mapping",
+            linkLabel: "Go to Keyword Mapping",
           },
           {
             title: "More tools",

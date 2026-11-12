@@ -21,6 +21,11 @@ export const seoHelperMessages = defineMessages({
         description:
           "Vergleiche deinen Content mit den Top-Konkurrenten in der Schweiz und finde Content-Gaps und Verbesserungspotenziale.",
       },
+      "keyword-mapping": {
+        title: "Keyword Mapping",
+        description:
+          "Fokus- und Subkeywords pro URL über DataForSEO und SEOSpark finden, Topic-Gaps mit TopicLoops aufdecken und URLs in den SEO KVP übergeben.",
+      },
       "title-generator": {
         title: "Title Generator",
         description:
@@ -76,6 +81,11 @@ export const seoHelperMessages = defineMessages({
         title: "Benchmarker",
         description:
           "Compare your content with the top competitors in Switzerland and find content gaps and room for improvement.",
+      },
+      "keyword-mapping": {
+        title: "Keyword Mapping",
+        description:
+          "Find focus and sub keywords per URL via DataForSEO and SEOSpark, uncover topic gaps with TopicLoops and hand URLs over to the SEO KVP.",
       },
       "title-generator": {
         title: "Title Generator",

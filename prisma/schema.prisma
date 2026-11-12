@@ -274,6 +274,7 @@ model KVPUrl {
   files        KVPFile[]             // Hochgeladene Dateien (Vercel Blob)
   maturityLinks KVPMaturityItemLink[] // Verknüpfung zu SEO-Reifegradpunkten
   assignees    KVPAssignee[]         // Zugewiesene Nutzer (Verantwortlichkeiten)
+  keywordMapUrls KeywordMapUrl[]     // Herkunft aus dem SEO-Helper Keyword Mapping
   createdAt    DateTime              @default(now())
   updatedAt    DateTime              @updatedAt
 
@@ -1397,4 +1398,88 @@ model UrlCleanupJob {
   updatedAt DateTime @updatedAt
 
   @@index([type, createdAt])
+}
+
+// SEO-Helper Keyword Mapping — ein Projekt entspricht einem bisherigen Mapping-Excel (z. B. Investing)
+model KeywordMapProject {
+  id              String          @id @default(cuid())
+  name            String
+  category        String? // KVP-Kategorie: Mortgages, Accounts&Cards, Investing, Pension, Digital Banking
+  countryCode     String          @default("ch")
+  languageCode    String          @default("de")
+  dropdownOptions Json? // { pageType: [], funnel: [], targetGroup: [], topicAuthority: [] }
+  createdById     String
+  urls            KeywordMapUrl[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
+
+model KeywordMapUrl {
+  id              String               @id @default(cuid())
+  projectId       String
+  project         KeywordMapProject    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  url             String               @db.Text
+  h1              String?              @db.Text
+  noindex         Boolean              @default(false)
+  statusCode      Int?
+  navigationType  String? // Guide / Help / Navigation
+  pageType        String?
+  funnel          String?
+  targetGroup     String?
+  topicAuthority  String?
+  ctas            Json? // [{ label, link }]
+  furtherLinks    Json? // string[]
+  subSearchVolume Int? // Summe Nebenkeywords aus dem Excel, falls keine Einzelwerte vorliegen
+  dfsTopKeyword   String?
+  dfsSearchVolume Int?
+  dfsRank         Int?
+  dfsKeywords     Json? // Vollständige Ranked-Keywords-Liste zur Auswahl
+  dfsFetchedAt    DateTime?
+  manualRank      String?
+  gscClicks       Int?
+  comment         String?              @db.Text
+  kvpUrlId        String?
+  kvpUrl          KVPUrl?              @relation(fields: [kvpUrlId], references: [id], onDelete: SetNull)
+  keywords        KeywordMapKeyword[]
+  topicGaps       KeywordMapTopicGap[]
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  @@unique([projectId, url])
+  @@index([projectId])
+  @@index([kvpUrlId])
+}
+
+model KeywordMapKeyword {
+  id           String        @id @default(cuid())
+  urlId        String
+  url          KeywordMapUrl @relation(fields: [urlId], references: [id], onDelete: Cascade)
+  keyword      String
+  type         String // focus, sub
+  searchVolume Int?
+  source       String        @default("manual") // import, manual, dataforseo, seospark
+  position     Int           @default(0)
+  createdAt    DateTime      @default(now())
+
+  @@unique([urlId, keyword])
+  @@index([urlId])
+  @@index([keyword])
+}
+
+model KeywordMapTopicGap {
+  id            String        @id @default(cuid())
+  urlId         String
+  url           KeywordMapUrl @relation(fields: [urlId], references: [id], onDelete: Cascade)
+  focusKeyword  String
+  topicGraphId  String?
+  status        String        @default("processing") // processing, analyzing, succeeded, failed
+  coverageScore Int?
+  results       Json? // [{ topic, path, status: covered|partial|missing, reason, evidence }]
+  summary       String?       @db.Text
+  error         String?       @db.Text
+  contentHash   String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([urlId, createdAt])
 }

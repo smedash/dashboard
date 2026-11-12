@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import { canEdit } from "@/lib/rbac";
+import { isValidKvpCategory, syncKvpRankTrackerKeywords } from "@/lib/kvp";
 
 // GET - Alle KVP URLs abrufen (teamweiter Zugriff)
 export async function GET(request: NextRequest) {
@@ -76,8 +77,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validiere Kategorie
-    const validCategories = ["Mortgages", "Accounts&Cards", "Investing", "Pension", "Digital Banking"];
-    if (category && !validCategories.includes(category)) {
+    if (category && !isValidKvpCategory(category)) {
       return NextResponse.json(
         { error: "Ungültige Kategorie" },
         { status: 400 }
@@ -153,72 +153,12 @@ export async function POST(request: NextRequest) {
       assignees: (kvpUrl as any).assignees || [],
     };
 
-    // Hole oder erstelle Rank Tracker
-    let tracker = await prisma.rankTracker.findFirst({
-      where: { userId: session.user.id },
+    const addedKeywords = await syncKvpRankTrackerKeywords({
+      userId: session.user.id,
+      url,
+      keywords: [focusKeyword, ...(subkeywords || [])],
+      category,
     });
-
-    if (!tracker) {
-      tracker = await prisma.rankTracker.create({
-        data: {
-          userId: session.user.id,
-          name: "Standard Tracker",
-          location: "Switzerland",
-          language: "German",
-        },
-      });
-    }
-
-    // Füge Fokuskeyword zum Ranktracker hinzu
-    const allKeywords = [focusKeyword.trim(), ...(subkeywords || []).map((k: string) => k.trim())];
-    const addedKeywords = [];
-
-    for (const keyword of allKeywords) {
-      if (!keyword) continue;
-
-      // Prüfe ob Keyword bereits existiert
-      const existingKeyword = await prisma.rankTrackerKeyword.findUnique({
-        where: {
-          trackerId_keyword: {
-            trackerId: tracker.id,
-            keyword: keyword,
-          },
-        },
-      });
-
-      if (!existingKeyword) {
-        try {
-          const rankKeyword = await prisma.rankTrackerKeyword.create({
-            data: {
-              trackerId: tracker.id,
-              keyword: keyword,
-              targetUrl: url.trim(), // Setze die KVP URL als targetUrl
-              category: category || null, // Verwende die Kategorie aus dem KVP
-            },
-          });
-          addedKeywords.push(rankKeyword);
-        } catch (error) {
-          // Ignoriere Fehler wenn Keyword bereits existiert (Race Condition)
-          console.log(`Keyword "${keyword}" konnte nicht hinzugefügt werden, möglicherweise bereits vorhanden`);
-        }
-      } else {
-        // Wenn Keyword existiert, aktualisiere targetUrl und category falls nötig
-        const updateData: { targetUrl?: string; category?: string | null } = {};
-        if (!existingKeyword.targetUrl || existingKeyword.targetUrl !== url.trim()) {
-          updateData.targetUrl = url.trim();
-        }
-        if (category && existingKeyword.category !== category) {
-          updateData.category = category;
-        }
-        if (Object.keys(updateData).length > 0) {
-          await prisma.rankTrackerKeyword.update({
-            where: { id: existingKeyword.id },
-            data: updateData,
-          });
-        }
-        addedKeywords.push(existingKeyword);
-      }
-    }
 
     return NextResponse.json({ 
       url: kvpUrlWithComments,
