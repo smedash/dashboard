@@ -9,6 +9,7 @@ import {
   fetchBacklinksSummary,
   fetchReferringDomains,
   findRankingPosition,
+  resolveSerpItemUrl,
 } from "@/lib/dataforseo";
 
 const client = new Anthropic({
@@ -126,15 +127,17 @@ async function executeTool(
         const results = await fetchRankings(keywordsWithTarget, location);
 
         // Finde Positionen für jedes Keyword
-        const rankings = keywords.map((keyword) => {
+        const rankings = await Promise.all(keywords.map(async (keyword) => {
           const position = findRankingPosition(results, keyword, "ubs.com");
           return {
             keyword,
             position: position.position,
-            url: position.url,
+            url: position.url
+              ? await resolveSerpItemUrl({ url: position.url, breadcrumb: position.breadcrumb })
+              : null,
             found: position.position !== null,
           };
-        });
+        }));
 
         return JSON.stringify({
           success: true,

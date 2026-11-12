@@ -6,6 +6,7 @@ import {
   fetchRankingForKeyword,
   findRankingPosition,
   resolveRankingLocale,
+  resolveSerpItemUrl,
 } from "@/lib/dataforseo";
 
 /** Domain, gegen die gerankt wird, wenn am Keyword keine targetUrl hinterlegt ist. */
@@ -58,11 +59,15 @@ export async function runRankingFetch(
         ? findRankingPosition([result], keyword.keyword, targetUrl)
         : { position: null, url: null };
 
+      const url = rankingData.url
+        ? await resolveSerpItemUrl({ url: rankingData.url, breadcrumb: rankingData.breadcrumb })
+        : null;
+
       const ranking = await prisma.rankTrackerRanking.create({
         data: {
           keywordId: keyword.id,
           position: rankingData.position,
-          url: rankingData.url,
+          url,
           date: new Date(),
         },
       });

@@ -133,6 +133,81 @@ export async function getRankTrackerResults(
   return data;
 }
 
+// ==========================================
+// GOOGLE REDIRECT-URLS IN SERP-ITEMS
+// ==========================================
+
+const GOOGLE_REDIRECT_RE = /^https?:\/\/(www\.)?google\.[a-z.]+\/goto\?/i;
+const REDIRECT_RESOLVE_TIMEOUT_MS = 5000;
+
+/**
+ * Google liefert organische Treffer teils als verschlüsselte `google.com/goto?url=...`-Links aus.
+ * DataForSEO übernimmt diese 1:1, `domain` ist dann "google.com".
+ */
+export function isGoogleRedirectUrl(url: string | null | undefined): boolean {
+  return !!url && GOOGLE_REDIRECT_RE.test(url);
+}
+
+/** "https://www.ubs.com › Schweiz › Vorsorge" -> "www.ubs.com" */
+function hostFromBreadcrumb(breadcrumb: string | null | undefined): string | null {
+  const head = breadcrumb?.split("›")[0]?.trim();
+  if (!head) return null;
+  try {
+    return new URL(/^https?:\/\//i.test(head) ? head : `https://${head}`).hostname.toLowerCase();
+  } catch {
+    return null;
+  }
+}
+
+/** Tatsächliche Domain eines SERP-Items, auch wenn die URL ein Google-Redirect ist. */
+export function getSerpItemDomain(item: { url?: string | null; domain?: string | null; breadcrumb?: string | null }): string {
+  if (isGoogleRedirectUrl(item.url)) {
+    return hostFromBreadcrumb(item.breadcrumb) ?? "";
+  }
+  return item.domain?.toLowerCase() ?? "";
+}
+
+/**
+ * Löst einen Google-Redirect auf die Ziel-URL auf. Nur `www.google.com` antwortet mit dem
+ * finalen 302, `google.com` leitet erst auf `www.` um.
+ * Gibt bei Fehlschlag `null` zurück, Nicht-Redirect-URLs werden unverändert zurückgegeben.
+ */
+export async function resolveGoogleRedirectUrl(url: string): Promise<string | null> {
+  if (!isGoogleRedirectUrl(url)) return url;
+
+  const wwwUrl = url.replace(/^https?:\/\/(www\.)?/i, "https://www.");
+  try {
+    const response = await fetch(wwwUrl, {
+      redirect: "manual",
+      signal: AbortSignal.timeout(REDIRECT_RESOLVE_TIMEOUT_MS),
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36",
+      },
+    });
+    const location = response.headers.get("location");
+    if (location && !isGoogleRedirectUrl(location)) {
+      return location;
+    }
+    console.warn(`[resolveGoogleRedirectUrl] Kein Ziel erhalten (HTTP ${response.status})`);
+  } catch (error) {
+    console.warn(`[resolveGoogleRedirectUrl] Fehler:`, error instanceof Error ? error.message : error);
+  }
+  return null;
+}
+
+/**
+ * Wie `resolveGoogleRedirectUrl`, fällt aber auf den Ursprung aus dem Breadcrumb zurück,
+ * damit nie ein Google-Redirect-Link gespeichert oder angezeigt wird.
+ */
+export async function resolveSerpItemUrl(item: { url: string; breadcrumb?: string | null }): Promise<string> {
+  if (!isGoogleRedirectUrl(item.url)) return item.url;
+  const resolved = await resolveGoogleRedirectUrl(item.url);
+  if (resolved) return resolved;
+  const host = hostFromBreadcrumb(item.breadcrumb);
+  return host ? `https://${host}/` : item.url;
+}
+
 /**
  * DataForSEO erlaubt bis zu 30 gleichzeitige Requests - 5 hält sicheren Abstand zum Rate-Limit.
  */
@@ -1240,7 +1315,7 @@ export function findRankingPosition(
   results: RankTrackerResult[],
   keyword: string,
   targetUrl?: string
-): { position: number | null; url: string | null } {
+): { position: number | null; url: string | null; breadcrumb?: string | null } {
   console.log(`[findRankingPosition] Suche Rankings für Keyword: "${keyword}"`);
   console.log(`[findRankingPosition] Target URL: "${targetUrl || 'ubs.com (Standard)'}"`);
   console.log(`[findRankingPosition] Anzahl Results: ${results.length}`);
@@ -1301,8 +1376,11 @@ export function findRankingPosition(
       return;
     }
     
+    // Google-Redirect-URLs enthalten die Ziel-Domain nicht -> nur über Domain abgleichen
+    const isRedirect = isGoogleRedirectUrl(item.url);
+
     // Normalisiere die Item-URL für Vergleich
-    let normalizedItemUrl = item.url.toLowerCase();
+    let normalizedItemUrl = isRedirect ? "" : item.url.toLowerCase();
     
     // Entferne Protokoll
     normalizedItemUrl = normalizedItemUrl.replace(/^https?:\/\//, "");
@@ -1311,11 +1389,11 @@ export function findRankingPosition(
     normalizedItemUrl = normalizedItemUrl.replace(/^www\./, "");
     
     // Prüfe auch die Domain direkt
-    const itemDomain = item.domain?.toLowerCase().replace(/^www\./, "") || "";
+    const itemDomain = getSerpItemDomain(item).replace(/^www\./, "");
     
     // Prüfe ob die URL oder Domain die Target-Domain enthält
     // Wichtig: Prüfe auch ob die Domain mit der Target-Domain endet (z.B. "ubs.com" in "www.ubs.com")
-    const urlMatches = normalizedItemUrl.includes(normalizedTarget);
+    const urlMatches = normalizedItemUrl !== "" && normalizedItemUrl.includes(normalizedTarget);
     const domainMatches = itemDomain.includes(normalizedTarget) || itemDomain.endsWith(`.${normalizedTarget}`);
     const matches = urlMatches || domainMatches;
     
@@ -1348,11 +1426,12 @@ export function findRankingPosition(
     return {
       position: bestMatch.item.rank_absolute,
       url: bestMatch.item.url,
+      breadcrumb: bestMatch.item.breadcrumb,
     };
   }
 
   console.log(`[findRankingPosition] ✗ Keine passende URL gefunden für Domain: "${normalizedTarget}"`);
-  console.log(`[findRankingPosition] Alle gefundenen Domains (Top 20):`, [...new Set(result.items.slice(0, 20).map(i => i.domain))]);
+  console.log(`[findRankingPosition] Alle gefundenen Domains (Top 20):`, [...new Set(result.items.slice(0, 20).map(i => getSerpItemDomain(i)))]);
   console.log(`[findRankingPosition] Alle gefundenen URLs (Top 20):`, result.items.slice(0, 20).map(i => i.url));
   
   // Wenn keine passende URL gefunden wurde, gib null zurück

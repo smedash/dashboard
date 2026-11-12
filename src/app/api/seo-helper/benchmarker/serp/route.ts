@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { apiRateLimiter } from "@/lib/rate-limit";
+import { getSerpItemDomain, resolveSerpItemUrl } from "@/lib/dataforseo";
 
 const DATAFORSEO_API_URL = "https://api.dataforseo.com/v3";
 
@@ -94,22 +95,25 @@ export async function POST(request: NextRequest) {
         const result = task.result[0];
         
         // Filtere nur organische Ergebnisse (keine Ads, Featured Snippets etc.)
-        const organicResults: SerpItem[] = (result.items || [])
+        const organicItems: SerpItem[] = (result.items || [])
           .filter((item: SerpItem) => 
             item.type === "organic" && 
             !item.is_paid && 
             item.url && 
             item.title
           )
-          .slice(0, 10)
-          .map((item: SerpItem, index: number) => ({
+          .slice(0, 10);
+
+        const organicResults = await Promise.all(
+          organicItems.map(async (item, index) => ({
             rank: index + 1,
             title: item.title,
-            url: item.url,
-            domain: item.domain,
+            url: await resolveSerpItemUrl(item),
+            domain: getSerpItemDomain(item),
             description: item.description || "",
             breadcrumb: item.breadcrumb || "",
-          }));
+          }))
+        );
 
         console.log(`[Benchmarker SERP] ✓ ${organicResults.length} organische Ergebnisse gefunden`);
 
