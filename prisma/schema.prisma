@@ -1112,6 +1112,16 @@ model ConductorWebsite {
   syncLogs      ConductorSyncLog[]
   lastSyncAt    DateTime?
   syncLockedUntil DateTime? // Sperre gegen parallele Sync-Läufe, wird pro Batch verlängert
+
+  // Abgleich Issues → URLs (fortsetzbar): Stand des Seiten-Syncs, auf dem der laufende Abgleich basiert,
+  // und Position des nächsten Requests (Issue + Ergebnisseite der affected_pages-API)
+  pageIssuesBasis       DateTime?
+  pageIssuesCursorIssue String?
+  pageIssuesCursorPage  Int?
+  pageIssuesSyncedAt    DateTime?
+  pageIssuesLockedUntil DateTime?
+  pageIssueStage        ConductorPageIssueStage[]
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
@@ -1188,6 +1198,18 @@ model ConductorPage {
   @@index([url])
   @@index([health])
   @@index([statusCode])
+}
+
+// Conductor Monitoring — Zwischenstand eines laufenden Issue-Abgleichs; wird bei Abschluss
+// in ConductorPage.openIssues übernommen und geleert
+model ConductorPageIssueStage {
+  websiteId String
+  website   ConductorWebsite @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+  pageId    String
+  issue     String
+
+  @@id([pageId, issue])
+  @@index([websiteId])
 }
 
 // Conductor Monitoring — Aggregierte Issues

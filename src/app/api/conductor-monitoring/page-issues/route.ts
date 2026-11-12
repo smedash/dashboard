@@ -34,6 +34,12 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await refreshPageIssues(website, Date.now() + REFRESH_BUDGET_MS);
+    if (result.status === "locked") {
+      return NextResponse.json(
+        { error: `Für "${domain}" läuft bereits ein Abgleich der URL-Issues` },
+        { status: 409 }
+      );
+    }
     return NextResponse.json(result);
   } catch (error) {
     console.error("[Conductor Page Issues]", error);

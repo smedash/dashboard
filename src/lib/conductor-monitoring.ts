@@ -365,6 +365,28 @@ export async function getPageDetail(
   );
 }
 
+interface AffectedPagesResponse {
+  data: {
+    total: number;
+    urls: Array<{ url: string; app_url: string; type?: string }>;
+  };
+  data_captured_at: string;
+  is_data_golden: boolean;
+}
+
+/** Pages with `issue` open, paginated by result page (1-based, up to 1000 per page). */
+export async function getAffectedPages(
+  websiteId: string,
+  issue: string,
+  page: number,
+  perPage: number = 1000
+): Promise<{ urls: string[]; total: number }> {
+  const res = await conductorFetch<AffectedPagesResponse>(
+    `/v2/data/affected_pages?website_id=${encodeURIComponent(websiteId)}&issue=${encodeURIComponent(issue)}&page=${page}&per_page=${perPage}`
+  );
+  return { urls: res.data.urls.map((u) => u.url), total: res.data.total };
+}
+
 export async function getIssues(
   websiteId: string,
   scope: string = "website"

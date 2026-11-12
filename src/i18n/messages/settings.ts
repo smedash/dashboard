@@ -60,12 +60,14 @@ export const settingsMessages = defineMessages({
         running: (done: number, pending: number | null) =>
           pending === null
             ? `Gleiche URL-Issues ab...`
-            : `Gleiche URL-Issues ab... ${done.toLocaleString("de-DE")} erledigt, noch ${pending.toLocaleString("de-DE")} Seiten`,
+            : `Gleiche URL-Issues ab... ${done.toLocaleString("de-DE")} Abfragen erledigt, noch ca. ${pending.toLocaleString("de-DE")}`,
         done: (done: number) =>
-          `URL-Issues abgeglichen: ${done.toLocaleString("de-DE")} Seiten aktualisiert.`,
+          done === 0
+            ? "URL-Issues sind bereits auf dem Stand des letzten Syncs."
+            : `URL-Issues abgeglichen (${done.toLocaleString("de-DE")} Abfragen).`,
         stopped: (pending: number) =>
-          `Abgleich angehalten, noch ${pending.toLocaleString("de-DE")} Seiten offen. Der nächtliche Sync macht automatisch weiter.`,
-        hint: "Ordnet die Conductor-Issues den einzelnen URLs zu (eine API-Abfrage pro Seite, ca. 6 Seiten pro Sekunde). Läuft auch automatisch im nächtlichen Sync.",
+          `Abgleich angehalten, noch ca. ${pending.toLocaleString("de-DE")} Abfragen offen. Der nächtliche Sync macht automatisch weiter.`,
+        hint: "Ordnet die Conductor-Issues den einzelnen URLs zu (pro Issue eine API-Abfrage je 1.000 betroffene URLs). Läuft auch automatisch im nächtlichen Sync.",
         failed: "Abgleich der URL-Issues fehlgeschlagen",
       },
     },
@@ -136,12 +138,14 @@ export const settingsMessages = defineMessages({
         running: (done: number, pending: number | null) =>
           pending === null
             ? `Matching issues to URLs...`
-            : `Matching issues to URLs... ${done.toLocaleString("en-GB")} done, ${pending.toLocaleString("en-GB")} pages left`,
+            : `Matching issues to URLs... ${done.toLocaleString("en-GB")} requests done, about ${pending.toLocaleString("en-GB")} left`,
         done: (done: number) =>
-          `Issues matched to URLs: ${done.toLocaleString("en-GB")} ${done === 1 ? "page" : "pages"} updated.`,
+          done === 0
+            ? "Issues are already matched to URLs for the latest sync."
+            : `Issues matched to URLs (${done.toLocaleString("en-GB")} ${done === 1 ? "request" : "requests"}).`,
         stopped: (pending: number) =>
-          `Matching paused with ${pending.toLocaleString("en-GB")} pages left. The nightly sync continues automatically.`,
-        hint: "Matches the Conductor issues to individual URLs (one API request per page, about 6 pages per second). Also runs automatically in the nightly sync.",
+          `Matching paused with about ${pending.toLocaleString("en-GB")} requests left. The nightly sync continues automatically.`,
+        hint: "Matches the Conductor issues to individual URLs (one API request per issue and 1,000 affected URLs). Also runs automatically in the nightly sync.",
         failed: "Matching issues to URLs failed",
       },
     },
