@@ -9,6 +9,18 @@ function looksBlocked(status: number): boolean {
   return BLOCKED_STATUSES.has(status) || status >= 500;
 }
 
+/**
+ * Accepts both `http://user:pass@host:port` and the IPRoyal dashboard format
+ * `[scheme://]host:port:user:pass`, which undici rejects as an invalid URL.
+ */
+export function normalizeProxyUrl(raw: string): string {
+  const trimmed = raw.trim();
+  const match = trimmed.match(/^(?:(https?):\/\/)?([^:/@]+):(\d+):([^:]+):(.+)$/);
+  if (!match) return trimmed;
+  const [, scheme = "http", host, port, user, pass] = match;
+  return `${scheme}://${encodeURIComponent(user)}:${encodeURIComponent(pass)}@${host}:${port}`;
+}
+
 function describe(err: unknown): string {
   return err instanceof Error ? err.message : String(err ?? "unknown");
 }
@@ -37,7 +49,9 @@ export async function proxyFetch(
   } = {}
 ): Promise<Response> {
   const timeoutMs = options.timeoutMs || 15000;
-  const proxyUrl = process.env.IPROYAL_PROXY_URL;
+  const proxyUrl = process.env.IPROYAL_PROXY_URL
+    ? normalizeProxyUrl(process.env.IPROYAL_PROXY_URL)
+    : undefined;
 
   let directResponse: Response | null = null;
   let directError: unknown = null;
