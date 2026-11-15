@@ -154,6 +154,37 @@ export const seoHelperKeywordMappingMessages = defineMessages({
         `KVP: ${created} angelegt, ${updated} aktualisiert, ${skipped} übersprungen.`,
     },
 
+    batch: {
+      button: "Topic-Gaps analysieren",
+      title: "Topic-Gaps für alle Projekte",
+      titleProject: "Topic-Gaps für dieses Projekt",
+      hint: "Für jede URL mit Fokus-Keyword wird der TopicLoops-Graph geholt und mit dem Seiteninhalt abgeglichen. Bereits erfolgreiche Analysen bleiben bestehen.",
+      keepOpen: "Dieser Tab muss offen bleiben, bis der Lauf durch ist. Gestartete Analysen lassen sich später fortsetzen.",
+      urls: (n: number) => `${n} URLs werden analysiert`,
+      resumable: (n: number) => `${n} laufende Analysen werden fortgesetzt`,
+      skippedDone: (n: number) => `${n} bereits analysiert, werden übersprungen`,
+      skippedNoKeyword: (n: number) => `${n} ohne Fokus-Keyword`,
+      newJobs: (n: number) => `${n} neue TopicLoops-Jobs`,
+      credits: (n: number) => `TopicLoops-Credits: ${n}`,
+      creditsShort: (jobs: number, credits: number) =>
+        `Dafür reichen die Credits nicht (${jobs} Jobs, ${credits} Credits).`,
+      force: "Bereits analysierte URLs neu analysieren",
+      refreshTopics: "Topic-Graphen neu bei TopicLoops anfordern (verbraucht Credits)",
+      start: "Analyse starten",
+      stop: "Stoppen",
+      running: (done: number, total: number) => `${done} / ${total}`,
+      waiting: "Warte auf TopicLoops…",
+      rateLimited: (s: number) => `TopicLoops-Limit erreicht, nächster Versuch in ${s} s…`,
+      abortedRepeated: (n: number, error: string) =>
+        `Abgebrochen: ${n} URLs hintereinander mit demselben Fehler („${error}“). Bitte Ursache prüfen und erneut starten, bereits erfolgreiche URLs werden übersprungen.`,
+      startedGraphs: "Topic-Graphen werden angefordert…",
+      coverage: (n: number) => `Coverage ${n} %`,
+      current: (project: string, keyword: string) => `${project} · „${keyword}“`,
+      done: (ok: number, failed: number, waiting: number) =>
+        `Fertig: ${ok} erfolgreich, ${failed} fehlgeschlagen${waiting ? `, ${waiting} warten noch auf TopicLoops` : ""}.`,
+      nothing: "Alle URLs mit Fokus-Keyword sind bereits analysiert.",
+    },
+
     kpis: {
       urls: "URLs",
       focusSv: "SV Fokus",
@@ -416,6 +447,37 @@ export const seoHelperKeywordMappingMessages = defineMessages({
       kvpSubmit: "Push now",
       kvpDone: (created: number, updated: number, skipped: number) =>
         `KVP: ${created} created, ${updated} updated, ${skipped} skipped.`,
+    },
+
+    batch: {
+      button: "Analyse topic gaps",
+      title: "Topic gaps for all projects",
+      titleProject: "Topic gaps for this project",
+      hint: "For every URL with a focus keyword the TopicLoops graph is fetched and compared with the page content. Analyses that already succeeded are kept.",
+      keepOpen: "Keep this tab open until the run finishes. Started analyses can be continued later.",
+      urls: (n: number) => `${n} URLs will be analysed`,
+      resumable: (n: number) => `${n} running analyses will be continued`,
+      skippedDone: (n: number) => `${n} already analysed, will be skipped`,
+      skippedNoKeyword: (n: number) => `${n} without a focus keyword`,
+      newJobs: (n: number) => `${n} new TopicLoops jobs`,
+      credits: (n: number) => `TopicLoops credits: ${n}`,
+      creditsShort: (jobs: number, credits: number) =>
+        `Not enough credits for this (${jobs} jobs, ${credits} credits).`,
+      force: "Analyse URLs again even if they already succeeded",
+      refreshTopics: "Request new topic graphs from TopicLoops (uses credits)",
+      start: "Start analysis",
+      stop: "Stop",
+      running: (done: number, total: number) => `${done} / ${total}`,
+      waiting: "Waiting for TopicLoops…",
+      rateLimited: (s: number) => `TopicLoops rate limit reached, retrying in ${s} s…`,
+      abortedRepeated: (n: number, error: string) =>
+        `Stopped: ${n} URLs in a row failed with the same error (“${error}”). Check the cause and start again; URLs that already succeeded are skipped.`,
+      startedGraphs: "Requesting topic graphs…",
+      coverage: (n: number) => `Coverage ${n}%`,
+      current: (project: string, keyword: string) => `${project} · “${keyword}”`,
+      done: (ok: number, failed: number, waiting: number) =>
+        `Finished: ${ok} succeeded, ${failed} failed${waiting ? `, ${waiting} still waiting for TopicLoops` : ""}.`,
+      nothing: "Every URL with a focus keyword is already analysed.",
     },
 
     kpis: {

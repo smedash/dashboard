@@ -195,7 +195,7 @@ Gib für jedes der ${topics.length} Topics genau einen Eintrag zurück.`,
   return { items, coverageScore, summary: parsed.summary?.trim() ?? "" };
 }
 
-const STALE_ANALYSIS_MS = 5 * 60 * 1000;
+export const STALE_ANALYSIS_MS = 5 * 60 * 1000;
 
 /**
  * Bringt eine Gap-Analyse einen Schritt weiter: Topic-Graph abfragen und – sobald vorhanden –

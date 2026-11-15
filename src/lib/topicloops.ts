@@ -25,6 +25,24 @@ export interface TopicGraphJob {
   topic_graph: TopicGraphNode | null;
 }
 
+export class TopicLoopsError extends Error {
+  readonly status: number;
+  /** Wartezeit aus dem Retry-After-Header in Millisekunden, falls vorhanden. */
+  readonly retryAfterMs: number | null;
+
+  constructor(status: number, retryAfter?: string | null) {
+    super(`TopicLoops API Fehler: ${status}`);
+    this.name = "TopicLoopsError";
+    this.status = status;
+    const seconds = retryAfter ? Number(retryAfter) : NaN;
+    this.retryAfterMs = Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : null;
+  }
+
+  get rateLimited() {
+    return this.status === 429;
+  }
+}
+
 export interface TopicLoopsAccount {
   credits: number;
 }
@@ -35,7 +53,7 @@ export async function getAccount(): Promise<TopicLoopsAccount> {
   });
 
   if (!response.ok) {
-    throw new Error(`TopicLoops API Fehler: ${response.status}`);
+    throw new TopicLoopsError(response.status, response.headers.get("retry-after"));
   }
 
   const json = await response.json();
@@ -71,7 +89,7 @@ export async function createTopicGraph(
   if (!response.ok) {
     const errorText = await response.text();
     console.error(`[TopicLoops] Fehler beim Erstellen: ${response.status} - ${errorText}`);
-    throw new Error(`TopicLoops API Fehler: ${response.status}`);
+    throw new TopicLoopsError(response.status, response.headers.get("retry-after"));
   }
 
   const json = await response.json();
@@ -89,7 +107,7 @@ export async function getTopicGraph(id: string): Promise<TopicGraphJob> {
   });
 
   if (!response.ok) {
-    throw new Error(`TopicLoops API Fehler: ${response.status}`);
+    throw new TopicLoopsError(response.status, response.headers.get("retry-after"));
   }
 
   const json = await response.json();

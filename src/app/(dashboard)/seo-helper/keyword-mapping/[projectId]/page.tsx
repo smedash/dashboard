@@ -19,6 +19,7 @@ import {
 } from "@/lib/keyword-map/shared";
 import { EditableCell } from "@/components/keyword-mapping/EditableCell";
 import { ImportDialog } from "@/components/keyword-mapping/ImportDialog";
+import { TopicGapBatchButton } from "@/components/keyword-mapping/TopicGapBatchButton";
 import { UrlDrawer } from "@/components/keyword-mapping/UrlDrawer";
 import {
   Modal,
@@ -371,6 +372,7 @@ export default function KeywordMappingProjectPage() {
           <>
             {editable && (
               <>
+                <TopicGapBatchButton projectId={projectId} onActivity={() => void load()} />
                 <button className={buttonSecondary} onClick={() => setShowAddUrls(true)}>
                   {t.table.addUrls}
                 </button>

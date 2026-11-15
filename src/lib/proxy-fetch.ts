@@ -2,14 +2,28 @@ import { ProxyAgent as UndiciProxyAgent, fetch as undiciFetch } from "undici";
 
 const MAX_PROXY_RETRIES = 2;
 
+/** Statuses that typically mean bot protection or geo-blocking rather than a real answer of the site. */
+const BLOCKED_STATUSES = new Set([401, 403, 407, 429, 451]);
+
+function looksBlocked(status: number): boolean {
+  return BLOCKED_STATUSES.has(status) || status >= 500;
+}
+
+function describe(err: unknown): string {
+  return err instanceof Error ? err.message : String(err ?? "unknown");
+}
+
 /**
- * Fetches a URL through a Swiss proxy to avoid geo-blocking (403 errors).
- * Falls back to direct fetch if no proxy is configured.
- * Retries on proxy failure or 403 responses (IP rotation may help).
+ * Fetches a URL directly first. If the site blocks the request (403, 429, 5xx, …) or the
+ * request fails, it retries through the Swiss IPRoyal unblocker (geo-blocking, bot protection).
+ * Retries the proxy on 403/429 (IP rotation may help).
  *
  * Usage:
- * - Set IPROYAL_PROXY_URL in .env to enable the proxy
+ * - Set IPROYAL_PROXY_URL in .env to enable the proxy fallback
  * - Format: http://user:pass@geo.iproyal.com:12321
+ *
+ * If the proxy fails as well, the direct response is returned (or its error thrown),
+ * so callers still see the site's original status.
  *
  * @param url - The URL to fetch
  * @param options - Fetch options (headers, timeout, etc.)
@@ -22,74 +36,100 @@ export async function proxyFetch(
     timeoutMs?: number;
   } = {}
 ): Promise<Response> {
+  const timeoutMs = options.timeoutMs || 15000;
   const proxyUrl = process.env.IPROYAL_PROXY_URL;
 
-  if (proxyUrl) {
-    console.log(`[proxyFetch] Fetching ${url} through proxy`);
-
-    const isProxyHttps = proxyUrl.startsWith("https://");
-    const timeoutMs = options.timeoutMs || 15000;
-    let lastError: unknown;
-
-    for (let attempt = 1; attempt <= MAX_PROXY_RETRIES; attempt++) {
-      try {
-        // Create a fresh agent per attempt to trigger IP rotation
-        const proxyAgent = new UndiciProxyAgent({
-          uri: proxyUrl,
-          proxyTls: isProxyHttps ? { rejectUnauthorized: false } : undefined,
-          requestTls: { rejectUnauthorized: false },
-        });
-
-        const res = await undiciFetch(url, {
-          dispatcher: proxyAgent,
-          headers: options.headers || {},
-          signal: AbortSignal.timeout(timeoutMs),
-          redirect: "follow",
-        });
-
-        console.log(`[proxyFetch] Attempt ${attempt}: status ${res.status}, url: ${res.url}`);
-
-        // Retry on 403/429 — IP rotation may get a better IP next time
-        if ((res.status === 403 || res.status === 429) && attempt < MAX_PROXY_RETRIES) {
-          console.warn(`[proxyFetch] Got ${res.status}, retrying with new IP...`);
-          await new Promise((r) => setTimeout(r, 500));
-          continue;
-        }
-
-        const body = await res.arrayBuffer();
-        const headers = new Headers();
-        res.headers.forEach((value, key) => {
-          headers.set(key, value);
-        });
-
-        const response = new Response(body, {
-          status: res.status,
-          statusText: res.statusText,
-          headers,
-        });
-        Object.defineProperty(response, "url", { value: res.url || url });
-
-        return response;
-      } catch (err) {
-        lastError = err;
-        const errMsg = err instanceof Error ? err.message : String(err);
-        console.warn(`[proxyFetch] Attempt ${attempt} failed: ${errMsg}`);
-        if (attempt < MAX_PROXY_RETRIES) {
-          await new Promise((r) => setTimeout(r, 500));
-        }
-      }
-    }
-
-    // All proxy retries failed — throw so caller can decide on fallback
-    throw lastError || new Error("Proxy fetch failed after retries");
+  let directResponse: Response | null = null;
+  let directError: unknown = null;
+  try {
+    directResponse = await fetch(url, {
+      headers: options.headers || {},
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!looksBlocked(directResponse.status)) return directResponse;
+    console.warn(`[proxyFetch] Direct fetch of ${url} returned ${directResponse.status}`);
+  } catch (err) {
+    directError = err;
+    console.warn(`[proxyFetch] Direct fetch of ${url} failed: ${describe(err)}`);
   }
 
-  // Fallback to direct fetch (for local development or if proxy not configured)
-  console.log(`[proxyFetch] NO PROXY CONFIGURED - using direct fetch for ${url}`);
-  return fetch(url, {
-    headers: options.headers || {},
-    signal: AbortSignal.timeout(options.timeoutMs || 15000),
-  });
+  if (!proxyUrl) {
+    if (directResponse) return directResponse;
+    throw directError;
+  }
+
+  console.log(`[proxyFetch] Retrying ${url} through proxy`);
+  const proxyResponse = await fetchThroughProxy(url, proxyUrl, options.headers || {}, timeoutMs);
+  if (proxyResponse) return proxyResponse;
+
+  if (directResponse) return directResponse;
+  throw directError;
+}
+
+/** Returns null when the proxy itself fails, so the caller can fall back to the direct result. */
+async function fetchThroughProxy(
+  url: string,
+  proxyUrl: string,
+  headers: Record<string, string>,
+  timeoutMs: number
+): Promise<Response | null> {
+  const isProxyHttps = proxyUrl.startsWith("https://");
+
+  for (let attempt = 1; attempt <= MAX_PROXY_RETRIES; attempt++) {
+    try {
+      // Create a fresh agent per attempt to trigger IP rotation
+      const proxyAgent = new UndiciProxyAgent({
+        uri: proxyUrl,
+        proxyTls: isProxyHttps ? { rejectUnauthorized: false } : undefined,
+        requestTls: { rejectUnauthorized: false },
+      });
+
+      const res = await undiciFetch(url, {
+        dispatcher: proxyAgent,
+        headers,
+        signal: AbortSignal.timeout(timeoutMs),
+        redirect: "follow",
+      });
+
+      console.log(`[proxyFetch] Proxy attempt ${attempt}: status ${res.status}, url: ${res.url}`);
+
+      if ((res.status === 403 || res.status === 429) && attempt < MAX_PROXY_RETRIES) {
+        console.warn(`[proxyFetch] Got ${res.status}, retrying with new IP...`);
+        await new Promise((r) => setTimeout(r, 500));
+        continue;
+      }
+
+      const body = await res.arrayBuffer();
+
+      // The IPRoyal unblocker answers 422 with an empty body when it rejects the request itself
+      // (e.g. exhausted plan), regardless of the target site
+      if (res.status === 422 && body.byteLength === 0) {
+        console.warn(`[proxyFetch] Proxy rejected ${url} with 422`);
+        return null;
+      }
+
+      const responseHeaders = new Headers();
+      res.headers.forEach((value, key) => {
+        responseHeaders.set(key, value);
+      });
+
+      const response = new Response(body, {
+        status: res.status,
+        statusText: res.statusText,
+        headers: responseHeaders,
+      });
+      Object.defineProperty(response, "url", { value: res.url || url });
+
+      return response;
+    } catch (err) {
+      console.warn(`[proxyFetch] Proxy attempt ${attempt} failed: ${describe(err)}`);
+      if (attempt < MAX_PROXY_RETRIES) {
+        await new Promise((r) => setTimeout(r, 500));
+      }
+    }
+  }
+
+  return null;
 }
 
 /**

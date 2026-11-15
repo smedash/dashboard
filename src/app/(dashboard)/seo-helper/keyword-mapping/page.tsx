@@ -10,6 +10,7 @@ import { useLocale, useMessages } from "@/i18n/I18nProvider";
 import { seoHelperKeywordMappingMessages } from "@/i18n/messages/seo-helper-keyword-mapping";
 import type { MapProjectDto } from "@/lib/keyword-map/shared";
 import { ImportDialog } from "@/components/keyword-mapping/ImportDialog";
+import { TopicGapBatchButton } from "@/components/keyword-mapping/TopicGapBatchButton";
 import {
   Modal,
   Notice,
@@ -54,12 +55,15 @@ export default function KeywordMappingProjectsPage() {
         backHref="/seo-helper"
         actions={
           editable && (
-            <button className={buttonPrimary} onClick={() => setShowCreate(true)}>
+            <>
+              <TopicGapBatchButton />
+              <button className={buttonPrimary} onClick={() => setShowCreate(true)}>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              {t.projects.create}
-            </button>
+                {t.projects.create}
+              </button>
+            </>
           )
         }
       />
