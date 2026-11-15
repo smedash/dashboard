@@ -1437,3 +1437,57 @@ export function findRankingPosition(
   // Wenn keine passende URL gefunden wurde, gib null zurück
   return { position: null, url: null };
 }
+
+export interface RawHtmlPage {
+  html: string;
+  status: number;
+}
+
+async function postOnPage<T>(path: string, body: unknown, timeoutMs: number): Promise<T> {
+  const response = await fetch(`${DATAFORSEO_API_URL}/on_page/${path}`, {
+    method: "POST",
+    headers: { Authorization: getAuthHeader(), "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+  if (!response.ok) {
+    throw new Error(`DataForSEO API error: ${response.status} - ${await response.text()}`);
+  }
+  const data = await response.json();
+  const task = data.tasks?.[0];
+  if (!task || task.status_code !== 20000) {
+    throw new Error(`DataForSEO ${path}: ${task?.status_message ?? data.status_message ?? "keine Antwort"}`);
+  }
+  return task as T;
+}
+
+const RAW_HTML_USER_AGENT =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+
+/**
+ * Lädt eine Seite über den DataForSEO-Crawler (Instant Pages + Raw HTML).
+ * Nützlich für Seiten, die Rechenzentrums-IPs und unseren Proxy blocken.
+ * Ohne JavaScript-Rendering liefert z.B. ubs.com 403, daher ist es immer aktiv (~0.0015 USD pro Seite).
+ */
+export async function fetchRawHtml(url: string, options: { timeoutMs?: number } = {}): Promise<RawHtmlPage> {
+  const timeoutMs = options.timeoutMs ?? 60_000;
+  const instant = await postOnPage<{
+    id: string;
+    result: Array<{ items?: Array<{ status_code?: number }> | null }> | null;
+  }>(
+    "instant_pages",
+    [{ url, store_raw_html: true, enable_javascript: true, custom_user_agent: RAW_HTML_USER_AGENT, accept_language: "de-CH" }],
+    timeoutMs
+  );
+
+  const status = instant.result?.[0]?.items?.[0]?.status_code ?? 0;
+  if (status < 200 || status >= 300) {
+    return { html: "", status };
+  }
+
+  const raw = await postOnPage<{
+    result: Array<{ items?: { html?: string } | null }> | null;
+  }>("raw_html", [{ id: instant.id }], timeoutMs);
+
+  return { html: raw.result?.[0]?.items?.html ?? "", status };
+}
