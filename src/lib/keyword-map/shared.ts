@@ -45,6 +45,8 @@ export interface TopicGapItem {
   status: TopicCoverageStatus;
   reason: string;
   evidence: string | null;
+  /** Für die Übergabe in den SEO KVP ausgewählt */
+  selected?: boolean;
 }
 
 export interface TopicGapSummaryDto {
@@ -53,6 +55,7 @@ export interface TopicGapSummaryDto {
   coverageScore: number | null;
   missingCount: number;
   partialCount: number;
+  selectedCount: number;
   focusKeyword: string;
   createdAt: string;
 }

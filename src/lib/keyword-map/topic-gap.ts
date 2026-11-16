@@ -222,6 +222,21 @@ Gib für jedes der ${topics.length} Topics genau einen Eintrag zurück.`,
 
 export const STALE_ANALYSIS_MS = 5 * 60 * 1000;
 
+function topicKey(item: Pick<TopicGapItem, "topic" | "path">): string {
+  return [...item.path, item.topic].join(" > ").trim().toLowerCase();
+}
+
+/** Zur KVP-Übernahme ausgewählte Topics der letzten erfolgreichen Analyse, damit eine Neuanalyse die Auswahl behält. */
+async function selectedTopicKeys(urlId: string, excludeGapId: string): Promise<Set<string>> {
+  const previous = await prisma.keywordMapTopicGap.findFirst({
+    where: { urlId, status: "succeeded", id: { not: excludeGapId } },
+    orderBy: { createdAt: "desc" },
+    select: { results: true },
+  });
+  const items = Array.isArray(previous?.results) ? (previous.results as unknown as TopicGapItem[]) : [];
+  return new Set(items.filter((i) => i.selected).map(topicKey));
+}
+
 /**
  * Bringt eine Gap-Analyse einen Schritt weiter: Topic-Graph abfragen und – sobald vorhanden –
  * Seite laden und mit Claude abgleichen. Mehrfache parallele Aufrufe starten die Analyse nur einmal.
@@ -264,6 +279,10 @@ export async function advanceTopicGap(gapId: string) {
     if (topics.length === 0) throw new Error("Topic-Graph enthält keine Topics");
     const page = await fetchPageContent(gap.url.url);
     const result = await analyzeCoverage({ keyword: gap.focusKeyword, url: gap.url.url, page, topics });
+    const previouslySelected = await selectedTopicKeys(gap.urlId, gapId);
+    for (const item of result.items) {
+      if (previouslySelected.has(topicKey(item))) item.selected = true;
+    }
     gap = await prisma.keywordMapTopicGap.update({
       where: { id: gapId },
       data: {

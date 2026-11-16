@@ -10,19 +10,25 @@ const MAX_BATCH = 100;
 
 type PushResult = { status: "created" | "updated" | "skipped"; kvpUrlId?: string; reason?: string };
 
+/** `items` enthält nur die im Drawer zur Übernahme ausgewählten Topics. */
 function gapComment(focusKeyword: string, coverage: number | null, summary: string | null, items: TopicGapItem[]): string {
   const missing = items.filter((i) => i.status === "missing").map((i) => i.topic);
   const partial = items.filter((i) => i.status === "partial").map((i) => i.topic);
+  const covered = items.filter((i) => i.status === "covered").map((i) => i.topic);
   const lines = [
     `Topic-Gap-Analyse (Keyword Mapping) für „${focusKeyword}“: Coverage ${coverage ?? "–"} %`,
   ];
   if (summary) lines.push("", summary);
   if (missing.length) lines.push("", `Fehlende Topics (${missing.length}):`, ...missing.map((t) => `- ${t}`));
   if (partial.length) lines.push("", `Nur teilweise abgedeckt (${partial.length}):`, ...partial.map((t) => `- ${t}`));
+  if (covered.length) lines.push("", `Abgedeckt, aber übernommen (${covered.length}):`, ...covered.map((t) => `- ${t}`));
   return lines.join("\n");
 }
 
-/** Body: `{ ids, includeGapComment? }` – legt KVP-Einträge an bzw. ergänzt bestehende (Abgleich über die URL). */
+/**
+ * Body: `{ ids, includeGapComment? }` – legt KVP-Einträge an bzw. ergänzt bestehende (Abgleich über die URL).
+ * Der Gap-Kommentar enthält nur die zur Übernahme ausgewählten Topics und entfällt, wenn keine ausgewählt sind.
+ */
 export async function POST(request: NextRequest) {
   const { user, error } = await requireUser({ write: true });
   if (error) return error;
@@ -85,10 +91,12 @@ export async function POST(request: NextRequest) {
 
       const gap = row.topicGaps[0];
       if (body.includeGapComment && gap?.status === "succeeded") {
-        const items = Array.isArray(gap.results) ? (gap.results as unknown as TopicGapItem[]) : [];
-        await prisma.kVPComment.create({
-          data: { urlId: kvpUrlId, text: gapComment(gap.focusKeyword, gap.coverageScore, gap.summary, items) },
-        });
+        const items = Array.isArray(gap.results) ? (gap.results as unknown as TopicGapItem[]).filter((i) => i.selected) : [];
+        if (items.length > 0) {
+          await prisma.kVPComment.create({
+            data: { urlId: kvpUrlId, text: gapComment(gap.focusKeyword, gap.coverageScore, gap.summary, items) },
+          });
+        }
       }
 
       await syncKvpRankTrackerKeywords({ userId: user.id, url: row.url, keywords: [focus, ...subs], category });

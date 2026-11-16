@@ -148,7 +148,7 @@ export const seoHelperKeywordMappingMessages = defineMessages({
         `${n} URLs werden im SEO KVP angelegt oder aktualisiert (Abgleich über die URL). Fokus- und Subkeywords werden übernommen und im Rank Tracker angelegt.${
           withoutFocus ? ` ${withoutFocus} URLs ohne Fokus-Keyword werden übersprungen.` : ""
         }`,
-      kvpIncludeGap: "Topic-Gap-Zusammenfassung als Kommentar hinzufügen (falls vorhanden)",
+      kvpIncludeGap: "Zur Übernahme ausgewählte Topic-Gaps als Kommentar hinzufügen (falls vorhanden)",
       kvpSubmit: "Jetzt übergeben",
       kvpDone: (created: number, updated: number, skipped: number) =>
         `KVP: ${created} angelegt, ${updated} aktualisiert, ${skipped} übersprungen.`,
@@ -285,6 +285,8 @@ export const seoHelperKeywordMappingMessages = defineMessages({
       gapMissingHeading: "Fehlende Topics",
       gapPartialHeading: "Teilweise abgedeckt",
       evidence: "Fundstelle",
+      gapTakeOver: "übernehmen",
+      gapSelectedCount: (n: number) => `${n} für den KVP ausgewählt`,
 
       detailsSaved: "Gespeichert",
       ctaAdd: "CTA hinzufügen",
@@ -296,6 +298,8 @@ export const seoHelperKeywordMappingMessages = defineMessages({
       kvpPush: "In SEO KVP schieben",
       kvpUpdate: "KVP aktualisieren",
       kvpNeedsFocus: "Für den KVP wird ein Fokus-Keyword benötigt.",
+      kvpSelectedTopics: (n: number) => `${n} Topic${n === 1 ? "" : "s"} aus der Topic-Gap-Analyse werden übernommen.`,
+      kvpNoSelectedTopics: "Keine Topics zur Übernahme ausgewählt – es wird kein Topic-Gap-Kommentar angelegt. Auswahl im Tab „Topic-Gap“.",
     },
   },
   en: {
@@ -443,7 +447,7 @@ export const seoHelperKeywordMappingMessages = defineMessages({
         `${n} URLs will be created or updated in the SEO KVP (matched by URL). Focus and sub keywords are transferred and added to the rank tracker.${
           withoutFocus ? ` ${withoutFocus} URLs without a focus keyword will be skipped.` : ""
         }`,
-      kvpIncludeGap: "Add topic gap summary as a comment (if available)",
+      kvpIncludeGap: "Add topic gaps selected for handover as a comment (if available)",
       kvpSubmit: "Push now",
       kvpDone: (created: number, updated: number, skipped: number) =>
         `KVP: ${created} created, ${updated} updated, ${skipped} skipped.`,
@@ -580,6 +584,8 @@ export const seoHelperKeywordMappingMessages = defineMessages({
       gapMissingHeading: "Missing topics",
       gapPartialHeading: "Partially covered",
       evidence: "Evidence",
+      gapTakeOver: "include",
+      gapSelectedCount: (n: number) => `${n} selected for the KVP`,
 
       detailsSaved: "Saved",
       ctaAdd: "Add CTA",
@@ -591,6 +597,8 @@ export const seoHelperKeywordMappingMessages = defineMessages({
       kvpPush: "Push to SEO KVP",
       kvpUpdate: "Update KVP",
       kvpNeedsFocus: "A focus keyword is required for the KVP.",
+      kvpSelectedTopics: (n: number) => `${n} topic${n === 1 ? "" : "s"} from the topic gap analysis will be included.`,
+      kvpNoSelectedTopics: "No topics selected for handover – no topic gap comment will be added. Select them in the “Topic gap” tab.",
     },
   },
 });

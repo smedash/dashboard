@@ -667,14 +667,38 @@ function TopicGapTab({
   };
 
   const gap = data?.gap;
-  const items = useMemo(() => (gap?.status === "succeeded" ? gap.results : []), [gap]);
+  const items = useMemo(() => (gap?.status === "succeeded" ? gap.results.map((i, index) => ({ ...i, index })) : []), [gap]);
   const counts = {
     covered: items.filter((i) => i.status === "covered").length,
     partial: items.filter((i) => i.status === "partial").length,
     missing: items.filter((i) => i.status === "missing").length,
   };
+  const selectedCount = items.filter((i) => i.selected).length;
   const visible = items.filter((i) => filter === "all" || i.status === filter);
   const statusByTopic = useMemo(() => new Map(items.map((i) => [i.topic.toLowerCase(), i])), [items]);
+
+  const toggleSelected = async (index: number, selected: boolean) => {
+    if (!gap) return;
+    const gapId = gap.id;
+    const setLocal = (value: boolean) =>
+      setData((prev) =>
+        prev?.gap?.id === gapId
+          ? { ...prev, gap: { ...prev.gap, results: prev.gap.results.map((r, i) => (i === index ? { ...r, selected: value } : r)) } }
+          : prev
+      );
+    setLocal(selected);
+    setError(null);
+    try {
+      const res = await apiFetch<{ selectedCount: number }>(`/api/seo-helper/keyword-mapping/urls/${url.id}/topic-gap`, {
+        method: "PATCH",
+        body: JSON.stringify({ gapId, index, selected }),
+      });
+      if (url.latestTopicGap?.id === gapId) onUpdated({ ...url, latestTopicGap: { ...url.latestTopicGap, selectedCount: res.selectedCount } });
+    } catch (e) {
+      setLocal(!selected);
+      setError(e instanceof Error ? e.message : t.errorGeneric);
+    }
+  };
 
   const copyTask = async () => {
     if (!gap) return;
@@ -793,6 +817,7 @@ function TopicGapTab({
                   </button>
                 ))}
                 <div className="flex-1" />
+                <span className="text-xs text-slate-500">{t.drawer.gapSelectedCount(selectedCount)}</span>
                 {data.topicGraph?.tree && (
                   <div className="flex rounded-lg border border-slate-200 dark:border-slate-600 overflow-hidden text-xs">
                     {(["list", "tree"] as const).map((v) => (
@@ -809,11 +834,11 @@ function TopicGapTab({
 
               {view === "list" || !data.topicGraph?.tree ? (
                 <ul className="divide-y divide-slate-100 dark:divide-slate-700/60 rounded-lg border border-slate-200 dark:border-slate-700">
-                  {visible.map((i, idx) => (
-                    <li key={`${idx}-${i.topic}`} className="px-3 py-2">
+                  {visible.map((i) => (
+                    <li key={`${i.index}-${i.topic}`} className={`px-3 py-2 ${i.selected ? "bg-teal-50/60 dark:bg-teal-900/10" : ""}`}>
                       <div className="flex items-start gap-2">
                         <span className={`shrink-0 px-1.5 py-0.5 rounded text-[11px] font-medium ${statusStyles[i.status]}`}>{t.drawer[i.status]}</span>
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <div className="text-sm text-slate-900 dark:text-white">
                             {i.path.length > 0 && <span className="text-slate-400">{i.path.join(" › ")} › </span>}
                             {i.topic}
@@ -825,13 +850,29 @@ function TopicGapTab({
                             </div>
                           )}
                         </div>
+                        <label className="shrink-0 flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            disabled={!editable}
+                            checked={!!i.selected}
+                            onChange={(e) => void toggleSelected(i.index, e.target.checked)}
+                          />
+                          {t.drawer.gapTakeOver}
+                        </label>
                       </div>
                     </li>
                   ))}
                 </ul>
               ) : (
                 <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3">
-                  <TopicTree node={data.topicGraph.tree} statusByTopic={statusByTopic} filter={filter} root />
+                  <TopicTree
+                    node={data.topicGraph.tree}
+                    statusByTopic={statusByTopic}
+                    filter={filter}
+                    editable={editable}
+                    onToggle={(index, selected) => void toggleSelected(index, selected)}
+                    root
+                  />
                 </div>
               )}
             </>
@@ -846,13 +887,18 @@ function TopicTree({
   node,
   statusByTopic,
   filter,
+  editable,
+  onToggle,
   root,
 }: {
   node: TreeNode;
-  statusByTopic: Map<string, TopicGapItem>;
+  statusByTopic: Map<string, TopicGapItem & { index: number }>;
   filter: "all" | TopicCoverageStatus;
+  editable: boolean;
+  onToggle: (index: number, selected: boolean) => void;
   root?: boolean;
 }) {
+  const t = useMessages(seoHelperKeywordMappingMessages);
   const item = statusByTopic.get(node.label.toLowerCase());
   const matches = (n: TreeNode): boolean => {
     const s = statusByTopic.get(n.label.toLowerCase());
@@ -864,9 +910,15 @@ function TopicTree({
       <div className="flex items-center gap-2 py-0.5 text-sm" title={item?.reason}>
         {item ? <span className={`w-2 h-2 rounded-full ${statusDot[item.status]}`} /> : <span className="w-2 h-2 rounded-full bg-slate-300" />}
         <span className={root ? "font-semibold text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-300"}>{node.label}</span>
+        {item && (
+          <label className="ml-auto flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer">
+            <input type="checkbox" disabled={!editable} checked={!!item.selected} onChange={(e) => onToggle(item.index, e.target.checked)} />
+            {t.drawer.gapTakeOver}
+          </label>
+        )}
       </div>
       {node.children.map((c, idx) => (
-        <TopicTree key={`${c.label}-${idx}`} node={c} statusByTopic={statusByTopic} filter={filter} />
+        <TopicTree key={`${c.label}-${idx}`} node={c} statusByTopic={statusByTopic} filter={filter} editable={editable} onToggle={onToggle} />
       ))}
     </div>
   );
@@ -1062,6 +1114,11 @@ function KvpTab({ url, editable, onUpdated }: { url: MapUrlDto; editable: boolea
           <input type="checkbox" checked={includeGap} onChange={(e) => setIncludeGap(e.target.checked)} />
           {t.bulk.kvpIncludeGap}
         </label>
+      )}
+      {editable && includeGap && url.latestTopicGap?.status === "succeeded" && (
+        <p className="text-xs text-slate-500">
+          {url.latestTopicGap.selectedCount > 0 ? t.drawer.kvpSelectedTopics(url.latestTopicGap.selectedCount) : t.drawer.kvpNoSelectedTopics}
+        </p>
       )}
       {status && <Notice kind={status.kind}>{status.text}</Notice>}
       <div className="flex gap-2">

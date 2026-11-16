@@ -85,6 +85,7 @@ function toUrlDtoWithoutScore(row: MapUrlWithRelations): MapUrlDto {
           coverageScore: gap.coverageScore,
           missingCount: gapResults.filter((r) => r.status === "missing").length,
           partialCount: gapResults.filter((r) => r.status === "partial").length,
+          selectedCount: gapResults.filter((r) => r.selected).length,
           focusKeyword: gap.focusKeyword,
           createdAt: gap.createdAt.toISOString(),
         }

@@ -64,6 +64,40 @@ export async function POST(request: NextRequest, ctx: { params: Promise<{ id: st
   }
 }
 
+/** Topic für die KVP-Übergabe aus-/abwählen (Body: `{ gapId, index, selected }`, `index` = Position in `results`). */
+export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  const { error } = await requireUser({ write: true });
+  if (error) return error;
+
+  try {
+    const { id } = await ctx.params;
+    const body = (await request.json().catch(() => ({}))) as { gapId?: unknown; index?: unknown; selected?: unknown };
+    if (typeof body.gapId !== "string" || !Number.isInteger(body.index) || (body.index as number) < 0 || typeof body.selected !== "boolean") {
+      return NextResponse.json({ error: "Ungültige Anfrage" }, { status: 400 });
+    }
+    const index = body.index as number;
+
+    // Atomar in der DB, damit sich schnell aufeinanderfolgende Klicks nicht gegenseitig überschreiben
+    const rows = await prisma.$queryRaw<Array<{ selectedCount: number }>>`
+      UPDATE "KeywordMapTopicGap"
+      SET "results" = jsonb_set("results", ARRAY[${String(index)}, 'selected']::text[], to_jsonb(${body.selected}::boolean))
+      WHERE "id" = ${body.gapId}
+        AND "urlId" = ${id}
+        AND "status" = 'succeeded'
+        AND jsonb_typeof("results") = 'array'
+        AND jsonb_array_length("results") > ${index}::int
+      RETURNING (
+        SELECT count(*)::int FROM jsonb_array_elements("results") AS e WHERE e->>'selected' = 'true'
+      ) AS "selectedCount"
+    `;
+    if (rows.length === 0) return NextResponse.json({ error: "Topic nicht gefunden" }, { status: 404 });
+    return NextResponse.json({ selectedCount: rows[0].selectedCount });
+  } catch (e) {
+    console.error("[keyword-mapping/topic-gap] PATCH", e);
+    return NextResponse.json({ error: e instanceof Error ? e.message : "Auswahl konnte nicht gespeichert werden" }, { status: 500 });
+  }
+}
+
 /** Neueste (oder per `?gapId=` gewählte) Analyse abrufen und dabei weiterführen, solange sie läuft. */
 export async function GET(request: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { error } = await requireUser();
