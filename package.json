@@ -14,6 +14,7 @@
     "seed-url-cleanup": "tsx scripts/seed-url-cleanup.ts",
     "batch-research": "tsx scripts/batch-research.ts",
     "batch-topic-gap": "tsx scripts/batch-topic-gap.ts",
+    "crawl-content": "tsx scripts/crawl-content.ts",
     "leak-catalog:scrape": "tsx scripts/leak-catalog/01-scrape.ts",
     "leak-catalog:parse": "tsx scripts/leak-catalog/02-parse.ts",
     "leak-catalog:filter": "tsx scripts/leak-catalog/03-prefilter.ts",

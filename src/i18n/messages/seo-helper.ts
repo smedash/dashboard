@@ -26,6 +26,11 @@ export const seoHelperMessages = defineMessages({
         description:
           "Fokus- und Subkeywords pro URL über DataForSEO und SEOSpark finden, Topic-Gaps mit TopicLoops aufdecken und URLs in den SEO KVP übergeben.",
       },
+      "content-mapping": {
+        title: "Content Mapping",
+        description:
+          "Crawlt alle URLs aus dem Cleanup-Inventar, extrahiert den Inhalt nach Abschnitten und macht ihn für Topic- und Keyword-Mappings durchsuchbar.",
+      },
       "title-generator": {
         title: "Title Generator",
         description:
@@ -86,6 +91,11 @@ export const seoHelperMessages = defineMessages({
         title: "Keyword Mapping",
         description:
           "Find focus and sub keywords per URL via DataForSEO and SEOSpark, uncover topic gaps with TopicLoops and hand URLs over to the SEO KVP.",
+      },
+      "content-mapping": {
+        title: "Content Mapping",
+        description:
+          "Crawls all URLs from the cleanup inventory, extracts their content by section and makes it searchable for topic and keyword mappings.",
       },
       "title-generator": {
         title: "Title Generator",

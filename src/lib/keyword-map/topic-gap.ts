@@ -2,8 +2,7 @@ import { createHash } from "crypto";
 import Anthropic from "@anthropic-ai/sdk";
 import type { Prisma, TopicGraph } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { proxyFetch, DEFAULT_SCRAPE_HEADERS } from "@/lib/proxy-fetch";
-import { fetchRawHtml } from "@/lib/dataforseo";
+import { loadHtml } from "@/lib/content-mapping/fetch";
 import { parseHtml } from "@/lib/url-checker/parser";
 import { createTopicGraph, getTopicGraph, type TopicGraphNode } from "@/lib/topicloops";
 import type { TopicCoverageStatus, TopicGapItem } from "./shared";
@@ -95,34 +94,8 @@ export interface PageContent {
   hash: string;
 }
 
-/** Holt das HTML direkt bzw. über den Proxy und weicht bei Bot-Schutz auf den DataForSEO-Crawler aus. */
-async function loadHtml(url: string): Promise<{ html: string; status: number; lastModified: string | null }> {
-  let directError: string;
-  let res: Response | null = null;
-  try {
-    res = await proxyFetch(url, { headers: DEFAULT_SCRAPE_HEADERS, timeoutMs: 20_000 });
-    directError = `HTTP ${res.status}`;
-  } catch (err) {
-    directError = err instanceof Error ? err.message : String(err);
-  }
-  if (res?.ok) return { html: await res.text(), status: res.status, lastModified: res.headers.get("last-modified") };
-  if (res && (res.status === 404 || res.status === 410)) {
-    throw new Error(`Seite konnte nicht geladen werden: HTTP ${res.status}`);
-  }
-
-  if (!process.env.DATAFORSEO_USERNAME?.trim() || !process.env.DATAFORSEO_PASSWORD?.trim()) {
-    throw new Error(`Seite konnte nicht geladen werden: ${directError}`);
-  }
-  console.warn(`[topic-gap] ${url}: ${directError}, lade über DataForSEO`);
-  const page = await fetchRawHtml(url);
-  if (page.status < 200 || page.status >= 300 || !page.html) {
-    throw new Error(`Seite konnte nicht geladen werden: ${directError} (DataForSEO: HTTP ${page.status})`);
-  }
-  return { html: page.html, status: page.status, lastModified: null };
-}
-
 export async function fetchPageContent(url: string): Promise<PageContent> {
-  const { html, status, lastModified } = await loadHtml(url);
+  const { html, status, lastModified } = await loadHtml(url, { logPrefix: "topic-gap" });
   const page = parseHtml(html, url, status, [], lastModified);
   const text = page.textContent.slice(0, MAX_CONTENT_CHARS);
   return {

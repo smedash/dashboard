@@ -318,7 +318,7 @@ function calculateHiddenTextRatio(html: string): number {
   return Math.min(hiddenCount / totalElements, 1);
 }
 
-function decodeEntities(text: string): string {
+export function decodeEntities(text: string): string {
   const entities: Record<string, string> = {
     '&nbsp;': ' ', '&amp;': '&', '&lt;': '<', '&gt;': '>',
     '&quot;': '"', '&apos;': "'", '&#39;': "'",

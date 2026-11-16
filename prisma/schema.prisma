@@ -1333,6 +1333,7 @@ model UrlInventory {
 
   sitemaps        UrlInventorySitemap[]
   dimensionValues UrlDimensionValue[]
+  content         UrlContent?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1353,6 +1354,50 @@ model UrlInventory {
   @@index([killBand])
   @@index([inEditorialPlan])
   @@index([section])
+}
+
+// SEO-Helper Content-Mapping — extrahierter Seiteninhalt je Inventar-URL
+model UrlContent {
+  id              String              @id @default(cuid())
+  inventoryId     String              @unique
+  inventory       UrlInventory        @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+  status          String              @default("pending") // pending, succeeded, failed, skipped
+  httpStatus      Int?
+  finalUrl        String?             @db.Text
+  fetchedVia      String? // direct, dataforseo
+  error           String?             @db.Text
+  title           String?             @db.Text
+  metaDescription String?             @db.Text
+  h1              String?             @db.Text
+  canonical       String?             @db.Text
+  robots          String?
+  lang            String?
+  headings        Json? // [{ level, text }]
+  text            String?             @db.Text
+  wordCount       Int                 @default(0)
+  sectionCount    Int                 @default(0)
+  contentHash     String?
+  crawledAt       DateTime?
+  sections        UrlContentSection[]
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@index([status])
+  @@index([crawledAt])
+}
+
+model UrlContentSection {
+  id          String     @id @default(cuid())
+  contentId   String
+  content     UrlContent @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  position    Int
+  level       Int // 0 = Intro vor der ersten Überschrift, sonst 2–4
+  heading     String?    @db.Text
+  headingPath String[]   @default([])
+  text        String     @db.Text
+  wordCount   Int        @default(0)
+
+  @@index([contentId, position])
 }
 
 model UrlInventorySitemap {

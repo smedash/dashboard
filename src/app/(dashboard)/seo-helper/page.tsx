@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMessages } from "@/i18n/I18nProvider";
 import { seoHelperMessages } from "@/i18n/messages/seo-helper";
+import { ContentMappingIcon } from "@/components/content-mapping/ContentMappingIcon";
 
 // Definiere die Helper mit ihren Eigenschaften
 interface HelperCard {
@@ -43,6 +44,12 @@ const helpers: HelperCard[] = [
     ),
     href: "/seo-helper/keyword-mapping",
     color: "from-sky-500 to-indigo-600",
+  },
+  {
+    id: "content-mapping",
+    icon: <ContentMappingIcon />,
+    href: "/seo-helper/content-mapping",
+    color: "from-lime-500 to-emerald-600",
   },
   {
     id: "title-generator",
