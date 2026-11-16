@@ -114,6 +114,13 @@ export async function seedSitemaps(): Promise<{ count: number }> {
   return { count: records.length };
 }
 
+/** Die Produktseiten unter /pp/ hat UBS abgeschaltet; sie stehen aber noch in den Fonds-/ETF-Sitemaps. */
+const EXCLUDED_PATH_PREFIXES = ["/pp/"];
+
+function isExcludedUrlKey(urlKey: string): boolean {
+  return EXCLUDED_PATH_PREFIXES.some((prefix) => urlKey.startsWith(prefix));
+}
+
 type InvAgg = {
   url: string;
   urlKey: string;
@@ -141,7 +148,7 @@ export async function seedUrls(): Promise<{ unique: number; rows: number; sitema
   for (const r of rows) {
     const raw = cellStr(r[iUrl]);
     const keys = toUrlKey(raw);
-    if (!keys) continue;
+    if (!keys || isExcludedUrlKey(keys.urlKey)) continue;
     const sitemapUrl = iSitemap >= 0 ? cellStr(r[iSitemap]) : "";
     const lastmod = iLastmod >= 0 ? parseDate(r[iLastmod]) : null;
     const existing = byKey.get(keys.urlKey);
