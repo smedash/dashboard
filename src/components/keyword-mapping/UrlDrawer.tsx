@@ -700,6 +700,62 @@ function TopicGapTab({
     }
   };
 
+  const [creating, setCreating] = useState<Set<number>>(new Set());
+  const createArticle = async (index: number) => {
+    if (!gap) return;
+    const gapId = gap.id;
+    const now = new Date();
+    const plannedDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    setCreating((prev) => new Set(prev).add(index));
+    setError(null);
+    try {
+      const res = await apiFetch<{ article: { id: string } }>(`/api/seo-helper/keyword-mapping/urls/${url.id}/topic-gap/editorial`, {
+        method: "POST",
+        body: JSON.stringify({ gapId, index, plannedDate }),
+      });
+      setData((prev) =>
+        prev?.gap?.id === gapId
+          ? { ...prev, gap: { ...prev.gap, results: prev.gap.results.map((r, i) => (i === index ? { ...r, editorialArticleId: res.article.id } : r)) } }
+          : prev
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t.errorGeneric);
+    } finally {
+      setCreating((prev) => {
+        const next = new Set(prev);
+        next.delete(index);
+        return next;
+      });
+    }
+  };
+
+  const topicActions = (i: TopicGapItem & { index: number }) => (
+    <span className="shrink-0 flex items-center gap-3">
+      {i.status !== "covered" &&
+        (i.editorialArticleId ? (
+          <a href="/redaktionsplan" target="_blank" rel="noreferrer" className="text-xs text-teal-600 hover:underline whitespace-nowrap">
+            ✓ {t.drawer.gapInEditorialPlan} ↗
+          </a>
+        ) : (
+          editable && (
+            <button
+              className="px-2 py-0.5 rounded text-xs border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 whitespace-nowrap inline-flex items-center gap-1"
+              disabled={creating.has(i.index)}
+              title={t.drawer.gapNewArticleHint}
+              onClick={() => void createArticle(i.index)}
+            >
+              {creating.has(i.index) && <Spinner />}
+              {t.drawer.gapNewArticle}
+            </button>
+          )
+        ))}
+      <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300 cursor-pointer whitespace-nowrap">
+        <input type="checkbox" disabled={!editable} checked={!!i.selected} onChange={(e) => void toggleSelected(i.index, e.target.checked)} />
+        {t.drawer.gapTakeOver}
+      </label>
+    </span>
+  );
+
   const copyTask = async () => {
     if (!gap) return;
     const missing = items.filter((i) => i.status === "missing");
@@ -850,15 +906,7 @@ function TopicGapTab({
                             </div>
                           )}
                         </div>
-                        <label className="shrink-0 flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            disabled={!editable}
-                            checked={!!i.selected}
-                            onChange={(e) => void toggleSelected(i.index, e.target.checked)}
-                          />
-                          {t.drawer.gapTakeOver}
-                        </label>
+                        {topicActions(i)}
                       </div>
                     </li>
                   ))}
@@ -869,8 +917,7 @@ function TopicGapTab({
                     node={data.topicGraph.tree}
                     statusByTopic={statusByTopic}
                     filter={filter}
-                    editable={editable}
-                    onToggle={(index, selected) => void toggleSelected(index, selected)}
+                    renderActions={topicActions}
                     root
                   />
                 </div>
@@ -887,18 +934,15 @@ function TopicTree({
   node,
   statusByTopic,
   filter,
-  editable,
-  onToggle,
+  renderActions,
   root,
 }: {
   node: TreeNode;
   statusByTopic: Map<string, TopicGapItem & { index: number }>;
   filter: "all" | TopicCoverageStatus;
-  editable: boolean;
-  onToggle: (index: number, selected: boolean) => void;
+  renderActions: (item: TopicGapItem & { index: number }) => React.ReactNode;
   root?: boolean;
 }) {
-  const t = useMessages(seoHelperKeywordMappingMessages);
   const item = statusByTopic.get(node.label.toLowerCase());
   const matches = (n: TreeNode): boolean => {
     const s = statusByTopic.get(n.label.toLowerCase());
@@ -910,15 +954,10 @@ function TopicTree({
       <div className="flex items-center gap-2 py-0.5 text-sm" title={item?.reason}>
         {item ? <span className={`w-2 h-2 rounded-full ${statusDot[item.status]}`} /> : <span className="w-2 h-2 rounded-full bg-slate-300" />}
         <span className={root ? "font-semibold text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-300"}>{node.label}</span>
-        {item && (
-          <label className="ml-auto flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer">
-            <input type="checkbox" disabled={!editable} checked={!!item.selected} onChange={(e) => onToggle(item.index, e.target.checked)} />
-            {t.drawer.gapTakeOver}
-          </label>
-        )}
+        {item && <span className="ml-auto">{renderActions(item)}</span>}
       </div>
       {node.children.map((c, idx) => (
-        <TopicTree key={`${c.label}-${idx}`} node={c} statusByTopic={statusByTopic} filter={filter} editable={editable} onToggle={onToggle} />
+        <TopicTree key={`${c.label}-${idx}`} node={c} statusByTopic={statusByTopic} filter={filter} renderActions={renderActions} />
       ))}
     </div>
   );

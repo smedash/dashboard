@@ -47,6 +47,8 @@ export interface TopicGapItem {
   evidence: string | null;
   /** Für die Übergabe in den SEO KVP ausgewählt */
   selected?: boolean;
+  /** Im Redaktionsplan angelegter Artikel zu diesem Topic */
+  editorialArticleId?: string;
 }
 
 export interface TopicGapSummaryDto {

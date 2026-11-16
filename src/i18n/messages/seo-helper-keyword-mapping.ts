@@ -287,6 +287,9 @@ export const seoHelperKeywordMappingMessages = defineMessages({
       evidence: "Fundstelle",
       gapTakeOver: "übernehmen",
       gapSelectedCount: (n: number) => `${n} für den KVP ausgewählt`,
+      gapNewArticle: "neuer Artikel",
+      gapNewArticleHint: "Legt das Topic mit heutigem Datum als neuen Artikel im Redaktionsplan an",
+      gapInEditorialPlan: "im Redaktionsplan",
 
       detailsSaved: "Gespeichert",
       ctaAdd: "CTA hinzufügen",
@@ -586,6 +589,9 @@ export const seoHelperKeywordMappingMessages = defineMessages({
       evidence: "Evidence",
       gapTakeOver: "include",
       gapSelectedCount: (n: number) => `${n} selected for the KVP`,
+      gapNewArticle: "new article",
+      gapNewArticleHint: "Adds this topic as a new article to the editorial plan, dated today",
+      gapInEditorialPlan: "in editorial plan",
 
       detailsSaved: "Saved",
       ctaAdd: "Add CTA",
