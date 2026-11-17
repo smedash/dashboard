@@ -10,6 +10,7 @@ const LINKS = [
   { href: "/url-cleanup/inventar", labelKey: "inventory" },
   { href: "/url-cleanup/wolke", labelKey: "cloud3d" },
   { href: "/url-cleanup/dimensionen", labelKey: "dimensions" },
+  { href: "/url-cleanup/zustaendigkeit", labelKey: "ownership" },
 ] as const;
 
 export function UrlCleanupNav() {

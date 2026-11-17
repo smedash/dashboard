@@ -68,6 +68,8 @@ export async function GET(request: NextRequest) {
     "Begründung",
     "Status",
     "Notiz",
+    "Zuständig",
+    "Zuständig Mail",
   ]);
   ws.getRow(1).font = { bold: true };
 
@@ -105,6 +107,8 @@ export async function GET(request: NextRequest) {
       r.killReason,
       displayCleanupStatus(r.killBand).label,
       r.cleanupNote,
+      r.ownerName,
+      r.ownerEmail,
     ]);
   }
 
