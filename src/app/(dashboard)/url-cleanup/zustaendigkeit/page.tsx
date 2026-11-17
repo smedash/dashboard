@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSession } from "next-auth/react";
+import { hasFullAdminRights } from "@/lib/rbac";
 import { useMessages } from "@/i18n/I18nProvider";
 import { urlCleanupMessages } from "@/i18n/messages/url-cleanup";
 
@@ -31,6 +33,8 @@ function pathLevels(path: string): string[] {
 export default function ZustaendigkeitPage() {
   const t = useMessages(urlCleanupMessages);
   const o = t.ownership;
+  const { data: session } = useSession();
+  const isAdmin = hasFullAdminRights(session?.user?.role);
   const fmt = (n: number) => n.toLocaleString(t.displayLocale);
 
   const [q, setQ] = useState("");
@@ -51,6 +55,7 @@ export default function ZustaendigkeitPage() {
   const [email, setEmail] = useState("");
   const [applyToPrefix, setApplyToPrefix] = useState(false);
   const [onlyWithout, setOnlyWithout] = useState(false);
+  const [createUser, setCreateUser] = useState(false);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ text: string; error?: boolean } | null>(null);
 
@@ -121,6 +126,11 @@ export default function ZustaendigkeitPage() {
       setMsg({ text: o.invalidEmail, error: true });
       return;
     }
+    const inviteUser = !clear && isAdmin && createUser;
+    if (inviteUser && !ownerEmail) {
+      setMsg({ text: o.emailRequiredForUser, error: true });
+      return;
+    }
     if (targetCount === 0) return;
     const count = clear && usePrefix ? scope.total : targetCount;
     if (clear && !window.confirm(o.confirmClear(fmt(count)))) return;
@@ -129,8 +139,8 @@ export default function ZustaendigkeitPage() {
     setSaving(true);
     try {
       const body = usePrefix
-        ? { prefix, onlyWithoutOwner: clear ? false : onlyWithout, ownerName, ownerEmail }
-        : { ids: [...selected], ownerName, ownerEmail };
+        ? { prefix, onlyWithoutOwner: clear ? false : onlyWithout, ownerName, ownerEmail, createUser: inviteUser }
+        : { ids: [...selected], ownerName, ownerEmail, createUser: inviteUser };
       const res = await fetch("/api/url-cleanup/owner", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -142,7 +152,14 @@ export default function ZustaendigkeitPage() {
         return;
       }
       const updated = fmt(data.updated ?? 0);
-      setMsg({ text: clear ? o.cleared(updated) : o.saved(updated) });
+      const userNote =
+        data.userStatus === "created"
+          ? ` · ${o.userCreated(ownerEmail)}`
+          : data.userStatus === "exists"
+            ? ` · ${o.userExists(ownerEmail)}`
+            : "";
+      setMsg({ text: (clear ? o.cleared(updated) : o.saved(updated)) + userNote });
+      setCreateUser(false);
       setSelected(new Set());
       setEditSource(null);
       await load();
@@ -211,14 +228,22 @@ export default function ZustaendigkeitPage() {
             list="url-cleanup-owner-names"
             className={inputClass}
           />
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder={o.email}
-            list="url-cleanup-owner-emails"
-            className={inputClass}
-          />
+          <div className="flex flex-col gap-1">
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder={o.email}
+              list="url-cleanup-owner-emails"
+              className={inputClass}
+            />
+            {isAdmin && (
+              <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                <input type="checkbox" checked={createUser} onChange={(e) => setCreateUser(e.target.checked)} />
+                <span>{o.createUser}</span>
+              </label>
+            )}
+          </div>
           <datalist id="url-cleanup-owner-names">
             {[...new Set(owners.map((k) => k.name).filter(Boolean))].map((n) => (
               <option key={n} value={n!} />

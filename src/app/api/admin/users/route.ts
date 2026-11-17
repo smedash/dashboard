@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { hasFullAdminRights, ALL_ROLES, type Role } from "@/lib/rbac";
-import { sendWelcomeEmail } from "@/lib/resend";
-import { getLocale } from "@/i18n/server";
+import { inviteUser } from "@/lib/invite-user";
 
 // GET /api/admin/users - Alle User abrufen (nur Superadmin)
 export async function GET() {
@@ -64,65 +63,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Prüfen ob User bereits existiert
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
+    const userRole = ALL_ROLES.includes(role as Role) ? role : "member";
+
+    const result = await inviteUser({
+      email,
+      name,
+      role: userRole,
+      invitedById: session.user.id,
     });
 
-    if (existingUser) {
+    if (result.status === "exists") {
       return NextResponse.json(
         { error: "Ein Nutzer mit dieser E-Mail existiert bereits" },
         { status: 400 }
       );
     }
 
-    const userRole = ALL_ROLES.includes(role as Role) ? role : "member";
-
-    const user = await prisma.user.create({
-      data: {
-        email,
-        name: name || null,
-        role: userRole,
-        locale: await getLocale(),
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        createdAt: true,
-      },
-    });
-
-    // Hole Informationen über den einladenden Superadmin
-    const invitingUser = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: {
-        name: true,
-        email: true,
-      },
-    });
-
-    // Versende Willkommens-E-Mail
-    try {
-      const loginUrl = process.env.NEXTAUTH_URL 
-        ? `${process.env.NEXTAUTH_URL}/login`
-        : "https://dashboard.tasketeer.com/login";
-      
-      await sendWelcomeEmail({
-        to: email,
-        invitedBy: {
-          name: invitingUser?.name || null,
-          email: invitingUser?.email || "ein Administrator",
-        },
-        loginUrl,
-      });
-    } catch (emailError) {
-      // Logge Fehler, aber verhindere nicht die User-Erstellung
-      console.error("Error sending welcome email:", emailError);
-    }
-
-    return NextResponse.json({ user }, { status: 201 });
+    return NextResponse.json({ user: result.user }, { status: 201 });
   } catch (error) {
     console.error("Error creating user:", error);
     return NextResponse.json(

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 import { auth } from "@/lib/auth";
-import { canEdit } from "@/lib/rbac";
+import { canEdit, hasFullAdminRights } from "@/lib/rbac";
 import { prisma } from "@/lib/prisma";
+import { inviteUser } from "@/lib/invite-user";
 import {
   isValidOwnerEmail,
   looksLikePath,
@@ -112,12 +113,22 @@ export async function PATCH(request: NextRequest) {
       onlyWithoutOwner?: boolean;
       ownerName?: string;
       ownerEmail?: string;
+      createUser?: boolean;
     };
 
     const ownerName = (body.ownerName ?? "").trim().slice(0, MAX_TEXT) || null;
     const ownerEmail = (body.ownerEmail ?? "").trim().toLowerCase().slice(0, MAX_TEXT) || null;
     if (ownerEmail && !isValidOwnerEmail(ownerEmail)) {
       return NextResponse.json({ error: "Ungültige Mailadresse" }, { status: 400 });
+    }
+    const createUser = body.createUser === true;
+    if (createUser) {
+      if (!hasFullAdminRights(session.user.role)) {
+        return NextResponse.json({ error: "Keine Berechtigung, Nutzer anzulegen" }, { status: 403 });
+      }
+      if (!ownerEmail) {
+        return NextResponse.json({ error: "Mailadresse erforderlich, um einen Nutzer anzulegen" }, { status: 400 });
+      }
     }
 
     let where: Prisma.UrlInventoryWhereInput;
@@ -142,7 +153,18 @@ export async function PATCH(request: NextRequest) {
       data: { ownerName, ownerEmail, ownerUpdatedAt: cleared ? null : new Date() },
     });
 
-    return NextResponse.json({ updated: result.count });
+    let userStatus: "created" | "exists" | undefined;
+    if (createUser && ownerEmail) {
+      const invite = await inviteUser({
+        email: ownerEmail,
+        name: ownerName,
+        role: "member",
+        invitedById: session.user.id,
+      });
+      userStatus = invite.status;
+    }
+
+    return NextResponse.json({ updated: result.count, userStatus });
   } catch (e) {
     console.error("[url-cleanup/owner]", e);
     return NextResponse.json({ error: "Update fehlgeschlagen" }, { status: 500 });
