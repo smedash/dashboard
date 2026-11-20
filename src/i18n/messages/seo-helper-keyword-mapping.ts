@@ -136,6 +136,11 @@ export const seoHelperKeywordMappingMessages = defineMessages({
       fetchDfsForce: "DataForSEO neu abrufen (Cache ignorieren)",
       applyTop: "Top-Keyword als Fokus übernehmen (nur leere)",
       applyTopAll: "Top-Keyword als Fokus übernehmen (überschreiben)",
+      fetchSv: "Suchvolumen holen",
+      fetchSvHint: "Holt das Suchvolumen (DataForSEO, Google Ads) für Fokus- und Nebenkeywords ohne Wert",
+      fetchSvForce: "Suchvolumen aller Fokus- und Nebenkeywords neu holen",
+      svDone: (requested: number, found: number) =>
+        requested === 0 ? "Alle Keywords haben bereits ein Suchvolumen." : `Suchvolumen: ${found} von ${requested} Keywords gefunden.`,
       pushKvp: "In SEO KVP schieben",
       deleteUrls: "URLs löschen",
       deleteConfirm: (n: number) => `${n} URLs aus dem Projekt löschen?`,
@@ -442,6 +447,11 @@ export const seoHelperKeywordMappingMessages = defineMessages({
       fetchDfsForce: "Refetch DataForSEO (ignore cache)",
       applyTop: "Use top keyword as focus (empty only)",
       applyTopAll: "Use top keyword as focus (overwrite)",
+      fetchSv: "Fetch search volume",
+      fetchSvHint: "Fetches search volume (DataForSEO, Google Ads) for focus and secondary keywords without a value",
+      fetchSvForce: "Refetch search volume for all focus and secondary keywords",
+      svDone: (requested: number, found: number) =>
+        requested === 0 ? "All keywords already have a search volume." : `Search volume: found for ${found} of ${requested} keywords.`,
       pushKvp: "Push to SEO KVP",
       deleteUrls: "Delete URLs",
       deleteConfirm: (n: number) => `Delete ${n} URLs from the project?`,

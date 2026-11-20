@@ -51,6 +51,7 @@ type KvpFilter = "all" | "in" | "out";
 const PAGE_SIZE = 50;
 const DFS_BATCH = 20;
 const KVP_BATCH = 50;
+const SV_BATCH = 25;
 const GROUPS_STORAGE_KEY = "keyword-mapping-visible-groups";
 const DEFAULT_GROUPS: ColumnGroup[] = ["basics", "topic", "performance", "analysis"];
 
@@ -266,6 +267,29 @@ export default function KeywordMappingProjectPage() {
       setMessage({
         kind: "success",
         text: opts.fetch === false ? t.bulk.applyDone(Object.keys(merged).length) : t.bulk.dfsDone(Object.keys(merged).length, errors),
+      });
+    } catch (e) {
+      setMessage({ kind: "error", text: e instanceof Error ? e.message : t.errorGeneric });
+    }
+  };
+
+  const bulkSearchVolume = async (force: boolean) => {
+    setMessage(null);
+    try {
+      const results = await runInBatches(selectedIds, SV_BATCH, async (batch) => {
+        const res = await apiFetch<{ requested: number; found: number; urls: MapUrlDto[] }>(
+          "/api/seo-helper/keyword-mapping/urls/search-volume",
+          { method: "POST", body: JSON.stringify({ ids: batch, force }) }
+        );
+        mergeUrls(res.urls);
+        return res;
+      });
+      setMessage({
+        kind: "success",
+        text: t.bulk.svDone(
+          results.reduce((sum, r) => sum + r.requested, 0),
+          results.reduce((sum, r) => sum + r.found, 0)
+        ),
       });
     } catch (e) {
       setMessage({ kind: "error", text: e instanceof Error ? e.message : t.errorGeneric });
@@ -491,10 +515,14 @@ export default function KeywordMappingProjectPage() {
                   <button className={buttonSecondary} onClick={() => void bulkDfs({ applyAsFocus: "never" })}>
                     {t.bulk.fetchDfs}
                   </button>
+                  <button className={buttonSecondary} title={t.bulk.fetchSvHint} onClick={() => void bulkSearchVolume(false)}>
+                    {t.bulk.fetchSv}
+                  </button>
                   <BulkMenu
                     label="…"
                     items={[
                       { label: t.bulk.fetchDfsForce, onClick: () => void bulkDfs({ force: true }) },
+                      { label: t.bulk.fetchSvForce, onClick: () => void bulkSearchVolume(true) },
                       { label: t.bulk.applyTop, onClick: () => void bulkDfs({ fetch: false, applyAsFocus: "ifEmpty" }) },
                       { label: t.bulk.applyTopAll, onClick: () => void bulkDfs({ fetch: false, applyAsFocus: "always" }) },
                     ]}
