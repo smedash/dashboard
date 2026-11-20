@@ -6,6 +6,7 @@ import { canEdit } from "@/lib/rbac";
 import { getAuthenticatedBlobUrl } from "@/lib/blob-url";
 import { normalizeTaskUrl } from "@/lib/task-url";
 import { DEFAULT_TASK_SCOPE, TASK_SCOPES } from "@/lib/task-scope";
+import { downloadExcel } from "@/lib/excel-export";
 import {
   DndContext,
   DragEndEvent,
@@ -1471,6 +1472,7 @@ export default function TasksPage() {
   const { data: session } = useSession();
   const canEditData = canEdit(session?.user?.role);
   const t = useMessages(tasksMessages);
+  const { intlLocale } = useLocale();
   
   const [tasks, setTasks] = useState<Task[]>([]);
   const [users, setUsers] = useState<TaskUser[]>([]);
@@ -1677,6 +1679,43 @@ export default function TasksPage() {
     return acc;
   }, {} as Record<string, Task[]>);
 
+  const handleExportExcel = () => {
+    const e = t.export;
+    const formatDate = (value: string | null) =>
+      value ? new Date(value).toLocaleDateString(intlLocale) : "";
+    const userName = (user?: TaskUser | TaskCommentUser) =>
+      user ? user.name || user.email : "";
+
+    const rows = COLUMNS.flatMap((column) => tasksByColumn[column.id]).map((task) => ({
+      [e.taskTitle]: task.title,
+      [e.status]: t.columns[task.status] ?? task.status,
+      [e.priority]: t.priorities[task.priority] ?? task.priority,
+      [e.scope]: t.scopes[task.scope] ?? task.scope,
+      [e.category]: task.category ?? "",
+      [e.assignees]: task.assignees.map(userName).join(", "),
+      [e.dueDate]: formatDate(task.dueDate),
+      [e.url]: task.url ?? "",
+      [e.description]: task.description ?? "",
+      [e.labels]: task.labels.join(", "),
+      [e.creator]: userName(task.creator),
+      [e.createdAt]: formatDate(task.createdAt),
+      [e.updatedAt]: formatDate(task.updatedAt),
+      [e.comments]: task.comments
+        .map((c) => `${userName(c.user)} (${formatDate(c.createdAt)}): ${c.text}`)
+        .join("\n"),
+      [e.files]: task.files?.length ?? 0,
+    }));
+
+    const stamp = new Date().toISOString().slice(0, 10);
+    downloadExcel(`${e.filePrefix}_${stamp}.xlsx`, [
+      {
+        name: e.sheetName,
+        rows,
+        columnWidths: [40, 14, 12, 14, 18, 30, 12, 40, 60, 20, 22, 14, 14, 60, 8],
+      },
+    ]);
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-8">
@@ -1726,6 +1765,17 @@ export default function TasksPage() {
               {t.viewTimeline}
             </button>
           </div>
+          <button
+            onClick={handleExportExcel}
+            disabled={filteredTasks.length === 0}
+            title={t.export.title}
+            className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 dark:text-slate-200 rounded-lg transition-colors flex items-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            {t.export.button}
+          </button>
           {canEditData && (
             <button
               onClick={() => setNewTaskStatus("backlog")}
