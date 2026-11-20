@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { killBandsForCleanupStatus } from "./cleanup-status";
+import { ownerFilterWhere, parseOwnerFilter, type OwnerFilter } from "./owner";
 
 export type InventoryListQuery = {
   q?: string;
@@ -34,6 +35,7 @@ export type InventoryListQuery = {
   lastmodBefore?: string;
   focusKeyword?: string;
   labsKeyword?: string;
+  owner?: OwnerFilter;
   preset?: "high" | "zero" | "protected" | "";
   page?: number;
   pageSize?: number;
@@ -88,6 +90,7 @@ export function parseInventoryQuery(sp: URLSearchParams): InventoryListQuery {
     lastmodBefore: sp.get("lastmodBefore")?.trim() || undefined,
     focusKeyword: sp.get("focusKeyword")?.trim() || undefined,
     labsKeyword: sp.get("labsKeyword")?.trim() || undefined,
+    owner: parseOwnerFilter(sp.get("owner")),
     preset: preset === "high" || preset === "zero" || preset === "protected" ? preset : "",
     page: num("page") ?? 0,
     pageSize: Math.min(num("pageSize") ?? 25, 200),
@@ -162,6 +165,8 @@ export function buildInventoryWhere(q: InventoryListQuery): Prisma.UrlInventoryW
   if (q.labsKeyword) {
     and.push({ labsKeywords: { has: q.labsKeyword } });
   }
+  const ownerWhere = q.owner ? ownerFilterWhere(q.owner) : null;
+  if (ownerWhere) and.push(ownerWhere);
 
   return and.length ? { AND: and } : {};
 }

@@ -1331,6 +1331,10 @@ model UrlInventory {
   killReason     String @default("") @db.Text
   killBand       String @default("keep")
 
+  ownerName      String?
+  ownerEmail     String?
+  ownerUpdatedAt DateTime?
+
   sitemaps        UrlInventorySitemap[]
   dimensionValues UrlDimensionValue[]
   content         UrlContent?
@@ -1354,6 +1358,8 @@ model UrlInventory {
   @@index([killBand])
   @@index([inEditorialPlan])
   @@index([section])
+  @@index([ownerEmail])
+  @@index([ownerName])
 }
 
 // SEO-Helper Content-Mapping — extrahierter Seiteninhalt je Inventar-URL
