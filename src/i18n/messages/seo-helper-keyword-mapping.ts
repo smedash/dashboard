@@ -111,6 +111,8 @@ export const seoHelperKeywordMappingMessages = defineMessages({
       filterNoFocus: "Ohne Fokus-Keyword",
       filterHasFocus: "Mit Fokus-Keyword",
       filterRankOver10: "Ranking > 10",
+      filterMinScore: "min. Score",
+      filterMinScoreHint: "Nur URLs mit mindestens diesem Score (1–10) anzeigen; URLs ohne Score werden ausgeblendet",
       filterInKvp: "Im KVP",
       filterNotInKvp: "Nicht im KVP",
       filterTopicAuthority: "Themenhoheit",
@@ -127,6 +129,7 @@ export const seoHelperKeywordMappingMessages = defineMessages({
       exportSelected: "Auswahl exportieren",
       details: "Details",
       inKvpBadge: "im KVP",
+      taskBadge: "Task",
       scoreHint: "Priorität 1–10: hohes Suchvolumen und schwaches Ranking ergeben einen hohen Score",
       settings: "Projekt-Einstellungen",
     },
@@ -161,6 +164,15 @@ export const seoHelperKeywordMappingMessages = defineMessages({
       kvpSubmit: "Jetzt übergeben",
       kvpDone: (created: number, updated: number, skipped: number) =>
         `KVP: ${created} angelegt, ${updated} aktualisiert, ${skipped} übersprungen.`,
+      gapTasks: "Topic-Gap-Tasks anlegen",
+      gapTasksHint: "Legt für jede ausgewählte URL die Zusammenfassung ihrer Topic-Gap-Analyse als Task im Backlog des Kanban-Boards an",
+      gapTasksNone: "Keine der ausgewählten URLs hat eine abgeschlossene Topic-Gap-Analyse ohne Task.",
+      gapTasksConfirm: (n: number, skipped: number) =>
+        `Für ${n} URLs je einen Task im Kanban-Backlog anlegen?${
+          skipped ? `\n\n${skipped} URLs werden übersprungen (keine abgeschlossene Analyse oder bereits ein Task vorhanden).` : ""
+        }`,
+      gapTasksDone: (created: number, skipped: number, failed: number, firstError?: string) =>
+        `Tasks: ${created} angelegt${skipped ? `, ${skipped} übersprungen` : ""}${failed ? `, ${failed} Fehler${firstError ? ` (${firstError})` : ""}` : ""}.`,
     },
 
     batch: {
@@ -426,6 +438,8 @@ export const seoHelperKeywordMappingMessages = defineMessages({
       filterNoFocus: "Without focus keyword",
       filterHasFocus: "With focus keyword",
       filterRankOver10: "Ranking > 10",
+      filterMinScore: "min. score",
+      filterMinScoreHint: "Only show URLs with at least this score (1–10); URLs without a score are hidden",
       filterInKvp: "In KVP",
       filterNotInKvp: "Not in KVP",
       filterTopicAuthority: "Topic authority",
@@ -442,6 +456,7 @@ export const seoHelperKeywordMappingMessages = defineMessages({
       exportSelected: "Export selection",
       details: "Details",
       inKvpBadge: "in KVP",
+      taskBadge: "Task",
       scoreHint: "Priority 1–10: high search volume and weak ranking result in a high score",
       settings: "Project settings",
     },
@@ -475,6 +490,15 @@ export const seoHelperKeywordMappingMessages = defineMessages({
       kvpSubmit: "Push now",
       kvpDone: (created: number, updated: number, skipped: number) =>
         `KVP: ${created} created, ${updated} updated, ${skipped} skipped.`,
+      gapTasks: "Create topic gap tasks",
+      gapTasksHint: "Adds the topic gap summary of each selected URL as a task to the Kanban board backlog",
+      gapTasksNone: "None of the selected URLs has a completed topic gap analysis without a task.",
+      gapTasksConfirm: (n: number, skipped: number) =>
+        `Create one task each in the Kanban backlog for ${n} URLs?${
+          skipped ? `\n\n${skipped} URLs will be skipped (no completed analysis or a task already exists).` : ""
+        }`,
+      gapTasksDone: (created: number, skipped: number, failed: number, firstError?: string) =>
+        `Tasks: ${created} created${skipped ? `, ${skipped} skipped` : ""}${failed ? `, ${failed} errors${firstError ? ` (${firstError})` : ""}` : ""}.`,
     },
 
     batch: {

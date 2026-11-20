@@ -769,6 +769,7 @@ function TopicGapTab({
         body: JSON.stringify({ gapId }),
       });
       setData((prev) => (prev?.gap?.id === gapId ? { ...prev, gap: { ...prev.gap, taskId: res.task.id } } : prev));
+      if (url.latestTopicGap?.id === gapId) onUpdated({ ...url, latestTopicGap: { ...url.latestTopicGap, taskId: res.task.id } });
     } catch (e) {
       setError(e instanceof Error ? e.message : t.errorGeneric);
     } finally {
