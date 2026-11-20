@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { canEdit } from "@/lib/rbac";
 import { getAuthenticatedBlobUrl } from "@/lib/blob-url";
+import { normalizeTaskUrl } from "@/lib/task-url";
+import { DEFAULT_TASK_SCOPE, TASK_SCOPES } from "@/lib/task-scope";
 import {
   DndContext,
   DragEndEvent,
@@ -59,8 +61,10 @@ interface Task {
   id: string;
   title: string;
   description: string | null;
+  url: string | null;
   status: string;
   priority: string;
+  scope: string;
   order: number;
   dueDate: string | null;
   category: string | null;
@@ -242,6 +246,19 @@ function SortableTaskCard({
   );
 }
 
+function isValidTaskUrl(value: string) {
+  try {
+    normalizeTaskUrl(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function displayUrl(url: string) {
+  return url.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "");
+}
+
 // Task Card Content (shared between sortable and overlay)
 function TaskCardContent({ task }: { task: Task }) {
   const t = useMessages(tasksMessages);
@@ -274,8 +291,27 @@ function TaskCardContent({ task }: { task: Task }) {
         </p>
       )}
 
+      {task.url && (
+        <a
+          href={task.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+          className="block text-xs text-blue-600 dark:text-blue-400 hover:underline truncate mb-2"
+          title={task.url}
+        >
+          ↗ {displayUrl(task.url)}
+        </a>
+      )}
+
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 flex-wrap">
+          {task.scope && task.scope !== DEFAULT_TASK_SCOPE && (
+            <span className="px-1.5 py-0.5 text-xs bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 rounded">
+              {t.scopes[task.scope] ?? task.scope}
+            </span>
+          )}
           {task.category && (
             <span className="px-1.5 py-0.5 text-xs bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded">
               {task.category}
@@ -457,10 +493,14 @@ function TaskDetailModal({
     setLocalFiles(task.files || []);
   }, [task.files]);
 
+  const editedUrlInvalid = !isValidTaskUrl(editedTask.url ?? "");
+
   const handleSave = async () => {
+    if (editedUrlInvalid) return;
     setIsSaving(true);
     await onUpdate({
       ...editedTask,
+      url: normalizeTaskUrl(editedTask.url),
       assigneeIds: selectedAssigneeIds,
     });
     setIsEditing(false);
@@ -605,8 +645,8 @@ function TaskDetailModal({
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {/* Status & Priority */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* Status, Priority & Scope */}
+          <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.detail.status}</label>
               {isEditing ? (
@@ -640,6 +680,24 @@ function TaskDetailModal({
               ) : (
                 <span className={`inline-block px-2 py-1 rounded text-sm ${PRIORITIES.find((p) => p.id === task.priority)?.bgColor} ${PRIORITIES.find((p) => p.id === task.priority)?.color}`}>
                   {t.priorities[task.priority]}
+                </span>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.detail.scope}</label>
+              {isEditing ? (
+                <select
+                  value={editedTask.scope}
+                  onChange={(e) => setEditedTask({ ...editedTask, scope: e.target.value })}
+                  className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
+                >
+                  {TASK_SCOPES.map((s) => (
+                    <option key={s} value={s}>{t.scopes[s]}</option>
+                  ))}
+                </select>
+              ) : (
+                <span className="inline-block px-2 py-1 rounded text-sm bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300">
+                  {t.scopes[task.scope] ?? task.scope}
                 </span>
               )}
             </div>
@@ -726,6 +784,27 @@ function TaskDetailModal({
                 <span className="text-slate-600 dark:text-slate-400">{task.category || t.detail.noCategory}</span>
               )}
             </div>
+          </div>
+
+          {/* URL */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.detail.url}</label>
+            {isEditing ? (
+              <input
+                type="url"
+                value={editedTask.url || ""}
+                onChange={(e) => setEditedTask({ ...editedTask, url: e.target.value || null })}
+                placeholder={t.detail.urlPlaceholder}
+                className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
+              />
+            ) : task.url ? (
+              <a href={task.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline break-all">
+                {task.url} ↗
+              </a>
+            ) : (
+              <span className="text-slate-600 dark:text-slate-400">{t.detail.noUrl}</span>
+            )}
+            {isEditing && editedUrlInvalid && <p className="mt-1 text-xs text-red-500">{t.detail.urlInvalid}</p>}
           </div>
 
           {/* Description */}
@@ -896,7 +975,7 @@ function TaskDetailModal({
             </button>
             <button
               onClick={handleSave}
-              disabled={isSaving}
+              disabled={isSaving || editedUrlInvalid}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white rounded-lg transition-colors"
             >
               {isSaving ? t.detail.saving : t.detail.save}
@@ -918,12 +997,15 @@ function NewTaskModal({
   status: string;
   users: TaskUser[];
   onClose: () => void;
-  onCreate: (task: { title: string; description: string | null; status: string; priority: string; category: string | null; dueDate: string | null; assigneeIds: string[] }) => void;
+  onCreate: (task: { title: string; description: string | null; url: string | null; status: string; priority: string; scope: string; category: string | null; dueDate: string | null; assigneeIds: string[] }) => void;
 }) {
   const t = useMessages(tasksMessages);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [url, setUrl] = useState("");
+  const urlInvalid = !isValidTaskUrl(url);
   const [priority, setPriority] = useState("medium");
+  const [scope, setScope] = useState<string>(DEFAULT_TASK_SCOPE);
   const [category, setCategory] = useState("");
   const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [dueDate, setDueDate] = useState("");
@@ -938,14 +1020,16 @@ function NewTaskModal({
   };
 
   const handleCreate = async () => {
-    if (!title.trim()) return;
+    if (!title.trim() || urlInvalid) return;
     
     setIsCreating(true);
     await onCreate({
       title,
       description: description || null,
+      url: normalizeTaskUrl(url),
       status,
       priority,
+      scope,
       category: category || null,
       dueDate: dueDate || null,
       assigneeIds,
@@ -997,7 +1081,21 @@ function NewTaskModal({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              {t.create.url}
+            </label>
+            <input
+              type="url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder={t.create.urlPlaceholder}
+              className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
+            />
+            {urlInvalid && <p className="mt-1 text-xs text-red-500">{t.create.urlInvalid}</p>}
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                 {t.create.priority}
@@ -1009,6 +1107,20 @@ function NewTaskModal({
               >
                 {PRIORITIES.map((p) => (
                   <option key={p.id} value={p.id}>{t.priorities[p.id]}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                {t.create.scope}
+              </label>
+              <select
+                value={scope}
+                onChange={(e) => setScope(e.target.value)}
+                className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
+              >
+                {TASK_SCOPES.map((s) => (
+                  <option key={s} value={s}>{t.scopes[s]}</option>
                 ))}
               </select>
             </div>
@@ -1089,7 +1201,7 @@ function NewTaskModal({
           </button>
           <button
             onClick={handleCreate}
-            disabled={isCreating || !title.trim()}
+            disabled={isCreating || !title.trim() || urlInvalid}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white rounded-lg transition-colors"
           >
             {isCreating ? t.create.creating : t.create.submit}
@@ -1490,7 +1602,7 @@ export default function TasksPage() {
     }
   };
 
-  const handleCreateTask = async (taskData: { title: string; description: string | null; status: string; priority: string; category: string | null; dueDate: string | null; assigneeIds: string[] }) => {
+  const handleCreateTask = async (taskData: { title: string; description: string | null; url: string | null; status: string; priority: string; scope: string; category: string | null; dueDate: string | null; assigneeIds: string[] }) => {
     try {
       const response = await fetch("/api/tasks", {
         method: "POST",

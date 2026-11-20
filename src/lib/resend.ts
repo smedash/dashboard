@@ -8,6 +8,10 @@ export const resend = new Resend(process.env.RESEND_API_KEY);
 
 const EMAIL_FROM = process.env.EMAIL_FROM || "SME Dashboard <system@smedash.com>";
 
+function escapeAttr(value: string): string {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
 async function getRecipientLocale(email: string, locale?: Locale): Promise<Locale> {
   if (locale) return locale;
   try {
@@ -128,6 +132,7 @@ export async function sendTaskAssignmentNotification({
   to,
   taskTitle,
   taskDescription,
+  taskUrl,
   creatorName,
   priority,
   dueDate,
@@ -137,6 +142,7 @@ export async function sendTaskAssignmentNotification({
   to: string;
   taskTitle: string;
   taskDescription: string | null;
+  taskUrl?: string | null;
   creatorName: string;
   priority: string;
   dueDate: string | null;
@@ -176,6 +182,7 @@ export async function sendTaskAssignmentNotification({
             <div style="background-color: #f4f4f5; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
               <p style="color: #18181b; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">${taskTitle}</p>
               ${taskDescription ? `<p style="color: #52525b; font-size: 14px; margin: 0 0 12px 0;">${taskDescription}</p>` : ""}
+              ${taskUrl ? `<p style="color: #52525b; font-size: 14px; margin: 0 0 12px 0; word-break: break-all;">${t.taskAssignment.url}: <a href="${escapeAttr(taskUrl)}" style="color: #2563eb;">${escapeAttr(taskUrl)}</a></p>` : ""}
               <div style="display: flex; gap: 12px; flex-wrap: wrap;">
                 <span style="display: inline-block; padding: 4px 8px; background-color: ${priorityColor}20; color: ${priorityColor}; font-size: 12px; border-radius: 4px; font-weight: 500;">
                   ${t.taskAssignment.priority(priorityLabel)}

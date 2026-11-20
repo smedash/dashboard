@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/keyword-map/server";
 import type { TopicGapItem } from "@/lib/keyword-map/shared";
+import { normalizeTaskUrl } from "@/lib/task-url";
 
 const TASK_CATEGORIES = ["Mortgages", "Accounts&Cards", "Investing", "Pension", "Digital Banking"];
 
@@ -11,15 +12,23 @@ class HttpError extends Error {
   }
 }
 
-function taskDescription(url: string, focusKeyword: string, coverage: number | null, summary: string | null, items: TopicGapItem[]): string {
+function taskDescription(focusKeyword: string, coverage: number | null, summary: string | null, items: TopicGapItem[]): string {
   const topicLine = (i: TopicGapItem) => `- ${[...i.path, i.topic].join(" > ")}`;
   const missing = items.filter((i) => i.status === "missing");
   const partial = items.filter((i) => i.status === "partial");
-  const lines = [`URL: ${url}`, `Fokus-Keyword: ${focusKeyword}`, `Topic-Coverage: ${coverage ?? "–"} %`];
+  const lines = [`Fokus-Keyword: ${focusKeyword}`, `Topic-Coverage: ${coverage ?? "–"} %`];
   if (summary) lines.push("", summary);
   if (missing.length) lines.push("", `Fehlende Topics (${missing.length}):`, ...missing.map(topicLine));
   if (partial.length) lines.push("", `Teilweise abgedeckt (${partial.length}):`, ...partial.map(topicLine));
   return lines.join("\n");
+}
+
+function safeTaskUrl(url: string): string | null {
+  try {
+    return normalizeTaskUrl(url);
+  } catch {
+    return null;
+  }
 }
 
 /** Legt aus einer Gap-Analyse einen Task im Kanban-Board (Backlog) an (Body: `{ gapId }`). */
@@ -58,9 +67,11 @@ export async function POST(request: NextRequest, ctx: { params: Promise<{ id: st
       const created = await tx.task.create({
         data: {
           title: `Content-Gaps schliessen: ${gap.url.h1 || gap.url.url}`,
-          description: taskDescription(gap.url.url, gap.focusKeyword, gap.coverageScore, gap.summary, items),
+          description: taskDescription(gap.focusKeyword, gap.coverageScore, gap.summary, items),
+          url: safeTaskUrl(gap.url.url),
           status: "backlog",
           priority: "medium",
+          scope: "content",
           order: (maxOrder?.order ?? -1) + 1,
           category,
           labels: ["Topic-Gap"],

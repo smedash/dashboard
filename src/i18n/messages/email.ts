@@ -39,6 +39,7 @@ export const notificationEmailMessages = defineMessages({
       intro: (creator: string) => `Dir wurde ein neuer Task von <strong>${creator}</strong> zugewiesen.`,
       priority: (label: string) => `Priorität: ${label}`,
       due: (date: string) => `Fällig: ${date}`,
+      url: "URL",
       cta: "Task ansehen",
     },
     taskComment: {
@@ -162,6 +163,7 @@ export const notificationEmailMessages = defineMessages({
       intro: (creator) => `<strong>${creator}</strong> assigned a new task to you.`,
       priority: (label) => `Priority: ${label}`,
       due: (date) => `Due: ${date}`,
+      url: "URL",
       cta: "View task",
     },
     taskComment: {
