@@ -1485,6 +1485,7 @@ export default function TasksPage() {
   // Filter states
   const [filterPriority, setFilterPriority] = useState<string>("all");
   const [filterCategory, setFilterCategory] = useState<string>("all");
+  const [filterScope, setFilterScope] = useState<string>("all");
   const [filterAssignee, setFilterAssignee] = useState<string>("all");
 
   const sensors = useSensors(
@@ -1660,6 +1661,7 @@ export default function TasksPage() {
   const filteredTasks = tasks.filter((task) => {
     if (filterPriority !== "all" && task.priority !== filterPriority) return false;
     if (filterCategory !== "all" && task.category !== filterCategory) return false;
+    if (filterScope !== "all" && task.scope !== filterScope) return false;
     if (filterAssignee !== "all") {
       if (filterAssignee === "unassigned" && task.assignees?.length > 0) return false;
       if (filterAssignee !== "unassigned" && !task.assignees?.some((a) => a.id === filterAssignee)) return false;
@@ -1750,6 +1752,19 @@ export default function TasksPage() {
             <option value="all">{t.filters.all}</option>
             {PRIORITIES.map((p) => (
               <option key={p.id} value={p.id}>{t.priorities[p.id]}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">{t.filters.scope}</label>
+          <select
+            value={filterScope}
+            onChange={(e) => setFilterScope(e.target.value)}
+            className="px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white text-sm"
+          >
+            <option value="all">{t.filters.all}</option>
+            {TASK_SCOPES.map((s) => (
+              <option key={s} value={s}>{t.scopes[s]}</option>
             ))}
           </select>
         </div>

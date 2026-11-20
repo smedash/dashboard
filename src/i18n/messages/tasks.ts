@@ -31,6 +31,7 @@ export const tasksMessages = defineMessages({
     } as Record<string, string>,
     filters: {
       priority: "Priorität",
+      scope: "Scope",
       category: "Kategorie",
       assigned: "Zugewiesen",
       all: "Alle",
@@ -147,6 +148,7 @@ export const tasksMessages = defineMessages({
     },
     filters: {
       priority: "Priority",
+      scope: "Scope",
       category: "Category",
       assigned: "Assigned",
       all: "All",
