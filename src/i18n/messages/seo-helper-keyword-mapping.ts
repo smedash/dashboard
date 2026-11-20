@@ -141,6 +141,10 @@ export const seoHelperKeywordMappingMessages = defineMessages({
       fetchSvForce: "Suchvolumen aller Fokus- und Nebenkeywords neu holen",
       svDone: (requested: number, found: number) =>
         requested === 0 ? "Alle Keywords haben bereits ein Suchvolumen." : `Suchvolumen: ${found} von ${requested} Keywords gefunden.`,
+      fetchGsc: "GSC-Klicks holen",
+      fetchGscHint: "Holt die Klicks der letzten 6 Monate aus der Google Search Console (www.ubs.com)",
+      gscDone: (ok: number, failed: number, firstError?: string) =>
+        `GSC-Klicks: ${ok} URLs aktualisiert${failed ? `, ${failed} Fehler${firstError ? ` (${firstError})` : ""}` : ""}.`,
       pushKvp: "In SEO KVP schieben",
       deleteUrls: "URLs löschen",
       deleteConfirm: (n: number) => `${n} URLs aus dem Projekt löschen?`,
@@ -452,6 +456,10 @@ export const seoHelperKeywordMappingMessages = defineMessages({
       fetchSvForce: "Refetch search volume for all focus and secondary keywords",
       svDone: (requested: number, found: number) =>
         requested === 0 ? "All keywords already have a search volume." : `Search volume: found for ${found} of ${requested} keywords.`,
+      fetchGsc: "Fetch GSC clicks",
+      fetchGscHint: "Fetches clicks from the last 6 months from Google Search Console (www.ubs.com)",
+      gscDone: (ok: number, failed: number, firstError?: string) =>
+        `GSC clicks: ${ok} URLs updated${failed ? `, ${failed} errors${firstError ? ` (${firstError})` : ""}` : ""}.`,
       pushKvp: "Push to SEO KVP",
       deleteUrls: "Delete URLs",
       deleteConfirm: (n: number) => `Delete ${n} URLs from the project?`,

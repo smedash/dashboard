@@ -52,6 +52,7 @@ const PAGE_SIZE = 50;
 const DFS_BATCH = 20;
 const KVP_BATCH = 50;
 const SV_BATCH = 25;
+const GSC_BATCH = 25;
 const GROUPS_STORAGE_KEY = "keyword-mapping-visible-groups";
 const DEFAULT_GROUPS: ColumnGroup[] = ["basics", "topic", "performance", "analysis"];
 
@@ -296,6 +297,28 @@ export default function KeywordMappingProjectPage() {
     }
   };
 
+  const bulkGscClicks = async () => {
+    setMessage(null);
+    try {
+      const results = await runInBatches(selectedIds, GSC_BATCH, async (batch) => {
+        const res = await apiFetch<{ results: Record<string, { clicks?: number; error?: string }>; urls: MapUrlDto[] }>(
+          "/api/seo-helper/keyword-mapping/urls/gsc-clicks",
+          { method: "POST", body: JSON.stringify({ ids: batch }) }
+        );
+        mergeUrls(res.urls);
+        return res.results;
+      });
+      const all = results.flatMap((r) => Object.values(r));
+      const failed = all.filter((r) => r.error);
+      setMessage({
+        kind: failed.length === all.length && all.length > 0 ? "error" : "success",
+        text: t.bulk.gscDone(all.length - failed.length, failed.length, failed[0]?.error),
+      });
+    } catch (e) {
+      setMessage({ kind: "error", text: e instanceof Error ? e.message : t.errorGeneric });
+    }
+  };
+
   const bulkKvp = async (includeGapComment: boolean) => {
     setShowKvpDialog(false);
     setMessage(null);
@@ -517,6 +540,9 @@ export default function KeywordMappingProjectPage() {
                   </button>
                   <button className={buttonSecondary} title={t.bulk.fetchSvHint} onClick={() => void bulkSearchVolume(false)}>
                     {t.bulk.fetchSv}
+                  </button>
+                  <button className={buttonSecondary} title={t.bulk.fetchGscHint} onClick={() => void bulkGscClicks()}>
+                    {t.bulk.fetchGsc}
                   </button>
                   <BulkMenu
                     label="…"
