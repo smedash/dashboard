@@ -1545,6 +1545,7 @@ model KeywordMapTopicGap {
   summary       String?       @db.Text
   error         String?       @db.Text
   contentHash   String?
+  taskId        String? // Kanban-Task, der aus dieser Analyse angelegt wurde
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 

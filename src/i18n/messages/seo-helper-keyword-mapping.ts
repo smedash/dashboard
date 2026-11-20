@@ -290,6 +290,9 @@ export const seoHelperKeywordMappingMessages = defineMessages({
       gapNewArticle: "neuer Artikel",
       gapNewArticleHint: "Legt das Topic mit heutigem Datum als neuen Artikel im Redaktionsplan an",
       gapInEditorialPlan: "im Redaktionsplan",
+      gapCreateTask: "Task erstellen",
+      gapCreateTaskHint: "Legt die fehlenden und teilweise abgedeckten Topics als Task im Backlog des Kanban-Boards an",
+      gapInKanban: "Task im Kanban-Board",
 
       detailsSaved: "Gespeichert",
       ctaAdd: "CTA hinzufügen",
@@ -592,6 +595,9 @@ export const seoHelperKeywordMappingMessages = defineMessages({
       gapNewArticle: "new article",
       gapNewArticleHint: "Adds this topic as a new article to the editorial plan, dated today",
       gapInEditorialPlan: "in editorial plan",
+      gapCreateTask: "Create task",
+      gapCreateTaskHint: "Adds the missing and partially covered topics as a task to the Kanban board backlog",
+      gapInKanban: "Task on Kanban board",
 
       detailsSaved: "Saved",
       ctaAdd: "Add CTA",
