@@ -32,7 +32,7 @@ export const documentationMessages = defineMessages({
   de: {
     title: "Dokumentation",
     intro:
-      "Willkommen in der Dokumentation des SME Dashboards. Hier findest du alle Informationen zu den Funktionen und Features.",
+      "Willkommen in der Dokumentation der SG Suite. Hier findest du alle Informationen zu den Funktionen und Features.",
     searchPlaceholder: "Dokumentation durchsuchen...",
     clearSearch: "Suche zurücksetzen",
     noResults: "Keine Ergebnisse gefunden",
@@ -63,7 +63,7 @@ export const documentationMessages = defineMessages({
         articles: [
           {
             title: "Anmeldung & Google-Verknüpfung",
-            body: "Nach der ersten Anmeldung im SME Dashboard musst du deinen Google Account verknüpfen, um auf die Google Search Console Daten zugreifen zu können. Klicke dazu auf den Button \"Connect with Google\" in der oberen Leiste oder gehe in die Einstellungen. Die Verknüpfung erlaubt dem Dashboard, deine GSC-Daten abzurufen und auszuwerten.",
+            body: "Nach der ersten Anmeldung in der SG Suite musst du deinen Google Account verknüpfen, um auf die Google Search Console Daten zugreifen zu können. Klicke dazu auf den Button \"Connect with Google\" in der oberen Leiste oder gehe in die Einstellungen. Die Verknüpfung erlaubt dem Dashboard, deine GSC-Daten abzurufen und auszuwerten.",
             link: "/settings",
             linkLabel: "Zu den Einstellungen",
           },
@@ -333,7 +333,7 @@ export const documentationMessages = defineMessages({
           },
           {
             title: "Changelog",
-            body: "Im Changelog findest du alle Änderungen und neuen Features, die am SME Dashboard vorgenommen wurden. So bleibst du immer auf dem neuesten Stand über Verbesserungen und neue Funktionen.",
+            body: "Im Changelog findest du alle Änderungen und neuen Features, die an der SG Suite vorgenommen wurden. So bleibst du immer auf dem neuesten Stand über Verbesserungen und neue Funktionen.",
             link: "/changelog",
             linkLabel: "Zum Changelog",
           },
@@ -344,7 +344,7 @@ export const documentationMessages = defineMessages({
   en: {
     title: "Documentation",
     intro:
-      "Welcome to the SME Dashboard documentation. Here you'll find everything you need to know about its functions and features.",
+      "Welcome to the SG Suite documentation. Here you'll find everything you need to know about its functions and features.",
     searchPlaceholder: "Search documentation...",
     clearSearch: "Clear search",
     noResults: "No results found",
@@ -375,7 +375,7 @@ export const documentationMessages = defineMessages({
         articles: [
           {
             title: "Sign-in & Google connection",
-            body: "After signing in to the SME Dashboard for the first time, you need to connect your Google account to access your Google Search Console data. To do so, click the \"Connect with Google\" button in the top bar or go to the settings. The connection allows the dashboard to fetch and analyse your GSC data.",
+            body: "After signing in to SG Suite for the first time, you need to connect your Google account to access your Google Search Console data. To do so, click the \"Connect with Google\" button in the top bar or go to the settings. The connection allows the dashboard to fetch and analyse your GSC data.",
             link: "/settings",
             linkLabel: "Go to settings",
           },
@@ -645,7 +645,7 @@ export const documentationMessages = defineMessages({
           },
           {
             title: "Changelog",
-            body: "The changelog lists all changes and new features made to the SME Dashboard, so you always stay up to date on improvements and new functionality.",
+            body: "The changelog lists all changes and new features made to SG Suite, so you always stay up to date on improvements and new functionality.",
             link: "/changelog",
             linkLabel: "Go to changelog",
           },

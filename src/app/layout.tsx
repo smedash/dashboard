@@ -11,7 +11,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "SME Dashboard",
+  title: "SG Suite",
   description: "Google Search Console Analytics Dashboard",
   robots: {
     index: false,

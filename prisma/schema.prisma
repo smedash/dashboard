@@ -1,4 +1,4 @@
-// Prisma Schema für SME Dashboard
+// Prisma Schema für SG Suite
 // Neon PostgreSQL Datenbank
 
 generator client {

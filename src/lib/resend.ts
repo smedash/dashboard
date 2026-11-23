@@ -6,7 +6,7 @@ import { prisma } from "./prisma";
 
 export const resend = new Resend(process.env.RESEND_API_KEY);
 
-const EMAIL_FROM = process.env.EMAIL_FROM || "SME Dashboard <system@smedash.com>";
+const EMAIL_FROM = process.env.EMAIL_FROM || "SG Suite <system@smedash.com>";
 
 function escapeAttr(value: string): string {
   return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -46,7 +46,7 @@ export async function sendMagicLinkEmail({
         </head>
         <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f4f4f5; margin: 0; padding: 40px 20px;">
           <div style="max-width: 480px; margin: 0 auto; background-color: white; border-radius: 12px; padding: 40px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-            <h1 style="color: #18181b; font-size: 24px; margin: 0 0 16px 0;">SME Dashboard</h1>
+            <h1 style="color: #18181b; font-size: 24px; margin: 0 0 16px 0;">SG Suite</h1>
             <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 24px 0;">
               ${t.intro}
             </p>
