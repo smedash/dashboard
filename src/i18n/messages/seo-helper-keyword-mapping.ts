@@ -341,6 +341,11 @@ export const seoHelperKeywordMappingMessages = defineMessages({
       gapCopyLinked: "verlinkt",
       gapCopyNavOnly: "nur Navigation",
       gapCopyNotLinked: "nicht verlinkt",
+      gapLinkSelectHint: "Für den Task auswählen",
+      gapLinkInTask: "im Task",
+      gapLinkCreateTask: (n: number) => (n > 0 ? `Task erstellen (${n})` : "Task erstellen"),
+      gapLinkCreateTaskHint: "Legt die ausgewählten Links als Linkempfehlungen in einem Linking-Task im Backlog des Kanban-Boards an",
+      gapLinkCreateTaskEmpty: "Erst mindestens einen Link auswählen",
 
       detailsSaved: "Gespeichert",
       ctaAdd: "CTA hinzufügen",
@@ -694,6 +699,11 @@ export const seoHelperKeywordMappingMessages = defineMessages({
       gapCopyLinked: "linked",
       gapCopyNavOnly: "navigation only",
       gapCopyNotLinked: "not linked",
+      gapLinkSelectHint: "Select for the task",
+      gapLinkInTask: "in task",
+      gapLinkCreateTask: (n: number) => (n > 0 ? `Create task (${n})` : "Create task"),
+      gapLinkCreateTaskHint: "Adds the selected links as link recommendations to a linking task in the Kanban board backlog",
+      gapLinkCreateTaskEmpty: "Select at least one link first",
 
       detailsSaved: "Saved",
       ctaAdd: "Add CTA",

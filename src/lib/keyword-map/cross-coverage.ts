@@ -231,10 +231,17 @@ export async function runCrossCoverage(gapId: string): Promise<void> {
       const merged = current.map((i) => {
         const otherUrls = otherByKey.get(`${i.path.join(" > ")} > ${i.topic}`);
         if (!otherUrls) return i;
-        const prevLinks = new Map((i.otherUrls ?? []).map((u) => [u.inventoryId, u.link]));
+        const prev = new Map((i.otherUrls ?? []).map((u) => [u.inventoryId, u]));
         return {
           ...i,
-          otherUrls: otherUrls.map((u) => (prevLinks.get(u.inventoryId) !== undefined ? { ...u, link: prevLinks.get(u.inventoryId) } : u)),
+          otherUrls: otherUrls.map((u) => {
+            const old = prev.get(u.inventoryId);
+            return {
+              ...u,
+              ...(old?.link !== undefined && { link: old.link }),
+              ...(old?.taskId && { taskId: old.taskId }),
+            };
+          }),
         };
       });
       await tx.keywordMapTopicGap.update({

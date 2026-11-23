@@ -50,6 +50,8 @@ export interface TopicOtherUrl {
   similarity: number;
   /** Link von der Mapping-URL hierher; undefined = nicht geprüft, null = kein Link gefunden */
   link?: TopicLink | null;
+  /** Kanban-Task, in dem diese Linkempfehlung steht; kann auf einen inzwischen gelöschten Task zeigen */
+  taskId?: string;
 }
 
 export interface TopicLink {

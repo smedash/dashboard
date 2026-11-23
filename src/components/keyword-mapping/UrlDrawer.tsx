@@ -631,16 +631,57 @@ function LinkBadge({ url }: { url: TopicOtherUrl }) {
   );
 }
 
-function OtherUrlsList({ urls }: { urls: TopicOtherUrl[] }) {
+function OtherUrlsList({
+  urls,
+  editable,
+  selected,
+  onToggle,
+  onCreateTask,
+  creatingTask,
+}: {
+  urls: TopicOtherUrl[];
+  editable: boolean;
+  selected: Set<string>;
+  onToggle: (inventoryId: string, checked: boolean) => void;
+  onCreateTask: () => void;
+  creatingTask: boolean;
+}) {
   const t = useMessages(seoHelperKeywordMappingMessages);
+  const selectable = editable && urls.some((u) => !u.taskId);
   return (
     <div className="mt-1.5 rounded-md border border-sky-200 dark:border-sky-900/60 bg-sky-50/60 dark:bg-sky-900/10 px-2 py-1.5">
-      <div className="text-[11px] font-medium text-sky-800 dark:text-sky-300">
-        {t.drawer.gapOtherUrls} <span className="font-normal text-sky-700/70 dark:text-sky-300/70">· {t.drawer.gapOtherUrlsHint}</span>
+      <div className="flex items-start gap-2">
+        <div className="flex-1 text-[11px] font-medium text-sky-800 dark:text-sky-300">
+          {t.drawer.gapOtherUrls} <span className="font-normal text-sky-700/70 dark:text-sky-300/70">· {t.drawer.gapOtherUrlsHint}</span>
+        </div>
+        {selectable && (
+          <button
+            className="shrink-0 inline-flex items-center gap-1 text-[11px] font-medium text-teal-700 dark:text-teal-400 hover:underline disabled:opacity-50 disabled:no-underline disabled:cursor-not-allowed whitespace-nowrap"
+            disabled={creatingTask || selected.size === 0}
+            title={selected.size === 0 ? t.drawer.gapLinkCreateTaskEmpty : t.drawer.gapLinkCreateTaskHint}
+            onClick={onCreateTask}
+          >
+            {creatingTask && <Spinner />}
+            {t.drawer.gapLinkCreateTask(selected.size)}
+          </button>
+        )}
       </div>
       <ul className="mt-1 space-y-1">
         {urls.map((u) => (
           <li key={u.inventoryId} className="flex items-start gap-2 text-xs">
+            {selectable &&
+              (u.taskId ? (
+                <span className="w-3.5 shrink-0" />
+              ) : (
+                <input
+                  type="checkbox"
+                  className="mt-0.5 shrink-0"
+                  title={t.drawer.gapLinkSelectHint}
+                  checked={selected.has(u.inventoryId)}
+                  disabled={creatingTask}
+                  onChange={(e) => onToggle(u.inventoryId, e.target.checked)}
+                />
+              ))}
             <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium ${statusStyles[u.status]}`}>{t.drawer[u.status]}</span>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
@@ -648,6 +689,11 @@ function OtherUrlsList({ urls }: { urls: TopicOtherUrl[] }) {
                   {u.title || u.url} ↗
                 </a>
                 <LinkBadge url={u} />
+                {u.taskId && (
+                  <a href="/tasks" target="_blank" rel="noreferrer" className="text-[10px] font-medium text-teal-600 hover:underline whitespace-nowrap">
+                    ✓ {t.drawer.gapLinkInTask} ↗
+                  </a>
+                )}
               </div>
               {u.heading && (
                 <div className="text-slate-500">
@@ -909,6 +955,54 @@ function TopicGapTab({
     }
   };
 
+  // Schlüssel `${gapId}:${index}`, damit eine Auswahl nicht auf eine neue Analyse übergeht
+  const [linkSelection, setLinkSelection] = useState<Map<string, Set<string>>>(new Map());
+  const [creatingLinkTask, setCreatingLinkTask] = useState<Set<string>>(new Set());
+  const blockKey = (index: number) => `${gap?.id}:${index}`;
+
+  const toggleLink = (index: number, inventoryId: string, checked: boolean) =>
+    setLinkSelection((prev) => {
+      const next = new Map(prev);
+      const ids = new Set(prev.get(blockKey(index)));
+      if (checked) ids.add(inventoryId);
+      else ids.delete(inventoryId);
+      next.set(blockKey(index), ids);
+      return next;
+    });
+
+  const createLinkTask = async (index: number) => {
+    const key = blockKey(index);
+    const inventoryIds = [...(linkSelection.get(key) ?? [])];
+    if (!gap || inventoryIds.length === 0) return;
+    const gapId = gap.id;
+    setCreatingLinkTask((prev) => new Set(prev).add(key));
+    setError(null);
+    try {
+      const res = await apiFetch<{ task: { id: string }; otherUrls: TopicOtherUrl[] }>(
+        `/api/seo-helper/keyword-mapping/urls/${url.id}/topic-gap/link-task`,
+        { method: "POST", body: JSON.stringify({ gapId, index, inventoryIds }) }
+      );
+      setData((prev) =>
+        prev?.gap?.id === gapId
+          ? { ...prev, gap: { ...prev.gap, results: prev.gap.results.map((r, i) => (i === index ? { ...r, otherUrls: res.otherUrls } : r)) } }
+          : prev
+      );
+      setLinkSelection((prev) => {
+        const next = new Map(prev);
+        next.delete(key);
+        return next;
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t.errorGeneric);
+    } finally {
+      setCreatingLinkTask((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+    }
+  };
+
   const copyTask = async () => {
     if (!gap) return;
     const missing = items.filter((i) => i.status === "missing");
@@ -1120,7 +1214,16 @@ function TopicGapTab({
                               {t.drawer.evidence}: „{i.evidence}“
                             </div>
                           )}
-                          {coveredElsewhere(i) && <OtherUrlsList urls={i.otherUrls!} />}
+                          {coveredElsewhere(i) && (
+                            <OtherUrlsList
+                              urls={i.otherUrls!}
+                              editable={editable}
+                              selected={linkSelection.get(blockKey(i.index)) ?? new Set()}
+                              onToggle={(inventoryId, checked) => toggleLink(i.index, inventoryId, checked)}
+                              onCreateTask={() => void createLinkTask(i.index)}
+                              creatingTask={creatingLinkTask.has(blockKey(i.index))}
+                            />
+                          )}
                         </div>
                         {topicActions(i)}
                       </div>
