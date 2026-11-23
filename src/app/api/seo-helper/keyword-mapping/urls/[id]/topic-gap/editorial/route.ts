@@ -59,6 +59,7 @@ export async function POST(request: NextRequest, ctx: { params: Promise<{ id: st
         `Fokus-Keyword: ${gap.focusKeyword}`,
         item.path.length ? `Topic-Pfad: ${[...item.path, item.topic].join(" > ")}` : null,
         item.reason ? `Begründung: ${item.reason}` : null,
+        item.otherUrls?.length ? `Bereits abgedeckt auf: ${item.otherUrls.map((u) => u.url).join(", ")}` : null,
       ]
         .filter(Boolean)
         .join("\n");
