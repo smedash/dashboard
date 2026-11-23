@@ -61,6 +61,8 @@ export interface RankTrackerResult {
     website_name: string;
     is_featured_snippet: boolean;
     is_paid: boolean;
+    /** Enthält "from_web", wenn DataForSEO das Item aus dem Google-Web-Mode ersetzt hat. */
+    checks?: string[] | null;
   }>;
 }
 
@@ -82,7 +84,7 @@ export async function createRankTrackerTask(
       Authorization: getAuthHeader(),
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(tasks),
+    body: JSON.stringify(tasks.map((t) => ({ ...t, resolve_poisoned_results: true }))),
   });
 
   if (!response.ok) {
@@ -259,6 +261,7 @@ export async function fetchRankingForKeyword(
     location_code: locationCode,
     language_code: languageCode,
     depth: 50,
+    resolve_poisoned_results: true,
   }];
 
   const response = await fetch(`${DATAFORSEO_API_URL}/serp/google/organic/live/advanced`, {
@@ -290,7 +293,11 @@ export async function fetchRankingForKeyword(
   }
 
   const result = task.result[0] as RankTrackerResult;
-  console.log(`[fetchRankingForKeyword] ✓ "${keyword}": ${result.items_count} Items gefunden`);
+  const restoredCount = result.items?.filter((i) => i.checks?.includes("from_web")).length ?? 0;
+  console.log(
+    `[fetchRankingForKeyword] ✓ "${keyword}": ${result.items_count} Items gefunden` +
+      (restoredCount > 0 ? ` (${restoredCount} aus Web-Mode wiederhergestellt)` : "")
+  );
 
   return result;
 }
