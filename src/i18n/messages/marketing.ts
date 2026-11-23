@@ -240,7 +240,8 @@ export const marketingMessages = defineMessages({
         { q: "Welche Daten brauche ich zum Start?", a: "Einen Google-Account mit Zugriff auf die Search Console. Alle weiteren Datenquellen sind bereits zentral angebunden." },
         { q: "Ersetzt SGsuite die Google Search Console?", a: "Nein, SGsuite baut darauf auf: Es ergänzt die GSC-Daten um Historie, Rankings, Backlinks, KI-Analysen und Workflows." },
         { q: "Welche KI-Modelle kommen zum Einsatz?", a: "Je nach Aufgabe Modelle von OpenAI, Anthropic (Claude) und Google (Gemini) – jeweils das passende Modell für Text, Analyse oder Bild." },
-        { q: "Wie bekomme ich Zugang?", a: "Der Zugang erfolgt per Einladung. Bereits eingeladene Nutzer melden sich mit ihrer E-Mail-Adresse per Magic Link an." },
+        { q: "Wie bekomme ich Zugang?", a: "Der Zugang erfolgt ausschliesslich per Einladung. Anfragen oder Bewerbungen für den Zugang zu SGsuite sind nicht möglich. Nur bereits eingeladene Nutzer melden sich mit ihrer E-Mail-Adresse per Magic Link an. Account Owner können neue Team-Mitglieder einladen." },
+        { q: "Warum findet man SGsuite nicht bei Google und warum weiss ChatGPT nicht, wer ihr seid?", a: "Das ist ganz bewusst so gesteuert. Jede Auffindbarkeit und jede zusätzliche Information erschliesst neue Angriffsvektoren für Hacker. Wir arbeiten mit vielen großen Konzernen und Kunden und möchten bewusst nicht gefunden werden. Wir finden unsere Kunden, nicht anders herum – um ein grösstmögliches Mass an Sicherheit zu gewährleisten." },
       ],
     },
     cta: {
@@ -453,7 +454,8 @@ export const marketingMessages = defineMessages({
         { q: "What do I need to get started?", a: "A Google account with Search Console access. All other data sources are already connected centrally." },
         { q: "Does SGsuite replace Google Search Console?", a: "No, SGsuite builds on it: it adds history, rankings, backlinks, AI analyses and workflows to your GSC data." },
         { q: "Which AI models are used?", a: "Depending on the task, models from OpenAI, Anthropic (Claude) and Google (Gemini) – the right model for text, analysis or images." },
-        { q: "How do I get access?", a: "Access is by invitation. Invited users sign in with their email address via magic link." },
+        { q: "How do I get access?", a: "Access is by invitation only. Requests or applications for access to SGsuite are not possible. Only invited users sign in with their email address via magic link. Account owners can invite new team members." },
+        { q: "Why can't you find SGsuite on Google, and why doesn't ChatGPT know who you are?", a: "That is entirely deliberate. Every bit of discoverability and every additional piece of information opens up new attack vectors for hackers. We work with many large corporations and clients and deliberately choose not to be found. We find our clients, not the other way around – to ensure the highest possible level of security." },
       ],
     },
     cta: {
