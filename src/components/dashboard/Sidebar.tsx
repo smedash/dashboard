@@ -512,7 +512,10 @@ export function Sidebar() {
           <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-white">{t.appName}</h1>
+          <div className="flex flex-col leading-tight">
+            <h1 className="text-xl font-bold text-slate-900 dark:text-white">{t.appName}</h1>
+            <span className="text-xs text-slate-500 dark:text-slate-400">{t.appTagline}</span>
+          </div>
         </div>
         <nav className="flex flex-1 flex-col">
           {/* Hauptnavigation */}
