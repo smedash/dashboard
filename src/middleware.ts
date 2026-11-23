@@ -24,6 +24,7 @@ export function middleware(req: NextRequest) {
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
     pathname.startsWith("/icon") ||
+    pathname === "/apple-icon.png" ||
     pathname === "/robots.txt";
   const isLoginPage =
     pathname === "/login" ||
@@ -55,6 +56,6 @@ export function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|icon.svg|robots.txt|briefing-vorlage\\.docx|seo-checkliste\\.xlsx|.*\\.svg).*)",
+    "/((?!_next/static|_next/image|favicon.ico|icon.svg|apple-icon\\.png|robots.txt|briefing-vorlage\\.docx|seo-checkliste\\.xlsx|.*\\.svg).*)",
   ],
 };
