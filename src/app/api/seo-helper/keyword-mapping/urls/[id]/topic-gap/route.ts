@@ -21,6 +21,8 @@ async function gapResponse(gapId: string) {
       summary: gap.summary,
       error: gap.error,
       crossCoverageError: gap.crossCoverageError,
+      linksCheckedAt: gap.linksCheckedAt?.toISOString() ?? null,
+      linkCheckError: gap.linkCheckError,
       taskId: gap.taskId,
       createdAt: gap.createdAt.toISOString(),
       updatedAt: gap.updatedAt.toISOString(),

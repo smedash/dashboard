@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { embedTexts, toVectorLiteral } from "@/lib/content-mapping/embeddings";
 import { toUrlKey } from "@/lib/url-cleanup/normalize";
+import { runLinkCheck } from "./internal-links";
 import type { TopicGapItem, TopicOtherUrl } from "./shared";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -13,7 +14,6 @@ const SECTIONS_PER_TOPIC = 20;
 const URLS_PER_TOPIC = 5;
 const SNIPPET_CHARS = 500;
 const TOPICS_PER_PROMPT = 25;
-const QUERY_CONCURRENCY = 5;
 
 interface SectionHit {
   inventoryId: string;
@@ -24,34 +24,26 @@ interface SectionHit {
   similarity: number;
 }
 
-async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
-  const out: R[] = new Array(items.length);
-  let next = 0;
-  const worker = async () => {
-    while (next < items.length) {
-      const i = next++;
-      out[i] = await fn(items[i]);
-    }
-  };
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
-  return out;
-}
-
+/**
+ * Exakte Suche aller Topics in einer Abfrage: die Abschnitte der Sprache/des Landes werden einmal
+ * geladen und gegen alle Topic-Vektoren verglichen (Ergebnis je Topic in Eingabereihenfolge).
+ * `subvector` entpackt die ausgelagerten (TOAST) Vektoren einmal pro Abschnitt statt pro Vergleich.
+ */
 async function searchSections(params: {
-  vector: number[];
+  vectors: number[][];
   ownUrlKey: string;
   ownUrlKeyNoHtml: string;
   languageCode: string;
   countryCode: string;
-}): Promise<SectionHit[]> {
-  const v = toVectorLiteral(params.vector);
-  // Gefilterte HNSW-Suche: ohne höheres ef_search fallen nach dem Filtern zu viele Treffer weg
-  const [, rows] = await prisma.$transaction([
-    prisma.$queryRaw`SELECT set_config('hnsw.ef_search', '200', true)`,
-    prisma.$queryRaw<SectionHit[]>`
-      SELECT i."id" AS "inventoryId", i."url", c."title", s."heading",
-             left(s."text", ${SNIPPET_CHARS}) AS "snippet",
-             (1 - (s."embedding" <=> ${v}::vector))::float AS "similarity"
+}): Promise<SectionHit[][]> {
+  const literals = params.vectors.map(toVectorLiteral);
+  const rows = await prisma.$queryRaw<Array<SectionHit & { pos: number }>>`
+    WITH q AS MATERIALIZED (
+      SELECT (t."ord" - 1)::int AS "pos", t."v"::vector AS "v"
+      FROM unnest(${literals}::text[]) WITH ORDINALITY AS t("v", "ord")
+    ),
+    cand AS MATERIALIZED (
+      SELECT s."id", subvector(s."embedding", 1, vector_dims(s."embedding")) AS "embedding"
       FROM "UrlContentSection" s
       JOIN "UrlContent" c ON c."id" = s."contentId"
       JOIN "UrlInventory" i ON i."id" = c."inventoryId"
@@ -62,11 +54,27 @@ async function searchSections(params: {
         AND i."urlKeyNoHtml" <> ${params.ownUrlKeyNoHtml}
         AND lower(i."language") = ${params.languageCode.toLowerCase()}
         AND lower(i."country") = ${params.countryCode.toLowerCase()}
-      ORDER BY s."embedding" <=> ${v}::vector
-      LIMIT ${SECTIONS_PER_TOPIC}
-    `,
-  ]);
-  return rows;
+    ),
+    scored AS (
+      SELECT q."pos", cand."id", cand."embedding" <=> q."v" AS "dist" FROM cand CROSS JOIN q
+    ),
+    ranked AS (
+      SELECT "pos", "id", "dist", row_number() OVER (PARTITION BY "pos" ORDER BY "dist") AS "rn"
+      FROM scored
+      WHERE "dist" <= ${1 - MIN_SIMILARITY}::float
+    )
+    SELECT r."pos", i."id" AS "inventoryId", i."url", c."title", s."heading",
+           left(s."text", ${SNIPPET_CHARS}::int) AS "snippet",
+           (1 - r."dist")::float AS "similarity"
+    FROM ranked r
+    JOIN "UrlContentSection" s ON s."id" = r."id"
+    JOIN "UrlContent" c ON c."id" = s."contentId"
+    JOIN "UrlInventory" i ON i."id" = c."inventoryId"
+    WHERE r."rn" <= ${SECTIONS_PER_TOPIC}::int
+  `;
+  const out: SectionHit[][] = params.vectors.map(() => []);
+  for (const { pos, ...hit } of rows) out[pos].push(hit);
+  return out;
 }
 
 /** Bester Abschnitt je URL, nur oberhalb des Schwellwerts. */
@@ -174,17 +182,14 @@ export async function findCrossCoverage(params: {
 
   const labels = open.map(({ item }) => [params.keyword, ...item.path, item.topic].join(" > "));
   const vectors = await embedTexts(labels);
-  const queries = open.map(({ index }, pos) => ({ index, pos }));
-  const candidates: TopicCandidates[] = await mapLimit(queries, QUERY_CONCURRENCY, async ({ index, pos }) => {
-    const hits = await searchSections({
-      vector: vectors[pos],
-      ownUrlKey: keys.urlKey,
-      ownUrlKeyNoHtml: keys.urlKeyNoHtml,
-      languageCode: params.languageCode,
-      countryCode: params.countryCode,
-    });
-    return { index, label: labels[pos], candidates: bestPerUrl(hits) };
+  const hitsPerTopic = await searchSections({
+    vectors,
+    ownUrlKey: keys.urlKey,
+    ownUrlKeyNoHtml: keys.urlKeyNoHtml,
+    languageCode: params.languageCode,
+    countryCode: params.countryCode,
   });
+  const candidates: TopicCandidates[] = open.map(({ index }, pos) => ({ index, label: labels[pos], candidates: bestPerUrl(hitsPerTopic[pos]) }));
 
   const withCandidates = candidates.filter((c) => c.candidates.length > 0);
   const chunks: TopicCandidates[][] = [];
@@ -225,7 +230,12 @@ export async function runCrossCoverage(gapId: string): Promise<void> {
       const current = Array.isArray(fresh[0]?.results) ? (fresh[0].results as TopicGapItem[]) : [];
       const merged = current.map((i) => {
         const otherUrls = otherByKey.get(`${i.path.join(" > ")} > ${i.topic}`);
-        return otherUrls ? { ...i, otherUrls } : i;
+        if (!otherUrls) return i;
+        const prevLinks = new Map((i.otherUrls ?? []).map((u) => [u.inventoryId, u.link]));
+        return {
+          ...i,
+          otherUrls: otherUrls.map((u) => (prevLinks.get(u.inventoryId) !== undefined ? { ...u, link: prevLinks.get(u.inventoryId) } : u)),
+        };
       });
       await tx.keywordMapTopicGap.update({
         where: { id: gapId },
@@ -238,5 +248,7 @@ export async function runCrossCoverage(gapId: string): Promise<void> {
       where: { id: gapId },
       data: { crossCoverageError: e instanceof Error ? e.message : "Abgleich fehlgeschlagen" },
     });
+    return;
   }
+  await runLinkCheck(gapId);
 }

@@ -20,8 +20,16 @@ export async function POST(request: NextRequest, ctx: { params: Promise<{ id: st
     if (gap.status !== "succeeded") return NextResponse.json({ error: "Analyse ist noch nicht abgeschlossen" }, { status: 409 });
 
     await runCrossCoverage(gap.id);
-    const updated = await prisma.keywordMapTopicGap.findUnique({ where: { id: gap.id }, select: { results: true, crossCoverageError: true } });
-    return NextResponse.json({ results: updated?.results ?? [], crossCoverageError: updated?.crossCoverageError ?? null });
+    const updated = await prisma.keywordMapTopicGap.findUnique({
+      where: { id: gap.id },
+      select: { results: true, crossCoverageError: true, linksCheckedAt: true, linkCheckError: true },
+    });
+    return NextResponse.json({
+      results: updated?.results ?? [],
+      crossCoverageError: updated?.crossCoverageError ?? null,
+      linksCheckedAt: updated?.linksCheckedAt?.toISOString() ?? null,
+      linkCheckError: updated?.linkCheckError ?? null,
+    });
   } catch (e) {
     console.error("[keyword-mapping/topic-gap/cross-coverage] POST", e);
     return NextResponse.json({ error: e instanceof Error ? e.message : "Abgleich fehlgeschlagen" }, { status: 500 });

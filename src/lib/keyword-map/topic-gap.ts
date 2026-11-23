@@ -273,6 +273,8 @@ export async function advanceTopicGap(gapId: string) {
         contentHash: page.hash,
         error: null,
         crossCoverageError: null,
+        linksCheckedAt: null,
+        linkCheckError: null,
       },
       include: { url: true },
     });

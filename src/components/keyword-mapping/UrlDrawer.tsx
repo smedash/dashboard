@@ -568,6 +568,8 @@ interface GapResponse {
     summary: string | null;
     error: string | null;
     crossCoverageError: string | null;
+    linksCheckedAt: string | null;
+    linkCheckError: string | null;
     taskId: string | null;
     createdAt: string;
   } | null;
@@ -602,6 +604,33 @@ function matchesFilter(i: TopicGapItem, filter: GapFilter): boolean {
   return i.status === filter;
 }
 
+const linkStyles = {
+  linked: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
+  navOnly: "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300",
+  missing: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+};
+
+function linkState(u: TopicOtherUrl): keyof typeof linkStyles | null {
+  if (u.link === undefined) return null;
+  if (u.link === null) return "missing";
+  return u.link.inContent ? "linked" : "navOnly";
+}
+
+function LinkBadge({ url }: { url: TopicOtherUrl }) {
+  const t = useMessages(seoHelperKeywordMappingMessages);
+  const state = linkState(url);
+  if (!state) return null;
+  const label = { linked: t.drawer.gapLinkLinked, navOnly: t.drawer.gapLinkNavOnly, missing: t.drawer.gapLinkMissing }[state];
+  const anchor = url.link?.anchor ? `${t.drawer.gapLinkAnchor}: „${url.link.anchor}“` : "";
+  const title = state === "linked" ? anchor : state === "navOnly" ? [t.drawer.gapLinkNavOnlyHint, anchor].filter(Boolean).join("\n") : t.drawer.gapLinkMissingHint;
+  return (
+    <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium whitespace-nowrap ${linkStyles[state]}`} title={title || undefined}>
+      {state === "linked" ? "✓ " : state === "missing" ? "✗ " : ""}
+      {label}
+    </span>
+  );
+}
+
 function OtherUrlsList({ urls }: { urls: TopicOtherUrl[] }) {
   const t = useMessages(seoHelperKeywordMappingMessages);
   return (
@@ -614,12 +643,20 @@ function OtherUrlsList({ urls }: { urls: TopicOtherUrl[] }) {
           <li key={u.inventoryId} className="flex items-start gap-2 text-xs">
             <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium ${statusStyles[u.status]}`}>{t.drawer[u.status]}</span>
             <div className="min-w-0">
-              <a href={u.url} target="_blank" rel="noreferrer" className="text-teal-700 dark:text-teal-400 hover:underline break-all">
-                {u.title || u.url} ↗
-              </a>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                <a href={u.url} target="_blank" rel="noreferrer" className="text-teal-700 dark:text-teal-400 hover:underline break-all">
+                  {u.title || u.url} ↗
+                </a>
+                <LinkBadge url={u} />
+              </div>
               {u.heading && (
                 <div className="text-slate-500">
                   {t.drawer.gapOtherUrlsSection}: „{u.heading}“
+                </div>
+              )}
+              {u.link?.inContent && u.link.anchor && (
+                <div className="text-slate-500">
+                  {t.drawer.gapLinkAnchor}: „{u.link.anchor}“
                 </div>
               )}
             </div>
@@ -715,6 +752,12 @@ function TopicGapTab({
     missing: items.filter((i) => i.status === "missing").length,
   };
   const elsewhereCount = items.filter(coveredElsewhere).length;
+  const linkTargets = useMemo(() => {
+    const byId = new Map<string, TopicOtherUrl>();
+    for (const i of items) if (coveredElsewhere(i)) for (const u of i.otherUrls!) byId.set(u.inventoryId, u);
+    return [...byId.values()];
+  }, [items]);
+  const linksMissing = linkTargets.filter((u) => u.link !== undefined && !u.link?.inContent).length;
   const crossChecked = items.some((i) => i.otherUrls !== undefined);
   const hasOpenTopics = counts.missing + counts.partial > 0;
   const selectedCount = items.filter((i) => i.selected).length;
@@ -780,17 +823,34 @@ function TopicGapTab({
     setCrossChecking(true);
     setError(null);
     try {
-      const res = await apiFetch<{ results: TopicGapItem[]; crossCoverageError: string | null }>(
+      const res = await apiFetch<{ results: TopicGapItem[]; crossCoverageError: string | null; linksCheckedAt: string | null; linkCheckError: string | null }>(
         `/api/seo-helper/keyword-mapping/urls/${url.id}/topic-gap/cross-coverage`,
         { method: "POST", body: JSON.stringify({ gapId }) }
       );
-      setData((prev) =>
-        prev?.gap?.id === gapId ? { ...prev, gap: { ...prev.gap, results: res.results, crossCoverageError: res.crossCoverageError } } : prev
-      );
+      setData((prev) => (prev?.gap?.id === gapId ? { ...prev, gap: { ...prev.gap, ...res } } : prev));
     } catch (e) {
       setError(e instanceof Error ? e.message : t.errorGeneric);
     } finally {
       setCrossChecking(false);
+    }
+  };
+
+  const [linkChecking, setLinkChecking] = useState(false);
+  const linkCheck = async () => {
+    if (!gap) return;
+    const gapId = gap.id;
+    setLinkChecking(true);
+    setError(null);
+    try {
+      const res = await apiFetch<{ results: TopicGapItem[]; linksCheckedAt: string | null; linkCheckError: string | null }>(
+        `/api/seo-helper/keyword-mapping/urls/${url.id}/topic-gap/links`,
+        { method: "POST", body: JSON.stringify({ gapId }) }
+      );
+      setData((prev) => (prev?.gap?.id === gapId ? { ...prev, gap: { ...prev.gap, ...res } } : prev));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t.errorGeneric);
+    } finally {
+      setLinkChecking(false);
     }
   };
 
@@ -854,7 +914,14 @@ function TopicGapTab({
     const missing = items.filter((i) => i.status === "missing");
     const partial = items.filter((i) => i.status === "partial");
     const line = (i: TopicGapItem) => {
-      const others = i.otherUrls?.length ? ` (${t.drawer.gapCopyOtherUrls}: ${i.otherUrls.map((u) => u.url).join(", ")})` : "";
+      const linkNote = (u: TopicOtherUrl) => {
+        const state = linkState(u);
+        if (!state) return "";
+        return ` [${{ linked: t.drawer.gapCopyLinked, navOnly: t.drawer.gapCopyNavOnly, missing: t.drawer.gapCopyNotLinked }[state]}]`;
+      };
+      const others = i.otherUrls?.length
+        ? ` (${t.drawer.gapCopyOtherUrls}: ${i.otherUrls.map((u) => `${u.url}${linkNote(u)}`).join(", ")})`
+        : "";
       return `- ${[...i.path, i.topic].join(" > ")}${others}`;
     };
     const text = [
@@ -982,6 +1049,30 @@ function TopicGapTab({
                   </button>
                 </div>
               )}
+              {gap.linkCheckError && (
+                <Notice kind="warning">
+                  {t.drawer.gapLinkCheckFailed}: {gap.linkCheckError}
+                </Notice>
+              )}
+              {linkTargets.length > 0 && (
+                <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs">
+                  {gap.linksCheckedAt && (
+                    <span className={linksMissing > 0 ? "font-medium text-amber-700 dark:text-amber-300" : "font-medium text-emerald-700 dark:text-emerald-300"}>
+                      {linksMissing > 0 ? t.drawer.gapLinksMissingCount(linksMissing, linkTargets.length) : t.drawer.gapLinksAllPresent(linkTargets.length)}
+                    </span>
+                  )}
+                  {gap.linksCheckedAt && (
+                    <span className="text-slate-400">{t.drawer.gapLinksCheckedAt(new Date(gap.linksCheckedAt).toLocaleString(intlLocale))}</span>
+                  )}
+                  <div className="flex-1" />
+                  {editable && (
+                    <button className={buttonSecondary} disabled={linkChecking} title={t.drawer.gapLinkCheckHint} onClick={() => void linkCheck()}>
+                      {linkChecking && <Spinner />}
+                      {t.drawer.gapLinkCheck}
+                    </button>
+                  )}
+                </div>
+              )}
 
               <div className="flex flex-wrap items-center gap-2">
                 {(["all", "missing", "partial", "covered", ...(crossChecked ? (["elsewhere"] as const) : [])] as const).map((f) => (
@@ -1084,7 +1175,13 @@ function TopicTree({
         {others.length > 0 && (
           <span
             className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300 whitespace-nowrap"
-            title={`${t.drawer.gapOtherUrls}:\n${others.map((u) => `${u.url}${u.heading ? ` – ${u.heading}` : ""}`).join("\n")}`}
+            title={`${t.drawer.gapOtherUrls}:\n${others
+              .map((u) => {
+                const state = linkState(u);
+                const note = state ? ` [${{ linked: t.drawer.gapLinkLinked, navOnly: t.drawer.gapLinkNavOnly, missing: t.drawer.gapLinkMissing }[state]}]` : "";
+                return `${u.url}${u.heading ? ` – ${u.heading}` : ""}${note}`;
+              })
+              .join("\n")}`}
           >
             {t.drawer.gapOtherUrlsCount(others.length)}
           </span>

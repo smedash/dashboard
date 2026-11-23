@@ -1556,6 +1556,8 @@ model KeywordMapTopicGap {
   contentHash   String?
   taskId        String? // Kanban-Task, der aus dieser Analyse angelegt wurde
   crossCoverageError String?  @db.Text // Fehler beim Abgleich mit anderen URLs aus dem Content-Mapping
+  linksCheckedAt     DateTime? // Letzte Prüfung der internen Links zu den anderswo abdeckenden URLs
+  linkCheckError     String?   @db.Text
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 

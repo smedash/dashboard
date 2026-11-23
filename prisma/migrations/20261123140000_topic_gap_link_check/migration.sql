@@ -1,0 +1,2 @@
+ALTER TABLE "KeywordMapTopicGap" ADD COLUMN IF NOT EXISTS "linksCheckedAt" TIMESTAMP(3);
+ALTER TABLE "KeywordMapTopicGap" ADD COLUMN IF NOT EXISTS "linkCheckError" TEXT;

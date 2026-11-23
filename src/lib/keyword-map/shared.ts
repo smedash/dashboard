@@ -48,6 +48,14 @@ export interface TopicOtherUrl {
   /** Abschnitt, der das Topic abdeckt */
   heading: string | null;
   similarity: number;
+  /** Link von der Mapping-URL hierher; undefined = nicht geprüft, null = kein Link gefunden */
+  link?: TopicLink | null;
+}
+
+export interface TopicLink {
+  anchor: string;
+  /** false = nur in Navigation, Header oder Footer verlinkt */
+  inContent: boolean;
 }
 
 export interface TopicGapItem {
