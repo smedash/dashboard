@@ -4,7 +4,6 @@ import { defineMessages } from "../config";
 export const commonMessages = defineMessages({
   de: {
     appName: "SG Suite",
-    appTagline: "Search & Growth Suite",
     language: "Sprache",
     actions: {
       save: "Speichern",
@@ -78,7 +77,6 @@ export const commonMessages = defineMessages({
   },
   en: {
     appName: "SG Suite",
-    appTagline: "Search & Growth Suite",
     language: "Language",
     actions: {
       save: "Save",

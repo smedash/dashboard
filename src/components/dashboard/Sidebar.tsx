@@ -7,6 +7,7 @@ import { useSession } from "next-auth/react";
 import { hasFullAdminRights } from "@/lib/rbac";
 import { useMessages } from "@/i18n/I18nProvider";
 import { commonMessages } from "@/i18n/messages/common";
+import { SGsuiteMark, SGsuiteWordmark } from "@/components/ui/SGsuiteLogo";
 
 type NavLabelKey = Exclude<keyof (typeof commonMessages)["de"]["nav"], "sections">;
 
@@ -509,13 +510,10 @@ export function Sidebar() {
     <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-72 lg:flex-col">
       <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-slate-50 dark:bg-slate-800 px-6 pb-4 border-r border-slate-200 dark:border-slate-700">
         <div className="flex h-16 shrink-0 items-center gap-3">
-          <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          <div className="flex flex-col leading-tight">
-            <h1 className="text-xl font-bold text-slate-900 dark:text-white">{t.appName}</h1>
-            <span className="text-xs text-slate-500 dark:text-slate-400">{t.appTagline}</span>
-          </div>
+          <SGsuiteMark className="w-8 h-8 text-[#0B1533] dark:text-white" />
+          <h1 aria-label={t.appName} className="text-2xl text-slate-900 dark:text-white">
+            <SGsuiteWordmark />
+          </h1>
         </div>
         <nav className="flex flex-1 flex-col">
           {/* Hauptnavigation */}
