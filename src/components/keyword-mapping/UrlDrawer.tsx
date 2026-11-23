@@ -576,7 +576,7 @@ interface GapResponse {
 
 interface TreeNode {
   label: string;
-  children: TreeNode[];
+  children?: TreeNode[];
 }
 
 const POLL_MS = 5000;
@@ -1072,7 +1072,7 @@ function TopicTree({
   const item = statusByTopic.get(node.label.toLowerCase());
   const matches = (n: TreeNode): boolean => {
     const s = statusByTopic.get(n.label.toLowerCase());
-    return filter === "all" || (!!s && matchesFilter(s, filter)) || n.children.some(matches);
+    return filter === "all" || (!!s && matchesFilter(s, filter)) || (n.children ?? []).some(matches);
   };
   const others = item && coveredElsewhere(item) ? item.otherUrls! : [];
   if (!root && !matches(node)) return null;
@@ -1091,7 +1091,7 @@ function TopicTree({
         )}
         {item && <span className="ml-auto">{renderActions(item)}</span>}
       </div>
-      {node.children.map((c, idx) => (
+      {(node.children ?? []).map((c, idx) => (
         <TopicTree key={`${c.label}-${idx}`} node={c} statusByTopic={statusByTopic} filter={filter} renderActions={renderActions} />
       ))}
     </div>
