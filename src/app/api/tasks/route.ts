@@ -3,6 +3,8 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { canEdit } from "@/lib/rbac";
 import { sendTaskAssignmentNotification } from "@/lib/resend";
+import { InvalidTaskUrlError, normalizeTaskUrl } from "@/lib/task-url";
+import { DEFAULT_TASK_SCOPE, isTaskScope } from "@/lib/task-scope";
 
 // GET - Alle Tasks abrufen
 export async function GET() {
@@ -91,6 +93,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Title is required" }, { status: 400 });
     }
 
+    if (body.scope !== undefined && !isTaskScope(body.scope)) {
+      return NextResponse.json({ error: "Invalid scope" }, { status: 400 });
+    }
+
+    let url: string | null;
+    try {
+      url = normalizeTaskUrl(body.url);
+    } catch (e) {
+      if (e instanceof InvalidTaskUrlError) return NextResponse.json({ error: e.message }, { status: 400 });
+      throw e;
+    }
+
     // Höchste Order in der Spalte finden
     const maxOrderTask = await prisma.task.findFirst({
       where: { status: status || "backlog" },
@@ -102,8 +116,10 @@ export async function POST(request: NextRequest) {
       data: {
         title: title.trim(),
         description: description?.trim() || null,
+        url,
         status: status || "backlog",
         priority: priority || "medium",
+        scope: body.scope ?? DEFAULT_TASK_SCOPE,
         order: (maxOrderTask?.order ?? -1) + 1,
         dueDate: dueDate ? new Date(dueDate) : null,
         category: category || null,
@@ -154,6 +170,7 @@ export async function POST(request: NextRequest) {
               to: assignee.user.email,
               taskTitle: task.title,
               taskDescription: task.description,
+              taskUrl: task.url,
               creatorName,
               priority: task.priority,
               dueDate: task.dueDate?.toISOString() || null,

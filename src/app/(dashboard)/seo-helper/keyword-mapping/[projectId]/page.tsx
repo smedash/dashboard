@@ -51,6 +51,11 @@ type KvpFilter = "all" | "in" | "out";
 const PAGE_SIZE = 50;
 const DFS_BATCH = 20;
 const KVP_BATCH = 50;
+const SV_BATCH = 25;
+const GSC_BATCH = 25;
+const TASK_BATCH = 25;
+/** `inputClass` ohne `w-full`, damit sich die Filter eine Zeile teilen */
+const filterClass = inputClass.replace(/\bw-full\b/, "").trim();
 const GROUPS_STORAGE_KEY = "keyword-mapping-visible-groups";
 const DEFAULT_GROUPS: ColumnGroup[] = ["basics", "topic", "performance", "analysis"];
 
@@ -78,6 +83,8 @@ export default function KeywordMappingProjectPage() {
   const [rankOver10, setRankOver10] = useState(false);
   const [topicAuthorityFilter, setTopicAuthorityFilter] = useState("");
   const [pageTypeFilter, setPageTypeFilter] = useState("");
+  const [minScoreInput, setMinScoreInput] = useState("");
+  const minScore = minScoreInput.trim() ? Number(minScoreInput.replace(",", ".")) : null;
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "url", dir: "asc" });
   const [page, setPage] = useState(0);
   const [visibleGroups, setVisibleGroups] = useState<ColumnGroup[]>(DEFAULT_GROUPS);
@@ -157,6 +164,7 @@ export default function KeywordMappingProjectPage() {
       }
       if (topicAuthorityFilter && u.topicAuthority !== topicAuthorityFilter) return false;
       if (pageTypeFilter && u.pageType !== pageTypeFilter) return false;
+      if (minScore !== null && Number.isFinite(minScore) && (u.score === null || u.score < minScore)) return false;
       return true;
     });
     const value = (u: MapUrlDto): number | string | null => {
@@ -186,9 +194,9 @@ export default function KeywordMappingProjectPage() {
       const cmp = typeof va === "string" ? va.localeCompare(String(vb)) : va - (vb as number);
       return sort.dir === "asc" ? cmp : -cmp;
     });
-  }, [urls, search, focusFilter, kvpFilter, rankOver10, topicAuthorityFilter, pageTypeFilter, sort]);
+  }, [urls, search, focusFilter, kvpFilter, rankOver10, topicAuthorityFilter, pageTypeFilter, minScore, sort]);
 
-  useEffect(() => setPage(0), [search, focusFilter, kvpFilter, rankOver10, topicAuthorityFilter, pageTypeFilter, sort]);
+  useEffect(() => setPage(0), [search, focusFilter, kvpFilter, rankOver10, topicAuthorityFilter, pageTypeFilter, minScore, sort]);
 
   const pageRows = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
   const kpis = useMemo(() => computeKpis(filtered), [filtered]);
@@ -272,6 +280,51 @@ export default function KeywordMappingProjectPage() {
     }
   };
 
+  const bulkSearchVolume = async (force: boolean) => {
+    setMessage(null);
+    try {
+      const results = await runInBatches(selectedIds, SV_BATCH, async (batch) => {
+        const res = await apiFetch<{ requested: number; found: number; urls: MapUrlDto[] }>(
+          "/api/seo-helper/keyword-mapping/urls/search-volume",
+          { method: "POST", body: JSON.stringify({ ids: batch, force }) }
+        );
+        mergeUrls(res.urls);
+        return res;
+      });
+      setMessage({
+        kind: "success",
+        text: t.bulk.svDone(
+          results.reduce((sum, r) => sum + r.requested, 0),
+          results.reduce((sum, r) => sum + r.found, 0)
+        ),
+      });
+    } catch (e) {
+      setMessage({ kind: "error", text: e instanceof Error ? e.message : t.errorGeneric });
+    }
+  };
+
+  const bulkGscClicks = async () => {
+    setMessage(null);
+    try {
+      const results = await runInBatches(selectedIds, GSC_BATCH, async (batch) => {
+        const res = await apiFetch<{ results: Record<string, { clicks?: number; error?: string }>; urls: MapUrlDto[] }>(
+          "/api/seo-helper/keyword-mapping/urls/gsc-clicks",
+          { method: "POST", body: JSON.stringify({ ids: batch }) }
+        );
+        mergeUrls(res.urls);
+        return res.results;
+      });
+      const all = results.flatMap((r) => Object.values(r));
+      const failed = all.filter((r) => r.error);
+      setMessage({
+        kind: failed.length === all.length && all.length > 0 ? "error" : "success",
+        text: t.bulk.gscDone(all.length - failed.length, failed.length, failed[0]?.error),
+      });
+    } catch (e) {
+      setMessage({ kind: "error", text: e instanceof Error ? e.message : t.errorGeneric });
+    }
+  };
+
   const bulkKvp = async (includeGapComment: boolean) => {
     setShowKvpDialog(false);
     setMessage(null);
@@ -292,6 +345,38 @@ export default function KeywordMappingProjectPage() {
           all.filter((r) => r.status === "updated").length,
           all.filter((r) => r.status === "skipped").length
         ),
+      });
+    } catch (e) {
+      setMessage({ kind: "error", text: e instanceof Error ? e.message : t.errorGeneric });
+    }
+  };
+
+  const bulkGapTasks = async () => {
+    const eligible = selectedIds.filter((id) => {
+      const gap = rawUrls.find((u) => u.id === id)?.latestTopicGap;
+      return gap?.status === "succeeded" && !gap.taskId;
+    });
+    if (eligible.length === 0) {
+      setMessage({ kind: "error", text: t.bulk.gapTasksNone });
+      return;
+    }
+    if (!confirm(t.bulk.gapTasksConfirm(eligible.length, selectedIds.length - eligible.length))) return;
+    setMessage(null);
+    try {
+      const results = await runInBatches(eligible, TASK_BATCH, async (batch) => {
+        const res = await apiFetch<{ results: Record<string, { status: string; reason?: string }>; urls: MapUrlDto[] }>(
+          "/api/seo-helper/keyword-mapping/urls/topic-gap-tasks",
+          { method: "POST", body: JSON.stringify({ ids: batch }) }
+        );
+        mergeUrls(res.urls);
+        return res.results;
+      });
+      const all = results.flatMap((r) => Object.values(r));
+      const created = all.filter((r) => r.status === "created").length;
+      const failed = all.filter((r) => r.status === "error");
+      setMessage({
+        kind: created === 0 && failed.length > 0 ? "error" : "success",
+        text: t.bulk.gapTasksDone(created, all.length - created - failed.length, failed.length, failed[0]?.reason),
       });
     } catch (e) {
       setMessage({ kind: "error", text: e instanceof Error ? e.message : t.errorGeneric });
@@ -421,44 +506,53 @@ export default function KeywordMappingProjectPage() {
         <Kpi label={t.kpis.inKvp} value={formatNumber(kpis.inKvp, intlLocale)} />
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-3">
-        <input
-          className={`${inputClass} max-w-xs`}
-          placeholder={t.table.search}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <select className={`${inputClass} w-auto`} value={focusFilter} onChange={(e) => setFocusFilter(e.target.value as FocusFilter)}>
-          <option value="all">{t.fields.focusKeyword}: {t.table.filterAll}</option>
-          <option value="none">{t.table.filterNoFocus}</option>
-          <option value="has">{t.table.filterHasFocus}</option>
-        </select>
-        <select className={`${inputClass} w-auto`} value={kvpFilter} onChange={(e) => setKvpFilter(e.target.value as KvpFilter)}>
-          <option value="all">{t.fields.kvp}: {t.table.filterAll}</option>
-          <option value="in">{t.table.filterInKvp}</option>
-          <option value="out">{t.table.filterNotInKvp}</option>
-        </select>
-        <select className={`${inputClass} w-auto max-w-[14rem]`} value={topicAuthorityFilter} onChange={(e) => setTopicAuthorityFilter(e.target.value)}>
-          <option value="">{t.table.filterTopicAuthority}: {t.table.filterAll}</option>
-          {optionValues("topicAuthority").map((v) => (
-            <option key={v} value={v}>
-              {v}
-            </option>
-          ))}
-        </select>
-        <select className={`${inputClass} w-auto max-w-[14rem]`} value={pageTypeFilter} onChange={(e) => setPageTypeFilter(e.target.value)}>
-          <option value="">{t.table.filterPageType}: {t.table.filterAll}</option>
-          {optionValues("pageType").map((v) => (
-            <option key={v} value={v}>
-              {v}
-            </option>
-          ))}
-        </select>
-        <label className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300 px-2">
-          <input type="checkbox" checked={rankOver10} onChange={(e) => setRankOver10(e.target.checked)} />
-          {t.table.filterRankOver10}
-        </label>
-        <div className="flex-1" />
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-3 space-y-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            className={`${filterClass} flex-1 min-w-[12rem]`}
+            placeholder={t.table.search}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <select className={`${filterClass} max-w-[13rem]`} value={focusFilter} onChange={(e) => setFocusFilter(e.target.value as FocusFilter)}>
+            <option value="all">{t.fields.focusKeyword}: {t.table.filterAll}</option>
+            <option value="none">{t.table.filterNoFocus}</option>
+            <option value="has">{t.table.filterHasFocus}</option>
+          </select>
+          <select className={`${filterClass} max-w-[13rem]`} value={kvpFilter} onChange={(e) => setKvpFilter(e.target.value as KvpFilter)}>
+            <option value="all">{t.fields.kvp}: {t.table.filterAll}</option>
+            <option value="in">{t.table.filterInKvp}</option>
+            <option value="out">{t.table.filterNotInKvp}</option>
+          </select>
+          <select className={`${filterClass} max-w-[13rem]`} value={topicAuthorityFilter} onChange={(e) => setTopicAuthorityFilter(e.target.value)}>
+            <option value="">{t.table.filterTopicAuthority}: {t.table.filterAll}</option>
+            {optionValues("topicAuthority").map((v) => (
+              <option key={v} value={v}>
+                {v}
+              </option>
+            ))}
+          </select>
+          <select className={`${filterClass} max-w-[13rem]`} value={pageTypeFilter} onChange={(e) => setPageTypeFilter(e.target.value)}>
+            <option value="">{t.table.filterPageType}: {t.table.filterAll}</option>
+            {optionValues("pageType").map((v) => (
+              <option key={v} value={v}>
+                {v}
+              </option>
+            ))}
+          </select>
+          <input
+            className={`${filterClass} w-28 ${minScore !== null && !Number.isFinite(minScore) ? "border-red-400" : ""}`}
+            inputMode="decimal"
+            placeholder={t.table.filterMinScore}
+            title={t.table.filterMinScoreHint}
+            value={minScoreInput}
+            onChange={(e) => setMinScoreInput(e.target.value.replace(/[^\d.,]/g, ""))}
+          />
+          <label className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300 px-1 whitespace-nowrap">
+            <input type="checkbox" checked={rankOver10} onChange={(e) => setRankOver10(e.target.checked)} />
+            {t.table.filterRankOver10}
+          </label>
+        </div>
         <div className="flex flex-wrap items-center gap-1 text-xs">
           <span className="text-slate-400 mr-1">{t.table.columns}:</span>
           {(["basics", "topic", "linking", "performance", "analysis"] as ColumnGroup[]).map((g) => (
@@ -491,14 +585,24 @@ export default function KeywordMappingProjectPage() {
                   <button className={buttonSecondary} onClick={() => void bulkDfs({ applyAsFocus: "never" })}>
                     {t.bulk.fetchDfs}
                   </button>
+                  <button className={buttonSecondary} title={t.bulk.fetchSvHint} onClick={() => void bulkSearchVolume(false)}>
+                    {t.bulk.fetchSv}
+                  </button>
+                  <button className={buttonSecondary} title={t.bulk.fetchGscHint} onClick={() => void bulkGscClicks()}>
+                    {t.bulk.fetchGsc}
+                  </button>
                   <BulkMenu
                     label="…"
                     items={[
                       { label: t.bulk.fetchDfsForce, onClick: () => void bulkDfs({ force: true }) },
+                      { label: t.bulk.fetchSvForce, onClick: () => void bulkSearchVolume(true) },
                       { label: t.bulk.applyTop, onClick: () => void bulkDfs({ fetch: false, applyAsFocus: "ifEmpty" }) },
                       { label: t.bulk.applyTopAll, onClick: () => void bulkDfs({ fetch: false, applyAsFocus: "always" }) },
                     ]}
                   />
+                  <button className={buttonSecondary} title={t.bulk.gapTasksHint} onClick={() => void bulkGapTasks()}>
+                    {t.bulk.gapTasks}
+                  </button>
                   <button className={buttonPrimary} onClick={() => setShowKvpDialog(true)}>
                     {t.bulk.pushKvp}
                   </button>
@@ -719,6 +823,11 @@ export default function KeywordMappingProjectPage() {
                       <>
                         <Td first>
                           <CoverageBadge gap={u.latestTopicGap} onClick={() => setDrawerId(u.id)} />
+                          {u.latestTopicGap?.taskId && (
+                            <div className="mt-0.5" title={t.drawer.gapInKanban}>
+                              <Tag tone="teal">✓ {t.table.taskBadge}</Tag>
+                            </div>
+                          )}
                         </Td>
                         <Td>{u.kvpUrlId ? <Tag tone="teal">{t.table.inKvpBadge}</Tag> : <span className="text-slate-300 dark:text-slate-600">–</span>}</Td>
                         <Td className="min-w-[12rem] max-w-[18rem]">

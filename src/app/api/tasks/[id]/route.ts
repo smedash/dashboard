@@ -3,6 +3,8 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { canEdit } from "@/lib/rbac";
 import { sendTaskAssignmentNotification } from "@/lib/resend";
+import { InvalidTaskUrlError, normalizeTaskUrl } from "@/lib/task-url";
+import { isTaskScope } from "@/lib/task-scope";
 
 // GET - Einzelnen Task abrufen
 export async function GET(
@@ -95,6 +97,18 @@ export async function PATCH(
     const body = await request.json();
     const { title, description, status, priority, dueDate, category, labels, assigneeIds } = body;
 
+    if (body.scope !== undefined && !isTaskScope(body.scope)) {
+      return NextResponse.json({ error: "Invalid scope" }, { status: 400 });
+    }
+
+    let url: string | null | undefined;
+    try {
+      url = body.url === undefined ? undefined : normalizeTaskUrl(body.url);
+    } catch (e) {
+      if (e instanceof InvalidTaskUrlError) return NextResponse.json({ error: e.message }, { status: 400 });
+      throw e;
+    }
+
     // Prüfen ob Task existiert und bestehende Assignees laden
     const existingTask = await prisma.task.findUnique({
       where: { id },
@@ -117,8 +131,10 @@ export async function PATCH(
     
     if (title !== undefined) updateData.title = title.trim();
     if (description !== undefined) updateData.description = description?.trim() || null;
+    if (url !== undefined) updateData.url = url;
     if (status !== undefined) updateData.status = status;
     if (priority !== undefined) updateData.priority = priority;
+    if (body.scope !== undefined) updateData.scope = body.scope;
     if (dueDate !== undefined) updateData.dueDate = dueDate ? new Date(dueDate) : null;
     if (category !== undefined) updateData.category = category || null;
     if (labels !== undefined) updateData.labels = labels;
@@ -211,6 +227,7 @@ export async function PATCH(
                 to: assignee.user.email,
                 taskTitle: task.title,
                 taskDescription: task.description,
+                taskUrl: task.url,
                 creatorName,
                 priority: task.priority,
                 dueDate: task.dueDate?.toISOString() || null,

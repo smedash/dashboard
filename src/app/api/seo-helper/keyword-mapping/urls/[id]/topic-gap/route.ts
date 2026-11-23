@@ -20,6 +20,7 @@ async function gapResponse(gapId: string) {
       results: gap.results ?? [],
       summary: gap.summary,
       error: gap.error,
+      taskId: gap.taskId,
       createdAt: gap.createdAt.toISOString(),
       updatedAt: gap.updatedAt.toISOString(),
     },

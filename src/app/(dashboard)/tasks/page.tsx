@@ -4,6 +4,9 @@ import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { canEdit } from "@/lib/rbac";
 import { getAuthenticatedBlobUrl } from "@/lib/blob-url";
+import { normalizeTaskUrl } from "@/lib/task-url";
+import { DEFAULT_TASK_SCOPE, TASK_SCOPES } from "@/lib/task-scope";
+import { downloadExcel } from "@/lib/excel-export";
 import {
   DndContext,
   DragEndEvent,
@@ -59,8 +62,10 @@ interface Task {
   id: string;
   title: string;
   description: string | null;
+  url: string | null;
   status: string;
   priority: string;
+  scope: string;
   order: number;
   dueDate: string | null;
   category: string | null;
@@ -242,6 +247,19 @@ function SortableTaskCard({
   );
 }
 
+function isValidTaskUrl(value: string) {
+  try {
+    normalizeTaskUrl(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function displayUrl(url: string) {
+  return url.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "");
+}
+
 // Task Card Content (shared between sortable and overlay)
 function TaskCardContent({ task }: { task: Task }) {
   const t = useMessages(tasksMessages);
@@ -274,8 +292,27 @@ function TaskCardContent({ task }: { task: Task }) {
         </p>
       )}
 
+      {task.url && (
+        <a
+          href={task.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+          className="block text-xs text-blue-600 dark:text-blue-400 hover:underline truncate mb-2"
+          title={task.url}
+        >
+          ↗ {displayUrl(task.url)}
+        </a>
+      )}
+
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 flex-wrap">
+          {task.scope && task.scope !== DEFAULT_TASK_SCOPE && (
+            <span className="px-1.5 py-0.5 text-xs bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 rounded">
+              {t.scopes[task.scope] ?? task.scope}
+            </span>
+          )}
           {task.category && (
             <span className="px-1.5 py-0.5 text-xs bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded">
               {task.category}
@@ -457,10 +494,14 @@ function TaskDetailModal({
     setLocalFiles(task.files || []);
   }, [task.files]);
 
+  const editedUrlInvalid = !isValidTaskUrl(editedTask.url ?? "");
+
   const handleSave = async () => {
+    if (editedUrlInvalid) return;
     setIsSaving(true);
     await onUpdate({
       ...editedTask,
+      url: normalizeTaskUrl(editedTask.url),
       assigneeIds: selectedAssigneeIds,
     });
     setIsEditing(false);
@@ -605,8 +646,8 @@ function TaskDetailModal({
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {/* Status & Priority */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* Status, Priority & Scope */}
+          <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.detail.status}</label>
               {isEditing ? (
@@ -640,6 +681,24 @@ function TaskDetailModal({
               ) : (
                 <span className={`inline-block px-2 py-1 rounded text-sm ${PRIORITIES.find((p) => p.id === task.priority)?.bgColor} ${PRIORITIES.find((p) => p.id === task.priority)?.color}`}>
                   {t.priorities[task.priority]}
+                </span>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.detail.scope}</label>
+              {isEditing ? (
+                <select
+                  value={editedTask.scope}
+                  onChange={(e) => setEditedTask({ ...editedTask, scope: e.target.value })}
+                  className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
+                >
+                  {TASK_SCOPES.map((s) => (
+                    <option key={s} value={s}>{t.scopes[s]}</option>
+                  ))}
+                </select>
+              ) : (
+                <span className="inline-block px-2 py-1 rounded text-sm bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300">
+                  {t.scopes[task.scope] ?? task.scope}
                 </span>
               )}
             </div>
@@ -726,6 +785,27 @@ function TaskDetailModal({
                 <span className="text-slate-600 dark:text-slate-400">{task.category || t.detail.noCategory}</span>
               )}
             </div>
+          </div>
+
+          {/* URL */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.detail.url}</label>
+            {isEditing ? (
+              <input
+                type="url"
+                value={editedTask.url || ""}
+                onChange={(e) => setEditedTask({ ...editedTask, url: e.target.value || null })}
+                placeholder={t.detail.urlPlaceholder}
+                className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
+              />
+            ) : task.url ? (
+              <a href={task.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline break-all">
+                {task.url} ↗
+              </a>
+            ) : (
+              <span className="text-slate-600 dark:text-slate-400">{t.detail.noUrl}</span>
+            )}
+            {isEditing && editedUrlInvalid && <p className="mt-1 text-xs text-red-500">{t.detail.urlInvalid}</p>}
           </div>
 
           {/* Description */}
@@ -896,7 +976,7 @@ function TaskDetailModal({
             </button>
             <button
               onClick={handleSave}
-              disabled={isSaving}
+              disabled={isSaving || editedUrlInvalid}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white rounded-lg transition-colors"
             >
               {isSaving ? t.detail.saving : t.detail.save}
@@ -918,12 +998,15 @@ function NewTaskModal({
   status: string;
   users: TaskUser[];
   onClose: () => void;
-  onCreate: (task: { title: string; description: string | null; status: string; priority: string; category: string | null; dueDate: string | null; assigneeIds: string[] }) => void;
+  onCreate: (task: { title: string; description: string | null; url: string | null; status: string; priority: string; scope: string; category: string | null; dueDate: string | null; assigneeIds: string[] }) => void;
 }) {
   const t = useMessages(tasksMessages);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [url, setUrl] = useState("");
+  const urlInvalid = !isValidTaskUrl(url);
   const [priority, setPriority] = useState("medium");
+  const [scope, setScope] = useState<string>(DEFAULT_TASK_SCOPE);
   const [category, setCategory] = useState("");
   const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [dueDate, setDueDate] = useState("");
@@ -938,14 +1021,16 @@ function NewTaskModal({
   };
 
   const handleCreate = async () => {
-    if (!title.trim()) return;
+    if (!title.trim() || urlInvalid) return;
     
     setIsCreating(true);
     await onCreate({
       title,
       description: description || null,
+      url: normalizeTaskUrl(url),
       status,
       priority,
+      scope,
       category: category || null,
       dueDate: dueDate || null,
       assigneeIds,
@@ -997,7 +1082,21 @@ function NewTaskModal({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              {t.create.url}
+            </label>
+            <input
+              type="url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder={t.create.urlPlaceholder}
+              className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
+            />
+            {urlInvalid && <p className="mt-1 text-xs text-red-500">{t.create.urlInvalid}</p>}
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                 {t.create.priority}
@@ -1009,6 +1108,20 @@ function NewTaskModal({
               >
                 {PRIORITIES.map((p) => (
                   <option key={p.id} value={p.id}>{t.priorities[p.id]}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                {t.create.scope}
+              </label>
+              <select
+                value={scope}
+                onChange={(e) => setScope(e.target.value)}
+                className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
+              >
+                {TASK_SCOPES.map((s) => (
+                  <option key={s} value={s}>{t.scopes[s]}</option>
                 ))}
               </select>
             </div>
@@ -1089,7 +1202,7 @@ function NewTaskModal({
           </button>
           <button
             onClick={handleCreate}
-            disabled={isCreating || !title.trim()}
+            disabled={isCreating || !title.trim() || urlInvalid}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white rounded-lg transition-colors"
           >
             {isCreating ? t.create.creating : t.create.submit}
@@ -1359,6 +1472,7 @@ export default function TasksPage() {
   const { data: session } = useSession();
   const canEditData = canEdit(session?.user?.role);
   const t = useMessages(tasksMessages);
+  const { intlLocale } = useLocale();
   
   const [tasks, setTasks] = useState<Task[]>([]);
   const [users, setUsers] = useState<TaskUser[]>([]);
@@ -1373,6 +1487,7 @@ export default function TasksPage() {
   // Filter states
   const [filterPriority, setFilterPriority] = useState<string>("all");
   const [filterCategory, setFilterCategory] = useState<string>("all");
+  const [filterScope, setFilterScope] = useState<string>("all");
   const [filterAssignee, setFilterAssignee] = useState<string>("all");
 
   const sensors = useSensors(
@@ -1490,7 +1605,7 @@ export default function TasksPage() {
     }
   };
 
-  const handleCreateTask = async (taskData: { title: string; description: string | null; status: string; priority: string; category: string | null; dueDate: string | null; assigneeIds: string[] }) => {
+  const handleCreateTask = async (taskData: { title: string; description: string | null; url: string | null; status: string; priority: string; scope: string; category: string | null; dueDate: string | null; assigneeIds: string[] }) => {
     try {
       const response = await fetch("/api/tasks", {
         method: "POST",
@@ -1548,6 +1663,7 @@ export default function TasksPage() {
   const filteredTasks = tasks.filter((task) => {
     if (filterPriority !== "all" && task.priority !== filterPriority) return false;
     if (filterCategory !== "all" && task.category !== filterCategory) return false;
+    if (filterScope !== "all" && task.scope !== filterScope) return false;
     if (filterAssignee !== "all") {
       if (filterAssignee === "unassigned" && task.assignees?.length > 0) return false;
       if (filterAssignee !== "unassigned" && !task.assignees?.some((a) => a.id === filterAssignee)) return false;
@@ -1562,6 +1678,43 @@ export default function TasksPage() {
       .sort((a, b) => a.order - b.order);
     return acc;
   }, {} as Record<string, Task[]>);
+
+  const handleExportExcel = () => {
+    const e = t.export;
+    const formatDate = (value: string | null) =>
+      value ? new Date(value).toLocaleDateString(intlLocale) : "";
+    const userName = (user?: TaskUser | TaskCommentUser) =>
+      user ? user.name || user.email : "";
+
+    const rows = COLUMNS.flatMap((column) => tasksByColumn[column.id]).map((task) => ({
+      [e.taskTitle]: task.title,
+      [e.status]: t.columns[task.status] ?? task.status,
+      [e.priority]: t.priorities[task.priority] ?? task.priority,
+      [e.scope]: t.scopes[task.scope] ?? task.scope,
+      [e.category]: task.category ?? "",
+      [e.assignees]: task.assignees.map(userName).join(", "),
+      [e.dueDate]: formatDate(task.dueDate),
+      [e.url]: task.url ?? "",
+      [e.description]: task.description ?? "",
+      [e.labels]: task.labels.join(", "),
+      [e.creator]: userName(task.creator),
+      [e.createdAt]: formatDate(task.createdAt),
+      [e.updatedAt]: formatDate(task.updatedAt),
+      [e.comments]: task.comments
+        .map((c) => `${userName(c.user)} (${formatDate(c.createdAt)}): ${c.text}`)
+        .join("\n"),
+      [e.files]: task.files?.length ?? 0,
+    }));
+
+    const stamp = new Date().toISOString().slice(0, 10);
+    downloadExcel(`${e.filePrefix}_${stamp}.xlsx`, [
+      {
+        name: e.sheetName,
+        rows,
+        columnWidths: [40, 14, 12, 14, 18, 30, 12, 40, 60, 20, 22, 14, 14, 60, 8],
+      },
+    ]);
+  };
 
   if (isLoading) {
     return (
@@ -1612,6 +1765,17 @@ export default function TasksPage() {
               {t.viewTimeline}
             </button>
           </div>
+          <button
+            onClick={handleExportExcel}
+            disabled={filteredTasks.length === 0}
+            title={t.export.title}
+            className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 dark:text-slate-200 rounded-lg transition-colors flex items-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            {t.export.button}
+          </button>
           {canEditData && (
             <button
               onClick={() => setNewTaskStatus("backlog")}
@@ -1638,6 +1802,19 @@ export default function TasksPage() {
             <option value="all">{t.filters.all}</option>
             {PRIORITIES.map((p) => (
               <option key={p.id} value={p.id}>{t.priorities[p.id]}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">{t.filters.scope}</label>
+          <select
+            value={filterScope}
+            onChange={(e) => setFilterScope(e.target.value)}
+            className="px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white text-sm"
+          >
+            <option value="all">{t.filters.all}</option>
+            {TASK_SCOPES.map((s) => (
+              <option key={s} value={s}>{t.scopes[s]}</option>
             ))}
           </select>
         </div>

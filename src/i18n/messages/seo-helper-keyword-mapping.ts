@@ -111,6 +111,8 @@ export const seoHelperKeywordMappingMessages = defineMessages({
       filterNoFocus: "Ohne Fokus-Keyword",
       filterHasFocus: "Mit Fokus-Keyword",
       filterRankOver10: "Ranking > 10",
+      filterMinScore: "min. Score",
+      filterMinScoreHint: "Nur URLs mit mindestens diesem Score (1–10) anzeigen; URLs ohne Score werden ausgeblendet",
       filterInKvp: "Im KVP",
       filterNotInKvp: "Nicht im KVP",
       filterTopicAuthority: "Themenhoheit",
@@ -127,6 +129,7 @@ export const seoHelperKeywordMappingMessages = defineMessages({
       exportSelected: "Auswahl exportieren",
       details: "Details",
       inKvpBadge: "im KVP",
+      taskBadge: "Task",
       scoreHint: "Priorität 1–10: hohes Suchvolumen und schwaches Ranking ergeben einen hohen Score",
       settings: "Projekt-Einstellungen",
     },
@@ -136,6 +139,15 @@ export const seoHelperKeywordMappingMessages = defineMessages({
       fetchDfsForce: "DataForSEO neu abrufen (Cache ignorieren)",
       applyTop: "Top-Keyword als Fokus übernehmen (nur leere)",
       applyTopAll: "Top-Keyword als Fokus übernehmen (überschreiben)",
+      fetchSv: "Suchvolumen holen",
+      fetchSvHint: "Holt das Suchvolumen (DataForSEO, Google Ads) für Fokus- und Nebenkeywords ohne Wert",
+      fetchSvForce: "Suchvolumen aller Fokus- und Nebenkeywords neu holen",
+      svDone: (requested: number, found: number) =>
+        requested === 0 ? "Alle Keywords haben bereits ein Suchvolumen." : `Suchvolumen: ${found} von ${requested} Keywords gefunden.`,
+      fetchGsc: "GSC-Klicks holen",
+      fetchGscHint: "Holt die Klicks der letzten 6 Monate aus der Google Search Console (www.ubs.com)",
+      gscDone: (ok: number, failed: number, firstError?: string) =>
+        `GSC-Klicks: ${ok} URLs aktualisiert${failed ? `, ${failed} Fehler${firstError ? ` (${firstError})` : ""}` : ""}.`,
       pushKvp: "In SEO KVP schieben",
       deleteUrls: "URLs löschen",
       deleteConfirm: (n: number) => `${n} URLs aus dem Projekt löschen?`,
@@ -152,6 +164,15 @@ export const seoHelperKeywordMappingMessages = defineMessages({
       kvpSubmit: "Jetzt übergeben",
       kvpDone: (created: number, updated: number, skipped: number) =>
         `KVP: ${created} angelegt, ${updated} aktualisiert, ${skipped} übersprungen.`,
+      gapTasks: "Topic-Gap-Tasks anlegen",
+      gapTasksHint: "Legt für jede ausgewählte URL die Zusammenfassung ihrer Topic-Gap-Analyse als Task im Backlog des Kanban-Boards an",
+      gapTasksNone: "Keine der ausgewählten URLs hat eine abgeschlossene Topic-Gap-Analyse ohne Task.",
+      gapTasksConfirm: (n: number, skipped: number) =>
+        `Für ${n} URLs je einen Task im Kanban-Backlog anlegen?${
+          skipped ? `\n\n${skipped} URLs werden übersprungen (keine abgeschlossene Analyse oder bereits ein Task vorhanden).` : ""
+        }`,
+      gapTasksDone: (created: number, skipped: number, failed: number, firstError?: string) =>
+        `Tasks: ${created} angelegt${skipped ? `, ${skipped} übersprungen` : ""}${failed ? `, ${failed} Fehler${firstError ? ` (${firstError})` : ""}` : ""}.`,
     },
 
     batch: {
@@ -290,6 +311,9 @@ export const seoHelperKeywordMappingMessages = defineMessages({
       gapNewArticle: "neuer Artikel",
       gapNewArticleHint: "Legt das Topic mit heutigem Datum als neuen Artikel im Redaktionsplan an",
       gapInEditorialPlan: "im Redaktionsplan",
+      gapCreateTask: "Task erstellen",
+      gapCreateTaskHint: "Legt die fehlenden und teilweise abgedeckten Topics als Task im Backlog des Kanban-Boards an",
+      gapInKanban: "Task im Kanban-Board",
 
       detailsSaved: "Gespeichert",
       ctaAdd: "CTA hinzufügen",
@@ -414,6 +438,8 @@ export const seoHelperKeywordMappingMessages = defineMessages({
       filterNoFocus: "Without focus keyword",
       filterHasFocus: "With focus keyword",
       filterRankOver10: "Ranking > 10",
+      filterMinScore: "min. score",
+      filterMinScoreHint: "Only show URLs with at least this score (1–10); URLs without a score are hidden",
       filterInKvp: "In KVP",
       filterNotInKvp: "Not in KVP",
       filterTopicAuthority: "Topic authority",
@@ -430,6 +456,7 @@ export const seoHelperKeywordMappingMessages = defineMessages({
       exportSelected: "Export selection",
       details: "Details",
       inKvpBadge: "in KVP",
+      taskBadge: "Task",
       scoreHint: "Priority 1–10: high search volume and weak ranking result in a high score",
       settings: "Project settings",
     },
@@ -439,6 +466,15 @@ export const seoHelperKeywordMappingMessages = defineMessages({
       fetchDfsForce: "Refetch DataForSEO (ignore cache)",
       applyTop: "Use top keyword as focus (empty only)",
       applyTopAll: "Use top keyword as focus (overwrite)",
+      fetchSv: "Fetch search volume",
+      fetchSvHint: "Fetches search volume (DataForSEO, Google Ads) for focus and secondary keywords without a value",
+      fetchSvForce: "Refetch search volume for all focus and secondary keywords",
+      svDone: (requested: number, found: number) =>
+        requested === 0 ? "All keywords already have a search volume." : `Search volume: found for ${found} of ${requested} keywords.`,
+      fetchGsc: "Fetch GSC clicks",
+      fetchGscHint: "Fetches clicks from the last 6 months from Google Search Console (www.ubs.com)",
+      gscDone: (ok: number, failed: number, firstError?: string) =>
+        `GSC clicks: ${ok} URLs updated${failed ? `, ${failed} errors${firstError ? ` (${firstError})` : ""}` : ""}.`,
       pushKvp: "Push to SEO KVP",
       deleteUrls: "Delete URLs",
       deleteConfirm: (n: number) => `Delete ${n} URLs from the project?`,
@@ -454,6 +490,15 @@ export const seoHelperKeywordMappingMessages = defineMessages({
       kvpSubmit: "Push now",
       kvpDone: (created: number, updated: number, skipped: number) =>
         `KVP: ${created} created, ${updated} updated, ${skipped} skipped.`,
+      gapTasks: "Create topic gap tasks",
+      gapTasksHint: "Adds the topic gap summary of each selected URL as a task to the Kanban board backlog",
+      gapTasksNone: "None of the selected URLs has a completed topic gap analysis without a task.",
+      gapTasksConfirm: (n: number, skipped: number) =>
+        `Create one task each in the Kanban backlog for ${n} URLs?${
+          skipped ? `\n\n${skipped} URLs will be skipped (no completed analysis or a task already exists).` : ""
+        }`,
+      gapTasksDone: (created: number, skipped: number, failed: number, firstError?: string) =>
+        `Tasks: ${created} created${skipped ? `, ${skipped} skipped` : ""}${failed ? `, ${failed} errors${firstError ? ` (${firstError})` : ""}` : ""}.`,
     },
 
     batch: {
@@ -592,6 +637,9 @@ export const seoHelperKeywordMappingMessages = defineMessages({
       gapNewArticle: "new article",
       gapNewArticleHint: "Adds this topic as a new article to the editorial plan, dated today",
       gapInEditorialPlan: "in editorial plan",
+      gapCreateTask: "Create task",
+      gapCreateTaskHint: "Adds the missing and partially covered topics as a task to the Kanban board backlog",
+      gapInKanban: "Task on Kanban board",
 
       detailsSaved: "Saved",
       ctaAdd: "Add CTA",

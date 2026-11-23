@@ -1,0 +1,1 @@
+ALTER TABLE "KeywordMapTopicGap" ADD COLUMN IF NOT EXISTS "taskId" TEXT;

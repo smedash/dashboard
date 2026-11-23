@@ -566,6 +566,7 @@ interface GapResponse {
     results: TopicGapItem[];
     summary: string | null;
     error: string | null;
+    taskId: string | null;
     createdAt: string;
   } | null;
   topicGraph: { status: string; totalTopics: number; tree: TreeNode | null } | null;
@@ -756,6 +757,26 @@ function TopicGapTab({
     </span>
   );
 
+  const [creatingTask, setCreatingTask] = useState(false);
+  const createTask = async () => {
+    if (!gap) return;
+    const gapId = gap.id;
+    setCreatingTask(true);
+    setError(null);
+    try {
+      const res = await apiFetch<{ task: { id: string } }>(`/api/seo-helper/keyword-mapping/urls/${url.id}/topic-gap/task`, {
+        method: "POST",
+        body: JSON.stringify({ gapId }),
+      });
+      setData((prev) => (prev?.gap?.id === gapId ? { ...prev, gap: { ...prev.gap, taskId: res.task.id } } : prev));
+      if (url.latestTopicGap?.id === gapId) onUpdated({ ...url, latestTopicGap: { ...url.latestTopicGap, taskId: res.task.id } });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t.errorGeneric);
+    } finally {
+      setCreatingTask(false);
+    }
+  };
+
   const copyTask = async () => {
     if (!gap) return;
     const missing = items.filter((i) => i.status === "missing");
@@ -857,6 +878,18 @@ function TopicGapTab({
                   </div>
                   <div className="text-xs text-slate-400">{t.drawer.gapFor(gap.focusKeyword, new Date(gap.createdAt).toLocaleString(intlLocale))}</div>
                 </div>
+                {gap.taskId ? (
+                  <a href="/tasks" target="_blank" rel="noreferrer" className="shrink-0 self-start text-xs text-teal-600 hover:underline whitespace-nowrap">
+                    ✓ {t.drawer.gapInKanban} ↗
+                  </a>
+                ) : (
+                  editable && (
+                    <button className={`${buttonSecondary} shrink-0 self-start`} disabled={creatingTask} title={t.drawer.gapCreateTaskHint} onClick={() => void createTask()}>
+                      {creatingTask && <Spinner />}
+                      {t.drawer.gapCreateTask}
+                    </button>
+                  )
+                )}
               </div>
               {gap.summary && <p className="text-sm text-slate-700 dark:text-slate-300">{gap.summary}</p>}
 

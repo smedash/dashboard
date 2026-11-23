@@ -59,6 +59,8 @@ export interface TopicGapSummaryDto {
   partialCount: number;
   selectedCount: number;
   focusKeyword: string;
+  /** Verknüpfter Kanban-Task; kann auf einen inzwischen gelöschten Task zeigen */
+  taskId: string | null;
   createdAt: string;
 }
 

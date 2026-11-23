@@ -497,8 +497,10 @@ model Task {
   id          String         @id @default(cuid())
   title       String
   description String?        @db.Text
+  url         String?        @db.Text // Optionale URL, auf die sich der Task bezieht
   status      String         @default("backlog") // backlog, todo, in_progress, review, done
   priority    String         @default("medium") // low, medium, high, urgent
+  scope       String         @default("other") // technical, content, ux_ui, offpage, linking, other
   order       Int            @default(0) // Reihenfolge innerhalb der Spalte
   dueDate     DateTime?
   category    String?        // Kategorie: Mortgages, Accounts&Cards, Investing, Pension, Digital Banking
@@ -1551,6 +1553,7 @@ model KeywordMapTopicGap {
   summary       String?       @db.Text
   error         String?       @db.Text
   contentHash   String?
+  taskId        String? // Kanban-Task, der aus dieser Analyse angelegt wurde
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 

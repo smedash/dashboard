@@ -360,7 +360,9 @@ export interface SearchVolumeResult {
 export async function fetchSearchVolume(
   keywords: string[],
   location: string = "Switzerland",
-  language: string = "German"
+  language: string = "German",
+  /** Überschreibt die erzwungene Schweiz/Deutsch-Kombination (z. B. Land/Sprache eines Keyword-Mapping-Projekts) */
+  localeOverride?: { locationCode: number; languageCode: string }
 ): Promise<SearchVolumeResult[]> {
   // ERZWINGE IMMER Schweiz - ignoriere übergebene Location (wie bei fetchRankings)
   const forcedLocation = "Switzerland";
@@ -421,13 +423,17 @@ export async function fetchSearchVolume(
     let lastError = "";
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       try {
-        const requestBody = [{
-          keywords: batch,
-          location_code: 2756,
-          location_name: "Switzerland",
-          language_code: "de",
-          language_name: "German",
-        }];
+        const requestBody = [
+          localeOverride
+            ? { keywords: batch, location_code: localeOverride.locationCode, language_code: localeOverride.languageCode }
+            : {
+                keywords: batch,
+                location_code: 2756,
+                location_name: "Switzerland",
+                language_code: "de",
+                language_name: "German",
+              },
+        ];
 
         const response = await fetch(`${DATAFORSEO_API_URL}/keywords_data/google_ads/search_volume/live`, {
           method: "POST",
