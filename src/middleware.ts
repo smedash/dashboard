@@ -34,8 +34,9 @@ export function middleware(req: NextRequest) {
   // "/" is public: the page itself shows the marketing homepage to guests
   // and the dashboard to signed-in users (validated via auth()).
   const isHomePage = pathname === "/";
+  const isLegalPage = pathname === "/impressum" || pathname === "/datenschutz" || pathname === "/agb";
 
-  if (isAuthRoute || isCronRoute || isPublicAsset || isHomePage) {
+  if (isAuthRoute || isCronRoute || isPublicAsset || isHomePage || isLegalPage) {
     return NextResponse.next();
   }
 

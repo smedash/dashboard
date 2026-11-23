@@ -5,6 +5,7 @@ import { marketingMessages } from "@/i18n/messages/marketing";
 import { SGsuiteMark, SGsuiteWordmark } from "@/components/ui/SGsuiteLogo";
 import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher";
 import { MarketingIcon } from "./MarketingIcon";
+import { MarketingFooter } from "./MarketingFooter";
 
 type Messages = (typeof marketingMessages)["de"];
 
@@ -329,23 +330,7 @@ export async function MarketingHome() {
         </section>
       </main>
 
-      <footer className="border-t border-slate-800/80">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-500">
-          <div className="flex items-center gap-2.5 text-white">
-            <SGsuiteMark className="w-6 h-6 text-white" />
-            <SGsuiteWordmark className="text-lg" />
-            <span className="text-slate-500">· {t.footer.tagline}</span>
-          </div>
-          <div className="flex items-center gap-6">
-            <span>
-              © {new Date().getFullYear()} SGsuite. {t.footer.rights}
-            </span>
-            <Link href="/login" className="hover:text-white transition-colors">
-              {t.footer.login}
-            </Link>
-          </div>
-        </div>
-      </footer>
+      <MarketingFooter />
     </div>
   );
 }

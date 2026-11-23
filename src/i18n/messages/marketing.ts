@@ -252,6 +252,10 @@ export const marketingMessages = defineMessages({
       tagline: "Search & Growth Suite",
       rights: "Alle Rechte vorbehalten.",
       login: "Anmelden",
+      legalNav: "Rechtliches",
+      imprint: "Impressum",
+      privacy: "Datenschutz",
+      terms: "AGB",
     },
   },
   en: {
@@ -461,6 +465,10 @@ export const marketingMessages = defineMessages({
       tagline: "Search & Growth Suite",
       rights: "All rights reserved.",
       login: "Sign in",
+      legalNav: "Legal",
+      imprint: "Legal notice",
+      privacy: "Privacy",
+      terms: "Terms",
     },
   },
 });
