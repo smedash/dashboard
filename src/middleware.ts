@@ -31,7 +31,11 @@ export function middleware(req: NextRequest) {
     pathname === "/verify" ||
     pathname.startsWith("/auth-confirm");
 
-  if (isAuthRoute || isCronRoute || isPublicAsset) {
+  // "/" is public: the page itself shows the marketing homepage to guests
+  // and the dashboard to signed-in users (validated via auth()).
+  const isHomePage = pathname === "/";
+
+  if (isAuthRoute || isCronRoute || isPublicAsset || isHomePage) {
     return NextResponse.next();
   }
 
