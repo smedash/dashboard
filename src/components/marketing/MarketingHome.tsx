@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { getMessages } from "@/i18n/server";
 import { marketingMessages } from "@/i18n/messages/marketing";
@@ -163,6 +164,13 @@ export async function MarketingHome() {
                 >
                   {t.hero.secondaryCta}
                 </a>
+                <Image
+                  src="/gdpr-ssl-secure-site.webp"
+                  alt={t.hero.trustBadgeAlt}
+                  width={84}
+                  height={48}
+                  className="h-12 w-auto self-center brightness-0 invert opacity-80"
+                />
               </div>
               <p className="mt-5 text-sm text-slate-500">{t.hero.note}</p>
             </div>

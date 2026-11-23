@@ -67,6 +67,7 @@ export const marketingMessages = defineMessages({
       primaryCta: "Jetzt anmelden",
       secondaryCta: "Features entdecken",
       note: "Passwortloser Login per Magic Link · Zugang auf Einladung",
+      trustBadgeAlt: "DSGVO-konform und SSL-gesichert",
     },
     mockup: {
       clicks: "Klicks",
@@ -275,6 +276,7 @@ export const marketingMessages = defineMessages({
       primaryCta: "Sign in now",
       secondaryCta: "Explore features",
       note: "Passwordless sign-in via magic link · Access by invitation",
+      trustBadgeAlt: "GDPR compliant and SSL secured",
     },
     mockup: {
       clicks: "Clicks",
