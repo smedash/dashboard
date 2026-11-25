@@ -1,21 +1,17 @@
 import { prisma } from "@/lib/prisma";
 
-const SEOSPARK_API_URL = "https://api.seospark.io/v1/keywords/suggest";
+const SEOSPARK_API_URL = "https://api.seospark.io/v2";
 
 interface SeosparkKeywordItem {
   keyword: string;
-  metrics: {
-    updated_at: string;
-    average_search_volume: number | null;
-    competition: number | null;
-    cpc: number | null;
-    keyword_difficulty: number | null;
-    search_intents: string[] | null;
-    serp_item_types: string[];
-    serp_results_count: number | null;
-    daily_impressions_average: number | null;
-    search_volume_history: { period_start: string; value: number }[];
-  } | null;
+  search_volume: number | null;
+  cpc: number | null;
+  competition: number | null;
+  difficulty: number | null;
+  search_intents: { label: string; probability: number | null }[] | null;
+  serp_features: string[] | null;
+  monthly_searches: { month: string; volume: number | null }[] | null;
+  metrics_updated_at: string | null;
 }
 
 export interface KeywordSuggestionItem {
@@ -44,6 +40,18 @@ export class SeosparkError extends Error {
   constructor(message: string, public status: number) {
     super(message);
   }
+}
+
+async function seosparkRequest(url: string, init: RequestInit) {
+  const res = await fetch(url, init);
+  const data = await res.json().catch(() => null);
+  if (!res.ok || data?.status !== "success") {
+    throw new SeosparkError(
+      data?.message || `SEOspark API Fehler: ${res.status}`,
+      res.ok ? 502 : res.status
+    );
+  }
+  return data;
 }
 
 /** SEOSpark-Vorschläge zu einem Keyword, gecacht in `KeywordSuggestion` (pro Keyword/Land/Sprache). */
@@ -84,43 +92,39 @@ export async function getKeywordSuggestions(
     throw new SeosparkError("SEOSPARK_API_KEY nicht konfiguriert", 500);
   }
 
-  const seosparkRes = await fetch(SEOSPARK_API_URL, {
+  const headers = {
+    "Authorization": `Bearer ${apiKey}`,
+    "Content-Type": "application/json",
+    "Accept-Encoding": "gzip",
+  };
+
+  const research = await seosparkRequest(`${SEOSPARK_API_URL}/keyword-research`, {
     method: "POST",
-    headers: {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      "Accept-Encoding": "gzip",
-    },
-    body: JSON.stringify({
-      country_code: cc,
-      language_code: lc,
-      keyword: normalizedKeyword,
-      page_size: 100,
-      sort: "searchVolume,desc",
-    }),
+    headers,
+    body: JSON.stringify({ keyword: normalizedKeyword, country_code: cc, language_code: lc }),
   });
-
-  if (!seosparkRes.ok) {
-    const errData = await seosparkRes.json().catch(() => null);
-    throw new SeosparkError(errData?.message || `SEOspark API Fehler: ${seosparkRes.status}`, seosparkRes.status);
+  const runId: string | undefined = research.data?.run?.id;
+  if (!runId) {
+    throw new SeosparkError("SEOspark API Fehler: keine Run-ID erhalten", 502);
   }
 
-  const seosparkData = await seosparkRes.json();
-  if (seosparkData.status !== "success") {
-    throw new SeosparkError(seosparkData.message || "SEOspark API Fehler", 500);
-  }
+  const params = new URLSearchParams({ page_index: "0", page_size: "100", sort: "searchVolume,desc" });
+  const suggestionsData = await seosparkRequest(
+    `${SEOSPARK_API_URL}/keyword-research/${runId}/suggestions?${params}`,
+    { headers }
+  );
 
-  const items: SeosparkKeywordItem[] = seosparkData.data?.keywords?.items || [];
-  const totalCount = seosparkData.data?.keywords?.meta?.total_count || 0;
+  const items: SeosparkKeywordItem[] = suggestionsData.data?.keywords?.items || [];
+  const totalCount = suggestionsData.data?.keywords?.total_count || 0;
 
   const suggestions: KeywordSuggestionItem[] = items.map((item) => ({
     keyword: item.keyword,
-    searchVolume: item.metrics?.average_search_volume ?? null,
-    cpc: item.metrics?.cpc ?? null,
-    competition: item.metrics?.competition ?? null,
-    difficulty: item.metrics?.keyword_difficulty ?? null,
-    searchIntents: item.metrics?.search_intents ?? null,
-    serpItemTypes: item.metrics?.serp_item_types ?? [],
+    searchVolume: item.search_volume ?? null,
+    cpc: item.cpc ?? null,
+    competition: item.competition ?? null,
+    difficulty: item.difficulty ?? null,
+    searchIntents: item.search_intents?.map((i) => i.label) ?? null,
+    serpItemTypes: item.serp_features ?? [],
   }));
 
   const saved = await prisma.keywordSuggestion.create({

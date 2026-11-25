@@ -6,6 +6,7 @@ import { loadHtml } from "@/lib/content-mapping/fetch";
 import { parseHtml } from "@/lib/url-checker/parser";
 import { createTopicGraph, getTopicGraph, type TopicGraphNode } from "@/lib/topicloops";
 import type { TopicCoverageStatus, TopicGapItem } from "./shared";
+import { runCrossCoverage } from "./cross-coverage";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -271,6 +272,9 @@ export async function advanceTopicGap(gapId: string) {
         summary: result.summary,
         contentHash: page.hash,
         error: null,
+        crossCoverageError: null,
+        linksCheckedAt: null,
+        linkCheckError: null,
       },
       include: { url: true },
     });
@@ -281,6 +285,10 @@ export async function advanceTopicGap(gapId: string) {
       data: { status: "failed", error: e instanceof Error ? e.message : "Analyse fehlgeschlagen" },
       include: { url: true },
     });
+  }
+  if (gap.status === "succeeded") {
+    await runCrossCoverage(gapId);
+    gap = (await prisma.keywordMapTopicGap.findUnique({ where: { id: gapId }, include: { url: true } })) ?? gap;
   }
   return gap;
 }

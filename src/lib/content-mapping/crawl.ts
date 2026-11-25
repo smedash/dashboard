@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { buildInventoryWhere } from "@/lib/url-cleanup/filters";
 import { HtmlFetchError, loadHtml } from "./fetch";
 import { extractContent } from "./extract";
+import { embedContentSections } from "./embeddings";
 
 const NON_HTML_EXTENSIONS = /\.(pdf|jpe?g|png|gif|webp|svg|zip|docx?|xlsx?|pptx?|mp4|mp3)(\?|#|$)/i;
 
@@ -130,6 +131,11 @@ export async function crawlInventoryUrl(inventoryId: string, url: string): Promi
           data: content.sections.map((s) => ({ ...s, contentId: row.id })),
         }),
       ]);
+    }
+    try {
+      await embedContentSections(row.id);
+    } catch (e) {
+      console.error("[content-mapping] Embeddings fehlgeschlagen", url, e);
     }
     return { inventoryId, url, outcome: "succeeded", error: null };
   } catch (e) {

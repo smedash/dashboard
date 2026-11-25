@@ -17,7 +17,7 @@ import Anthropic from "@anthropic-ai/sdk";
 const prisma = new PrismaClient();
 
 const TOPICLOOPS_API_URL = "https://api.topicloops.com/v1";
-const SEOSPARK_API_URL = "https://api.seospark.io/v1/keywords/suggest";
+const SEOSPARK_API_URL = "https://api.seospark.io/v2";
 
 const DELAY_MS = 2000;
 const TOPIC_POLL_INTERVAL_MS = 3000;
@@ -209,21 +209,27 @@ async function fetchKeywords(keyword: string, category: string): Promise<string>
     return "CACHED";
   }
 
-  const seosparkRes = await fetch(SEOSPARK_API_URL, {
+  const headers = {
+    Authorization: `Bearer ${apiKey}`,
+    "Content-Type": "application/json",
+    "Accept-Encoding": "gzip",
+  };
+
+  const researchRes = await fetch(`${SEOSPARK_API_URL}/keyword-research`, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      "Accept-Encoding": "gzip",
-    },
-    body: JSON.stringify({
-      country_code: "ch",
-      language_code: "de",
-      keyword,
-      page_size: 100,
-      sort: "searchVolume,desc",
-    }),
+    headers,
+    body: JSON.stringify({ keyword, country_code: "ch", language_code: "de" }),
   });
+  if (!researchRes.ok) {
+    const errText = await researchRes.text();
+    return `FEHLER (${researchRes.status}: ${errText.slice(0, 100)})`;
+  }
+  const researchData = await researchRes.json();
+  const runId: string | undefined = researchData.data?.run?.id;
+  if (researchData.status !== "success" || !runId) return `FEHLER (${researchData.message ?? "keine Run-ID"})`;
+
+  const params = new URLSearchParams({ page_index: "0", page_size: "100", sort: "searchVolume,desc" });
+  const seosparkRes = await fetch(`${SEOSPARK_API_URL}/keyword-research/${runId}/suggestions?${params}`, { headers });
 
   if (!seosparkRes.ok) {
     const errText = await seosparkRes.text();
@@ -234,16 +240,16 @@ async function fetchKeywords(keyword: string, category: string): Promise<string>
   if (seosparkData.status !== "success") return `FEHLER (${seosparkData.message})`;
 
   const items = seosparkData.data?.keywords?.items || [];
-  const totalCount = seosparkData.data?.keywords?.meta?.total_count || 0;
+  const totalCount = seosparkData.data?.keywords?.total_count || 0;
 
-  const suggestions = items.map((item: { keyword: string; metrics?: { average_search_volume?: number; cpc?: number; competition?: number; keyword_difficulty?: number; search_intents?: string[]; serp_item_types?: string[] } }) => ({
+  const suggestions = items.map((item: { keyword: string; search_volume?: number | null; cpc?: number | null; competition?: number | null; difficulty?: number | null; search_intents?: { label: string }[] | null; serp_features?: string[] | null }) => ({
     keyword: item.keyword,
-    searchVolume: item.metrics?.average_search_volume ?? null,
-    cpc: item.metrics?.cpc ?? null,
-    competition: item.metrics?.competition ?? null,
-    difficulty: item.metrics?.keyword_difficulty ?? null,
-    searchIntents: item.metrics?.search_intents ?? null,
-    serpItemTypes: item.metrics?.serp_item_types ?? [],
+    searchVolume: item.search_volume ?? null,
+    cpc: item.cpc ?? null,
+    competition: item.competition ?? null,
+    difficulty: item.difficulty ?? null,
+    searchIntents: item.search_intents?.map((i) => i.label) ?? null,
+    serpItemTypes: item.serp_features ?? [],
   }));
 
   await prisma.keywordSuggestion.create({

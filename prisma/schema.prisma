@@ -1,4 +1,4 @@
-// Prisma Schema für SME Dashboard
+// Prisma Schema für SG Suite
 // Neon PostgreSQL Datenbank
 
 generator client {
@@ -1404,6 +1404,7 @@ model UrlContentSection {
   headingPath String[]   @default([])
   text        String     @db.Text
   wordCount   Int        @default(0)
+  embedding   Unsupported("vector(1536)")? // OpenAI text-embedding-3-small, HNSW-Index in der Migration
 
   @@index([contentId, position])
 }
@@ -1554,6 +1555,9 @@ model KeywordMapTopicGap {
   error         String?       @db.Text
   contentHash   String?
   taskId        String? // Kanban-Task, der aus dieser Analyse angelegt wurde
+  crossCoverageError String?  @db.Text // Fehler beim Abgleich mit anderen URLs aus dem Content-Mapping
+  linksCheckedAt     DateTime? // Letzte Prüfung der internen Links zu den anderswo abdeckenden URLs
+  linkCheckError     String?   @db.Text
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 

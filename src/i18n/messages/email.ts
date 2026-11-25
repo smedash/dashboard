@@ -17,7 +17,7 @@ export const magicLinkEmailMessages = defineMessages({
 
 export const notificationEmailMessages = defineMessages({
   de: {
-    autoSent: "Diese E-Mail wurde automatisch vom SME Dashboard versendet.",
+    autoSent: "Diese E-Mail wurde automatisch von der SG Suite versendet.",
     briefingNumber: "Briefing-Nr.:",
     briefingTitle: "Titel:",
     newBriefing: {
@@ -92,11 +92,11 @@ export const notificationEmailMessages = defineMessages({
       cta: "Ticket ansehen",
     },
     welcome: {
-      subject: "Willkommen im SME Dashboard",
-      heading: "Willkommen im SME Dashboard",
-      invited: (by: string) => `Du wurdest von <strong>${by}</strong> zum SME Dashboard eingeladen.`,
+      subject: "Willkommen in der SG Suite",
+      heading: "Willkommen in der SG Suite",
+      invited: (by: string) => `Du wurdest von <strong>${by}</strong> zur SG Suite eingeladen.`,
       access: (email: string) =>
-        `Ab sofort kannst Du Dich mit Deiner E-Mail-Adresse <strong>${email}</strong> im SME Dashboard anmelden.`,
+        `Ab sofort kannst Du Dich mit Deiner E-Mail-Adresse <strong>${email}</strong> in der SG Suite anmelden.`,
       howTo:
         "Klicke auf den Button unten, um zur Anmeldeseite zu gelangen. Du erhältst dann einen Magic Link per E-Mail, mit dem Du Dich einloggen kannst.",
       cta: "Zur Anmeldeseite",
@@ -141,7 +141,7 @@ export const notificationEmailMessages = defineMessages({
     },
   },
   en: {
-    autoSent: "This email was sent automatically by the SME Dashboard.",
+    autoSent: "This email was sent automatically by SG Suite.",
     briefingNumber: "Briefing no.:",
     briefingTitle: "Title:",
     newBriefing: {
@@ -214,10 +214,10 @@ export const notificationEmailMessages = defineMessages({
       cta: "View ticket",
     },
     welcome: {
-      subject: "Welcome to the SME Dashboard",
-      heading: "Welcome to the SME Dashboard",
-      invited: (by) => `<strong>${by}</strong> has invited you to the SME Dashboard.`,
-      access: (email) => `You can now sign in to the SME Dashboard with your email address <strong>${email}</strong>.`,
+      subject: "Welcome to SG Suite",
+      heading: "Welcome to SG Suite",
+      invited: (by) => `<strong>${by}</strong> has invited you to SG Suite.`,
+      access: (email) => `You can now sign in to SG Suite with your email address <strong>${email}</strong>.`,
       howTo:
         "Click the button below to go to the sign-in page. You will then receive a magic link by email that lets you sign in.",
       cta: "Go to sign-in page",

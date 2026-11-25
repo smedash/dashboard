@@ -1,4 +1,4 @@
-# SME Dashboard – Features & Nutzen
+# SG Suite – Features & Nutzen
 
 **Zielgruppe:** Stakeholder, Team-Mitglieder, Management
 **Zweck:** Übersicht aller Funktionen mit Fokus auf Möglichkeiten und SEO-/GEO-Nutzen

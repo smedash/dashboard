@@ -24,13 +24,19 @@ export function middleware(req: NextRequest) {
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
     pathname.startsWith("/icon") ||
+    pathname === "/apple-icon.png" ||
     pathname === "/robots.txt";
   const isLoginPage =
     pathname === "/login" ||
     pathname === "/verify" ||
     pathname.startsWith("/auth-confirm");
 
-  if (isAuthRoute || isCronRoute || isPublicAsset) {
+  // "/" is public: the page itself shows the marketing homepage to guests
+  // and the dashboard to signed-in users (validated via auth()).
+  const isHomePage = pathname === "/";
+  const isLegalPage = pathname === "/impressum" || pathname === "/datenschutz" || pathname === "/agb";
+
+  if (isAuthRoute || isCronRoute || isPublicAsset || isHomePage || isLegalPage) {
     return NextResponse.next();
   }
 
@@ -55,6 +61,6 @@ export function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|icon.svg|robots.txt|briefing-vorlage\\.docx|seo-checkliste\\.xlsx|.*\\.svg).*)",
+    "/((?!_next/static|_next/image|favicon.ico|icon.svg|apple-icon\\.png|robots.txt|briefing-vorlage\\.docx|seo-checkliste\\.xlsx|gdpr-ssl-secure-site\\.webp|.*\\.svg).*)",
   ],
 };

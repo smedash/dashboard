@@ -42,7 +42,7 @@ function stripBoilerplate(html: string, removeHeader: boolean): string {
 }
 
 /** Hauptinhalt: `<main>` bzw. `<article>`, sonst `<body>` ohne Seitenkopf. */
-function selectMainHtml(html: string): string {
+export function selectMainHtml(html: string): string {
   for (const tag of ["main", "article"]) {
     const start = html.search(new RegExp(`<${tag}\\b`, "i"));
     const end = html.toLowerCase().lastIndexOf(`</${tag}`);

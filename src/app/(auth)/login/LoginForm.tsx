@@ -5,6 +5,7 @@ import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import { useMessages } from "@/i18n/I18nProvider";
 import { authMessages } from "@/i18n/messages/auth";
+import { SGsuiteMark, SGsuiteWordmark } from "@/components/ui/SGsuiteLogo";
 
 type LoginError = keyof (typeof authMessages)["de"]["login"]["errors"];
 
@@ -127,7 +128,12 @@ function LoginContent() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       <div className="w-full max-w-md p-8 bg-slate-800/50 backdrop-blur-xl rounded-2xl border border-slate-700/50 shadow-2xl">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">SME Dashboard</h1>
+          <div className="flex items-center justify-center gap-3 mb-3">
+            <SGsuiteMark className="w-11 h-11 text-white" />
+            <h1 aria-label="SG Suite" className="text-4xl text-white">
+              <SGsuiteWordmark />
+            </h1>
+          </div>
           <p className="text-slate-400">{t.login.subtitle}</p>
         </div>
 

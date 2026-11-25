@@ -11,6 +11,7 @@ import type {
   SubkeywordSuggestion,
   TopicCoverageStatus,
   TopicGapItem,
+  TopicOtherUrl,
 } from "@/lib/keyword-map/shared";
 import { splitKeywords } from "@/lib/keyword-map/shared";
 import { Notice, Spinner, apiFetch, buttonPrimary, buttonSecondary, formatNumber, inputClass } from "./ui";
@@ -566,6 +567,9 @@ interface GapResponse {
     results: TopicGapItem[];
     summary: string | null;
     error: string | null;
+    crossCoverageError: string | null;
+    linksCheckedAt: string | null;
+    linkCheckError: string | null;
     taskId: string | null;
     createdAt: string;
   } | null;
@@ -574,7 +578,7 @@ interface GapResponse {
 
 interface TreeNode {
   label: string;
-  children: TreeNode[];
+  children?: TreeNode[];
 }
 
 const POLL_MS = 5000;
@@ -589,6 +593,125 @@ const statusDot: Record<TopicCoverageStatus, string> = {
   partial: "bg-amber-500",
   missing: "bg-red-500",
 };
+
+type GapFilter = "all" | TopicCoverageStatus | "elsewhere";
+
+const coveredElsewhere = (i: TopicGapItem) => i.status !== "covered" && (i.otherUrls?.length ?? 0) > 0;
+
+function matchesFilter(i: TopicGapItem, filter: GapFilter): boolean {
+  if (filter === "all") return true;
+  if (filter === "elsewhere") return coveredElsewhere(i);
+  return i.status === filter;
+}
+
+const linkStyles = {
+  linked: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
+  navOnly: "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300",
+  missing: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+};
+
+function linkState(u: TopicOtherUrl): keyof typeof linkStyles | null {
+  if (u.link === undefined) return null;
+  if (u.link === null) return "missing";
+  return u.link.inContent ? "linked" : "navOnly";
+}
+
+function LinkBadge({ url }: { url: TopicOtherUrl }) {
+  const t = useMessages(seoHelperKeywordMappingMessages);
+  const state = linkState(url);
+  if (!state) return null;
+  const label = { linked: t.drawer.gapLinkLinked, navOnly: t.drawer.gapLinkNavOnly, missing: t.drawer.gapLinkMissing }[state];
+  const anchor = url.link?.anchor ? `${t.drawer.gapLinkAnchor}: „${url.link.anchor}“` : "";
+  const title = state === "linked" ? anchor : state === "navOnly" ? [t.drawer.gapLinkNavOnlyHint, anchor].filter(Boolean).join("\n") : t.drawer.gapLinkMissingHint;
+  return (
+    <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium whitespace-nowrap ${linkStyles[state]}`} title={title || undefined}>
+      {state === "linked" ? "✓ " : state === "missing" ? "✗ " : ""}
+      {label}
+    </span>
+  );
+}
+
+function OtherUrlsList({
+  urls,
+  editable,
+  selected,
+  onToggle,
+  onCreateTask,
+  creatingTask,
+}: {
+  urls: TopicOtherUrl[];
+  editable: boolean;
+  selected: Set<string>;
+  onToggle: (inventoryId: string, checked: boolean) => void;
+  onCreateTask: () => void;
+  creatingTask: boolean;
+}) {
+  const t = useMessages(seoHelperKeywordMappingMessages);
+  const selectable = editable && urls.some((u) => !u.taskId);
+  return (
+    <div className="mt-1.5 rounded-md border border-sky-200 dark:border-sky-900/60 bg-sky-50/60 dark:bg-sky-900/10 px-2 py-1.5">
+      <div className="flex items-start gap-2">
+        <div className="flex-1 text-[11px] font-medium text-sky-800 dark:text-sky-300">
+          {t.drawer.gapOtherUrls} <span className="font-normal text-sky-700/70 dark:text-sky-300/70">· {t.drawer.gapOtherUrlsHint}</span>
+        </div>
+        {selectable && (
+          <button
+            className="shrink-0 inline-flex items-center gap-1 text-[11px] font-medium text-teal-700 dark:text-teal-400 hover:underline disabled:opacity-50 disabled:no-underline disabled:cursor-not-allowed whitespace-nowrap"
+            disabled={creatingTask || selected.size === 0}
+            title={selected.size === 0 ? t.drawer.gapLinkCreateTaskEmpty : t.drawer.gapLinkCreateTaskHint}
+            onClick={onCreateTask}
+          >
+            {creatingTask && <Spinner />}
+            {t.drawer.gapLinkCreateTask(selected.size)}
+          </button>
+        )}
+      </div>
+      <ul className="mt-1 space-y-1">
+        {urls.map((u) => (
+          <li key={u.inventoryId} className="flex items-start gap-2 text-xs">
+            {selectable &&
+              (u.taskId ? (
+                <span className="w-3.5 shrink-0" />
+              ) : (
+                <input
+                  type="checkbox"
+                  className="mt-0.5 shrink-0"
+                  title={t.drawer.gapLinkSelectHint}
+                  checked={selected.has(u.inventoryId)}
+                  disabled={creatingTask}
+                  onChange={(e) => onToggle(u.inventoryId, e.target.checked)}
+                />
+              ))}
+            <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium ${statusStyles[u.status]}`}>{t.drawer[u.status]}</span>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                <a href={u.url} target="_blank" rel="noreferrer" className="text-teal-700 dark:text-teal-400 hover:underline break-all">
+                  {u.title || u.url} ↗
+                </a>
+                <LinkBadge url={u} />
+                {u.taskId && (
+                  <a href="/tasks" target="_blank" rel="noreferrer" className="text-[10px] font-medium text-teal-600 hover:underline whitespace-nowrap">
+                    ✓ {t.drawer.gapLinkInTask} ↗
+                  </a>
+                )}
+              </div>
+              {u.heading && (
+                <div className="text-slate-500">
+                  {t.drawer.gapOtherUrlsSection}: „{u.heading}“
+                </div>
+              )}
+              {u.link?.inContent && u.link.anchor && (
+                <div className="text-slate-500">
+                  {t.drawer.gapLinkAnchor}: „{u.link.anchor}“
+                </div>
+              )}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 function TopicGapTab({
   url,
@@ -608,7 +731,7 @@ function TopicGapTab({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshTopics, setRefreshTopics] = useState(false);
-  const [filter, setFilter] = useState<"all" | TopicCoverageStatus>("all");
+  const [filter, setFilter] = useState<GapFilter>("all");
   const [view, setView] = useState<"list" | "tree">("list");
   const [copied, setCopied] = useState(false);
 
@@ -674,8 +797,17 @@ function TopicGapTab({
     partial: items.filter((i) => i.status === "partial").length,
     missing: items.filter((i) => i.status === "missing").length,
   };
+  const elsewhereCount = items.filter(coveredElsewhere).length;
+  const linkTargets = useMemo(() => {
+    const byId = new Map<string, TopicOtherUrl>();
+    for (const i of items) if (coveredElsewhere(i)) for (const u of i.otherUrls!) byId.set(u.inventoryId, u);
+    return [...byId.values()];
+  }, [items]);
+  const linksMissing = linkTargets.filter((u) => u.link !== undefined && !u.link?.inContent).length;
+  const crossChecked = items.some((i) => i.otherUrls !== undefined);
+  const hasOpenTopics = counts.missing + counts.partial > 0;
   const selectedCount = items.filter((i) => i.selected).length;
-  const visible = items.filter((i) => filter === "all" || i.status === filter);
+  const visible = items.filter((i) => matchesFilter(i, filter));
   const statusByTopic = useMemo(() => new Map(items.map((i) => [i.topic.toLowerCase(), i])), [items]);
 
   const toggleSelected = async (index: number, selected: boolean) => {
@@ -730,32 +862,78 @@ function TopicGapTab({
     }
   };
 
-  const topicActions = (i: TopicGapItem & { index: number }) => (
-    <span className="shrink-0 flex items-center gap-3">
-      {i.status !== "covered" &&
-        (i.editorialArticleId ? (
-          <a href="/redaktionsplan" target="_blank" rel="noreferrer" className="text-xs text-teal-600 hover:underline whitespace-nowrap">
-            ✓ {t.drawer.gapInEditorialPlan} ↗
-          </a>
-        ) : (
-          editable && (
-            <button
-              className="px-2 py-0.5 rounded text-xs border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 whitespace-nowrap inline-flex items-center gap-1"
-              disabled={creating.has(i.index)}
-              title={t.drawer.gapNewArticleHint}
-              onClick={() => void createArticle(i.index)}
-            >
-              {creating.has(i.index) && <Spinner />}
-              {t.drawer.gapNewArticle}
-            </button>
-          )
-        ))}
-      <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300 cursor-pointer whitespace-nowrap">
-        <input type="checkbox" disabled={!editable} checked={!!i.selected} onChange={(e) => void toggleSelected(i.index, e.target.checked)} />
-        {t.drawer.gapTakeOver}
-      </label>
-    </span>
-  );
+  const [crossChecking, setCrossChecking] = useState(false);
+  const crossCheck = async () => {
+    if (!gap) return;
+    const gapId = gap.id;
+    setCrossChecking(true);
+    setError(null);
+    try {
+      const res = await apiFetch<{ results: TopicGapItem[]; crossCoverageError: string | null; linksCheckedAt: string | null; linkCheckError: string | null }>(
+        `/api/seo-helper/keyword-mapping/urls/${url.id}/topic-gap/cross-coverage`,
+        { method: "POST", body: JSON.stringify({ gapId }) }
+      );
+      setData((prev) => (prev?.gap?.id === gapId ? { ...prev, gap: { ...prev.gap, ...res } } : prev));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t.errorGeneric);
+    } finally {
+      setCrossChecking(false);
+    }
+  };
+
+  const [linkChecking, setLinkChecking] = useState(false);
+  const linkCheck = async () => {
+    if (!gap) return;
+    const gapId = gap.id;
+    setLinkChecking(true);
+    setError(null);
+    try {
+      const res = await apiFetch<{ results: TopicGapItem[]; linksCheckedAt: string | null; linkCheckError: string | null }>(
+        `/api/seo-helper/keyword-mapping/urls/${url.id}/topic-gap/links`,
+        { method: "POST", body: JSON.stringify({ gapId }) }
+      );
+      setData((prev) => (prev?.gap?.id === gapId ? { ...prev, gap: { ...prev.gap, ...res } } : prev));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t.errorGeneric);
+    } finally {
+      setLinkChecking(false);
+    }
+  };
+
+  const topicActions = (i: TopicGapItem & { index: number }) => {
+    const coveredOn = i.otherUrls?.filter((u) => u.status === "covered").length ?? 0;
+    return (
+      <span className="shrink-0 flex items-center gap-3">
+        {i.status !== "covered" &&
+          (i.editorialArticleId ? (
+            <a href="/redaktionsplan" target="_blank" rel="noreferrer" className="text-xs text-teal-600 hover:underline whitespace-nowrap">
+              ✓ {t.drawer.gapInEditorialPlan} ↗
+            </a>
+          ) : (
+            editable && (
+              <button
+                className={`px-2 py-0.5 rounded text-xs border whitespace-nowrap inline-flex items-center gap-1 ${
+                  coveredOn > 0
+                    ? "border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                    : "border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700"
+                }`}
+                disabled={creating.has(i.index)}
+                title={coveredOn > 0 ? `${t.drawer.gapNewArticleCoveredWarning(coveredOn)}\n${t.drawer.gapNewArticleHint}` : t.drawer.gapNewArticleHint}
+                onClick={() => void createArticle(i.index)}
+              >
+                {creating.has(i.index) && <Spinner />}
+                {coveredOn > 0 && "⚠ "}
+                {t.drawer.gapNewArticle}
+              </button>
+            )
+          ))}
+        <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300 cursor-pointer whitespace-nowrap">
+          <input type="checkbox" disabled={!editable} checked={!!i.selected} onChange={(e) => void toggleSelected(i.index, e.target.checked)} />
+          {t.drawer.gapTakeOver}
+        </label>
+      </span>
+    );
+  };
 
   const [creatingTask, setCreatingTask] = useState(false);
   const createTask = async () => {
@@ -777,15 +955,74 @@ function TopicGapTab({
     }
   };
 
+  // Schlüssel `${gapId}:${index}`, damit eine Auswahl nicht auf eine neue Analyse übergeht
+  const [linkSelection, setLinkSelection] = useState<Map<string, Set<string>>>(new Map());
+  const [creatingLinkTask, setCreatingLinkTask] = useState<Set<string>>(new Set());
+  const blockKey = (index: number) => `${gap?.id}:${index}`;
+
+  const toggleLink = (index: number, inventoryId: string, checked: boolean) =>
+    setLinkSelection((prev) => {
+      const next = new Map(prev);
+      const ids = new Set(prev.get(blockKey(index)));
+      if (checked) ids.add(inventoryId);
+      else ids.delete(inventoryId);
+      next.set(blockKey(index), ids);
+      return next;
+    });
+
+  const createLinkTask = async (index: number) => {
+    const key = blockKey(index);
+    const inventoryIds = [...(linkSelection.get(key) ?? [])];
+    if (!gap || inventoryIds.length === 0) return;
+    const gapId = gap.id;
+    setCreatingLinkTask((prev) => new Set(prev).add(key));
+    setError(null);
+    try {
+      const res = await apiFetch<{ task: { id: string }; otherUrls: TopicOtherUrl[] }>(
+        `/api/seo-helper/keyword-mapping/urls/${url.id}/topic-gap/link-task`,
+        { method: "POST", body: JSON.stringify({ gapId, index, inventoryIds }) }
+      );
+      setData((prev) =>
+        prev?.gap?.id === gapId
+          ? { ...prev, gap: { ...prev.gap, results: prev.gap.results.map((r, i) => (i === index ? { ...r, otherUrls: res.otherUrls } : r)) } }
+          : prev
+      );
+      setLinkSelection((prev) => {
+        const next = new Map(prev);
+        next.delete(key);
+        return next;
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t.errorGeneric);
+    } finally {
+      setCreatingLinkTask((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+    }
+  };
+
   const copyTask = async () => {
     if (!gap) return;
     const missing = items.filter((i) => i.status === "missing");
     const partial = items.filter((i) => i.status === "partial");
+    const line = (i: TopicGapItem) => {
+      const linkNote = (u: TopicOtherUrl) => {
+        const state = linkState(u);
+        if (!state) return "";
+        return ` [${{ linked: t.drawer.gapCopyLinked, navOnly: t.drawer.gapCopyNavOnly, missing: t.drawer.gapCopyNotLinked }[state]}]`;
+      };
+      const others = i.otherUrls?.length
+        ? ` (${t.drawer.gapCopyOtherUrls}: ${i.otherUrls.map((u) => `${u.url}${linkNote(u)}`).join(", ")})`
+        : "";
+      return `- ${[...i.path, i.topic].join(" > ")}${others}`;
+    };
     const text = [
       t.drawer.gapTaskText(url.url, gap.focusKeyword, gap.coverageScore),
       gap.summary ? `\n${gap.summary}` : "",
-      missing.length ? `\n${t.drawer.gapMissingHeading}:\n${missing.map((i) => `- ${[...i.path, i.topic].join(" > ")}`).join("\n")}` : "",
-      partial.length ? `\n${t.drawer.gapPartialHeading}:\n${partial.map((i) => `- ${[...i.path, i.topic].join(" > ")}`).join("\n")}` : "",
+      missing.length ? `\n${t.drawer.gapMissingHeading}:\n${missing.map(line).join("\n")}` : "",
+      partial.length ? `\n${t.drawer.gapPartialHeading}:\n${partial.map(line).join("\n")}` : "",
     ].join("\n");
     await navigator.clipboard.writeText(text.trim());
     setCopied(true);
@@ -893,8 +1130,46 @@ function TopicGapTab({
               </div>
               {gap.summary && <p className="text-sm text-slate-700 dark:text-slate-300">{gap.summary}</p>}
 
+              {gap.crossCoverageError && (
+                <Notice kind="warning">
+                  {t.drawer.gapCrossCheckFailed}: {gap.crossCoverageError}
+                </Notice>
+              )}
+              {editable && hasOpenTopics && (!crossChecked || gap.crossCoverageError) && (
+                <div>
+                  <button className={buttonSecondary} disabled={crossChecking} title={t.drawer.gapCrossCheckHint} onClick={() => void crossCheck()}>
+                    {crossChecking && <Spinner />}
+                    {t.drawer.gapCrossCheck}
+                  </button>
+                </div>
+              )}
+              {gap.linkCheckError && (
+                <Notice kind="warning">
+                  {t.drawer.gapLinkCheckFailed}: {gap.linkCheckError}
+                </Notice>
+              )}
+              {linkTargets.length > 0 && (
+                <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs">
+                  {gap.linksCheckedAt && (
+                    <span className={linksMissing > 0 ? "font-medium text-amber-700 dark:text-amber-300" : "font-medium text-emerald-700 dark:text-emerald-300"}>
+                      {linksMissing > 0 ? t.drawer.gapLinksMissingCount(linksMissing, linkTargets.length) : t.drawer.gapLinksAllPresent(linkTargets.length)}
+                    </span>
+                  )}
+                  {gap.linksCheckedAt && (
+                    <span className="text-slate-400">{t.drawer.gapLinksCheckedAt(new Date(gap.linksCheckedAt).toLocaleString(intlLocale))}</span>
+                  )}
+                  <div className="flex-1" />
+                  {editable && (
+                    <button className={buttonSecondary} disabled={linkChecking} title={t.drawer.gapLinkCheckHint} onClick={() => void linkCheck()}>
+                      {linkChecking && <Spinner />}
+                      {t.drawer.gapLinkCheck}
+                    </button>
+                  )}
+                </div>
+              )}
+
               <div className="flex flex-wrap items-center gap-2">
-                {(["all", "missing", "partial", "covered"] as const).map((f) => (
+                {(["all", "missing", "partial", "covered", ...(crossChecked ? (["elsewhere"] as const) : [])] as const).map((f) => (
                   <button
                     key={f}
                     onClick={() => setFilter(f)}
@@ -902,7 +1177,8 @@ function TopicGapTab({
                       filter === f ? "bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900" : "border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300"
                     }`}
                   >
-                    {f === "all" ? t.drawer.gapFilterAll : t.drawer[f]} {f !== "all" && `(${counts[f]})`}
+                    {f === "all" ? t.drawer.gapFilterAll : f === "elsewhere" ? t.drawer.gapFilterElsewhere : t.drawer[f]}{" "}
+                    {f !== "all" && `(${f === "elsewhere" ? elsewhereCount : counts[f]})`}
                   </button>
                 ))}
                 <div className="flex-1" />
@@ -938,6 +1214,16 @@ function TopicGapTab({
                               {t.drawer.evidence}: „{i.evidence}“
                             </div>
                           )}
+                          {coveredElsewhere(i) && (
+                            <OtherUrlsList
+                              urls={i.otherUrls!}
+                              editable={editable}
+                              selected={linkSelection.get(blockKey(i.index)) ?? new Set()}
+                              onToggle={(inventoryId, checked) => toggleLink(i.index, inventoryId, checked)}
+                              onCreateTask={() => void createLinkTask(i.index)}
+                              creatingTask={creatingLinkTask.has(blockKey(i.index))}
+                            />
+                          )}
                         </div>
                         {topicActions(i)}
                       </div>
@@ -972,24 +1258,40 @@ function TopicTree({
 }: {
   node: TreeNode;
   statusByTopic: Map<string, TopicGapItem & { index: number }>;
-  filter: "all" | TopicCoverageStatus;
+  filter: GapFilter;
   renderActions: (item: TopicGapItem & { index: number }) => React.ReactNode;
   root?: boolean;
 }) {
+  const t = useMessages(seoHelperKeywordMappingMessages);
   const item = statusByTopic.get(node.label.toLowerCase());
   const matches = (n: TreeNode): boolean => {
     const s = statusByTopic.get(n.label.toLowerCase());
-    return filter === "all" || s?.status === filter || n.children.some(matches);
+    return filter === "all" || (!!s && matchesFilter(s, filter)) || (n.children ?? []).some(matches);
   };
+  const others = item && coveredElsewhere(item) ? item.otherUrls! : [];
   if (!root && !matches(node)) return null;
   return (
     <div className={root ? "" : "ml-4 border-l border-slate-100 dark:border-slate-700 pl-3"}>
       <div className="flex items-center gap-2 py-0.5 text-sm" title={item?.reason}>
         {item ? <span className={`w-2 h-2 rounded-full ${statusDot[item.status]}`} /> : <span className="w-2 h-2 rounded-full bg-slate-300" />}
         <span className={root ? "font-semibold text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-300"}>{node.label}</span>
+        {others.length > 0 && (
+          <span
+            className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300 whitespace-nowrap"
+            title={`${t.drawer.gapOtherUrls}:\n${others
+              .map((u) => {
+                const state = linkState(u);
+                const note = state ? ` [${{ linked: t.drawer.gapLinkLinked, navOnly: t.drawer.gapLinkNavOnly, missing: t.drawer.gapLinkMissing }[state]}]` : "";
+                return `${u.url}${u.heading ? ` – ${u.heading}` : ""}${note}`;
+              })
+              .join("\n")}`}
+          >
+            {t.drawer.gapOtherUrlsCount(others.length)}
+          </span>
+        )}
         {item && <span className="ml-auto">{renderActions(item)}</span>}
       </div>
-      {node.children.map((c, idx) => (
+      {(node.children ?? []).map((c, idx) => (
         <TopicTree key={`${c.label}-${idx}`} node={c} statusByTopic={statusByTopic} filter={filter} renderActions={renderActions} />
       ))}
     </div>

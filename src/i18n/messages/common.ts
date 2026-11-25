@@ -3,7 +3,7 @@ import { defineMessages } from "../config";
 /** Seitenübergreifende Texte (Navigation, Top-Bar, häufige Aktionen) */
 export const commonMessages = defineMessages({
   de: {
-    appName: "SME Dashboard",
+    appName: "SG Suite",
     language: "Sprache",
     actions: {
       save: "Speichern",
@@ -76,7 +76,7 @@ export const commonMessages = defineMessages({
     },
   },
   en: {
-    appName: "SME Dashboard",
+    appName: "SG Suite",
     language: "Language",
     actions: {
       save: "Save",

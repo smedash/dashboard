@@ -65,6 +65,7 @@ export async function POST(request: NextRequest) {
       location_code: 2756, // Schweiz
       language_code: "de",
       depth: 10, // Top 10
+      resolve_poisoned_results: true,
     }];
 
     const response = await fetch(`${DATAFORSEO_API_URL}/serp/google/organic/live/advanced`, {

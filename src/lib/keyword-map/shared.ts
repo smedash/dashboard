@@ -39,6 +39,27 @@ export interface SubkeywordSuggestion {
 
 export type TopicCoverageStatus = "covered" | "partial" | "missing";
 
+/** Andere URL aus dem Content-Mapping, die ein Topic bereits behandelt */
+export interface TopicOtherUrl {
+  inventoryId: string;
+  url: string;
+  title: string | null;
+  status: "covered" | "partial";
+  /** Abschnitt, der das Topic abdeckt */
+  heading: string | null;
+  similarity: number;
+  /** Link von der Mapping-URL hierher; undefined = nicht geprüft, null = kein Link gefunden */
+  link?: TopicLink | null;
+  /** Kanban-Task, in dem diese Linkempfehlung steht; kann auf einen inzwischen gelöschten Task zeigen */
+  taskId?: string;
+}
+
+export interface TopicLink {
+  anchor: string;
+  /** false = nur in Navigation, Header oder Footer verlinkt */
+  inContent: boolean;
+}
+
 export interface TopicGapItem {
   topic: string;
   path: string[];
@@ -49,6 +70,8 @@ export interface TopicGapItem {
   selected?: boolean;
   /** Im Redaktionsplan angelegter Artikel zu diesem Topic */
   editorialArticleId?: string;
+  /** Abgleich mit dem Content-Mapping (nur bei missing/partial); leer = geprüft, nichts gefunden */
+  otherUrls?: TopicOtherUrl[];
 }
 
 export interface TopicGapSummaryDto {
