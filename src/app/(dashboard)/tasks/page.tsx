@@ -58,6 +58,11 @@ interface TaskFile {
   createdAt: string;
 }
 
+interface TaskProject {
+  id: string;
+  name: string;
+}
+
 interface Task {
   id: string;
   title: string;
@@ -70,6 +75,8 @@ interface Task {
   dueDate: string | null;
   category: string | null;
   labels: string[];
+  projectId: string | null;
+  project: TaskProject | null;
   creator: TaskUser;
   assignees: TaskUser[];
   comments: TaskComment[];
@@ -207,6 +214,110 @@ function TaskFileUploadArea({
   );
 }
 
+const NEW_PROJECT_OPTION = "__new__";
+
+// Projekt-Auswahl mit Inline-Anlage neuer Projekte
+function ProjectSelect({
+  value,
+  projects,
+  onChange,
+  onProjectCreated,
+}: {
+  value: string | null;
+  projects: TaskProject[];
+  onChange: (projectId: string | null) => void;
+  onProjectCreated: (project: TaskProject) => void;
+}) {
+  const t = useMessages(tasksMessages);
+  const [isCreating, setIsCreating] = useState(false);
+  const [name, setName] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const cancelCreate = () => {
+    setIsCreating(false);
+    setName("");
+  };
+
+  const handleCreate = async () => {
+    if (!name.trim() || isSaving) return;
+    setIsSaving(true);
+    try {
+      const response = await fetch("/api/tasks/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim() }),
+      });
+      if (!response.ok) throw new Error(t.projectSelect.createError);
+      const data = await response.json();
+      onProjectCreated(data.project);
+      onChange(data.project.id);
+      cancelCreate();
+    } catch (error) {
+      console.error("Error creating project:", error);
+      alert(t.projectSelect.createError);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (isCreating) {
+    return (
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              handleCreate();
+            } else if (e.key === "Escape") {
+              e.stopPropagation();
+              cancelCreate();
+            }
+          }}
+          placeholder={t.projectSelect.namePlaceholder}
+          maxLength={100}
+          autoFocus
+          className="flex-1 min-w-0 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
+        />
+        <button
+          type="button"
+          onClick={handleCreate}
+          disabled={!name.trim() || isSaving}
+          className="px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white text-sm rounded-lg transition-colors"
+        >
+          {t.projectSelect.add}
+        </button>
+        <button
+          type="button"
+          onClick={cancelCreate}
+          className="px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+        >
+          {t.projectSelect.cancel}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <select
+      value={value ?? ""}
+      onChange={(e) => {
+        if (e.target.value === NEW_PROJECT_OPTION) setIsCreating(true);
+        else onChange(e.target.value || null);
+      }}
+      className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
+    >
+      <option value="">{t.projectSelect.none}</option>
+      {projects.map((p) => (
+        <option key={p.id} value={p.id}>{p.name}</option>
+      ))}
+      <option value={NEW_PROJECT_OPTION}>{t.projectSelect.createNew}</option>
+    </select>
+  );
+}
+
 // Sortable Task Card Component
 function SortableTaskCard({
   task,
@@ -308,6 +419,11 @@ function TaskCardContent({ task }: { task: Task }) {
 
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 flex-wrap">
+          {task.project && (
+            <span className="px-1.5 py-0.5 text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded">
+              {task.project.name}
+            </span>
+          )}
           {task.scope && task.scope !== DEFAULT_TASK_SCOPE && (
             <span className="px-1.5 py-0.5 text-xs bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 rounded">
               {t.scopes[task.scope] ?? task.scope}
@@ -454,6 +570,8 @@ function DroppableColumn({
 function TaskDetailModal({
   task,
   users,
+  projects,
+  onProjectCreated,
   onClose,
   onUpdate,
   onDelete,
@@ -462,6 +580,8 @@ function TaskDetailModal({
 }: {
   task: Task;
   users: TaskUser[];
+  projects: TaskProject[];
+  onProjectCreated: (project: TaskProject) => void;
   onClose: () => void;
   onUpdate: (updates: Partial<Task> & { assigneeIds?: string[] }) => void;
   onDelete: () => void;
@@ -702,6 +822,25 @@ function TaskDetailModal({
                 </span>
               )}
             </div>
+          </div>
+
+          {/* Project */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.detail.project}</label>
+            {isEditing ? (
+              <ProjectSelect
+                value={editedTask.projectId}
+                projects={projects}
+                onChange={(projectId) => setEditedTask({ ...editedTask, projectId })}
+                onProjectCreated={onProjectCreated}
+              />
+            ) : task.project ? (
+              <span className="inline-block px-2 py-1 rounded text-sm bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300">
+                {task.project.name}
+              </span>
+            ) : (
+              <span className="text-slate-600 dark:text-slate-400">{t.detail.noProject}</span>
+            )}
           </div>
 
           {/* Assignees (Multi-Select) */}
@@ -992,13 +1131,19 @@ function TaskDetailModal({
 function NewTaskModal({
   status,
   users,
+  projects,
+  defaultProjectId,
+  onProjectCreated,
   onClose,
   onCreate,
 }: {
   status: string;
   users: TaskUser[];
+  projects: TaskProject[];
+  defaultProjectId: string | null;
+  onProjectCreated: (project: TaskProject) => void;
   onClose: () => void;
-  onCreate: (task: { title: string; description: string | null; url: string | null; status: string; priority: string; scope: string; category: string | null; dueDate: string | null; assigneeIds: string[] }) => void;
+  onCreate: (task: { title: string; description: string | null; url: string | null; status: string; priority: string; scope: string; projectId: string | null; category: string | null; dueDate: string | null; assigneeIds: string[] }) => void;
 }) {
   const t = useMessages(tasksMessages);
   const [title, setTitle] = useState("");
@@ -1007,6 +1152,7 @@ function NewTaskModal({
   const urlInvalid = !isValidTaskUrl(url);
   const [priority, setPriority] = useState("medium");
   const [scope, setScope] = useState<string>(DEFAULT_TASK_SCOPE);
+  const [projectId, setProjectId] = useState<string | null>(defaultProjectId);
   const [category, setCategory] = useState("");
   const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [dueDate, setDueDate] = useState("");
@@ -1031,6 +1177,7 @@ function NewTaskModal({
       status,
       priority,
       scope,
+      projectId,
       category: category || null,
       dueDate: dueDate || null,
       assigneeIds,
@@ -1094,6 +1241,18 @@ function NewTaskModal({
               className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
             />
             {urlInvalid && <p className="mt-1 text-xs text-red-500">{t.create.urlInvalid}</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              {t.create.project}
+            </label>
+            <ProjectSelect
+              value={projectId}
+              projects={projects}
+              onChange={setProjectId}
+              onProjectCreated={onProjectCreated}
+            />
           </div>
 
           <div className="grid grid-cols-3 gap-4">
@@ -1476,6 +1635,7 @@ export default function TasksPage() {
   
   const [tasks, setTasks] = useState<Task[]>([]);
   const [users, setUsers] = useState<TaskUser[]>([]);
+  const [projects, setProjects] = useState<TaskProject[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [newTaskStatus, setNewTaskStatus] = useState<string | null>(null);
@@ -1488,6 +1648,7 @@ export default function TasksPage() {
   const [filterPriority, setFilterPriority] = useState<string>("all");
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [filterScope, setFilterScope] = useState<string>("all");
+  const [filterProject, setFilterProject] = useState<string>("all");
   const [filterAssignee, setFilterAssignee] = useState<string>("all");
 
   const sensors = useSensors(
@@ -1520,10 +1681,29 @@ export default function TasksPage() {
     }
   }, []);
 
+  const fetchProjects = useCallback(async () => {
+    try {
+      const response = await fetch("/api/tasks/projects");
+      const data = await response.json();
+      setProjects(data.projects || []);
+    } catch (error) {
+      console.error("Error fetching projects:", error);
+    }
+  }, []);
+
+  const handleProjectCreated = (project: TaskProject) => {
+    setProjects((prev) =>
+      prev.some((p) => p.id === project.id)
+        ? prev
+        : [...prev, project].sort((a, b) => a.name.localeCompare(b.name, intlLocale))
+    );
+  };
+
   useEffect(() => {
     fetchTasks();
     fetchUsers();
-  }, [fetchTasks, fetchUsers]);
+    fetchProjects();
+  }, [fetchTasks, fetchUsers, fetchProjects]);
 
   const handleDragStart = (event: DragStartEvent) => {
     const task = tasks.find((t) => t.id === event.active.id);
@@ -1605,7 +1785,7 @@ export default function TasksPage() {
     }
   };
 
-  const handleCreateTask = async (taskData: { title: string; description: string | null; url: string | null; status: string; priority: string; scope: string; category: string | null; dueDate: string | null; assigneeIds: string[] }) => {
+  const handleCreateTask = async (taskData: { title: string; description: string | null; url: string | null; status: string; priority: string; scope: string; projectId: string | null; category: string | null; dueDate: string | null; assigneeIds: string[] }) => {
     try {
       const response = await fetch("/api/tasks", {
         method: "POST",
@@ -1664,6 +1844,8 @@ export default function TasksPage() {
     if (filterPriority !== "all" && task.priority !== filterPriority) return false;
     if (filterCategory !== "all" && task.category !== filterCategory) return false;
     if (filterScope !== "all" && task.scope !== filterScope) return false;
+    if (filterProject === "none" && task.projectId) return false;
+    if (filterProject !== "all" && filterProject !== "none" && task.projectId !== filterProject) return false;
     if (filterAssignee !== "all") {
       if (filterAssignee === "unassigned" && task.assignees?.length > 0) return false;
       if (filterAssignee !== "unassigned" && !task.assignees?.some((a) => a.id === filterAssignee)) return false;
@@ -1691,6 +1873,7 @@ export default function TasksPage() {
       [e.status]: t.columns[task.status] ?? task.status,
       [e.priority]: t.priorities[task.priority] ?? task.priority,
       [e.scope]: t.scopes[task.scope] ?? task.scope,
+      [e.project]: task.project?.name ?? "",
       [e.category]: task.category ?? "",
       [e.assignees]: task.assignees.map(userName).join(", "),
       [e.dueDate]: formatDate(task.dueDate),
@@ -1711,7 +1894,7 @@ export default function TasksPage() {
       {
         name: e.sheetName,
         rows,
-        columnWidths: [40, 14, 12, 14, 18, 30, 12, 40, 60, 20, 22, 14, 14, 60, 8],
+        columnWidths: [40, 14, 12, 14, 20, 18, 30, 12, 40, 60, 20, 22, 14, 14, 60, 8],
       },
     ]);
   };
@@ -1819,6 +2002,20 @@ export default function TasksPage() {
           </select>
         </div>
         <div>
+          <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">{t.filters.project}</label>
+          <select
+            value={filterProject}
+            onChange={(e) => setFilterProject(e.target.value)}
+            className="px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white text-sm"
+          >
+            <option value="all">{t.filters.all}</option>
+            <option value="none">{t.filters.noProject}</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+        </div>
+        <div>
           <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">{t.filters.category}</label>
           <select
             value={filterCategory}
@@ -1898,6 +2095,8 @@ export default function TasksPage() {
         <TaskDetailModal
           task={selectedTask}
           users={users}
+          projects={projects}
+          onProjectCreated={handleProjectCreated}
           onClose={() => setSelectedTask(null)}
           onUpdate={handleUpdateTask}
           onDelete={handleDeleteTask}
@@ -1926,6 +2125,9 @@ export default function TasksPage() {
         <NewTaskModal
           status={newTaskStatus}
           users={users}
+          projects={projects}
+          defaultProjectId={filterProject !== "all" && filterProject !== "none" ? filterProject : null}
+          onProjectCreated={handleProjectCreated}
           onClose={() => setNewTaskStatus(null)}
           onCreate={handleCreateTask}
         />

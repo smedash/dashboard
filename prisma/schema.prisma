@@ -505,6 +505,8 @@ model Task {
   dueDate     DateTime?
   category    String?        // Kategorie: Mortgages, Accounts&Cards, Investing, Pension, Digital Banking
   labels      String[]       // Zusätzliche Labels/Tags
+  projectId   String?
+  project     TaskProject?   @relation(fields: [projectId], references: [id], onDelete: SetNull)
   creatorId   String
   creator     User           @relation("TaskCreator", fields: [creatorId], references: [id], onDelete: Cascade)
   assignees   TaskAssignee[] // Mehrere zugewiesene Bearbeiter
@@ -518,6 +520,15 @@ model Task {
   @@index([priority])
   @@index([category])
   @@index([status, order])
+  @@index([projectId])
+}
+
+model TaskProject {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  createdById String?
+  tasks       Task[]
+  createdAt   DateTime @default(now())
 }
 
 // Task Zuweisungen - Many-to-Many zwischen Task und User

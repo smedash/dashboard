@@ -25,6 +25,9 @@ export async function GET(
         creator: {
           select: { id: true, name: true, email: true },
         },
+        project: {
+          select: { id: true, name: true },
+        },
         assignees: {
           include: {
             user: {
@@ -109,6 +112,13 @@ export async function PATCH(
       throw e;
     }
 
+    const projectId: string | null | undefined = body.projectId === undefined ? undefined : body.projectId || null;
+    if (projectId) {
+      if (typeof projectId !== "string" || !(await prisma.taskProject.findUnique({ where: { id: projectId }, select: { id: true } }))) {
+        return NextResponse.json({ error: "Invalid project" }, { status: 400 });
+      }
+    }
+
     // Prüfen ob Task existiert und bestehende Assignees laden
     const existingTask = await prisma.task.findUnique({
       where: { id },
@@ -138,6 +148,7 @@ export async function PATCH(
     if (dueDate !== undefined) updateData.dueDate = dueDate ? new Date(dueDate) : null;
     if (category !== undefined) updateData.category = category || null;
     if (labels !== undefined) updateData.labels = labels;
+    if (projectId !== undefined) updateData.projectId = projectId;
 
     // Handle assignees update
     if (assigneeIds !== undefined) {
@@ -162,6 +173,9 @@ export async function PATCH(
       include: {
         creator: {
           select: { id: true, name: true, email: true },
+        },
+        project: {
+          select: { id: true, name: true },
         },
         assignees: {
           include: {

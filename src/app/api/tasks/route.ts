@@ -19,6 +19,9 @@ export async function GET() {
         creator: {
           select: { id: true, name: true, email: true },
         },
+        project: {
+          select: { id: true, name: true },
+        },
         assignees: {
           include: {
             user: {
@@ -105,6 +108,13 @@ export async function POST(request: NextRequest) {
       throw e;
     }
 
+    const projectId: string | null = body.projectId || null;
+    if (projectId !== null) {
+      if (typeof projectId !== "string" || !(await prisma.taskProject.findUnique({ where: { id: projectId }, select: { id: true } }))) {
+        return NextResponse.json({ error: "Invalid project" }, { status: 400 });
+      }
+    }
+
     // Höchste Order in der Spalte finden
     const maxOrderTask = await prisma.task.findFirst({
       where: { status: status || "backlog" },
@@ -124,6 +134,7 @@ export async function POST(request: NextRequest) {
         dueDate: dueDate ? new Date(dueDate) : null,
         category: category || null,
         labels: labels || [],
+        projectId,
         creatorId: session.user.id,
         assignees: assigneeIds?.length
           ? {
@@ -136,6 +147,9 @@ export async function POST(request: NextRequest) {
       include: {
         creator: {
           select: { id: true, name: true, email: true },
+        },
+        project: {
+          select: { id: true, name: true },
         },
         assignees: {
           include: {
