@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocale, useMessages } from "@/i18n/I18nProvider";
 import { seoHelperKeywordMappingMessages } from "@/i18n/messages/seo-helper-keyword-mapping";
 import type { ProjectTopicGap, ProjectTopicGapsResponse } from "@/lib/keyword-map/shared";
@@ -8,9 +8,12 @@ import { BrandExclusionButton } from "./BrandExclusionButton";
 import { Notice, Spinner, apiFetch, buttonSecondary, formatNumber, inputClass } from "./ui";
 
 const PAGE_SIZE = 50;
+const RESEARCH_BATCH = 3;
+/** Liste nach so vielen Recherche-Batches neu laden, damit Suchvolumen schrittweise erscheinen */
+const RESEARCH_RELOAD_EVERY = 5;
 const filterClass = inputClass.replace(/\bw-full\b/, "").trim();
 
-type SortKey = "urls" | "topic";
+type SortKey = "topicSv" | "clusterSv" | "urls" | "topic";
 
 function shortUrl(url: string) {
   return url.replace(/^https?:\/\/[^/]+/, "") || url;
@@ -46,7 +49,7 @@ export function TopicGapsTab({
   const [search, setSearch] = useState("");
   const [urlFilter, setUrlFilter] = useState("");
   const [onlyOpen, setOnlyOpen] = useState(false);
-  const [sort, setSort] = useState<SortKey>("urls");
+  const [sort, setSort] = useState<SortKey>("topicSv");
   const [page, setPage] = useState(0);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [creating, setCreating] = useState<Set<string>>(new Set());
@@ -63,6 +66,75 @@ export function TopicGapsTab({
   useEffect(() => {
     void load();
   }, [load]);
+
+  const [progress, setProgress] = useState<{ phase: "research" | "volume"; done: number; total: number } | null>(null);
+  const [failures, setFailures] = useState<{ research: number; volume: number; lastError?: string } | null>(null);
+  const fetchStarted = useRef(false);
+  const unmounted = useRef(false);
+  useEffect(() => {
+    unmounted.current = false;
+    return () => {
+      unmounted.current = true;
+    };
+  }, []);
+
+  // Fehlende Suchvolumen einmal pro Tab-Aufruf nachladen: erst SEOSpark-Recherchen der Fokus-Keywords, dann Topic-Suchvolumen
+  useEffect(() => {
+    if (!data || !editable || fetchStarted.current) return;
+    const pending = data.unresearched;
+    const volumeMissing = data.topicSvMissing ?? 0;
+    if (pending.length === 0 && volumeMissing === 0) return;
+    fetchStarted.current = true;
+    void (async () => {
+      const failed = { research: 0, volume: 0, lastError: undefined as string | undefined };
+
+      for (let i = 0; i < pending.length && !unmounted.current; i += RESEARCH_BATCH) {
+        setProgress({ phase: "research", done: i, total: pending.length });
+        try {
+          const res = await apiFetch<{ results: Record<string, { status: string; error?: string }> }>(
+            `/api/seo-helper/keyword-mapping/projects/${projectId}/keyword-research`,
+            { method: "POST", body: JSON.stringify({ keywords: pending.slice(i, i + RESEARCH_BATCH) }) }
+          );
+          for (const r of Object.values(res.results)) {
+            if (r.status === "error") {
+              failed.research++;
+              failed.lastError = r.error;
+            }
+          }
+        } catch (e) {
+          failed.research += Math.min(RESEARCH_BATCH, pending.length - i);
+          failed.lastError = e instanceof Error ? e.message : t.errorGeneric;
+        }
+        if ((i / RESEARCH_BATCH) % RESEARCH_RELOAD_EVERY === RESEARCH_RELOAD_EVERY - 1) await load();
+      }
+
+      let done = 0;
+      let remaining = volumeMissing;
+      while (remaining > 0 && !unmounted.current) {
+        setProgress({ phase: "volume", done, total: volumeMissing });
+        try {
+          const res = await apiFetch<{ fetched: number; failed: number; remaining: number }>(
+            `/api/seo-helper/keyword-mapping/projects/${projectId}/topic-volume`,
+            { method: "POST" }
+          );
+          done += res.fetched;
+          failed.volume += res.failed;
+          if (res.fetched === 0) break;
+          remaining = res.remaining;
+        } catch (e) {
+          failed.volume += remaining;
+          failed.lastError = e instanceof Error ? e.message : t.errorGeneric;
+          break;
+        }
+        await load();
+      }
+
+      if (unmounted.current) return;
+      await load();
+      setProgress(null);
+      setFailures(failed.research > 0 || failed.volume > 0 ? failed : null);
+    })();
+  }, [data, editable, projectId, load, t.errorGeneric]);
 
   const urlOptions = useMemo(() => {
     const byId = new Map<string, string>();
@@ -81,7 +153,10 @@ export function TopicGapsTab({
       }
       return true;
     });
-    return sort === "topic" ? [...list].sort((a, b) => a.topic.localeCompare(b.topic)) : list;
+    if (sort === "topic") return [...list].sort((a, b) => a.topic.localeCompare(b.topic));
+    if (sort === "clusterSv") return [...list].sort((a, b) => b.clusterSv - a.clusterSv || (b.topicSv ?? -1) - (a.topicSv ?? -1));
+    if (sort === "urls") return [...list].sort((a, b) => b.occurrences.length - a.occurrences.length || (b.topicSv ?? -1) - (a.topicSv ?? -1));
+    return list;
   }, [data, search, urlFilter, onlyOpen, sort]);
 
   useEffect(() => setPage(0), [search, urlFilter, onlyOpen, sort]);
@@ -128,10 +203,32 @@ export function TopicGapsTab({
   };
 
   const exportCsv = () => {
-    const header = [t.gapsTab.topic, t.gapsTab.path, t.gapsTab.urlCount, t.fields.url, t.fields.focusKeyword, t.gapsTab.reason, t.gapsTab.editorial];
+    const header = [
+      t.gapsTab.topic,
+      t.gapsTab.path,
+      t.gapsTab.topicSv,
+      t.gapsTab.clusterSv,
+      t.gapsTab.urlCount,
+      t.fields.url,
+      t.fields.focusKeyword,
+      t.gapsTab.focusSv,
+      t.gapsTab.reason,
+      t.gapsTab.editorial,
+    ];
     const lines = filtered.flatMap((g) =>
       g.occurrences.map((o) =>
-        [g.topic, o.path.join(" > "), String(g.occurrences.length), o.url, o.focusKeyword, o.reason, o.editorialArticleId ? "x" : ""]
+        [
+          g.topic,
+          o.path.join(" > "),
+          g.topicSv === null ? "" : String(g.topicSv),
+          String(g.clusterSv),
+          String(g.occurrences.length),
+          o.url,
+          o.focusKeyword,
+          o.focusClusterSv === null ? "" : String(o.focusClusterSv),
+          o.reason,
+          o.editorialArticleId ? "x" : "",
+        ]
           .map(csvCell)
           .join(";")
       )
@@ -164,6 +261,20 @@ export function TopicGapsTab({
       {data.stats.unchecked > 0 && <Notice kind="warning">{t.gapsTab.unchecked(data.stats.unchecked)}</Notice>}
       {error && <Notice kind="error">{error}</Notice>}
       {notice && <Notice kind="success">{notice}</Notice>}
+      {progress && (
+        <Notice kind="info">
+          <span className="flex items-center gap-2">
+            <Spinner />
+            {progress.phase === "research"
+              ? t.gapsTab.researchRunning(progress.done, progress.total)
+              : t.gapsTab.volumeRunning(progress.done, progress.total)}
+          </span>
+        </Notice>
+      )}
+      {failures && <Notice kind="warning">{t.gapsTab.fetchFailed(failures.research, failures.volume, failures.lastError)}</Notice>}
+      {!editable && (data.unresearched.length > 0 || (data.topicSvMissing ?? 0) > 0) && (
+        <Notice kind="info">{t.gapsTab.svMissingReadOnly(data.unresearched.length, data.topicSvMissing ?? 0)}</Notice>
+      )}
 
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-3">
         <div className="flex flex-wrap items-center gap-2">
@@ -184,6 +295,8 @@ export function TopicGapsTab({
             ))}
           </select>
           <select className={`${filterClass} max-w-[13rem]`} value={sort} onChange={(e) => setSort(e.target.value as SortKey)}>
+            <option value="topicSv">{t.gapsTab.sortTopicSv}</option>
+            <option value="clusterSv">{t.gapsTab.sortClusterSv}</option>
             <option value="urls">{t.gapsTab.sortUrls}</option>
             <option value="topic">{t.gapsTab.sortTopic}</option>
           </select>
@@ -211,6 +324,12 @@ export function TopicGapsTab({
             <thead className="bg-slate-50 dark:bg-slate-900/40 text-xs text-slate-500 dark:text-slate-400">
               <tr className="border-b border-slate-200 dark:border-slate-700">
                 <th className="px-3 py-2 text-left font-medium">{t.gapsTab.topic}</th>
+                <th className="px-3 py-2 text-right font-medium whitespace-nowrap" title={t.gapsTab.topicSvHint}>
+                  {t.gapsTab.topicSv}
+                </th>
+                <th className="px-3 py-2 text-right font-medium whitespace-nowrap" title={t.gapsTab.clusterSvHint}>
+                  {t.gapsTab.clusterSv}
+                </th>
                 <th className="px-3 py-2 text-right font-medium whitespace-nowrap">{t.gapsTab.urlCount}</th>
                 <th className="px-3 py-2 text-left font-medium">{t.gapsTab.foundAt}</th>
                 <th className="px-3 py-2" />
@@ -219,7 +338,7 @@ export function TopicGapsTab({
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">
               {pageRows.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-10 text-center text-slate-500">
+                  <td colSpan={6} className="px-4 py-10 text-center text-slate-500">
                     {data.gaps.length === 0 ? t.gapsTab.emptyAll : t.gapsTab.empty}
                   </td>
                 </tr>
@@ -238,6 +357,16 @@ export function TopicGapsTab({
                         </button>
                         {path.length > 0 && <div className="ml-4 text-xs text-slate-400">{path.join(" › ")}</div>}
                       </td>
+                      <td className="px-3 py-2 text-right tabular-nums font-medium text-slate-900 dark:text-white">
+                        {g.topicSv === null ? <span className="text-slate-300 dark:text-slate-600">–</span> : formatNumber(g.topicSv, intlLocale)}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300">
+                        {g.occurrences.every((o) => o.focusClusterSv === null) ? (
+                          <span className="text-slate-300 dark:text-slate-600">–</span>
+                        ) : (
+                          formatNumber(g.clusterSv, intlLocale)
+                        )}
+                      </td>
                       <td className="px-3 py-2 text-right tabular-nums text-slate-700 dark:text-slate-300">{g.occurrences.length}</td>
                       <td className="px-3 py-2 max-w-[28rem]">
                         <div className="flex flex-wrap gap-1">
@@ -245,7 +374,9 @@ export function TopicGapsTab({
                             <button
                               key={`${o.gapId}-${o.index}`}
                               onClick={() => onOpenUrl(o.urlId)}
-                              title={`${o.url}\n${t.fields.focusKeyword}: ${o.focusKeyword}`}
+                              title={`${o.url}\n${t.fields.focusKeyword}: ${o.focusKeyword}${
+                                o.focusClusterSv !== null ? ` (${t.gapsTab.focusSv}: ${formatNumber(o.focusClusterSv, intlLocale)})` : ""
+                              }`}
                               className="max-w-[16rem] truncate px-1.5 py-0.5 rounded text-xs bg-slate-100 dark:bg-slate-700 text-teal-700 dark:text-teal-300 hover:underline"
                             >
                               {shortUrl(o.url)}
@@ -275,7 +406,7 @@ export function TopicGapsTab({
                     </tr>
                     {isOpen && (
                       <tr className="bg-slate-50/60 dark:bg-slate-900/30">
-                        <td colSpan={4} className="px-3 py-2 pl-8">
+                        <td colSpan={6} className="px-3 py-2 pl-8">
                           <ul className="space-y-1.5">
                             {g.occurrences.map((o) => (
                               <li key={`${o.gapId}-${o.index}`} className="text-xs text-slate-600 dark:text-slate-300">
@@ -283,6 +414,12 @@ export function TopicGapsTab({
                                   {shortUrl(o.url)}
                                 </button>
                                 <span className="text-slate-400"> · {o.focusKeyword}</span>
+                                <span
+                                  className="ml-1.5 inline-block px-1.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 tabular-nums"
+                                  title={t.gapsTab.focusSvHint}
+                                >
+                                  {t.gapsTab.focusSv}: {o.focusClusterSv === null ? "–" : formatNumber(o.focusClusterSv, intlLocale)}
+                                </span>
                                 {o.reason && <div className="mt-0.5">{o.reason}</div>}
                               </li>
                             ))}

@@ -128,7 +128,23 @@ export const seoHelperKeywordMappingMessages = defineMessages({
       unchecked: (n: number) =>
         `Bei ${n} Analyse${n === 1 ? "" : "n"} fehlt der Abgleich mit dem Content-Mapping – deren Topics sind nicht enthalten. Abgleich im URL-Detail unter „Topic-Gap“ starten.`,
       search: "Topic, Pfad, URL oder Fokus-Keyword suchen…",
+      sortTopicSv: "Sortierung: SV Topic",
+      sortClusterSv: "Sortierung: SV Fokus-Cluster",
       sortUrls: "Sortierung: Anzahl URLs",
+      topicSv: "SV Topic",
+      topicSvHint: "Monatliches Google-Suchvolumen des Topic-Begriffs selbst (DataForSEO/Google Ads). 0 = kein messbares Suchvolumen",
+      clusterSv: "SV Fokus-Cluster",
+      clusterSvHint: "Summe der Keyword-Cluster-Suchvolumen aller Fokus-Keywords, bei denen das Topic fehlt (SEOSpark, Top 100 Keywords je Fokus-Keyword)",
+      focusSv: "SV Cluster",
+      focusSvHint: "Summe der Suchvolumen aller Keywords der SEOSpark-Recherche zu diesem Fokus-Keyword (Top 100, ohne ausgeschlossene Marken)",
+      researchRunning: (done: number, total: number) =>
+        `Hole Keyword-Recherchen von SEOSpark für die Fokus-Keywords (${done}/${total})… Suchvolumen erscheinen schrittweise.`,
+      volumeRunning: (done: number, total: number) =>
+        `Hole Suchvolumen der Topic-Begriffe von DataForSEO (${done}/${total})… dauert rund eine Minute pro 500 Topics.`,
+      fetchFailed: (research: number, volume: number, reason?: string) =>
+        `Nicht alle Suchvolumen konnten geholt werden (${research} Keyword-Recherchen, ${volume} Topics)${reason ? `: ${reason}` : ""}. Beim nächsten Öffnen des Tabs wird es erneut versucht.`,
+      svMissingReadOnly: (research: number, volume: number) =>
+        `Es fehlen noch ${research} Keyword-Recherchen und ${volume} Topic-Suchvolumen (können nur mit Schreibrechten geholt werden).`,
       sortTopic: "Sortierung: Topic A–Z",
       onlyWithoutArticle: "Nur ohne Artikel im Redaktionsplan",
       exportCsv: "CSV exportieren",
@@ -526,7 +542,23 @@ export const seoHelperKeywordMappingMessages = defineMessages({
       unchecked: (n: number) =>
         `${n} analys${n === 1 ? "is has" : "es have"} not been matched against the content mapping – their topics are not included. Start the match in the URL detail under “Topic gap”.`,
       search: "Search topic, path, URL or focus keyword…",
+      sortTopicSv: "Sort: topic SV",
+      sortClusterSv: "Sort: focus cluster SV",
       sortUrls: "Sort: number of URLs",
+      topicSv: "Topic SV",
+      topicSvHint: "Monthly Google search volume of the topic term itself (DataForSEO/Google Ads). 0 = no measurable search volume",
+      clusterSv: "Focus cluster SV",
+      clusterSvHint: "Sum of the keyword cluster search volumes of all focus keywords where the topic is missing (SEOSpark, top 100 keywords per focus keyword)",
+      focusSv: "Cluster SV",
+      focusSvHint: "Sum of the search volumes of all keywords in the SEOSpark research for this focus keyword (top 100, excluding brands)",
+      researchRunning: (done: number, total: number) =>
+        `Fetching SEOSpark keyword research for the focus keywords (${done}/${total})… search volumes appear step by step.`,
+      volumeRunning: (done: number, total: number) =>
+        `Fetching search volumes of the topic terms from DataForSEO (${done}/${total})… takes about a minute per 500 topics.`,
+      fetchFailed: (research: number, volume: number, reason?: string) =>
+        `Not all search volumes could be fetched (${research} keyword researches, ${volume} topics)${reason ? `: ${reason}` : ""}. It will be retried the next time the tab is opened.`,
+      svMissingReadOnly: (research: number, volume: number) =>
+        `${research} keyword researches and ${volume} topic search volumes are still missing (requires edit rights).`,
       sortTopic: "Sort: topic A–Z",
       onlyWithoutArticle: "Only without article in editorial plan",
       exportCsv: "Export CSV",

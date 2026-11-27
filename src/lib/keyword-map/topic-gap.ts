@@ -8,6 +8,7 @@ import { createTopicGraph, getTopicGraph, type TopicGraphNode } from "@/lib/topi
 import { type TopicCoverageStatus, type TopicGapItem, computeCoverageScore } from "./shared";
 import { getBrandMatcher } from "./brands";
 import { runCrossCoverage } from "./cross-coverage";
+import { researchKeyword } from "./keyword-research";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -287,6 +288,15 @@ export async function advanceTopicGap(gapId: string) {
     });
   }
   if (gap.status === "succeeded") {
+    const project = await prisma.keywordMapProject.findUnique({
+      where: { id: gap.url.projectId },
+      select: { countryCode: true, languageCode: true, category: true },
+    });
+    if (project) {
+      await researchKeyword(gap.focusKeyword, project).catch((e) =>
+        console.error("[keyword-map/topic-gap] SEOSpark-Recherche zum Fokus-Keyword fehlgeschlagen", e)
+      );
+    }
     await runCrossCoverage(gapId);
     gap = (await prisma.keywordMapTopicGap.findUnique({ where: { id: gapId }, include: { url: true } })) ?? gap;
   }

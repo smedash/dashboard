@@ -92,6 +92,8 @@ export interface ProjectTopicGapOccurrence {
   urlId: string;
   url: string;
   focusKeyword: string;
+  /** Summe der Suchvolumen aller Keywords der SEOSpark-Recherche zum Fokus-Keyword; null = noch nicht recherchiert */
+  focusClusterSv: number | null;
   gapId: string;
   /** Position in `results` der Gap-Analyse */
   index: number;
@@ -104,6 +106,10 @@ export interface ProjectTopicGapOccurrence {
 export interface ProjectTopicGap {
   key: string;
   topic: string;
+  /** Google-Ads-Suchvolumen des Topic-Begriffs; null = noch nicht abgefragt */
+  topicSv: number | null;
+  /** Summe der Cluster-Suchvolumen der betroffenen Fokus-Keywords (jedes Keyword einmal) */
+  clusterSv: number;
   occurrences: ProjectTopicGapOccurrence[];
 }
 
@@ -115,6 +121,10 @@ export interface ProjectTopicGapsResponse {
     /** Analysen ohne (erfolgreichen) Abgleich mit dem Content-Mapping; deren Topics fehlen in der Liste */
     unchecked: number;
   };
+  /** Fokus-Keywords offener Topics ohne SEOSpark-Recherche */
+  unresearched: string[];
+  /** Anzahl Topics ohne abgefragtes Suchvolumen; null = Land/Sprache des Projekts nicht unterstützt */
+  topicSvMissing: number | null;
 }
 
 export function topicKey(topic: string): string {

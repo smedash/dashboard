@@ -9,9 +9,9 @@ export async function GET(_request: NextRequest, ctx: { params: Promise<{ id: st
 
   try {
     const { id } = await ctx.params;
-    const project = await prisma.keywordMapProject.findUnique({ where: { id }, select: { id: true } });
+    const project = await prisma.keywordMapProject.findUnique({ where: { id }, select: { id: true, countryCode: true, languageCode: true } });
     if (!project) return NextResponse.json({ error: "Projekt nicht gefunden" }, { status: 404 });
-    return NextResponse.json(await loadProjectTopicGaps(id));
+    return NextResponse.json(await loadProjectTopicGaps(project));
   } catch (e) {
     console.error("[keyword-mapping/projects/[id]/topic-gaps] GET", e);
     return NextResponse.json({ error: "Topic-Gaps konnten nicht geladen werden" }, { status: 500 });

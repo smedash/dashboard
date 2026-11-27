@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma";
+import { loadClusterVolumes } from "./keyword-research";
+import { loadKeywordVolumes, volumeLocale } from "./keyword-volume";
 import { type ProjectTopicGap, type ProjectTopicGapsResponse, type TopicGapItem, topicKey } from "./shared";
 
 /**
@@ -6,9 +8,9 @@ import { type ProjectTopicGap, type ProjectTopicGapsResponse, type TopicGapItem,
  * auf keiner anderen URL (ganz oder teilweise) abgedeckt. Topics mit gleichem Namen werden zusammengefasst
  * und fallen weg, sobald sie in irgendeiner Analyse des Projekts als (teilweise) abgedeckt gelten.
  */
-export async function loadProjectTopicGaps(projectId: string): Promise<ProjectTopicGapsResponse> {
+export async function loadProjectTopicGaps(project: { id: string; countryCode: string; languageCode: string }): Promise<ProjectTopicGapsResponse> {
   const urls = await prisma.keywordMapUrl.findMany({
-    where: { projectId },
+    where: { projectId: project.id },
     select: {
       id: true,
       url: true,
@@ -21,7 +23,7 @@ export async function loadProjectTopicGaps(projectId: string): Promise<ProjectTo
     orderBy: { url: "asc" },
   });
 
-  const groups = new Map<string, ProjectTopicGap>();
+  const groups = new Map<string, Omit<ProjectTopicGap, "topicSv" | "clusterSv">>();
   const coveredSomewhere = new Set<string>();
   let analyzed = 0;
   let unchecked = 0;
@@ -51,6 +53,7 @@ export async function loadProjectTopicGaps(projectId: string): Promise<ProjectTo
         urlId: u.id,
         url: u.url,
         focusKeyword: gap.focusKeyword,
+        focusClusterSv: null,
         gapId: gap.id,
         index,
         path: item.path ?? [],
@@ -60,9 +63,36 @@ export async function loadProjectTopicGaps(projectId: string): Promise<ProjectTo
     });
   }
 
-  const gaps = [...groups.values()]
-    .filter((g) => !coveredSomewhere.has(g.key))
-    .sort((a, b) => b.occurrences.length - a.occurrences.length || a.topic.localeCompare(b.topic));
+  const open = [...groups.values()].filter((g) => !coveredSomewhere.has(g.key));
+  const focusKeywords = [...new Set(open.flatMap((g) => g.occurrences.map((o) => o.focusKeyword.trim().toLowerCase())))];
+  const locale = volumeLocale(project.countryCode, project.languageCode);
+  const [volumes, topicVolumes] = await Promise.all([
+    loadClusterVolumes(focusKeywords, project.countryCode, project.languageCode),
+    locale ? loadKeywordVolumes(open.map((g) => g.key), locale) : Promise.resolve(new Map<string, number>()),
+  ]);
 
-  return { gaps, stats: { urls: urls.length, analyzed, unchecked } };
+  const gaps: ProjectTopicGap[] = open.map((g) => {
+    const occurrences = g.occurrences.map((o) => ({ ...o, focusClusterSv: volumes.get(o.focusKeyword.trim().toLowerCase()) ?? null }));
+    const perKeyword = new Map(occurrences.map((o) => [o.focusKeyword.trim().toLowerCase(), o.focusClusterSv ?? 0]));
+    return {
+      ...g,
+      occurrences,
+      topicSv: topicVolumes.get(g.key) ?? null,
+      clusterSv: [...perKeyword.values()].reduce((sum, v) => sum + v, 0),
+    };
+  });
+  gaps.sort(
+    (a, b) =>
+      (b.topicSv ?? -1) - (a.topicSv ?? -1) ||
+      b.clusterSv - a.clusterSv ||
+      b.occurrences.length - a.occurrences.length ||
+      a.topic.localeCompare(b.topic)
+  );
+
+  return {
+    gaps,
+    stats: { urls: urls.length, analyzed, unchecked },
+    unresearched: focusKeywords.filter((k) => !volumes.has(k)),
+    topicSvMissing: locale ? gaps.filter((g) => g.topicSv === null).length : null,
+  };
 }
