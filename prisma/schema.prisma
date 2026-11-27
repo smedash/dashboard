@@ -1542,6 +1542,13 @@ model KeywordMapKeyword {
   @@index([keyword])
 }
 
+// Projektübergreifende Einstellungen für das Keyword Mapping (Singleton id = "default")
+model KeywordMapSettings {
+  id             String   @id @default("default")
+  excludedBrands String[] @default([]) // Fremdmarken, die nicht als Topic-Gap oder Keyword-Vorschlag erscheinen sollen
+  updatedAt      DateTime @updatedAt
+}
+
 model KeywordMapTopicGap {
   id            String        @id @default(cuid())
   urlId         String
@@ -1558,6 +1565,7 @@ model KeywordMapTopicGap {
   crossCoverageError String?  @db.Text // Fehler beim Abgleich mit anderen URLs aus dem Content-Mapping
   linksCheckedAt     DateTime? // Letzte Prüfung der internen Links zu den anderswo abdeckenden URLs
   linkCheckError     String?   @db.Text
+  excludedResults    Json? // Wegen Marken-Ausschluss ausgeblendete Topics; werden beim Entfernen der Marke zurückgeholt
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 

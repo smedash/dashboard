@@ -5,7 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { loadHtml } from "@/lib/content-mapping/fetch";
 import { parseHtml } from "@/lib/url-checker/parser";
 import { createTopicGraph, getTopicGraph, type TopicGraphNode } from "@/lib/topicloops";
-import type { TopicCoverageStatus, TopicGapItem } from "./shared";
+import { type TopicCoverageStatus, type TopicGapItem, computeCoverageScore } from "./shared";
+import { getBrandMatcher } from "./brands";
 import { runCrossCoverage } from "./cross-coverage";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -18,15 +19,18 @@ function countTopics(node: TopicGraphNode): number {
   return 1 + (node.children ?? []).reduce((sum, c) => sum + countTopics(c), 0);
 }
 
-/** Flacht den Graphen breitensuche-artig ab (Ebene 1 vor Ebene 2 …), ohne den Wurzelknoten. */
-export function flattenTopics(root: TopicGraphNode): Array<{ topic: string; path: string[] }> {
+/**
+ * Flacht den Graphen breitensuche-artig ab (Ebene 1 vor Ebene 2 …), ohne den Wurzelknoten.
+ * Knoten, die `skip` erfüllen, entfallen samt Unterknoten.
+ */
+export function flattenTopics(root: TopicGraphNode, skip: (label: string) => boolean = () => false): Array<{ topic: string; path: string[] }> {
   const out: Array<{ topic: string; path: string[] }> = [];
   const queue: Array<{ node: TopicGraphNode; path: string[] }> = (root.children ?? []).map((n) => ({ node: n, path: [] }));
   const seen = new Set<string>();
   while (queue.length > 0 && out.length < MAX_TOPICS) {
     const { node, path } = queue.shift()!;
     const label = node.label?.trim();
-    if (!label) continue;
+    if (!label || skip(label)) continue;
     const key = label.toLowerCase();
     if (!seen.has(key)) {
       seen.add(key);
@@ -187,11 +191,7 @@ Gib für jedes der ${topics.length} Topics genau einen Eintrag zurück.`,
       evidence: status === "missing" ? null : r?.evidence?.trim() || null,
     };
   });
-  const covered = items.filter((i) => i.status === "covered").length;
-  const partial = items.filter((i) => i.status === "partial").length;
-  const coverageScore = items.length ? Math.round((100 * (covered + 0.5 * partial)) / items.length) : 0;
-
-  return { items, coverageScore, summary: parsed.summary?.trim() ?? "" };
+  return { items, coverageScore: computeCoverageScore(items), summary: parsed.summary?.trim() ?? "" };
 }
 
 export const STALE_ANALYSIS_MS = 5 * 60 * 1000;
@@ -253,8 +253,8 @@ export async function advanceTopicGap(gapId: string) {
   if (claimed.count === 0) return prisma.keywordMapTopicGap.findUnique({ where: { id: gapId }, include: { url: true } });
 
   try {
-    const topics = flattenTopics(JSON.parse(graph.topicGraph) as TopicGraphNode);
-    if (topics.length === 0) throw new Error("Topic-Graph enthält keine Topics");
+    const topics = flattenTopics(JSON.parse(graph.topicGraph) as TopicGraphNode, await getBrandMatcher());
+    if (topics.length === 0) throw new Error("Topic-Graph enthält keine Topics (ggf. alle durch den Marken-Ausschluss entfernt)");
     const page = await fetchPageContent(gap.url.url);
     const result = await analyzeCoverage({ keyword: gap.focusKeyword, url: gap.url.url, page, topics });
     const marks = await previousTopicMarks(gap.urlId, gapId);

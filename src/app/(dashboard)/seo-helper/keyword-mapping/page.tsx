@@ -9,6 +9,7 @@ import { KVP_CATEGORIES } from "@/lib/kvp-categories";
 import { useLocale, useMessages } from "@/i18n/I18nProvider";
 import { seoHelperKeywordMappingMessages } from "@/i18n/messages/seo-helper-keyword-mapping";
 import type { MapProjectDto } from "@/lib/keyword-map/shared";
+import { BrandExclusionButton } from "@/components/keyword-mapping/BrandExclusionButton";
 import { ImportDialog } from "@/components/keyword-mapping/ImportDialog";
 import { TopicGapBatchButton } from "@/components/keyword-mapping/TopicGapBatchButton";
 import {
@@ -32,6 +33,7 @@ export default function KeywordMappingProjectsPage() {
 
   const [projects, setProjects] = useState<MapProjectDto[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [importFor, setImportFor] = useState<{ projectId: string; file: File | null } | null>(null);
 
@@ -54,19 +56,24 @@ export default function KeywordMappingProjectsPage() {
         subtitle={t.subtitle}
         backHref="/seo-helper"
         actions={
-          editable && (
-            <>
-              <TopicGapBatchButton />
-              <button className={buttonPrimary} onClick={() => setShowCreate(true)}>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-                {t.projects.create}
-              </button>
-            </>
-          )
+          <>
+            <BrandExclusionButton editable={editable} onSaved={setNotice} />
+            {editable && (
+              <>
+                <TopicGapBatchButton />
+                <button className={buttonPrimary} onClick={() => setShowCreate(true)}>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  {t.projects.create}
+                </button>
+              </>
+            )}
+          </>
         }
       />
+
+      {notice && <Notice kind="success">{notice}</Notice>}
 
       <div className="bg-gradient-to-r from-sky-50 to-indigo-50 dark:from-sky-900/20 dark:to-indigo-900/20 rounded-2xl p-5 border border-sky-200 dark:border-sky-800 text-sm text-slate-700 dark:text-slate-300">
         {t.projects.intro}

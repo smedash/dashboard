@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { fetchRankedKeywordsForPageTargets } from "@/lib/dataforseo";
 import { normalizeUbsPageUrl } from "@/lib/url-cleanup/normalize";
+import { getBrandMatcher } from "@/lib/keyword-map/brands";
 import { getProjectMaxTotalSv, mapUrlInclude, requireUser, serializeUrls, setFocusKeyword } from "@/lib/keyword-map/server";
 import { type DfsKeywordRow, dedupeDfsKeywords, pickTopKeyword } from "@/lib/keyword-map/shared";
 
@@ -58,12 +59,13 @@ export async function POST(request: NextRequest) {
       const locationName = process.env.DATAFORSEO_LABS_LOCATION_NAME?.trim() || null;
       const languageName = process.env.DATAFORSEO_LABS_LANGUAGE_NAME?.trim() || null;
       const fetchedAt = new Date();
+      const isBrand = await getBrandMatcher();
 
       await Promise.all(
         toFetch.map(async (row) => {
           const res = map.get(row.id) ?? { keywords: [], error: "Keine API-Antwort" };
           const keywords: DfsKeywordRow[] = dedupeDfsKeywords(res.keywords);
-          const top = pickTopKeyword(keywords);
+          const top = pickTopKeyword(keywords, isBrand);
           results[row.id] = { fetched: true, topKeyword: top?.keyword ?? null, ...(res.error ? { error: res.error } : {}) };
           if (res.error && keywords.length === 0) return;
 

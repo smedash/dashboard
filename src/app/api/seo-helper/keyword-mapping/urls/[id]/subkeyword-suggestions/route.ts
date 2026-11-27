@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getKeywordSuggestions, SeosparkError } from "@/lib/seospark";
+import { getBrandMatcher } from "@/lib/keyword-map/brands";
 import { requireUser } from "@/lib/keyword-map/server";
 import { normalizeKeyword, type SubkeywordSuggestion } from "@/lib/keyword-map/shared";
 
@@ -30,7 +31,9 @@ export async function POST(request: NextRequest, ctx: { params: Promise<{ id: st
       category: row.project.category,
     });
 
-    const keywords = result.suggestions.map((s) => normalizeKeyword(s.keyword));
+    const isBrand = await getBrandMatcher();
+    const allowed = result.suggestions.filter((s) => !isBrand(s.keyword));
+    const keywords = allowed.map((s) => normalizeKeyword(s.keyword));
     const elsewhere = await prisma.keywordMapKeyword.findMany({
       where: { keyword: { in: keywords }, url: { projectId: row.projectId, id: { not: id } } },
       select: { keyword: true, type: true, url: { select: { id: true, url: true } } },
@@ -44,7 +47,7 @@ export async function POST(request: NextRequest, ctx: { params: Promise<{ id: st
     const hereByKeyword = new Map(row.keywords.map((k) => [k.keyword, k.type as "focus" | "sub"]));
 
     const byKeyword = new Map<string, SubkeywordSuggestion>();
-    for (const s of result.suggestions) {
+    for (const s of allowed) {
       const kw = normalizeKeyword(s.keyword);
       const prev = byKeyword.get(kw);
       if (!kw || (prev && (prev.searchVolume ?? 0) >= (s.searchVolume ?? 0))) continue;

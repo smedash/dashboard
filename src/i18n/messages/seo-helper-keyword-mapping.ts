@@ -109,6 +109,18 @@ export const seoHelperKeywordMappingMessages = defineMessages({
       gaps: "Offene Topic-Gaps",
     },
 
+    brands: {
+      button: "Marken-Ausschluss",
+      hint: "Fremdmarken, die in keinem Projekt als Topic-Gap oder Keyword-Vorschlag erscheinen sollen",
+      title: "Marken-Ausschluss (alle Projekte)",
+      intro:
+        "Eine Marke pro Zeile. Topics, deren Name oder übergeordnetes Topic eine dieser Marken enthält, werden aus allen Gap-Analysen ausgeblendet; Keyword-Vorschläge mit der Marke entfallen. Treffer zählen am Wortanfang, „Revolut“ erfasst also auch „Revolut-Karte“ und „Revolutkonto“. Entfernst du eine Marke wieder, erscheinen ihre Topics erneut.",
+      placeholder: "Revolut\nNeon\nZürcher Kantonalbank",
+      applying: "Wird auf alle bestehenden Gap-Analysen angewendet…",
+      saved: (brands: number, excluded: number, restored: number) =>
+        `${brands} Marke${brands === 1 ? "" : "n"} gespeichert: ${excluded} Topics ausgeblendet, ${restored} wiederhergestellt.`,
+    },
+
     gapsTab: {
       intro:
         "Topics aus den Topic-Gap-Analysen, die auf der analysierten URL fehlen und auf keiner anderen URL aus dem Content-Mapping ganz oder teilweise abgedeckt sind. Gleichnamige Topics mehrerer URLs sind zusammengefasst.",
@@ -493,6 +505,18 @@ export const seoHelperKeywordMappingMessages = defineMessages({
     tabs: {
       urls: "URLs",
       gaps: "Open topic gaps",
+    },
+
+    brands: {
+      button: "Brand exclusion",
+      hint: "Third-party brands that should not appear as topic gaps or keyword suggestions in any project",
+      title: "Brand exclusion (all projects)",
+      intro:
+        "One brand per line. Topics whose name or parent topic contains one of these brands are hidden from all gap analyses; keyword suggestions containing the brand are dropped. Matches count at the start of a word, so “Revolut” also covers “Revolut card” and “Revolutkonto”. If you remove a brand again, its topics reappear.",
+      placeholder: "Revolut\nNeon\nZürcher Kantonalbank",
+      applying: "Applying to all existing gap analyses…",
+      saved: (brands: number, excluded: number, restored: number) =>
+        `${brands} brand${brands === 1 ? "" : "s"} saved: ${excluded} topics hidden, ${restored} restored.`,
     },
 
     gapsTab: {

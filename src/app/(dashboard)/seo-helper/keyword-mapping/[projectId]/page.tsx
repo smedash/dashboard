@@ -526,7 +526,7 @@ export default function KeywordMappingProjectPage() {
       </div>
 
       {tab === "gaps" ? (
-        <TopicGapsTab projectId={project.id} projectName={project.name} editable={editable} onOpenUrl={setDrawerId} />
+        <TopicGapsTab projectId={project.id} projectName={project.name} editable={editable} onOpenUrl={setDrawerId} onAnalysesChanged={() => void load()} />
       ) : (
         <>
           <div className="grid grid-cols-2 sm:grid-cols-5 xl:grid-cols-10 gap-2">

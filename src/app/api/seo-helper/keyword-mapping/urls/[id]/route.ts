@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { getBrandMatcher } from "@/lib/keyword-map/brands";
 import { loadUrlDto, requireUser } from "@/lib/keyword-map/server";
 import { EDITABLE_URL_FIELDS, cleanText, dedupeDfsKeywords, type DfsKeywordRow, type MapCta } from "@/lib/keyword-map/shared";
 
@@ -12,7 +13,10 @@ export async function GET(_request: NextRequest, ctx: { params: Promise<{ id: st
   const row = await prisma.keywordMapUrl.findUnique({ where: { id }, select: { dfsKeywords: true } });
   const dto = await loadUrlDto(id);
   if (!dto || !row) return NextResponse.json({ error: "URL nicht gefunden" }, { status: 404 });
-  const dfsKeywords = Array.isArray(row.dfsKeywords) ? dedupeDfsKeywords(row.dfsKeywords as unknown as DfsKeywordRow[]) : [];
+  const isBrand = await getBrandMatcher();
+  const dfsKeywords = Array.isArray(row.dfsKeywords)
+    ? dedupeDfsKeywords(row.dfsKeywords as unknown as DfsKeywordRow[]).filter((k) => !isBrand(k.keyword))
+    : [];
   return NextResponse.json({ url: dto, dfsKeywords });
 }
 

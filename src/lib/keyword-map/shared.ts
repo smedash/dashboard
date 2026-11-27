@@ -121,6 +121,39 @@ export function topicKey(topic: string): string {
   return cleanText(topic).toLowerCase();
 }
 
+export function computeCoverageScore(items: Pick<TopicGapItem, "status">[]): number {
+  if (items.length === 0) return 0;
+  const covered = items.filter((i) => i.status === "covered").length;
+  const partial = items.filter((i) => i.status === "partial").length;
+  return Math.round((100 * (covered + 0.5 * partial)) / items.length);
+}
+
+/** Bereinigt die Marken-Ausschlussliste (eine Marke pro Eintrag, ohne Duplikate, sortiert). */
+export function cleanBrandList(values: string[]): string[] {
+  const byKey = new Map<string, string>();
+  for (const v of values) {
+    const brand = cleanText(v);
+    if (brand && !byKey.has(brand.toLowerCase())) byKey.set(brand.toLowerCase(), brand);
+  }
+  return [...byKey.values()].sort((a, b) => a.localeCompare(b));
+}
+
+/**
+ * Prüft, ob ein Text eine der Marken enthält. Treffer zählen am Wortanfang,
+ * damit auch Komposita wie „Revolutkonto“ oder „Revolut-Karte“ erkannt werden.
+ */
+export function createBrandMatcher(brands: string[]): (text: string) => boolean {
+  if (brands.length === 0) return () => false;
+  const alternatives = brands.map((b) => b.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "[\\s-]+"));
+  const re = new RegExp(`(?<![\\p{L}\\p{N}])(?:${alternatives.join("|")})`, "iu");
+  return (text) => re.test(text);
+}
+
+/** Topic gilt als Marken-Topic, wenn das Topic selbst oder ein übergeordneter Knoten die Marke nennt. */
+export function isBrandTopic(item: Pick<TopicGapItem, "topic" | "path">, matches: (text: string) => boolean): boolean {
+  return matches(item.topic) || item.path.some(matches);
+}
+
 export interface MapUrlDto {
   id: string;
   url: string;
@@ -251,7 +284,8 @@ export function dedupeDfsKeywords(rows: DfsKeywordRow[]): DfsKeywordRow[] {
   return [...best.values()];
 }
 
-export function pickTopKeyword(rows: DfsKeywordRow[]): DfsKeywordRow | null {
+export function pickTopKeyword(allRows: DfsKeywordRow[], isExcluded: (keyword: string) => boolean = () => false): DfsKeywordRow | null {
+  const rows = allRows.filter((r) => !isExcluded(r.keyword));
   if (rows.length === 0) return null;
   const top20 = rows.filter((r) => r.rankGroup > 0 && r.rankGroup <= 20);
   const pool = top20.length > 0 ? top20 : rows;

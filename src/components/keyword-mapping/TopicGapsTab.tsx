@@ -4,6 +4,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { useLocale, useMessages } from "@/i18n/I18nProvider";
 import { seoHelperKeywordMappingMessages } from "@/i18n/messages/seo-helper-keyword-mapping";
 import type { ProjectTopicGap, ProjectTopicGapsResponse } from "@/lib/keyword-map/shared";
+import { BrandExclusionButton } from "./BrandExclusionButton";
 import { Notice, Spinner, apiFetch, buttonSecondary, formatNumber, inputClass } from "./ui";
 
 const PAGE_SIZE = 50;
@@ -29,16 +30,19 @@ export function TopicGapsTab({
   projectName,
   editable,
   onOpenUrl,
+  onAnalysesChanged,
 }: {
   projectId: string;
   projectName: string;
   editable: boolean;
   onOpenUrl: (urlId: string) => void;
+  onAnalysesChanged?: () => void;
 }) {
   const t = useMessages(seoHelperKeywordMappingMessages);
   const { intlLocale } = useLocale();
   const [data, setData] = useState<ProjectTopicGapsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [urlFilter, setUrlFilter] = useState("");
   const [onlyOpen, setOnlyOpen] = useState(false);
@@ -159,6 +163,7 @@ export function TopicGapsTab({
       </Notice>
       {data.stats.unchecked > 0 && <Notice kind="warning">{t.gapsTab.unchecked(data.stats.unchecked)}</Notice>}
       {error && <Notice kind="error">{error}</Notice>}
+      {notice && <Notice kind="success">{notice}</Notice>}
 
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-3">
         <div className="flex flex-wrap items-center gap-2">
@@ -189,6 +194,14 @@ export function TopicGapsTab({
           <button className={buttonSecondary} disabled={filtered.length === 0} onClick={exportCsv}>
             {t.gapsTab.exportCsv}
           </button>
+          <BrandExclusionButton
+            editable={editable}
+            onSaved={(text) => {
+              setNotice(text);
+              void load();
+              onAnalysesChanged?.();
+            }}
+          />
         </div>
       </div>
 
