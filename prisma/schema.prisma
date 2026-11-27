@@ -1486,6 +1486,7 @@ model KeywordMapProject {
   dropdownOptions Json? // { pageType: [], funnel: [], targetGroup: [], topicAuthority: [] }
   createdById     String
   urls            KeywordMapUrl[]
+  topicBlocks     KeywordMapTopicBlock[]
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 }
@@ -1549,6 +1550,19 @@ model KeywordMapSettings {
   updatedAt      DateTime @updatedAt
 }
 
+// Als irrelevant gelöschte Topics eines Projekts; tauchen in Gap-Analysen nicht mehr auf
+model KeywordMapTopicBlock {
+  id          String            @id @default(cuid())
+  projectId   String
+  project     KeywordMapProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  key         String // topicKey(topic)
+  topic       String
+  createdById String
+  createdAt   DateTime          @default(now())
+
+  @@unique([projectId, key])
+}
+
 model KeywordMapTopicGap {
   id            String        @id @default(cuid())
   urlId         String
@@ -1565,7 +1579,7 @@ model KeywordMapTopicGap {
   crossCoverageError String?  @db.Text // Fehler beim Abgleich mit anderen URLs aus dem Content-Mapping
   linksCheckedAt     DateTime? // Letzte Prüfung der internen Links zu den anderswo abdeckenden URLs
   linkCheckError     String?   @db.Text
-  excludedResults    Json? // Wegen Marken-Ausschluss ausgeblendete Topics; werden beim Entfernen der Marke zurückgeholt
+  excludedResults    Json? // Wegen Marken-Ausschluss oder Sperrliste ausgeblendete Topics; werden beim Entfernen zurückgeholt
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 

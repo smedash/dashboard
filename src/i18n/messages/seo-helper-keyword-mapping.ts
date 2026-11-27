@@ -179,6 +179,23 @@ export const seoHelperKeywordMappingMessages = defineMessages({
         regenerate: "Neue Vorschläge",
         done: "Fertig",
       },
+      block: {
+        selectAll: "Alle gefilterten Topics auswählen",
+        selected: (n: number) => `${n} ausgewählt`,
+        delete: (n: number) => `${n} löschen`,
+        deleteHint: "Ausgewählte Topics aus allen Gap-Analysen des Projekts entfernen und sperren, damit sie bei neuen Analysen nicht wieder auftauchen",
+        confirm: (n: number) =>
+          `${n} Topic${n === 1 ? "" : "s"} löschen? ${n === 1 ? "Es wird" : "Sie werden"} aus allen Gap-Analysen dieses Projekts entfernt und auf die Sperrliste gesetzt. Über „Sperrliste“ lässt sich das rückgängig machen.`,
+        deleted: (n: number) => `${n} Topic${n === 1 ? "" : "s"} gelöscht und gesperrt.`,
+        listButton: "Sperrliste",
+        listHint: "Gelöschte Topics dieses Projekts anzeigen und wiederherstellen",
+        listTitle: "Gesperrte Topics",
+        listIntro: "Diese Topics wurden gelöscht und erscheinen in keiner Gap-Analyse dieses Projekts – auch nicht bei neuen Analysen. Wiederhergestellte Topics tauchen in bestehenden Analysen wieder auf.",
+        listEmpty: "Keine gesperrten Topics.",
+        restore: (n: number) => `${n} wiederherstellen`,
+        restored: (n: number) => `${n} Topic${n === 1 ? "" : "s"} wiederhergestellt.`,
+        close: "Schliessen",
+      },
     },
 
     table: {
@@ -612,6 +629,23 @@ export const seoHelperKeywordMappingMessages = defineMessages({
         alreadySaved: "Already saved",
         regenerate: "New suggestions",
         done: "Done",
+      },
+      block: {
+        selectAll: "Select all filtered topics",
+        selected: (n: number) => `${n} selected`,
+        delete: (n: number) => `Delete ${n}`,
+        deleteHint: "Remove the selected topics from all gap analyses in this project and block them so they don't reappear in new analyses",
+        confirm: (n: number) =>
+          `Delete ${n} topic${n === 1 ? "" : "s"}? ${n === 1 ? "It" : "They"} will be removed from all gap analyses in this project and added to the blocklist. You can undo this via “Blocklist”.`,
+        deleted: (n: number) => `${n} topic${n === 1 ? "" : "s"} deleted and blocked.`,
+        listButton: "Blocklist",
+        listHint: "Show and restore deleted topics of this project",
+        listTitle: "Blocked topics",
+        listIntro: "These topics were deleted and don't appear in any gap analysis of this project – including new analyses. Restored topics reappear in existing analyses.",
+        listEmpty: "No blocked topics.",
+        restore: (n: number) => `Restore ${n}`,
+        restored: (n: number) => `${n} topic${n === 1 ? "" : "s"} restored.`,
+        close: "Close",
       },
     },
 

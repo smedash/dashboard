@@ -5,8 +5,9 @@ import { useLocale, useMessages } from "@/i18n/I18nProvider";
 import { seoHelperKeywordMappingMessages } from "@/i18n/messages/seo-helper-keyword-mapping";
 import type { ProjectTopicGap, ProjectTopicGapsResponse } from "@/lib/keyword-map/shared";
 import { BrandExclusionButton } from "./BrandExclusionButton";
+import { TopicBlocklistButton } from "./TopicBlocklistButton";
 import { TopicSuggestionsModal } from "./TopicSuggestionsModal";
-import { Notice, Spinner, apiFetch, buttonSecondary, formatNumber, inputClass, today } from "./ui";
+import { Notice, Spinner, apiFetch, buttonDanger, buttonSecondary, formatNumber, inputClass, today } from "./ui";
 
 const PAGE_SIZE = 50;
 const RESEARCH_BATCH = 3;
@@ -168,6 +169,51 @@ export function TopicGapsTab({
       return next;
     });
 
+  const [checked, setChecked] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
+  const checkedGaps = useMemo(() => (data?.gaps ?? []).filter((g) => checked.has(g.key)), [data, checked]);
+  const allFilteredChecked = filtered.length > 0 && filtered.every((g) => checked.has(g.key));
+  const columnCount = editable ? 7 : 6;
+
+  const setRowChecked = (key: string, value: boolean) =>
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (value) next.add(key);
+      else next.delete(key);
+      return next;
+    });
+
+  const toggleAllFiltered = (value: boolean) =>
+    setChecked((prev) => {
+      const next = new Set(prev);
+      for (const g of filtered) {
+        if (value) next.add(g.key);
+        else next.delete(g.key);
+      }
+      return next;
+    });
+
+  const deleteChecked = async () => {
+    const topics = checkedGaps.map((g) => g.topic);
+    if (topics.length === 0 || !confirm(t.gapsTab.block.confirm(topics.length))) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      await apiFetch(`/api/seo-helper/keyword-mapping/projects/${projectId}/topic-blocklist`, {
+        method: "POST",
+        body: JSON.stringify({ topics }),
+      });
+      setChecked(new Set());
+      setNotice(t.gapsTab.block.deleted(topics.length));
+      await load();
+      onAnalysesChanged?.();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t.errorGeneric);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const markArticle = (gapKey: string, articleId: string) =>
     setData((prev) =>
       prev && {
@@ -293,7 +339,25 @@ export function TopicGapsTab({
               onAnalysesChanged?.();
             }}
           />
+          <TopicBlocklistButton
+            projectId={projectId}
+            editable={editable}
+            onRestored={(text) => {
+              setNotice(text);
+              void load();
+              onAnalysesChanged?.();
+            }}
+          />
         </div>
+        {editable && checkedGaps.length > 0 && (
+          <div className="flex items-center gap-3 mt-3 pt-3 border-t border-slate-100 dark:border-slate-700 text-sm">
+            <span className="text-slate-600 dark:text-slate-300">{t.gapsTab.block.selected(checkedGaps.length)}</span>
+            <button className={buttonDanger} disabled={deleting} title={t.gapsTab.block.deleteHint} onClick={() => void deleteChecked()}>
+              {deleting && <Spinner />}
+              {t.gapsTab.block.delete(checkedGaps.length)}
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
@@ -301,6 +365,17 @@ export function TopicGapsTab({
           <table className="min-w-full text-sm">
             <thead className="bg-slate-50 dark:bg-slate-900/40 text-xs text-slate-500 dark:text-slate-400">
               <tr className="border-b border-slate-200 dark:border-slate-700">
+                {editable && (
+                  <th className="pl-3 py-2 w-6">
+                    <input
+                      type="checkbox"
+                      title={t.gapsTab.block.selectAll}
+                      checked={allFilteredChecked}
+                      disabled={filtered.length === 0}
+                      onChange={(e) => toggleAllFiltered(e.target.checked)}
+                    />
+                  </th>
+                )}
                 <th className="px-3 py-2 text-left font-medium">{t.gapsTab.topic}</th>
                 <th className="px-3 py-2 text-right font-medium whitespace-nowrap" title={t.gapsTab.topicSvHint}>
                   {t.gapsTab.topicSv}
@@ -316,7 +391,7 @@ export function TopicGapsTab({
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">
               {pageRows.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-slate-500">
+                  <td colSpan={columnCount} className="px-4 py-10 text-center text-slate-500">
                     {data.gaps.length === 0 ? t.gapsTab.emptyAll : t.gapsTab.empty}
                   </td>
                 </tr>
@@ -327,7 +402,12 @@ export function TopicGapsTab({
                 const article = g.occurrences.find((o) => o.editorialArticleId);
                 return (
                   <Fragment key={g.key}>
-                    <tr className="align-top hover:bg-slate-50 dark:hover:bg-slate-700/40">
+                    <tr className={`align-top hover:bg-slate-50 dark:hover:bg-slate-700/40 ${checked.has(g.key) ? "bg-red-50/40 dark:bg-red-900/10" : ""}`}>
+                      {editable && (
+                        <td className="pl-3 py-2.5 w-6">
+                          <input type="checkbox" checked={checked.has(g.key)} onChange={(e) => setRowChecked(g.key, e.target.checked)} />
+                        </td>
+                      )}
                       <td className="px-3 py-2 min-w-[16rem]">
                         <button className="text-left" onClick={() => toggle(g.key)}>
                           <span className="text-slate-400 mr-1">{isOpen ? "▾" : "▸"}</span>
@@ -383,6 +463,7 @@ export function TopicGapsTab({
                     </tr>
                     {isOpen && (
                       <tr className="bg-slate-50/60 dark:bg-slate-900/30">
+                        {editable && <td />}
                         <td colSpan={6} className="px-3 py-2 pl-8">
                           <ul className="space-y-1.5">
                             {g.occurrences.map((o) => (

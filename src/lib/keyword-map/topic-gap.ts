@@ -5,8 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { loadHtml } from "@/lib/content-mapping/fetch";
 import { parseHtml } from "@/lib/url-checker/parser";
 import { createTopicGraph, getTopicGraph, type TopicGraphNode } from "@/lib/topicloops";
-import { type TopicCoverageStatus, type TopicGapItem, computeCoverageScore } from "./shared";
-import { getBrandMatcher } from "./brands";
+import { type TopicCoverageStatus, type TopicGapItem, computeCoverageScore, topicKey as normalizeTopic } from "./shared";
+import { getBlockedTopicKeys, getBrandMatcher } from "./brands";
 import { runCrossCoverage } from "./cross-coverage";
 import { researchKeyword } from "./keyword-research";
 
@@ -254,8 +254,9 @@ export async function advanceTopicGap(gapId: string) {
   if (claimed.count === 0) return prisma.keywordMapTopicGap.findUnique({ where: { id: gapId }, include: { url: true } });
 
   try {
-    const topics = flattenTopics(JSON.parse(graph.topicGraph) as TopicGraphNode, await getBrandMatcher());
-    if (topics.length === 0) throw new Error("Topic-Graph enthält keine Topics (ggf. alle durch den Marken-Ausschluss entfernt)");
+    const [isBrand, blocked] = await Promise.all([getBrandMatcher(), getBlockedTopicKeys(gap.url.projectId)]);
+    const topics = flattenTopics(JSON.parse(graph.topicGraph) as TopicGraphNode, isBrand).filter((t) => !blocked.has(normalizeTopic(t.topic)));
+    if (topics.length === 0) throw new Error("Topic-Graph enthält keine Topics (ggf. alle durch Marken-Ausschluss oder Sperrliste entfernt)");
     const page = await fetchPageContent(gap.url.url);
     const result = await analyzeCoverage({ keyword: gap.focusKeyword, url: gap.url.url, page, topics });
     const marks = await previousTopicMarks(gap.urlId, gapId);
