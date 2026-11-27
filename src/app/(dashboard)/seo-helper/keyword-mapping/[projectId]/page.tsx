@@ -20,6 +20,7 @@ import {
 import { EditableCell } from "@/components/keyword-mapping/EditableCell";
 import { ImportDialog } from "@/components/keyword-mapping/ImportDialog";
 import { TopicGapBatchButton } from "@/components/keyword-mapping/TopicGapBatchButton";
+import { TopicGapsTab } from "@/components/keyword-mapping/TopicGapsTab";
 import { UrlDrawer } from "@/components/keyword-mapping/UrlDrawer";
 import {
   Modal,
@@ -47,6 +48,7 @@ type ColumnGroup = "basics" | "topic" | "linking" | "performance" | "analysis";
 type SortKey = "url" | "focusSv" | "totalSv" | "rank" | "gscClicks" | "score" | "coverage";
 type FocusFilter = "all" | "none" | "has";
 type KvpFilter = "all" | "in" | "out";
+type Tab = "urls" | "gaps";
 
 const PAGE_SIZE = 50;
 const DFS_BATCH = 20;
@@ -96,6 +98,20 @@ export default function KeywordMappingProjectPage() {
   const [showAddUrls, setShowAddUrls] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showKvpDialog, setShowKvpDialog] = useState(false);
+  const [tab, setTab] = useState<Tab>("urls");
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("tab") === "gaps") setTab("gaps");
+  }, []);
+
+  const switchTab = (next: Tab) => {
+    setTab(next);
+    const params = new URLSearchParams(window.location.search);
+    if (next === "urls") params.delete("tab");
+    else params.set("tab", next);
+    const qs = params.toString();
+    window.history.replaceState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
+  };
 
   useEffect(() => {
     try {
@@ -493,376 +509,398 @@ export default function KeywordMappingProjectPage() {
         </Notice>
       )}
 
-      <div className="grid grid-cols-2 sm:grid-cols-5 xl:grid-cols-10 gap-2">
-        <Kpi label={t.kpis.urls} value={formatNumber(kpis.urls, intlLocale)} />
-        <Kpi label={t.kpis.focusSv} value={formatNumber(kpis.focusSv, intlLocale)} />
-        <Kpi label={t.kpis.subSv} value={formatNumber(kpis.subSv, intlLocale)} />
-        <Kpi label={t.kpis.gscClicks} value={formatNumber(kpis.gscClicks, intlLocale)} />
-        <Kpi label={t.kpis.avgRank} value={kpis.avgRank !== null ? kpis.avgRank.toFixed(1) : "–"} />
-        <Kpi label={t.kpis.top10} value={kpis.top10Share !== null ? `${Math.round(kpis.top10Share * 100)} %` : "–"} />
-        <Kpi label={t.kpis.focusFilled} value={pct(kpis.focusFilled, kpis.urls)} />
-        <Kpi label={t.kpis.topicAuthorityFilled} value={pct(kpis.topicAuthorityFilled, kpis.urls)} />
-        <Kpi label={t.kpis.ctaFilled} value={pct(kpis.ctaFilled, kpis.urls)} />
-        <Kpi label={t.kpis.inKvp} value={formatNumber(kpis.inKvp, intlLocale)} />
+      <div className="flex gap-1 border-b border-slate-200 dark:border-slate-700">
+        {(["urls", "gaps"] as Tab[]).map((key) => (
+          <button
+            key={key}
+            onClick={() => switchTab(key)}
+            className={`px-4 py-2 -mb-px text-sm font-medium border-b-2 ${
+              tab === key
+                ? "border-teal-600 text-teal-700 dark:text-teal-300"
+                : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-200"
+            }`}
+          >
+            {t.tabs[key]}
+          </button>
+        ))}
       </div>
 
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-3 space-y-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <input
-            className={`${filterClass} flex-1 min-w-[12rem]`}
-            placeholder={t.table.search}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <select className={`${filterClass} max-w-[13rem]`} value={focusFilter} onChange={(e) => setFocusFilter(e.target.value as FocusFilter)}>
-            <option value="all">{t.fields.focusKeyword}: {t.table.filterAll}</option>
-            <option value="none">{t.table.filterNoFocus}</option>
-            <option value="has">{t.table.filterHasFocus}</option>
-          </select>
-          <select className={`${filterClass} max-w-[13rem]`} value={kvpFilter} onChange={(e) => setKvpFilter(e.target.value as KvpFilter)}>
-            <option value="all">{t.fields.kvp}: {t.table.filterAll}</option>
-            <option value="in">{t.table.filterInKvp}</option>
-            <option value="out">{t.table.filterNotInKvp}</option>
-          </select>
-          <select className={`${filterClass} max-w-[13rem]`} value={topicAuthorityFilter} onChange={(e) => setTopicAuthorityFilter(e.target.value)}>
-            <option value="">{t.table.filterTopicAuthority}: {t.table.filterAll}</option>
-            {optionValues("topicAuthority").map((v) => (
-              <option key={v} value={v}>
-                {v}
-              </option>
-            ))}
-          </select>
-          <select className={`${filterClass} max-w-[13rem]`} value={pageTypeFilter} onChange={(e) => setPageTypeFilter(e.target.value)}>
-            <option value="">{t.table.filterPageType}: {t.table.filterAll}</option>
-            {optionValues("pageType").map((v) => (
-              <option key={v} value={v}>
-                {v}
-              </option>
-            ))}
-          </select>
-          <input
-            className={`${filterClass} w-28 ${minScore !== null && !Number.isFinite(minScore) ? "border-red-400" : ""}`}
-            inputMode="decimal"
-            placeholder={t.table.filterMinScore}
-            title={t.table.filterMinScoreHint}
-            value={minScoreInput}
-            onChange={(e) => setMinScoreInput(e.target.value.replace(/[^\d.,]/g, ""))}
-          />
-          <label className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300 px-1 whitespace-nowrap">
-            <input type="checkbox" checked={rankOver10} onChange={(e) => setRankOver10(e.target.checked)} />
-            {t.table.filterRankOver10}
-          </label>
-        </div>
-        <div className="flex flex-wrap items-center gap-1 text-xs">
-          <span className="text-slate-400 mr-1">{t.table.columns}:</span>
-          {(["basics", "topic", "linking", "performance", "analysis"] as ColumnGroup[]).map((g) => (
-            <button
-              key={g}
-              onClick={() => toggleGroup(g)}
-              className={`px-2 py-1 rounded-md border ${
-                show(g)
-                  ? "bg-teal-50 dark:bg-teal-900/30 border-teal-200 dark:border-teal-700 text-teal-700 dark:text-teal-300"
-                  : "border-slate-200 dark:border-slate-600 text-slate-400"
-              }`}
-            >
-              {t.groups[g]}
-            </button>
-          ))}
-        </div>
-      </div>
+      {tab === "gaps" ? (
+        <TopicGapsTab projectId={project.id} projectName={project.name} editable={editable} onOpenUrl={setDrawerId} />
+      ) : (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-5 xl:grid-cols-10 gap-2">
+            <Kpi label={t.kpis.urls} value={formatNumber(kpis.urls, intlLocale)} />
+            <Kpi label={t.kpis.focusSv} value={formatNumber(kpis.focusSv, intlLocale)} />
+            <Kpi label={t.kpis.subSv} value={formatNumber(kpis.subSv, intlLocale)} />
+            <Kpi label={t.kpis.gscClicks} value={formatNumber(kpis.gscClicks, intlLocale)} />
+            <Kpi label={t.kpis.avgRank} value={kpis.avgRank !== null ? kpis.avgRank.toFixed(1) : "–"} />
+            <Kpi label={t.kpis.top10} value={kpis.top10Share !== null ? `${Math.round(kpis.top10Share * 100)} %` : "–"} />
+            <Kpi label={t.kpis.focusFilled} value={pct(kpis.focusFilled, kpis.urls)} />
+            <Kpi label={t.kpis.topicAuthorityFilled} value={pct(kpis.topicAuthorityFilled, kpis.urls)} />
+            <Kpi label={t.kpis.ctaFilled} value={pct(kpis.ctaFilled, kpis.urls)} />
+            <Kpi label={t.kpis.inKvp} value={formatNumber(kpis.inKvp, intlLocale)} />
+          </div>
 
-      {selectedIds.length > 0 && (
-        <div className="sticky top-0 z-20 flex flex-wrap items-center gap-2 bg-teal-50 dark:bg-teal-900/30 border border-teal-200 dark:border-teal-800 rounded-xl p-3">
-          <span className="text-sm font-medium text-teal-800 dark:text-teal-200">{t.table.selected(selectedIds.length)}</span>
-          {progress ? (
-            <span className="flex items-center gap-2 text-sm text-teal-700 dark:text-teal-300">
-              <Spinner /> {t.bulk.running(progress.done, progress.total)}
-            </span>
-          ) : (
-            <>
-              {editable && (
+          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-3 space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                className={`${filterClass} flex-1 min-w-[12rem]`}
+                placeholder={t.table.search}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              <select className={`${filterClass} max-w-[13rem]`} value={focusFilter} onChange={(e) => setFocusFilter(e.target.value as FocusFilter)}>
+                <option value="all">{t.fields.focusKeyword}: {t.table.filterAll}</option>
+                <option value="none">{t.table.filterNoFocus}</option>
+                <option value="has">{t.table.filterHasFocus}</option>
+              </select>
+              <select className={`${filterClass} max-w-[13rem]`} value={kvpFilter} onChange={(e) => setKvpFilter(e.target.value as KvpFilter)}>
+                <option value="all">{t.fields.kvp}: {t.table.filterAll}</option>
+                <option value="in">{t.table.filterInKvp}</option>
+                <option value="out">{t.table.filterNotInKvp}</option>
+              </select>
+              <select className={`${filterClass} max-w-[13rem]`} value={topicAuthorityFilter} onChange={(e) => setTopicAuthorityFilter(e.target.value)}>
+                <option value="">{t.table.filterTopicAuthority}: {t.table.filterAll}</option>
+                {optionValues("topicAuthority").map((v) => (
+                  <option key={v} value={v}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+              <select className={`${filterClass} max-w-[13rem]`} value={pageTypeFilter} onChange={(e) => setPageTypeFilter(e.target.value)}>
+                <option value="">{t.table.filterPageType}: {t.table.filterAll}</option>
+                {optionValues("pageType").map((v) => (
+                  <option key={v} value={v}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+              <input
+                className={`${filterClass} w-28 ${minScore !== null && !Number.isFinite(minScore) ? "border-red-400" : ""}`}
+                inputMode="decimal"
+                placeholder={t.table.filterMinScore}
+                title={t.table.filterMinScoreHint}
+                value={minScoreInput}
+                onChange={(e) => setMinScoreInput(e.target.value.replace(/[^\d.,]/g, ""))}
+              />
+              <label className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300 px-1 whitespace-nowrap">
+                <input type="checkbox" checked={rankOver10} onChange={(e) => setRankOver10(e.target.checked)} />
+                {t.table.filterRankOver10}
+              </label>
+            </div>
+            <div className="flex flex-wrap items-center gap-1 text-xs">
+              <span className="text-slate-400 mr-1">{t.table.columns}:</span>
+              {(["basics", "topic", "linking", "performance", "analysis"] as ColumnGroup[]).map((g) => (
+                <button
+                  key={g}
+                  onClick={() => toggleGroup(g)}
+                  className={`px-2 py-1 rounded-md border ${
+                    show(g)
+                      ? "bg-teal-50 dark:bg-teal-900/30 border-teal-200 dark:border-teal-700 text-teal-700 dark:text-teal-300"
+                      : "border-slate-200 dark:border-slate-600 text-slate-400"
+                  }`}
+                >
+                  {t.groups[g]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {selectedIds.length > 0 && (
+            <div className="sticky top-0 z-20 flex flex-wrap items-center gap-2 bg-teal-50 dark:bg-teal-900/30 border border-teal-200 dark:border-teal-800 rounded-xl p-3">
+              <span className="text-sm font-medium text-teal-800 dark:text-teal-200">{t.table.selected(selectedIds.length)}</span>
+              {progress ? (
+                <span className="flex items-center gap-2 text-sm text-teal-700 dark:text-teal-300">
+                  <Spinner /> {t.bulk.running(progress.done, progress.total)}
+                </span>
+              ) : (
                 <>
-                  <button className={buttonSecondary} onClick={() => void bulkDfs({ applyAsFocus: "never" })}>
-                    {t.bulk.fetchDfs}
+                  {editable && (
+                    <>
+                      <button className={buttonSecondary} onClick={() => void bulkDfs({ applyAsFocus: "never" })}>
+                        {t.bulk.fetchDfs}
+                      </button>
+                      <button className={buttonSecondary} title={t.bulk.fetchSvHint} onClick={() => void bulkSearchVolume(false)}>
+                        {t.bulk.fetchSv}
+                      </button>
+                      <button className={buttonSecondary} title={t.bulk.fetchGscHint} onClick={() => void bulkGscClicks()}>
+                        {t.bulk.fetchGsc}
+                      </button>
+                      <BulkMenu
+                        label="…"
+                        items={[
+                          { label: t.bulk.fetchDfsForce, onClick: () => void bulkDfs({ force: true }) },
+                          { label: t.bulk.fetchSvForce, onClick: () => void bulkSearchVolume(true) },
+                          { label: t.bulk.applyTop, onClick: () => void bulkDfs({ fetch: false, applyAsFocus: "ifEmpty" }) },
+                          { label: t.bulk.applyTopAll, onClick: () => void bulkDfs({ fetch: false, applyAsFocus: "always" }) },
+                        ]}
+                      />
+                      <button className={buttonSecondary} title={t.bulk.gapTasksHint} onClick={() => void bulkGapTasks()}>
+                        {t.bulk.gapTasks}
+                      </button>
+                      <button className={buttonPrimary} onClick={() => setShowKvpDialog(true)}>
+                        {t.bulk.pushKvp}
+                      </button>
+                    </>
+                  )}
+                  <button className={buttonSecondary} onClick={() => void exportExcel(selectedIds)}>
+                    {t.table.exportSelected}
                   </button>
-                  <button className={buttonSecondary} title={t.bulk.fetchSvHint} onClick={() => void bulkSearchVolume(false)}>
-                    {t.bulk.fetchSv}
-                  </button>
-                  <button className={buttonSecondary} title={t.bulk.fetchGscHint} onClick={() => void bulkGscClicks()}>
-                    {t.bulk.fetchGsc}
-                  </button>
-                  <BulkMenu
-                    label="…"
-                    items={[
-                      { label: t.bulk.fetchDfsForce, onClick: () => void bulkDfs({ force: true }) },
-                      { label: t.bulk.fetchSvForce, onClick: () => void bulkSearchVolume(true) },
-                      { label: t.bulk.applyTop, onClick: () => void bulkDfs({ fetch: false, applyAsFocus: "ifEmpty" }) },
-                      { label: t.bulk.applyTopAll, onClick: () => void bulkDfs({ fetch: false, applyAsFocus: "always" }) },
-                    ]}
-                  />
-                  <button className={buttonSecondary} title={t.bulk.gapTasksHint} onClick={() => void bulkGapTasks()}>
-                    {t.bulk.gapTasks}
-                  </button>
-                  <button className={buttonPrimary} onClick={() => setShowKvpDialog(true)}>
-                    {t.bulk.pushKvp}
+                  {editable && (
+                    <button className={buttonDanger} onClick={() => void bulkDelete()}>
+                      {t.bulk.deleteUrls}
+                    </button>
+                  )}
+                  <button className="text-xs text-slate-500 hover:underline ml-auto" onClick={() => setSelected(new Set())}>
+                    ✕
                   </button>
                 </>
               )}
-              <button className={buttonSecondary} onClick={() => void exportExcel(selectedIds)}>
-                {t.table.exportSelected}
-              </button>
-              {editable && (
-                <button className={buttonDanger} onClick={() => void bulkDelete()}>
-                  {t.bulk.deleteUrls}
-                </button>
-              )}
-              <button className="text-xs text-slate-500 hover:underline ml-auto" onClick={() => setSelected(new Set())}>
-                ✕
-              </button>
-            </>
+            </div>
           )}
-        </div>
-      )}
 
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead className="bg-slate-50 dark:bg-slate-900/40 text-xs text-slate-500 dark:text-slate-400">
-              <tr className="border-b border-slate-200 dark:border-slate-700">
-                <th colSpan={2} className="sticky left-0 z-10 bg-slate-50 dark:bg-slate-900" />
-                {groupHeaderCells.map((g) => (
-                  <th key={g.group} colSpan={g.span} className="px-3 py-1.5 text-left font-semibold uppercase tracking-wide border-l border-slate-200 dark:border-slate-700">
-                    {t.groups[g.group]}
-                  </th>
-                ))}
-                <th />
-              </tr>
-              <tr className="border-b border-slate-200 dark:border-slate-700">
-                <th className="sticky left-0 z-10 bg-slate-50 dark:bg-slate-900 px-3 py-2 w-8">
-                  <input
-                    type="checkbox"
-                    title={t.table.selectAll}
-                    checked={allFilteredSelected}
-                    onChange={() =>
-                      setSelected((prev) => {
-                        const next = new Set(prev);
-                        const ids = filtered.map((u) => u.id);
-                        if (allFilteredSelected) ids.forEach((id) => next.delete(id));
-                        else ids.forEach((id) => next.add(id));
-                        return next;
-                      })
-                    }
-                  />
-                </th>
-                <th className="sticky left-8 z-10 bg-slate-50 dark:bg-slate-900 px-3 py-2 text-left min-w-[18rem]">{sortHeader("url", t.fields.url)}</th>
-                {show("basics") && (
-                  <>
-                    <Th first>{t.fields.h1}</Th>
-                    <Th>{t.fields.navigationType}</Th>
-                    <Th>{t.fields.pageType}</Th>
-                    <Th>{t.fields.funnel}</Th>
-                    <Th>{t.fields.targetGroup}</Th>
-                  </>
-                )}
-                {show("topic") && (
-                  <>
-                    <Th first>{t.fields.topicAuthority}</Th>
-                    <Th>{t.fields.focusKeyword}</Th>
-                    <Th right>{sortHeader("focusSv", t.fields.focusSearchVolume)}</Th>
-                    <Th>{t.fields.subKeywords}</Th>
-                    <Th right>{t.fields.subSearchVolume}</Th>
-                  </>
-                )}
-                {show("linking") && (
-                  <>
-                    <Th first>{t.fields.ctas}</Th>
-                    <Th right>{t.fields.furtherLinks}</Th>
-                  </>
-                )}
-                {show("performance") && (
-                  <>
-                    <Th first>{t.fields.dfsTopKeyword}</Th>
-                    <Th right>{t.fields.dfsSearchVolume}</Th>
-                    <Th right>{sortHeader("rank", t.fields.dfsRank)}</Th>
-                    <Th right>{t.fields.manualRank}</Th>
-                    <Th right>{sortHeader("gscClicks", t.fields.gscClicks)}</Th>
-                    <Th right>
-                      <span title={t.table.scoreHint}>{sortHeader("score", t.fields.score)}</span>
-                    </Th>
-                  </>
-                )}
-                {show("analysis") && (
-                  <>
-                    <Th first>{sortHeader("coverage", t.fields.topicGap)}</Th>
-                    <Th>{t.fields.kvp}</Th>
-                    <Th>{t.fields.comment}</Th>
-                  </>
-                )}
-                <th className="px-3 py-2" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">
-              {pageRows.length === 0 && (
-                <tr>
-                  <td colSpan={30} className="px-4 py-10 text-center text-slate-500">
-                    {t.table.empty}
-                  </td>
-                </tr>
-              )}
-              {pageRows.map((u) => {
-                const isSelected = selected.has(u.id);
-                const rowBg = isSelected ? "bg-teal-50/60 dark:bg-teal-900/20" : "bg-white dark:bg-slate-800";
-                return (
-                  <tr key={u.id} className={`${rowBg} hover:bg-slate-50 dark:hover:bg-slate-700/40 align-top`}>
-                    <td className={`sticky left-0 z-10 px-3 py-2 ${rowBg}`}>
-                      <input type="checkbox" checked={isSelected} onChange={() => toggleSelect(u.id)} />
-                    </td>
-                    <td className={`sticky left-8 z-10 px-3 py-2 max-w-[22rem] ${rowBg}`}>
-                      <button onClick={() => setDrawerId(u.id)} className="block text-left text-teal-700 dark:text-teal-400 hover:underline truncate max-w-full" title={u.url}>
-                        {shortUrl(u.url)}
-                      </button>
-                      <div className="flex gap-1 mt-0.5">
-                        {u.noindex && <Tag tone="amber">noindex</Tag>}
-                        {u.statusCode && u.statusCode !== 200 && <Tag tone="red">{u.statusCode}</Tag>}
-                      </div>
-                    </td>
+          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead className="bg-slate-50 dark:bg-slate-900/40 text-xs text-slate-500 dark:text-slate-400">
+                  <tr className="border-b border-slate-200 dark:border-slate-700">
+                    <th colSpan={2} className="sticky left-0 z-10 bg-slate-50 dark:bg-slate-900" />
+                    {groupHeaderCells.map((g) => (
+                      <th key={g.group} colSpan={g.span} className="px-3 py-1.5 text-left font-semibold uppercase tracking-wide border-l border-slate-200 dark:border-slate-700">
+                        {t.groups[g.group]}
+                      </th>
+                    ))}
+                    <th />
+                  </tr>
+                  <tr className="border-b border-slate-200 dark:border-slate-700">
+                    <th className="sticky left-0 z-10 bg-slate-50 dark:bg-slate-900 px-3 py-2 w-8">
+                      <input
+                        type="checkbox"
+                        title={t.table.selectAll}
+                        checked={allFilteredSelected}
+                        onChange={() =>
+                          setSelected((prev) => {
+                            const next = new Set(prev);
+                            const ids = filtered.map((u) => u.id);
+                            if (allFilteredSelected) ids.forEach((id) => next.delete(id));
+                            else ids.forEach((id) => next.add(id));
+                            return next;
+                          })
+                        }
+                      />
+                    </th>
+                    <th className="sticky left-8 z-10 bg-slate-50 dark:bg-slate-900 px-3 py-2 text-left min-w-[18rem]">{sortHeader("url", t.fields.url)}</th>
                     {show("basics") && (
                       <>
-                        <Td first className="min-w-[14rem] max-w-[18rem]">
-                          <EditableCell editable={editable} value={u.h1} onSave={(v) => patchUrl(u.id, { h1: v })} />
-                        </Td>
-                        <Td className="min-w-[7rem]">
-                          <EditableCell editable={editable} value={u.navigationType} options={["Guide", "Help", "Navigation"]} onSave={(v) => patchUrl(u.id, { navigationType: v })} />
-                        </Td>
-                        {(["pageType", "funnel", "targetGroup"] as const).map((key) => (
-                          <Td key={key} className="min-w-[10rem] max-w-[14rem]">
-                            <EditableCell editable={editable} value={u[key]} options={optionValues(key)} onSave={(v) => patchUrl(u.id, { [key]: v })} />
-                          </Td>
-                        ))}
+                        <Th first>{t.fields.h1}</Th>
+                        <Th>{t.fields.navigationType}</Th>
+                        <Th>{t.fields.pageType}</Th>
+                        <Th>{t.fields.funnel}</Th>
+                        <Th>{t.fields.targetGroup}</Th>
                       </>
                     )}
                     {show("topic") && (
                       <>
-                        <Td first className="min-w-[10rem] max-w-[14rem]">
-                          <EditableCell editable={editable} value={u.topicAuthority} options={optionValues("topicAuthority")} onSave={(v) => patchUrl(u.id, { topicAuthority: v })} />
-                        </Td>
-                        <Td className="min-w-[12rem]">
-                          <EditableCell
-                            editable={editable}
-                            value={u.focusKeyword?.keyword ?? null}
-                            className="font-medium text-slate-900 dark:text-white"
-                            onSave={(v) => setFocus(u.id, v)}
-                          />
-                        </Td>
-                        <Td right>{formatNumber(u.focusKeyword?.searchVolume, intlLocale)}</Td>
-                        <Td className="min-w-[12rem] max-w-[18rem]">
-                          <button onClick={() => setDrawerId(u.id)} className="text-left w-full" title={u.subKeywords.map((k) => k.keyword).join(", ")}>
-                            {u.subKeywords.length ? (
-                              <span className="line-clamp-2 text-slate-600 dark:text-slate-300">{u.subKeywords.map((k) => k.keyword).join(", ")}</span>
-                            ) : (
-                              <span className="text-slate-300 dark:text-slate-600">–</span>
-                            )}
-                          </button>
-                        </Td>
-                        <Td right>{formatNumber(u.subSearchVolume, intlLocale)}</Td>
+                        <Th first>{t.fields.topicAuthority}</Th>
+                        <Th>{t.fields.focusKeyword}</Th>
+                        <Th right>{sortHeader("focusSv", t.fields.focusSearchVolume)}</Th>
+                        <Th>{t.fields.subKeywords}</Th>
+                        <Th right>{t.fields.subSearchVolume}</Th>
                       </>
                     )}
                     {show("linking") && (
                       <>
-                        <Td first className="min-w-[12rem] max-w-[16rem]">
-                          {u.ctas.length ? (
-                            <span className="line-clamp-2 text-slate-600 dark:text-slate-300" title={u.ctas.map((c) => c.label).join("\n")}>
-                              {u.ctas.map((c) => c.label || c.link).join(" · ")}
-                            </span>
-                          ) : (
-                            <span className="text-slate-300 dark:text-slate-600">–</span>
-                          )}
-                        </Td>
-                        <Td right>{u.furtherLinks.length || "–"}</Td>
+                        <Th first>{t.fields.ctas}</Th>
+                        <Th right>{t.fields.furtherLinks}</Th>
                       </>
                     )}
                     {show("performance") && (
                       <>
-                        <Td first className="min-w-[12rem]">
-                          {u.dfsTopKeyword ? (
-                            <div className="flex items-start gap-1">
-                              <span className="flex-1">{u.dfsTopKeyword}</span>
-                              {editable && u.dfsTopKeyword !== u.focusKeyword?.keyword && (
-                                <button
-                                  title={t.drawer.asFocus}
-                                  onClick={() => void setFocus(u.id, u.dfsTopKeyword, u.dfsSearchVolume, "dataforseo")}
-                                  className="shrink-0 px-1.5 rounded text-xs text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-900/30 hover:bg-teal-100"
-                                >
-                                  → {t.drawer.isFocus}
-                                </button>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-slate-300 dark:text-slate-600">{u.dfsFetchedAt ? "∅" : "–"}</span>
-                          )}
-                        </Td>
-                        <Td right>{formatNumber(u.dfsSearchVolume, intlLocale)}</Td>
-                        <Td right>{u.dfsRank ?? "–"}</Td>
-                        <Td right className="min-w-[5rem]">
-                          <EditableCell editable={editable} value={u.manualRank} className="text-right" onSave={(v) => patchUrl(u.id, { manualRank: v })} />
-                        </Td>
-                        <Td right className="min-w-[5rem]">
-                          <EditableCell
-                            editable={editable}
-                            value={u.gscClicks !== null ? String(u.gscClicks) : null}
-                            className="text-right"
-                            onSave={(v) => patchUrl(u.id, { gscClicks: v })}
-                          />
-                        </Td>
-                        <Td right>
-                          <ScoreBadge score={u.score} />
-                        </Td>
+                        <Th first>{t.fields.dfsTopKeyword}</Th>
+                        <Th right>{t.fields.dfsSearchVolume}</Th>
+                        <Th right>{sortHeader("rank", t.fields.dfsRank)}</Th>
+                        <Th right>{t.fields.manualRank}</Th>
+                        <Th right>{sortHeader("gscClicks", t.fields.gscClicks)}</Th>
+                        <Th right>
+                          <span title={t.table.scoreHint}>{sortHeader("score", t.fields.score)}</span>
+                        </Th>
                       </>
                     )}
                     {show("analysis") && (
                       <>
-                        <Td first>
-                          <CoverageBadge gap={u.latestTopicGap} onClick={() => setDrawerId(u.id)} />
-                          {u.latestTopicGap?.taskId && (
-                            <div className="mt-0.5" title={t.drawer.gapInKanban}>
-                              <Tag tone="teal">✓ {t.table.taskBadge}</Tag>
-                            </div>
-                          )}
-                        </Td>
-                        <Td>{u.kvpUrlId ? <Tag tone="teal">{t.table.inKvpBadge}</Tag> : <span className="text-slate-300 dark:text-slate-600">–</span>}</Td>
-                        <Td className="min-w-[12rem] max-w-[18rem]">
-                          <EditableCell editable={editable} value={u.comment} multiline onSave={(v) => patchUrl(u.id, { comment: v })} />
-                        </Td>
+                        <Th first>{sortHeader("coverage", t.fields.topicGap)}</Th>
+                        <Th>{t.fields.kvp}</Th>
+                        <Th>{t.fields.comment}</Th>
                       </>
                     )}
-                    <td className="px-3 py-2">
-                      <button onClick={() => setDrawerId(u.id)} className="text-xs text-slate-500 hover:text-teal-600 whitespace-nowrap">
-                        {t.table.details} →
-                      </button>
-                    </td>
+                    <th className="px-3 py-2" />
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200 dark:border-slate-700 text-sm text-slate-500">
-          <span>{t.table.results(filtered.length, urls.length)}</span>
-          {filtered.length > PAGE_SIZE && (
-            <div className="flex items-center gap-2">
-              <button className={buttonSecondary} disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
-                ‹
-              </button>
-              <span>
-                {page + 1} / {Math.ceil(filtered.length / PAGE_SIZE)}
-              </span>
-              <button className={buttonSecondary} disabled={(page + 1) * PAGE_SIZE >= filtered.length} onClick={() => setPage((p) => p + 1)}>
-                ›
-              </button>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">
+                  {pageRows.length === 0 && (
+                    <tr>
+                      <td colSpan={30} className="px-4 py-10 text-center text-slate-500">
+                        {t.table.empty}
+                      </td>
+                    </tr>
+                  )}
+                  {pageRows.map((u) => {
+                    const isSelected = selected.has(u.id);
+                    const rowBg = isSelected ? "bg-teal-50/60 dark:bg-teal-900/20" : "bg-white dark:bg-slate-800";
+                    return (
+                      <tr key={u.id} className={`${rowBg} hover:bg-slate-50 dark:hover:bg-slate-700/40 align-top`}>
+                        <td className={`sticky left-0 z-10 px-3 py-2 ${rowBg}`}>
+                          <input type="checkbox" checked={isSelected} onChange={() => toggleSelect(u.id)} />
+                        </td>
+                        <td className={`sticky left-8 z-10 px-3 py-2 max-w-[22rem] ${rowBg}`}>
+                          <button onClick={() => setDrawerId(u.id)} className="block text-left text-teal-700 dark:text-teal-400 hover:underline truncate max-w-full" title={u.url}>
+                            {shortUrl(u.url)}
+                          </button>
+                          <div className="flex gap-1 mt-0.5">
+                            {u.noindex && <Tag tone="amber">noindex</Tag>}
+                            {u.statusCode && u.statusCode !== 200 && <Tag tone="red">{u.statusCode}</Tag>}
+                          </div>
+                        </td>
+                        {show("basics") && (
+                          <>
+                            <Td first className="min-w-[14rem] max-w-[18rem]">
+                              <EditableCell editable={editable} value={u.h1} onSave={(v) => patchUrl(u.id, { h1: v })} />
+                            </Td>
+                            <Td className="min-w-[7rem]">
+                              <EditableCell editable={editable} value={u.navigationType} options={["Guide", "Help", "Navigation"]} onSave={(v) => patchUrl(u.id, { navigationType: v })} />
+                            </Td>
+                            {(["pageType", "funnel", "targetGroup"] as const).map((key) => (
+                              <Td key={key} className="min-w-[10rem] max-w-[14rem]">
+                                <EditableCell editable={editable} value={u[key]} options={optionValues(key)} onSave={(v) => patchUrl(u.id, { [key]: v })} />
+                              </Td>
+                            ))}
+                          </>
+                        )}
+                        {show("topic") && (
+                          <>
+                            <Td first className="min-w-[10rem] max-w-[14rem]">
+                              <EditableCell editable={editable} value={u.topicAuthority} options={optionValues("topicAuthority")} onSave={(v) => patchUrl(u.id, { topicAuthority: v })} />
+                            </Td>
+                            <Td className="min-w-[12rem]">
+                              <EditableCell
+                                editable={editable}
+                                value={u.focusKeyword?.keyword ?? null}
+                                className="font-medium text-slate-900 dark:text-white"
+                                onSave={(v) => setFocus(u.id, v)}
+                              />
+                            </Td>
+                            <Td right>{formatNumber(u.focusKeyword?.searchVolume, intlLocale)}</Td>
+                            <Td className="min-w-[12rem] max-w-[18rem]">
+                              <button onClick={() => setDrawerId(u.id)} className="text-left w-full" title={u.subKeywords.map((k) => k.keyword).join(", ")}>
+                                {u.subKeywords.length ? (
+                                  <span className="line-clamp-2 text-slate-600 dark:text-slate-300">{u.subKeywords.map((k) => k.keyword).join(", ")}</span>
+                                ) : (
+                                  <span className="text-slate-300 dark:text-slate-600">–</span>
+                                )}
+                              </button>
+                            </Td>
+                            <Td right>{formatNumber(u.subSearchVolume, intlLocale)}</Td>
+                          </>
+                        )}
+                        {show("linking") && (
+                          <>
+                            <Td first className="min-w-[12rem] max-w-[16rem]">
+                              {u.ctas.length ? (
+                                <span className="line-clamp-2 text-slate-600 dark:text-slate-300" title={u.ctas.map((c) => c.label).join("\n")}>
+                                  {u.ctas.map((c) => c.label || c.link).join(" · ")}
+                                </span>
+                              ) : (
+                                <span className="text-slate-300 dark:text-slate-600">–</span>
+                              )}
+                            </Td>
+                            <Td right>{u.furtherLinks.length || "–"}</Td>
+                          </>
+                        )}
+                        {show("performance") && (
+                          <>
+                            <Td first className="min-w-[12rem]">
+                              {u.dfsTopKeyword ? (
+                                <div className="flex items-start gap-1">
+                                  <span className="flex-1">{u.dfsTopKeyword}</span>
+                                  {editable && u.dfsTopKeyword !== u.focusKeyword?.keyword && (
+                                    <button
+                                      title={t.drawer.asFocus}
+                                      onClick={() => void setFocus(u.id, u.dfsTopKeyword, u.dfsSearchVolume, "dataforseo")}
+                                      className="shrink-0 px-1.5 rounded text-xs text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-900/30 hover:bg-teal-100"
+                                    >
+                                      → {t.drawer.isFocus}
+                                    </button>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-slate-300 dark:text-slate-600">{u.dfsFetchedAt ? "∅" : "–"}</span>
+                              )}
+                            </Td>
+                            <Td right>{formatNumber(u.dfsSearchVolume, intlLocale)}</Td>
+                            <Td right>{u.dfsRank ?? "–"}</Td>
+                            <Td right className="min-w-[5rem]">
+                              <EditableCell editable={editable} value={u.manualRank} className="text-right" onSave={(v) => patchUrl(u.id, { manualRank: v })} />
+                            </Td>
+                            <Td right className="min-w-[5rem]">
+                              <EditableCell
+                                editable={editable}
+                                value={u.gscClicks !== null ? String(u.gscClicks) : null}
+                                className="text-right"
+                                onSave={(v) => patchUrl(u.id, { gscClicks: v })}
+                              />
+                            </Td>
+                            <Td right>
+                              <ScoreBadge score={u.score} />
+                            </Td>
+                          </>
+                        )}
+                        {show("analysis") && (
+                          <>
+                            <Td first>
+                              <CoverageBadge gap={u.latestTopicGap} onClick={() => setDrawerId(u.id)} />
+                              {u.latestTopicGap?.taskId && (
+                                <div className="mt-0.5" title={t.drawer.gapInKanban}>
+                                  <Tag tone="teal">✓ {t.table.taskBadge}</Tag>
+                                </div>
+                              )}
+                            </Td>
+                            <Td>{u.kvpUrlId ? <Tag tone="teal">{t.table.inKvpBadge}</Tag> : <span className="text-slate-300 dark:text-slate-600">–</span>}</Td>
+                            <Td className="min-w-[12rem] max-w-[18rem]">
+                              <EditableCell editable={editable} value={u.comment} multiline onSave={(v) => patchUrl(u.id, { comment: v })} />
+                            </Td>
+                          </>
+                        )}
+                        <td className="px-3 py-2">
+                          <button onClick={() => setDrawerId(u.id)} className="text-xs text-slate-500 hover:text-teal-600 whitespace-nowrap">
+                            {t.table.details} →
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-          )}
-        </div>
-      </div>
+            <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200 dark:border-slate-700 text-sm text-slate-500">
+              <span>{t.table.results(filtered.length, urls.length)}</span>
+              {filtered.length > PAGE_SIZE && (
+                <div className="flex items-center gap-2">
+                  <button className={buttonSecondary} disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
+                    ‹
+                  </button>
+                  <span>
+                    {page + 1} / {Math.ceil(filtered.length / PAGE_SIZE)}
+                  </span>
+                  <button className={buttonSecondary} disabled={(page + 1) * PAGE_SIZE >= filtered.length} onClick={() => setPage((p) => p + 1)}>
+                    ›
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
 
       {drawerUrl && (
         <UrlDrawer

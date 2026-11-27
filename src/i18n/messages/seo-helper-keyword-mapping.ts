@@ -104,6 +104,33 @@ export const seoHelperKeywordMappingMessages = defineMessages({
       analysis: "Analyse",
     } as Record<string, string>,
 
+    tabs: {
+      urls: "URLs",
+      gaps: "Offene Topic-Gaps",
+    },
+
+    gapsTab: {
+      intro:
+        "Topics aus den Topic-Gap-Analysen, die auf der analysierten URL fehlen und auf keiner anderen URL aus dem Content-Mapping ganz oder teilweise abgedeckt sind. Gleichnamige Topics mehrerer URLs sind zusammengefasst.",
+      analyzed: (analyzed: number, total: number) => `Grundlage: neueste Gap-Analyse von ${analyzed} der ${total} URLs.`,
+      unchecked: (n: number) =>
+        `Bei ${n} Analyse${n === 1 ? "" : "n"} fehlt der Abgleich mit dem Content-Mapping – deren Topics sind nicht enthalten. Abgleich im URL-Detail unter „Topic-Gap“ starten.`,
+      search: "Topic, Pfad, URL oder Fokus-Keyword suchen…",
+      sortUrls: "Sortierung: Anzahl URLs",
+      sortTopic: "Sortierung: Topic A–Z",
+      onlyWithoutArticle: "Nur ohne Artikel im Redaktionsplan",
+      exportCsv: "CSV exportieren",
+      topic: "Topic",
+      path: "Pfad",
+      urlCount: "URLs",
+      foundAt: "Fehlt auf",
+      reason: "Begründung",
+      editorial: "Im Redaktionsplan",
+      empty: "Keine Topics für diese Filter.",
+      emptyAll: "Keine offenen Topic-Gaps – entweder ist alles abgedeckt oder es liegen noch keine Gap-Analysen vor.",
+      results: (topics: string, occurrences: string) => `${topics} Topics · ${occurrences} Vorkommen`,
+    },
+
     table: {
       search: "URL, H1 oder Keyword suchen…",
       columns: "Spalten",
@@ -462,6 +489,33 @@ export const seoHelperKeywordMappingMessages = defineMessages({
       performance: "Performance",
       analysis: "Analysis",
     } as Record<string, string>,
+
+    tabs: {
+      urls: "URLs",
+      gaps: "Open topic gaps",
+    },
+
+    gapsTab: {
+      intro:
+        "Topics from the topic gap analyses that are missing on the analysed URL and not fully or partially covered by any other URL in the content mapping. Topics with the same name across URLs are merged.",
+      analyzed: (analyzed: number, total: number) => `Based on the latest gap analysis of ${analyzed} of ${total} URLs.`,
+      unchecked: (n: number) =>
+        `${n} analys${n === 1 ? "is has" : "es have"} not been matched against the content mapping – their topics are not included. Start the match in the URL detail under “Topic gap”.`,
+      search: "Search topic, path, URL or focus keyword…",
+      sortUrls: "Sort: number of URLs",
+      sortTopic: "Sort: topic A–Z",
+      onlyWithoutArticle: "Only without article in editorial plan",
+      exportCsv: "Export CSV",
+      topic: "Topic",
+      path: "Path",
+      urlCount: "URLs",
+      foundAt: "Missing on",
+      reason: "Reason",
+      editorial: "In editorial plan",
+      empty: "No topics for these filters.",
+      emptyAll: "No open topic gaps – either everything is covered or there are no gap analyses yet.",
+      results: (topics: string, occurrences: string) => `${topics} topics · ${occurrences} occurrences`,
+    },
 
     table: {
       search: "Search URL, H1 or keyword…",

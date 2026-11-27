@@ -87,6 +87,40 @@ export interface TopicGapSummaryDto {
   createdAt: string;
 }
 
+/** Vorkommen eines projektweit offenen Topics in der Gap-Analyse einer URL */
+export interface ProjectTopicGapOccurrence {
+  urlId: string;
+  url: string;
+  focusKeyword: string;
+  gapId: string;
+  /** Position in `results` der Gap-Analyse */
+  index: number;
+  path: string[];
+  reason: string;
+  editorialArticleId: string | null;
+}
+
+/** Topic, das weder auf einer Projekt-URL noch auf einer anderen URL aus dem Content-Mapping abgedeckt ist */
+export interface ProjectTopicGap {
+  key: string;
+  topic: string;
+  occurrences: ProjectTopicGapOccurrence[];
+}
+
+export interface ProjectTopicGapsResponse {
+  gaps: ProjectTopicGap[];
+  stats: {
+    urls: number;
+    analyzed: number;
+    /** Analysen ohne (erfolgreichen) Abgleich mit dem Content-Mapping; deren Topics fehlen in der Liste */
+    unchecked: number;
+  };
+}
+
+export function topicKey(topic: string): string {
+  return cleanText(topic).toLowerCase();
+}
+
 export interface MapUrlDto {
   id: string;
   url: string;
