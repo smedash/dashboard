@@ -111,6 +111,28 @@ export interface ProjectTopicGap {
   /** Summe der Cluster-Suchvolumen der betroffenen Fokus-Keywords (jedes Keyword einmal) */
   clusterSv: number;
   occurrences: ProjectTopicGapOccurrence[];
+  /** Kernnähe 0–100 (KI-Bewertung kombiniert mit Embedding-Ähnlichkeit); null = noch nicht bewertet */
+  relevance: number | null;
+  tier: TopicRelevanceTier | null;
+  relevanceReason: string | null;
+  /** Cosinus-Ähnlichkeit zwischen Topic und Kernthema-Profil */
+  similarity: number | null;
+  priority: number;
+}
+
+export const TOPIC_RELEVANCE_TIERS = ["core", "adjacent", "peripheral", "offtopic"] as const;
+export type TopicRelevanceTier = (typeof TOPIC_RELEVANCE_TIERS)[number];
+
+/** 75 % KI-Bewertung, 25 % Embedding-Ähnlichkeit (min-max-normalisiert über die Topics des Projekts). */
+export function combineRelevance(llmScore: number | null, simNorm: number | null): number | null {
+  if (llmScore === null) return simNorm === null ? null : Math.round(simNorm);
+  if (simNorm === null) return Math.round(llmScore);
+  return Math.round(0.75 * llmScore + 0.25 * simNorm);
+}
+
+/** Nicht bewertete Topics zählen mit neutraler Kernnähe 50. */
+export function topicPriority(relevance: number | null, topicSv: number | null, occurrences: number): number {
+  return ((relevance ?? 50) / 100) * Math.log10((topicSv ?? 0) + 10) * Math.sqrt(occurrences);
 }
 
 /** KI-Artikelvorschlag zu einem offenen Topic */
@@ -131,6 +153,8 @@ export interface ProjectTopicGapsResponse {
   unresearched: string[];
   /** Anzahl Topics ohne abgefragtes Suchvolumen; null = Land/Sprache des Projekts nicht unterstützt */
   topicSvMissing: number | null;
+  /** Anzahl Topics ohne aktuelle Kernnähe-Bewertung */
+  relevanceMissing: number;
 }
 
 export function topicKey(topic: string): string {

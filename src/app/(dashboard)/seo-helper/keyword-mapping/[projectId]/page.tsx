@@ -39,6 +39,7 @@ interface ProjectInfo {
   id: string;
   name: string;
   category: string | null;
+  coreDescription: string | null;
   countryCode: string;
   languageCode: string;
   dropdownOptions: DropdownOptions;
@@ -1168,6 +1169,7 @@ function SettingsDialog({
   const t = useMessages(seoHelperKeywordMappingMessages);
   const [name, setName] = useState(project.name);
   const [category, setCategory] = useState(project.category ?? "");
+  const [coreDescription, setCoreDescription] = useState(project.coreDescription ?? "");
   const [countryCode, setCountryCode] = useState(project.countryCode);
   const [languageCode, setLanguageCode] = useState(project.languageCode);
   const [dropdowns, setDropdowns] = useState<Record<DropdownKey, string>>(
@@ -1185,6 +1187,7 @@ function SettingsDialog({
         body: JSON.stringify({
           name,
           category: category || null,
+          coreDescription: coreDescription.trim() || null,
           countryCode,
           languageCode,
           dropdownOptions: Object.fromEntries(DROPDOWN_KEYS.map((k) => [k, dropdowns[k].split("\n")])),
@@ -1251,6 +1254,18 @@ function SettingsDialog({
             </label>
           </div>
         </div>
+        <label className="block">
+          <span className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.createDialog.coreDescription}</span>
+          <textarea
+            className={inputClass}
+            rows={3}
+            maxLength={4000}
+            placeholder={t.createDialog.coreDescriptionPlaceholder}
+            value={coreDescription}
+            onChange={(e) => setCoreDescription(e.target.value)}
+          />
+          <span className="block mt-1 text-xs text-slate-500 dark:text-slate-400">{t.createDialog.coreDescriptionHint}</span>
+        </label>
         <div>
           <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300">{t.settings.dropdownsTitle}</h3>
           <p className="text-xs text-slate-500 mb-2">{t.settings.dropdownsHint}</p>

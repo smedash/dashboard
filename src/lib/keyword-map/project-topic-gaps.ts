@@ -1,7 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { loadClusterVolumes } from "./keyword-research";
 import { loadKeywordVolumes, volumeLocale } from "./keyword-volume";
-import { type ProjectTopicGap, type ProjectTopicGapsResponse, type TopicGapItem, topicKey } from "./shared";
+import { type ProjectTopicGap, type ProjectTopicGapsResponse, type TopicGapItem, combineRelevance, topicKey, topicPriority } from "./shared";
+import { buildCoreProfile, loadTopicRelevance } from "./topic-relevance";
+
+type GapGroup = Pick<ProjectTopicGap, "key" | "topic" | "occurrences">;
 
 /**
  * Projektweit offene Topics: auf der eigenen URL fehlend und laut Abgleich mit dem Content-Mapping
@@ -23,7 +26,7 @@ export async function loadProjectTopicGaps(project: { id: string; countryCode: s
     orderBy: { url: "asc" },
   });
 
-  const groups = new Map<string, Omit<ProjectTopicGap, "topicSv" | "clusterSv">>();
+  const groups = new Map<string, GapGroup>();
   const coveredSomewhere = new Set<string>();
   let analyzed = 0;
   let unchecked = 0;
@@ -66,23 +69,40 @@ export async function loadProjectTopicGaps(project: { id: string; countryCode: s
   const open = [...groups.values()].filter((g) => !coveredSomewhere.has(g.key));
   const focusKeywords = [...new Set(open.flatMap((g) => g.occurrences.map((o) => o.focusKeyword.trim().toLowerCase())))];
   const locale = volumeLocale(project.countryCode, project.languageCode);
-  const [volumes, topicVolumes] = await Promise.all([
+  const profile = await buildCoreProfile(project.id);
+  const [volumes, topicVolumes, relevance] = await Promise.all([
     loadClusterVolumes(focusKeywords, project.countryCode, project.languageCode),
     locale ? loadKeywordVolumes(open.map((g) => g.key), locale) : Promise.resolve(new Map<string, number>()),
+    loadTopicRelevance(project.id, profile.hash),
   ]);
+
+  const sims = open.map((g) => relevance.get(g.key)?.similarity).filter((s): s is number => typeof s === "number");
+  const simMin = sims.length ? Math.min(...sims) : 0;
+  const simRange = sims.length ? Math.max(...sims) - simMin : 0;
 
   const gaps: ProjectTopicGap[] = open.map((g) => {
     const occurrences = g.occurrences.map((o) => ({ ...o, focusClusterSv: volumes.get(o.focusKeyword.trim().toLowerCase()) ?? null }));
     const perKeyword = new Map(occurrences.map((o) => [o.focusKeyword.trim().toLowerCase(), o.focusClusterSv ?? 0]));
+    const rel = relevance.get(g.key);
+    const similarity = rel?.similarity ?? null;
+    const simNorm = similarity === null ? null : simRange > 0 ? (100 * (similarity - simMin)) / simRange : 50;
+    const score = rel ? combineRelevance(rel.llmScore, simNorm) : null;
+    const topicSv = topicVolumes.get(g.key) ?? null;
     return {
       ...g,
       occurrences,
-      topicSv: topicVolumes.get(g.key) ?? null,
+      topicSv,
       clusterSv: [...perKeyword.values()].reduce((sum, v) => sum + v, 0),
+      relevance: score,
+      tier: rel?.tier ?? null,
+      relevanceReason: rel?.reason ?? null,
+      similarity,
+      priority: topicPriority(score, topicSv, occurrences.length),
     };
   });
   gaps.sort(
     (a, b) =>
+      b.priority - a.priority ||
       (b.topicSv ?? -1) - (a.topicSv ?? -1) ||
       b.clusterSv - a.clusterSv ||
       b.occurrences.length - a.occurrences.length ||
@@ -94,5 +114,6 @@ export async function loadProjectTopicGaps(project: { id: string; countryCode: s
     stats: { urls: urls.length, analyzed, unchecked },
     unresearched: focusKeywords.filter((k) => !volumes.has(k)),
     topicSvMissing: locale ? gaps.filter((g) => g.topicSv === null).length : null,
+    relevanceMissing: gaps.filter((g) => g.relevance === null).length,
   };
 }

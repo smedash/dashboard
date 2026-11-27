@@ -25,6 +25,7 @@ export async function GET(_request: NextRequest, ctx: { params: Promise<{ id: st
         id: project.id,
         name: project.name,
         category: project.category,
+        coreDescription: project.coreDescription,
         countryCode: project.countryCode,
         languageCode: project.languageCode,
         dropdownOptions: parseDropdownOptions(project.dropdownOptions),
@@ -48,6 +49,7 @@ export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: s
     const body = (await request.json()) as {
       name?: string;
       category?: string | null;
+      coreDescription?: string | null;
       countryCode?: string;
       languageCode?: string;
       dropdownOptions?: DropdownOptions;
@@ -59,6 +61,9 @@ export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: s
         return NextResponse.json({ error: "Ungültige Kategorie" }, { status: 400 });
       }
       data.category = body.category || null;
+    }
+    if (body.coreDescription !== undefined) {
+      data.coreDescription = typeof body.coreDescription === "string" ? body.coreDescription.trim().slice(0, 4000) || null : null;
     }
     if (typeof body.countryCode === "string" && body.countryCode.trim()) data.countryCode = body.countryCode.trim().toLowerCase();
     if (typeof body.languageCode === "string" && body.languageCode.trim()) data.languageCode = body.languageCode.trim().toLowerCase();

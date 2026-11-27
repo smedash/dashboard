@@ -3,7 +3,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocale, useMessages } from "@/i18n/I18nProvider";
 import { seoHelperKeywordMappingMessages } from "@/i18n/messages/seo-helper-keyword-mapping";
-import type { ProjectTopicGap, ProjectTopicGapsResponse } from "@/lib/keyword-map/shared";
+import type { ProjectTopicGap, ProjectTopicGapsResponse, TopicRelevanceTier } from "@/lib/keyword-map/shared";
 import { BrandExclusionButton } from "./BrandExclusionButton";
 import { TopicBlocklistButton } from "./TopicBlocklistButton";
 import { TopicSuggestionsModal } from "./TopicSuggestionsModal";
@@ -15,7 +15,15 @@ const RESEARCH_BATCH = 3;
 const RESEARCH_RELOAD_EVERY = 5;
 const filterClass = inputClass.replace(/\bw-full\b/, "").trim();
 
-type SortKey = "topicSv" | "clusterSv" | "urls" | "topic";
+type SortKey = "priority" | "topicSv" | "clusterSv" | "urls" | "topic";
+type RelevanceFilter = "" | "40" | "60" | "80" | "offtopic";
+
+const TIER_CLASS: Record<TopicRelevanceTier, string> = {
+  core: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300",
+  adjacent: "bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300",
+  peripheral: "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+  offtopic: "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300",
+};
 
 function shortUrl(url: string) {
   return url.replace(/^https?:\/\/[^/]+/, "") || url;
@@ -46,7 +54,8 @@ export function TopicGapsTab({
   const [search, setSearch] = useState("");
   const [urlFilter, setUrlFilter] = useState("");
   const [onlyOpen, setOnlyOpen] = useState(false);
-  const [sort, setSort] = useState<SortKey>("topicSv");
+  const [relevanceFilter, setRelevanceFilter] = useState<RelevanceFilter>("");
+  const [sort, setSort] = useState<SortKey>("priority");
   const [page, setPage] = useState(0);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [suggestFor, setSuggestFor] = useState<ProjectTopicGap | null>(null);
@@ -64,8 +73,9 @@ export function TopicGapsTab({
     void load();
   }, [load]);
 
-  const [progress, setProgress] = useState<{ phase: "research" | "volume"; done: number; total: number } | null>(null);
+  const [progress, setProgress] = useState<{ phase: "research" | "volume" | "relevance"; done: number; total: number } | null>(null);
   const [failures, setFailures] = useState<{ research: number; volume: number; lastError?: string } | null>(null);
+  const [relevanceFailures, setRelevanceFailures] = useState<{ count: number; lastError?: string } | null>(null);
   const fetchStarted = useRef(false);
   const unmounted = useRef(false);
   useEffect(() => {
@@ -75,12 +85,13 @@ export function TopicGapsTab({
     };
   }, []);
 
-  // Fehlende Suchvolumen einmal pro Tab-Aufruf nachladen: erst SEOSpark-Recherchen der Fokus-Keywords, dann Topic-Suchvolumen
+  // Fehlende Werte einmal pro Tab-Aufruf nachladen: erst SEOSpark-Recherchen der Fokus-Keywords, dann Topic-Suchvolumen, dann Kernnähe
   useEffect(() => {
     if (!data || !editable || fetchStarted.current) return;
     const pending = data.unresearched;
     const volumeMissing = data.topicSvMissing ?? 0;
-    if (pending.length === 0 && volumeMissing === 0) return;
+    const relevanceMissing = data.relevanceMissing;
+    if (pending.length === 0 && volumeMissing === 0 && relevanceMissing === 0) return;
     fetchStarted.current = true;
     void (async () => {
       const failed = { research: 0, volume: 0, lastError: undefined as string | undefined };
@@ -126,10 +137,34 @@ export function TopicGapsTab({
         await load();
       }
 
+      const relevanceFailed = { count: 0, lastError: undefined as string | undefined };
+      let rated = 0;
+      let unrated = relevanceMissing;
+      while (unrated > 0 && !unmounted.current) {
+        setProgress({ phase: "relevance", done: rated, total: relevanceMissing });
+        try {
+          const res = await apiFetch<{ fetched: number; failed: number; remaining: number; lastError?: string }>(
+            `/api/seo-helper/keyword-mapping/projects/${projectId}/topic-relevance`,
+            { method: "POST" }
+          );
+          rated += res.fetched;
+          relevanceFailed.count += res.failed;
+          if (res.lastError) relevanceFailed.lastError = res.lastError;
+          if (res.fetched === 0) break;
+          unrated = res.remaining;
+        } catch (e) {
+          relevanceFailed.count += unrated;
+          relevanceFailed.lastError = e instanceof Error ? e.message : t.errorGeneric;
+          break;
+        }
+        await load();
+      }
+
       if (unmounted.current) return;
       await load();
       setProgress(null);
       setFailures(failed.research > 0 || failed.volume > 0 ? failed : null);
+      setRelevanceFailures(relevanceFailed.count > 0 ? relevanceFailed : null);
     })();
   }, [data, editable, projectId, load, t.errorGeneric]);
 
@@ -144,6 +179,8 @@ export function TopicGapsTab({
     const list = (data?.gaps ?? []).filter((g) => {
       if (urlFilter && !g.occurrences.some((o) => o.urlId === urlFilter)) return false;
       if (onlyOpen && g.occurrences.some((o) => o.editorialArticleId)) return false;
+      if (relevanceFilter === "offtopic" && g.tier !== "offtopic") return false;
+      if (relevanceFilter && relevanceFilter !== "offtopic" && (g.relevance === null || g.relevance < Number(relevanceFilter))) return false;
       if (q) {
         const hay = [g.topic, ...g.occurrences.flatMap((o) => [o.url, o.focusKeyword, ...o.path])].join(" ").toLowerCase();
         if (!hay.includes(q)) return false;
@@ -153,10 +190,11 @@ export function TopicGapsTab({
     if (sort === "topic") return [...list].sort((a, b) => a.topic.localeCompare(b.topic));
     if (sort === "clusterSv") return [...list].sort((a, b) => b.clusterSv - a.clusterSv || (b.topicSv ?? -1) - (a.topicSv ?? -1));
     if (sort === "urls") return [...list].sort((a, b) => b.occurrences.length - a.occurrences.length || (b.topicSv ?? -1) - (a.topicSv ?? -1));
+    if (sort === "topicSv") return [...list].sort((a, b) => (b.topicSv ?? -1) - (a.topicSv ?? -1) || b.clusterSv - a.clusterSv);
     return list;
-  }, [data, search, urlFilter, onlyOpen, sort]);
+  }, [data, search, urlFilter, onlyOpen, relevanceFilter, sort]);
 
-  useEffect(() => setPage(0), [search, urlFilter, onlyOpen, sort]);
+  useEffect(() => setPage(0), [search, urlFilter, onlyOpen, relevanceFilter, sort]);
 
   const pageRows = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
   const occurrenceCount = filtered.reduce((sum, g) => sum + g.occurrences.length, 0);
@@ -173,7 +211,8 @@ export function TopicGapsTab({
   const [deleting, setDeleting] = useState(false);
   const checkedGaps = useMemo(() => (data?.gaps ?? []).filter((g) => checked.has(g.key)), [data, checked]);
   const allFilteredChecked = filtered.length > 0 && filtered.every((g) => checked.has(g.key));
-  const columnCount = editable ? 7 : 6;
+  const columnCount = editable ? 8 : 7;
+  const filteredOfftopic = filtered.filter((g) => g.tier === "offtopic");
 
   const setRowChecked = (key: string, value: boolean) =>
     setChecked((prev) => {
@@ -214,6 +253,30 @@ export function TopicGapsTab({
     }
   };
 
+  const selectOfftopic = () =>
+    setChecked((prev) => {
+      const next = new Set(prev);
+      for (const g of filteredOfftopic) next.add(g.key);
+      return next;
+    });
+
+  const [rescoring, setRescoring] = useState(false);
+  const rescore = async () => {
+    if (!confirm(t.gapsTab.relevance.rescoreConfirm)) return;
+    setRescoring(true);
+    setError(null);
+    try {
+      await apiFetch(`/api/seo-helper/keyword-mapping/projects/${projectId}/topic-relevance`, { method: "DELETE" });
+      setRelevanceFailures(null);
+      fetchStarted.current = false;
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t.errorGeneric);
+    } finally {
+      setRescoring(false);
+    }
+  };
+
   const markArticle = (gapKey: string, articleId: string) =>
     setData((prev) =>
       prev && {
@@ -230,6 +293,9 @@ export function TopicGapsTab({
     const header = [
       t.gapsTab.topic,
       t.gapsTab.path,
+      t.gapsTab.relevance.column,
+      t.gapsTab.relevance.tier,
+      t.gapsTab.relevance.reason,
       t.gapsTab.topicSv,
       t.gapsTab.clusterSv,
       t.gapsTab.urlCount,
@@ -244,6 +310,9 @@ export function TopicGapsTab({
         [
           g.topic,
           o.path.join(" > "),
+          g.relevance === null ? "" : String(g.relevance),
+          g.tier ? t.gapsTab.relevance.tiers[g.tier] : "",
+          g.relevanceReason ?? "",
           g.topicSv === null ? "" : String(g.topicSv),
           String(g.clusterSv),
           String(g.occurrences.length),
@@ -291,11 +360,15 @@ export function TopicGapsTab({
             <Spinner />
             {progress.phase === "research"
               ? t.gapsTab.researchRunning(progress.done, progress.total)
-              : t.gapsTab.volumeRunning(progress.done, progress.total)}
+              : progress.phase === "volume"
+                ? t.gapsTab.volumeRunning(progress.done, progress.total)
+                : t.gapsTab.relevance.running(progress.done, progress.total)}
           </span>
         </Notice>
       )}
       {failures && <Notice kind="warning">{t.gapsTab.fetchFailed(failures.research, failures.volume, failures.lastError)}</Notice>}
+      {relevanceFailures && <Notice kind="warning">{t.gapsTab.relevance.failed(relevanceFailures.count, relevanceFailures.lastError)}</Notice>}
+      {!editable && data.relevanceMissing > 0 && <Notice kind="info">{t.gapsTab.relevance.missingReadOnly(data.relevanceMissing)}</Notice>}
       {!editable && (data.unresearched.length > 0 || (data.topicSvMissing ?? 0) > 0) && (
         <Notice kind="info">{t.gapsTab.svMissingReadOnly(data.unresearched.length, data.topicSvMissing ?? 0)}</Notice>
       )}
@@ -318,7 +391,22 @@ export function TopicGapsTab({
               </option>
             ))}
           </select>
+          <select
+            className={`${filterClass} max-w-[12rem]`}
+            value={relevanceFilter}
+            title={t.gapsTab.relevance.columnHint}
+            onChange={(e) => setRelevanceFilter(e.target.value as RelevanceFilter)}
+          >
+            <option value="">{t.gapsTab.relevance.filterAll}</option>
+            {[40, 60, 80].map((min) => (
+              <option key={min} value={String(min)}>
+                {t.gapsTab.relevance.filterMin(min)}
+              </option>
+            ))}
+            <option value="offtopic">{t.gapsTab.relevance.filterOfftopic}</option>
+          </select>
           <select className={`${filterClass} max-w-[13rem]`} value={sort} onChange={(e) => setSort(e.target.value as SortKey)}>
+            <option value="priority">{t.gapsTab.sortPriority}</option>
             <option value="topicSv">{t.gapsTab.sortTopicSv}</option>
             <option value="clusterSv">{t.gapsTab.sortClusterSv}</option>
             <option value="urls">{t.gapsTab.sortUrls}</option>
@@ -331,6 +419,27 @@ export function TopicGapsTab({
           <button className={buttonSecondary} disabled={filtered.length === 0} onClick={exportCsv}>
             {t.gapsTab.exportCsv}
           </button>
+          {editable && (
+            <>
+              <button
+                className={buttonSecondary}
+                disabled={filteredOfftopic.length === 0}
+                title={t.gapsTab.relevance.selectOfftopicHint}
+                onClick={selectOfftopic}
+              >
+                {t.gapsTab.relevance.selectOfftopic} ({filteredOfftopic.length})
+              </button>
+              <button
+                className={buttonSecondary}
+                disabled={rescoring || progress !== null || data.gaps.length === 0}
+                title={t.gapsTab.relevance.rescoreHint}
+                onClick={() => void rescore()}
+              >
+                {rescoring && <Spinner />}
+                {t.gapsTab.relevance.rescore}
+              </button>
+            </>
+          )}
           <BrandExclusionButton
             editable={editable}
             onSaved={(text) => {
@@ -377,6 +486,9 @@ export function TopicGapsTab({
                   </th>
                 )}
                 <th className="px-3 py-2 text-left font-medium">{t.gapsTab.topic}</th>
+                <th className="px-3 py-2 text-left font-medium whitespace-nowrap" title={t.gapsTab.relevance.columnHint}>
+                  {t.gapsTab.relevance.column}
+                </th>
                 <th className="px-3 py-2 text-right font-medium whitespace-nowrap" title={t.gapsTab.topicSvHint}>
                   {t.gapsTab.topicSv}
                 </th>
@@ -414,6 +526,26 @@ export function TopicGapsTab({
                           <span className="font-medium text-slate-900 dark:text-white">{g.topic}</span>
                         </button>
                         {path.length > 0 && <div className="ml-4 text-xs text-slate-400">{path.join(" › ")}</div>}
+                      </td>
+                      <td className="px-3 py-2">
+                        {g.relevance === null ? (
+                          <span className="text-slate-300 dark:text-slate-600">–</span>
+                        ) : (
+                          <span
+                            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs whitespace-nowrap tabular-nums ${
+                              g.tier ? TIER_CLASS[g.tier] : "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300"
+                            }`}
+                            title={[
+                              g.relevanceReason,
+                              g.similarity !== null ? `${t.gapsTab.relevance.similarity}: ${g.similarity.toFixed(3)}` : null,
+                            ]
+                              .filter(Boolean)
+                              .join("\n")}
+                          >
+                            <span className="font-semibold">{g.relevance}</span>
+                            {g.tier && <span>{t.gapsTab.relevance.tiers[g.tier]}</span>}
+                          </span>
+                        )}
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums font-medium text-slate-900 dark:text-white">
                         {g.topicSv === null ? <span className="text-slate-300 dark:text-slate-600">–</span> : formatNumber(g.topicSv, intlLocale)}
@@ -464,7 +596,7 @@ export function TopicGapsTab({
                     {isOpen && (
                       <tr className="bg-slate-50/60 dark:bg-slate-900/30">
                         {editable && <td />}
-                        <td colSpan={6} className="px-3 py-2 pl-8">
+                        <td colSpan={7} className="px-3 py-2 pl-8">
                           <ul className="space-y-1.5">
                             {g.occurrences.map((o) => (
                               <li key={`${o.gapId}-${o.index}`} className="text-xs text-slate-600 dark:text-slate-300">

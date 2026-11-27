@@ -1481,12 +1481,14 @@ model KeywordMapProject {
   id              String          @id @default(cuid())
   name            String
   category        String? // KVP-Kategorie: Mortgages, Accounts&Cards, Investing, Pension, Digital Banking
+  coreDescription String?         @db.Text // Kernthema und Abgrenzung für die Kernnähe-Bewertung der Topic-Gaps
   countryCode     String          @default("ch")
   languageCode    String          @default("de")
   dropdownOptions Json? // { pageType: [], funnel: [], targetGroup: [], topicAuthority: [] }
   createdById     String
   urls            KeywordMapUrl[]
   topicBlocks     KeywordMapTopicBlock[]
+  topicRelevance  KeywordMapTopicRelevance[]
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 }
@@ -1559,6 +1561,22 @@ model KeywordMapTopicBlock {
   topic       String
   createdById String
   createdAt   DateTime          @default(now())
+
+  @@unique([projectId, key])
+}
+
+// Kernnähe eines Topics zum Projekt (KI-Bewertung + Embedding-Ähnlichkeit); gilt nur, solange profileHash zum Kernthema-Profil passt
+model KeywordMapTopicRelevance {
+  id          String            @id @default(cuid())
+  projectId   String
+  project     KeywordMapProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  key         String // topicKey(topic)
+  llmScore    Int?
+  tier        String? // core, adjacent, peripheral, offtopic
+  reason      String?           @db.Text
+  similarity  Float?
+  profileHash String
+  updatedAt   DateTime          @updatedAt
 
   @@unique([projectId, key])
 }
