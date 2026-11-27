@@ -5,7 +5,8 @@ import { useLocale, useMessages } from "@/i18n/I18nProvider";
 import { seoHelperKeywordMappingMessages } from "@/i18n/messages/seo-helper-keyword-mapping";
 import type { ProjectTopicGap, ProjectTopicGapsResponse } from "@/lib/keyword-map/shared";
 import { BrandExclusionButton } from "./BrandExclusionButton";
-import { Notice, Spinner, apiFetch, buttonSecondary, formatNumber, inputClass } from "./ui";
+import { TopicSuggestionsModal } from "./TopicSuggestionsModal";
+import { Notice, Spinner, apiFetch, buttonSecondary, formatNumber, inputClass, today } from "./ui";
 
 const PAGE_SIZE = 50;
 const RESEARCH_BATCH = 3;
@@ -17,11 +18,6 @@ type SortKey = "topicSv" | "clusterSv" | "urls" | "topic";
 
 function shortUrl(url: string) {
   return url.replace(/^https?:\/\/[^/]+/, "") || url;
-}
-
-function today() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 }
 
 function csvCell(value: string) {
@@ -52,7 +48,7 @@ export function TopicGapsTab({
   const [sort, setSort] = useState<SortKey>("topicSv");
   const [page, setPage] = useState(0);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [creating, setCreating] = useState<Set<string>>(new Set());
+  const [suggestFor, setSuggestFor] = useState<ProjectTopicGap | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -172,35 +168,17 @@ export function TopicGapsTab({
       return next;
     });
 
-  const createArticle = async (gap: ProjectTopicGap) => {
-    const target = gap.occurrences[0];
-    setCreating((prev) => new Set(prev).add(gap.key));
-    setError(null);
-    try {
-      const res = await apiFetch<{ article: { id: string } }>(`/api/seo-helper/keyword-mapping/urls/${target.urlId}/topic-gap/editorial`, {
-        method: "POST",
-        body: JSON.stringify({ gapId: target.gapId, index: target.index, plannedDate: today() }),
-      });
-      setData((prev) =>
-        prev && {
-          ...prev,
-          gaps: prev.gaps.map((g) =>
-            g.key === gap.key
-              ? { ...g, occurrences: g.occurrences.map((o) => (o === target ? { ...o, editorialArticleId: res.article.id } : o)) }
-              : g
-          ),
-        }
-      );
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t.errorGeneric);
-    } finally {
-      setCreating((prev) => {
-        const next = new Set(prev);
-        next.delete(gap.key);
-        return next;
-      });
-    }
-  };
+  const markArticle = (gapKey: string, articleId: string) =>
+    setData((prev) =>
+      prev && {
+        ...prev,
+        gaps: prev.gaps.map((g) =>
+          g.key === gapKey && !g.occurrences[0].editorialArticleId
+            ? { ...g, occurrences: g.occurrences.map((o, i) => (i === 0 ? { ...o, editorialArticleId: articleId } : o)) }
+            : g
+        ),
+      }
+    );
 
   const exportCsv = () => {
     const header = [
@@ -385,23 +363,22 @@ export function TopicGapsTab({
                         </div>
                       </td>
                       <td className="px-3 py-2 text-right">
-                        {article ? (
-                          <a href="/redaktionsplan" target="_blank" rel="noreferrer" className="text-xs text-teal-600 hover:underline whitespace-nowrap">
-                            ✓ {t.drawer.gapInEditorialPlan} ↗
-                          </a>
-                        ) : (
-                          editable && (
+                        <div className="flex flex-col items-end gap-1">
+                          {article && (
+                            <a href="/redaktionsplan" target="_blank" rel="noreferrer" className="text-xs text-teal-600 hover:underline whitespace-nowrap">
+                              ✓ {t.drawer.gapInEditorialPlan} ↗
+                            </a>
+                          )}
+                          {editable && (
                             <button
                               className="px-2 py-0.5 rounded text-xs border whitespace-nowrap inline-flex items-center gap-1 border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700"
-                              disabled={creating.has(g.key)}
-                              title={t.drawer.gapNewArticleHint}
-                              onClick={() => void createArticle(g)}
+                              title={t.gapsTab.suggest.buttonHint}
+                              onClick={() => setSuggestFor(g)}
                             >
-                              {creating.has(g.key) && <Spinner />}
-                              {t.drawer.gapNewArticle}
+                              {t.gapsTab.suggest.button}
                             </button>
-                          )
-                        )}
+                          )}
+                        </div>
                       </td>
                     </tr>
                     {isOpen && (
@@ -450,6 +427,17 @@ export function TopicGapsTab({
           )}
         </div>
       </div>
+
+      {suggestFor && (
+        <TopicSuggestionsModal
+          projectId={projectId}
+          topic={suggestFor.topic}
+          occurrences={suggestFor.occurrences}
+          plannedDate={today()}
+          onSaved={(articleId) => markArticle(suggestFor.key, articleId)}
+          onClose={() => setSuggestFor(null)}
+        />
+      )}
     </div>
   );
 }

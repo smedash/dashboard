@@ -48,9 +48,14 @@ export function Modal({
   wide?: boolean;
 }) {
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    // Capture-Phase + Stopp, damit Escape nicht zusätzlich einen darunterliegenden Drawer schliesst
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.stopImmediatePropagation();
+      onClose();
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
   }, [onClose]);
 
   return (
@@ -117,6 +122,12 @@ export function MappingIcon({ className = "w-8 h-8" }: { className?: string }) {
       />
     </svg>
   );
+}
+
+/** Heutiges Datum in lokaler Zeit als YYYY-MM-DD */
+export function today(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 }
 
 export function formatNumber(n: number | null | undefined, locale: string): string {

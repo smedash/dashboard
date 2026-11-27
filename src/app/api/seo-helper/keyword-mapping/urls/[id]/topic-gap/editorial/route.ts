@@ -13,7 +13,9 @@ class HttpError extends Error {
 
 /**
  * Legt für ein nicht abgedecktes Topic einen Artikel im Redaktionsplan an
- * (Body: `{ gapId, index, plannedDate }`, `index` = Position in `results`, `plannedDate` = YYYY-MM-DD).
+ * (Body: `{ gapId, index, plannedDate, title?, suggestionReason? }`, `index` = Position in `results`,
+ * `plannedDate` = YYYY-MM-DD). Mit `title` (Artikelvorschlag) sind mehrere Artikel pro Topic möglich;
+ * ohne `title` wird das Topic selbst als Titel übernommen, höchstens einmal.
  */
 export async function POST(request: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { user, error } = await requireUser({ write: true });
@@ -21,12 +23,20 @@ export async function POST(request: NextRequest, ctx: { params: Promise<{ id: st
 
   try {
     const { id } = await ctx.params;
-    const body = (await request.json().catch(() => ({}))) as { gapId?: unknown; index?: unknown; plannedDate?: unknown };
+    const body = (await request.json().catch(() => ({}))) as {
+      gapId?: unknown;
+      index?: unknown;
+      plannedDate?: unknown;
+      title?: unknown;
+      suggestionReason?: unknown;
+    };
     if (typeof body.gapId !== "string" || !Number.isInteger(body.index) || (body.index as number) < 0) {
       return NextResponse.json({ error: "Ungültige Anfrage" }, { status: 400 });
     }
     const gapId = body.gapId;
     const index = body.index as number;
+    const suggestedTitle = typeof body.title === "string" ? body.title.trim().slice(0, 300) : "";
+    const suggestionReason = typeof body.suggestionReason === "string" ? body.suggestionReason.trim().slice(0, 1000) : "";
     const plannedDate =
       typeof body.plannedDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.plannedDate)
         ? new Date(body.plannedDate)
@@ -48,17 +58,19 @@ export async function POST(request: NextRequest, ctx: { params: Promise<{ id: st
       if (gap.status !== "succeeded" || !item) throw new HttpError(404, "Topic nicht gefunden");
       if (item.status === "covered") throw new HttpError(400, "Topic ist bereits abgedeckt");
 
-      if (item.editorialArticleId) {
-        const existing = await tx.editorialPlanArticle.findUnique({ where: { id: item.editorialArticleId }, select: { id: true } });
-        if (existing) throw new HttpError(409, "Für dieses Topic gibt es bereits einen Artikel im Redaktionsplan");
-      }
+      const linked = item.editorialArticleId
+        ? await tx.editorialPlanArticle.findUnique({ where: { id: item.editorialArticleId }, select: { id: true } })
+        : null;
+      if (linked && !suggestedTitle) throw new HttpError(409, "Für dieses Topic gibt es bereits einen Artikel im Redaktionsplan");
 
       const description = [
         `Topic-Gap aus dem Keyword Mapping (${item.status === "missing" ? "fehlt" : "teilweise abgedeckt"})`,
+        suggestedTitle ? `Topic: ${item.topic}` : null,
         `URL: ${gap.url.url}`,
         `Fokus-Keyword: ${gap.focusKeyword}`,
         item.path.length ? `Topic-Pfad: ${[...item.path, item.topic].join(" > ")}` : null,
         item.reason ? `Begründung: ${item.reason}` : null,
+        suggestionReason ? `KI-Artikelvorschlag: ${suggestionReason}` : null,
         item.otherUrls?.length ? `Bereits abgedeckt auf: ${item.otherUrls.map((u) => u.url).join(", ")}` : null,
       ]
         .filter(Boolean)
@@ -66,7 +78,7 @@ export async function POST(request: NextRequest, ctx: { params: Promise<{ id: st
 
       const created = await tx.editorialPlanArticle.create({
         data: {
-          title: item.topic,
+          title: suggestedTitle || item.topic,
           description,
           language: normalizeContentLanguage(gap.url.project.languageCode),
           category: gap.url.project.category || null,
@@ -77,11 +89,13 @@ export async function POST(request: NextRequest, ctx: { params: Promise<{ id: st
         select: { id: true, title: true, plannedDate: true },
       });
 
-      const next = items.map((it, i) => (i === index ? { ...it, editorialArticleId: created.id } : it));
-      await tx.keywordMapTopicGap.update({
-        where: { id: gapId },
-        data: { results: next as unknown as Prisma.InputJsonValue },
-      });
+      if (!linked) {
+        const next = items.map((it, i) => (i === index ? { ...it, editorialArticleId: created.id } : it));
+        await tx.keywordMapTopicGap.update({
+          where: { id: gapId },
+          data: { results: next as unknown as Prisma.InputJsonValue },
+        });
+      }
       return created;
     });
 

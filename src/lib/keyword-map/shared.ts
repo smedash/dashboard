@@ -113,6 +113,12 @@ export interface ProjectTopicGap {
   occurrences: ProjectTopicGapOccurrence[];
 }
 
+/** KI-Artikelvorschlag zu einem offenen Topic */
+export interface TopicArticleSuggestion {
+  title: string;
+  reason: string;
+}
+
 export interface ProjectTopicGapsResponse {
   gaps: ProjectTopicGap[];
   stats: {

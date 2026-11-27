@@ -14,7 +14,8 @@ import type {
   TopicOtherUrl,
 } from "@/lib/keyword-map/shared";
 import { splitKeywords } from "@/lib/keyword-map/shared";
-import { Notice, Spinner, apiFetch, buttonPrimary, buttonSecondary, formatNumber, inputClass } from "./ui";
+import { TopicSuggestionsModal } from "./TopicSuggestionsModal";
+import { Notice, Spinner, apiFetch, buttonPrimary, buttonSecondary, formatNumber, inputClass, today } from "./ui";
 
 type Tab = "keywords" | "gap" | "details" | "kvp";
 
@@ -833,34 +834,23 @@ function TopicGapTab({
     }
   };
 
-  const [creating, setCreating] = useState<Set<number>>(new Set());
-  const createArticle = async (index: number) => {
-    if (!gap) return;
-    const gapId = gap.id;
-    const now = new Date();
-    const plannedDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-    setCreating((prev) => new Set(prev).add(index));
-    setError(null);
-    try {
-      const res = await apiFetch<{ article: { id: string } }>(`/api/seo-helper/keyword-mapping/urls/${url.id}/topic-gap/editorial`, {
-        method: "POST",
-        body: JSON.stringify({ gapId, index, plannedDate }),
-      });
-      setData((prev) =>
-        prev?.gap?.id === gapId
-          ? { ...prev, gap: { ...prev.gap, results: prev.gap.results.map((r, i) => (i === index ? { ...r, editorialArticleId: res.article.id } : r)) } }
-          : prev
-      );
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t.errorGeneric);
-    } finally {
-      setCreating((prev) => {
-        const next = new Set(prev);
-        next.delete(index);
-        return next;
-      });
-    }
-  };
+  const [suggestFor, setSuggestFor] = useState<{ gapId: string; index: number; topic: string } | null>(null);
+  const suggestOccurrences = useMemo(
+    () => (suggestFor ? [{ urlId: url.id, gapId: suggestFor.gapId, index: suggestFor.index }] : []),
+    [suggestFor, url.id]
+  );
+  const markArticle = (gapId: string, index: number, articleId: string) =>
+    setData((prev) =>
+      prev?.gap?.id === gapId
+        ? {
+            ...prev,
+            gap: {
+              ...prev.gap,
+              results: prev.gap.results.map((r, i) => (i === index && !r.editorialArticleId ? { ...r, editorialArticleId: articleId } : r)),
+            },
+          }
+        : prev
+    );
 
   const [crossChecking, setCrossChecking] = useState(false);
   const crossCheck = async () => {
@@ -904,29 +894,25 @@ function TopicGapTab({
     const coveredOn = i.otherUrls?.filter((u) => u.status === "covered").length ?? 0;
     return (
       <span className="shrink-0 flex items-center gap-3">
-        {i.status !== "covered" &&
-          (i.editorialArticleId ? (
-            <a href="/redaktionsplan" target="_blank" rel="noreferrer" className="text-xs text-teal-600 hover:underline whitespace-nowrap">
-              ✓ {t.drawer.gapInEditorialPlan} ↗
-            </a>
-          ) : (
-            editable && (
-              <button
-                className={`px-2 py-0.5 rounded text-xs border whitespace-nowrap inline-flex items-center gap-1 ${
-                  coveredOn > 0
-                    ? "border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/20"
-                    : "border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700"
-                }`}
-                disabled={creating.has(i.index)}
-                title={coveredOn > 0 ? `${t.drawer.gapNewArticleCoveredWarning(coveredOn)}\n${t.drawer.gapNewArticleHint}` : t.drawer.gapNewArticleHint}
-                onClick={() => void createArticle(i.index)}
-              >
-                {creating.has(i.index) && <Spinner />}
-                {coveredOn > 0 && "⚠ "}
-                {t.drawer.gapNewArticle}
-              </button>
-            )
-          ))}
+        {i.status !== "covered" && i.editorialArticleId && (
+          <a href="/redaktionsplan" target="_blank" rel="noreferrer" className="text-xs text-teal-600 hover:underline whitespace-nowrap">
+            ✓ {t.drawer.gapInEditorialPlan} ↗
+          </a>
+        )}
+        {i.status !== "covered" && editable && gap && (
+          <button
+            className={`px-2 py-0.5 rounded text-xs border whitespace-nowrap inline-flex items-center gap-1 ${
+              coveredOn > 0
+                ? "border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                : "border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700"
+            }`}
+            title={coveredOn > 0 ? `${t.drawer.gapNewArticleCoveredWarning(coveredOn)}\n${t.gapsTab.suggest.buttonHint}` : t.gapsTab.suggest.buttonHint}
+            onClick={() => setSuggestFor({ gapId: gap.id, index: i.index, topic: i.topic })}
+          >
+            {coveredOn > 0 && "⚠ "}
+            {t.gapsTab.suggest.button}
+          </button>
+        )}
         <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300 cursor-pointer whitespace-nowrap">
           <input type="checkbox" disabled={!editable} checked={!!i.selected} onChange={(e) => void toggleSelected(i.index, e.target.checked)} />
           {t.drawer.gapTakeOver}
@@ -1244,6 +1230,17 @@ function TopicGapTab({
             </>
           )}
         </div>
+      )}
+
+      {suggestFor && (
+        <TopicSuggestionsModal
+          projectId={project.id}
+          topic={suggestFor.topic}
+          occurrences={suggestOccurrences}
+          plannedDate={today()}
+          onSaved={(articleId) => markArticle(suggestFor.gapId, suggestFor.index, articleId)}
+          onClose={() => setSuggestFor(null)}
+        />
       )}
     </div>
   );
